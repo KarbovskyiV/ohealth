@@ -30,13 +30,10 @@ return [
 
     'service_programs' => [
         'title' => 'Програми - Послуги',
-        'description' => 'Управління сервісними програмами',
-        'index' => 'Список сервісних програм',
-        'create' => 'Створити сервісну програму',
 
         // Program details block
         'medical_guarantees' => 'Програма медичних гарантій',
-        'treatment_plan_required_en' => 'Обов\'язковість використання плану лікування для ЕН:',
+        'care_plan_required' => "Обов'язковість використання плану лікування для ЕН"
     ],
 
     'loinc_observation_dictionary' => 'Довідник спостережень LOINC',

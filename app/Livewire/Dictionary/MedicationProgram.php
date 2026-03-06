@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Dictionary;
 
 use App\Core\Arr;
+use App\Enums\MedicalProgram\Type;
 use App\Enums\User\Role;
 use App\Models\LegalEntity;
 use App\Traits\FormTrait;
@@ -15,8 +16,6 @@ use Livewire\Component;
 class MedicationProgram extends Component
 {
     use FormTrait;
-
-    private const string PROGRAM_TYPE = 'MEDICATION';
 
     /**
      * Active medical programs filtered by user role and speciality
@@ -45,7 +44,7 @@ class MedicationProgram extends Component
             ->pluck('speciality');
         $filteredPrograms = dictionary()->medicalPrograms()
             ->where('is_active', '=', true)
-            ->where('type', '=', self::PROGRAM_TYPE);
+            ->where('type', '=', Type::MEDICATION);
 
         // Main speciality filter
         if ($roles->contains(Role::SPECIALIST->value) || $roles->contains(Role::DOCTOR->value)) {
