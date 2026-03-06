@@ -288,7 +288,7 @@
                     </li>
                 @endcan
 
-                <li x-data="{ open: {{ (request()->routeIs('dictionaries.medication-programs.index') || request()->routeIs('dictionaries.service-programs.index')) ? 'true' : 'false' }} }"
+                <li x-data="{ open: {{ (request()->routeIs('dictionaries.medication-programs.index') || request()->routeIs('dictionaries.service-programs.index') || request()->routeIs('dictionaries.drug-list.index')) ? 'true' : 'false' }} }"
                     class="space-y-2"
                 >
                     <button @click="open = !open"
@@ -312,35 +312,42 @@
                     </button>
 
                     <ul id="dropdown-dictionaries"
-                        x-cloak
-                        class="py-2 space-y-2"
-                        x-show="open"
-                        x-transition:enter="transition ease-out duration-100"
-                        x-transition:enter-start="transform opacity-0 scale-95"
-                        x-transition:enter-end="transform opacity-100 scale-100"
-                        x-transition:leave="transition ease-in duration-75"
-                        x-transition:leave-start="transform opacity-100 scale-100"
-                        x-transition:leave-end="transform opacity-0 scale-95"
-                    >
-                        <li>
-                            <a href="{{ route('dictionaries.medication-programs.index', [legalEntity()]) }}"
-                               class="submenu-item"
-                            >
-                                @icon('boxicons-file')
-                                <span>{{ __('dictionaries.medication_programs.title') }}</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('dictionaries.service-programs.index', [legalEntity()]) }}"
-                               class="submenu-item"
-                            >
-                                @icon('boxicons-file')
-                                <span>{{ __('dictionaries.service_programs.title') }}</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-            @endif
+            x-cloak
+            class="py-2 space-y-2"
+            x-show="open"
+            x-transition:enter="transition ease-out duration-100"
+            x-transition:enter-start="transform opacity-0 scale-95"
+            x-transition:enter-end="transform opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-75"
+            x-transition:leave-start="transform opacity-100 scale-100"
+            x-transition:leave-end="transform opacity-0 scale-95"
+        >
+            <li>
+                <a href="{{ route('dictionaries.medication-programs.index', [legalEntity()]) }}"
+                   class="submenu-item"
+                >
+                    @icon('boxicons-file')
+                    <span>{{ __('dictionaries.medication_programs.title') }}</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('dictionaries.service-programs.index', [legalEntity()]) }}"
+                   class="submenu-item"
+                >
+                    @icon('boxicons-file')
+                    <span>{{ __('dictionaries.service_programs.title') }}</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('dictionaries.drug-list.index', [legalEntity()]) }}"
+                   class="submenu-item"
+                >
+                    @icon('boxicons-file')
+                    <span>{{ __('drug-list.title') }}</span>
+                </a>
+            </li>
         </ul>
+                </li>
+        @endif
     </div>
 </aside>
