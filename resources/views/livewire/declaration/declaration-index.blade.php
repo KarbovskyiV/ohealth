@@ -87,10 +87,9 @@
          wire:key="declarations-table-page-{{ $declarations->total() }}-{{ $declarations->currentPage() }}"
     >
         <div class="max-w-screen-xl">
-            <div class="relative shadow-md sm:rounded-lg">
-                <div>
-                    @if($declarations->isNotEmpty())
-                        <table class="table-input w-full min-w-[1000px]">
+            @if($declarations->isNotEmpty())
+                <div class="relative shadow-md sm:rounded-lg">
+                    <table class="table-input w-full min-w-[1000px]">
                             <thead class="thead-input">
                             <tr>
                                 <th scope="col" class="th-input w-[25%]">{{ __('forms.full_name') }}</th>
@@ -215,35 +214,34 @@
                             @endforeach
                             </tbody>
                         </table>
-
-                    @else
-                        <div class="p-12">
-                            <fieldset class="fieldset shift-content">
-                                <legend class="legend relative -top-5">@icon('nothing-found', 'w-28 h-28')</legend>
-                                <div class="p-4 rounded-lg bg-blue-100 flex items-start mb-4">
-                                    <div class="flex items-start gap-3">
-                                        <div class="flex-shrink-0 mt-0.5">
-                                            @icon('alert-circle', 'w-5 h-5 text-blue-500 mr-3 mt-1')
-                                        </div>
-                                        <div class="flex-1">
-                                            <p class="font-bold text-blue-800">
-                                                {{ __('forms.nothing_found') }}
-                                            </p>
-                                            <p class="text-sm text-blue-600">
-                                                {{ __('forms.changing_search_parameters') }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </fieldset>
-                        </div>
-                    @endif
                 </div>
-            </div>
 
-            <div class="mt-8 pl-3.5 pb-8 lg:pl-8 2xl:pl-5">
-                {{ $declarations->links() }}
-            </div>
+                <div class="mt-8 pl-3.5 pb-8 lg:pl-8 2xl:pl-5">
+                    {{ $declarations->links() }}
+                </div>
+            @else
+                <fieldset class="fieldset pl-[3.5px] ml-0 mr-auto w-full max-w-full">
+                    <legend class="legend relative -top-5 ml-0">
+                        @icon('nothing-found', 'w-28 h-28')
+                    </legend>
+
+                    <div class="p-4 rounded-lg bg-blue-100 flex items-start mb-4 max-w-2xl">
+                        <div class="flex items-start gap-3">
+                            <div class="flex-shrink-0 mt-0.5">
+                                @icon('alert-circle', 'w-5 h-5 text-blue-500 mr-3 mt-1')
+                            </div>
+                            <div class="flex-1">
+                                <p class="font-bold text-blue-800">
+                                    {{ __('forms.nothing_found') }}
+                                </p>
+                                <p class="text-sm text-blue-600">
+                                    {{ __('forms.changing_search_parameters') }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+            @endif
         </div>
     </div>
 

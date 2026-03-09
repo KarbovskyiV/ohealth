@@ -75,7 +75,7 @@
                                     class="peer input-select"
                             >
                                 <option value="" selected>{{ __('forms.select') }}</option>
-                                @foreach($this->dictionaries['device_definition_classification_type'] as $key => $type)
+                                @foreach(dictionary()->getDictionary('device_definition_classification_type') as $key => $type)
                                     <option value="{{ $key }}">{{ $type }}</option>
                                 @endforeach
                             </select>
@@ -261,7 +261,7 @@
                                     {{ $equipment->inventoryNumber ?? '-' }}
                                 </td>
                                 <td class="index-table-td">
-                                    {{ $this->dictionaries['device_definition_classification_type'][$equipment->type] }}
+                                    {{ dictionary()->getDictionary('device_definition_classification_type')[$equipment->type] }}
                                 </td>
                                 <td class="index-table-td">
                                     {{ $equipment->division?->name ?? '-' }}
@@ -270,11 +270,11 @@
                                     {{ $equipment->ehealthInsertedAt?->format('d.m.Y') ?? $equipment->createdAt->format('d.m.Y') }}
                                 </td>
                                 <td class="index-table-td">
-                                    <span class="{{
+                                    <span class="inline-flex items-center whitespace-nowrap {{
                                         match($equipment->status) {
-                                            Status::DRAFT => 'badge-dark',
-                                            Status::ACTIVE => 'badge-green',
-                                            Status::INACTIVE, Status::ENTERED_IN_ERROR => 'badge-red',
+                                            Status::DRAFT => ' badge-dark',
+                                            Status::ACTIVE => ' badge-green',
+                                            Status::INACTIVE, Status::ENTERED_IN_ERROR => ' badge-red',
                                             default => ''
                                         }
                                     }}">
@@ -391,9 +391,12 @@
                     </table>
                 </div>
             @else
-                <fieldset class="fieldset !mx-auto mt-8 shift-content">
-                    <legend class="legend relative -top-5">@icon('nothing-found', 'w-28 h-28')</legend>
-                    <div class="p-4 rounded-lg bg-blue-100 flex items-start mb-4">
+                <fieldset class="fieldset pl-[3.5px] ml-0 mr-auto w-full max-w-full">
+                    <legend class="legend relative -top-5 ml-0">
+                        @icon('nothing-found', 'w-28 h-28')
+                    </legend>
+
+                    <div class="p-4 rounded-lg bg-blue-100 flex items-start mb-4 max-w-2xl">
                         <div class="flex items-start gap-3">
                             <div class="flex-shrink-0 mt-0.5">
                                 @icon('alert-circle', 'w-5 h-5 text-blue-500 mr-3 mt-1')
@@ -411,9 +414,11 @@
                 </fieldset>
             @endif
 
-            <div class="mt-8 pl-3.5 pb-8 lg:pl-8 2xl:pl-5">
-                {{ $equipments->links() }}
-            </div>
+            @if($equipments->isNotEmpty())
+                <div class="mt-8 pl-3.5 pb-8 lg:pl-8 2xl:pl-5">
+                    {{ $equipments->links() }}
+                </div>
+            @endif
         </div>
     </div>
 
