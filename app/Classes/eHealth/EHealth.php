@@ -11,6 +11,7 @@ use App\Classes\eHealth\Api\Declaration;
 use App\Classes\eHealth\Api\DeclarationRequest;
 use App\Classes\eHealth\Api\DeviceDefinition;
 use App\Classes\eHealth\Api\Dictionary;
+use App\Classes\eHealth\Api\Drug;
 use App\Classes\eHealth\Api\Employee;
 use App\Classes\eHealth\Api\EmployeeRequest;
 use App\Classes\eHealth\Api\EmployeeRole;
@@ -185,5 +186,10 @@ final class EHealth
     public static function verification(): Verification
     {
         return app(Verification::class);
+    }
+
+    public static function drug(): Drug
+    {
+        return app(Drug::class);
     }
 }

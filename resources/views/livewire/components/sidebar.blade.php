@@ -343,7 +343,7 @@
                                class="submenu-item"
                             >
                                 @icon('boxicons-file')
-                                <span>{{ __('drug-list.title') }}</span>
+                                <span>{{ __('dictionaries.drug_list.title') }}</span>
                             </a>
                         </li>
                         <li>

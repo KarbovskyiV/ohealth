@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\Dictionary;
 
+use App\Classes\eHealth\EHealthResponse;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
+use App\Jobs\UpdateDictionaryCache;
 use App\Services\Dictionary\Collections\BasicDictionaryCollection;
+use App\Services\Dictionary\Collections\DrugCollection;
 use App\Services\Dictionary\Collections\MedicalProgramCollection;
 use App\Services\Dictionary\Collections\ServiceCollection;
 use App\Services\Dictionary\Dictionaries\BasicDictionary;
+use App\Services\Dictionary\Dictionaries\DrugDictionary;
 use App\Services\Dictionary\Dictionaries\MedicalProgramDictionary;
 use App\Services\Dictionary\Dictionaries\ServiceDictionary;
+use Exception;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -73,6 +78,16 @@ class DictionaryManager
     }
 
     /**
+     * Get drugs dictionaries collection.
+     *
+     * @return DrugCollection Collection with basic dictionary data
+     */
+    public function drugs(): DrugCollection
+    {
+        return new DrugCollection($this->get(DrugDictionary::KEY));
+    }
+
+    /**
      * Get cached dictionary data by key.
      *
      * @param  string  $key  Dictionary key
@@ -83,22 +98,107 @@ class DictionaryManager
     {
         $dictionary = $this->dictionaries[$key] ?? throw new InvalidArgumentException("Dictionary '$key' not found");
 
+        $cacheKey = $dictionary->getKey();
+        $freshKey = $cacheKey . ':fresh';
+
         try {
-            return collect(
-                Cache::remember(
-                    $dictionary->getKey(),
-                    now()->endOfDay(),
-                    static fn () => $dictionary->fetch()
-                )
-            );
+            // Check if fresh data exists
+            if (Cache::has($freshKey)) {
+                // Fresh data exists, return cached data
+                $cachedData = Cache::get($cacheKey, []);
+
+                return collect($cachedData);
+            }
+
+            // Fresh marker expired, check if we have stale data
+            $staleData = Cache::get($cacheKey);
+            if ($staleData !== null) {
+                $this->triggerBackgroundRefresh($dictionary);
+
+                return collect($staleData);
+            }
+
+            // Get response to check pagination
+            $response = $dictionary->fetch();
+            $freshData = $response->getData();
+            $paging = $response->getPaging();
+            $totalPages = $paging['total_pages'] ?? 1;
+
+            // Cache the fresh data with both keys
+            Cache::put($cacheKey, $freshData, now()->addWeek()); // Keep stale data for a week
+            Cache::put($freshKey, true, now()->endOfDay()); // Fresh marker for 1 day
+
+            // If multiple pages, trigger background refresh for remaining pages
+            if ($totalPages > 1) {
+                for ($page = 2; $page <= $totalPages; $page++) {
+                    UpdateDictionaryCache::dispatch($dictionary->getKey(), $page)
+                        ->delay(now()->addSeconds($page * 2));
+                }
+            }
+
+            return collect($freshData);
+
         } catch (ConnectionException $e) {
             Log::error("Dictionary '$key' connection failed", ['error' => $e->getMessage()]);
 
-            return collect();
+            // Return stale data if available, otherwise empty collection
+            $staleData = Cache::get($cacheKey, []);
+
+            return collect($staleData);
         } catch (EHealthResponseException|EHealthValidationException $e) {
             Log::error("Dictionary '$key' API error", ['error' => $e->getMessage()]);
 
-            return collect();
+            // Return stale data if available, otherwise empty collection
+            $staleData = Cache::get($cacheKey, []);
+
+            return collect($staleData);
         }
+    }
+
+    /**
+     * Trigger background refresh for dictionary.
+     *
+     * @param  DictionaryInterface  $dictionary
+     */
+    private function triggerBackgroundRefresh(DictionaryInterface $dictionary): void
+    {
+        try {
+            // Just get pagination info without updating cache yet
+            $response = $dictionary->fetch();
+            $paging = $response->getPaging();
+            $totalPages = $paging['total_pages'] ?? 1;
+
+            // Dispatch jobs for ALL pages (including page 1) to refresh everything in background
+            for ($page = 1; $page <= $totalPages; $page++) {
+                UpdateDictionaryCache::dispatch($dictionary->getKey(), $page)
+                    ->delay(now()->addSeconds($page * 2));
+            }
+        } catch (Exception $exception) {
+            Log::error("Failed to trigger background refresh", [
+                'dictionary' => $dictionary->getKey(),
+                'error' => $exception->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Fetch specific page from dictionary API.
+     *
+     * @param  string  $dictionaryKey  Dictionary key
+     * @param  int  $page  Page number (1-based)
+     * @return EHealthResponse
+     */
+    public static function fetchDictionaryPage(string $dictionaryKey, int $page = 1): EHealthResponse
+    {
+        // Create dictionary instance based on key and use its fetch method
+        $dictionary = match ($dictionaryKey) {
+            MedicalProgramDictionary::KEY => new MedicalProgramDictionary(),
+            ServiceDictionary::KEY => new ServiceDictionary(),
+            BasicDictionary::KEY => new BasicDictionary(),
+            DrugDictionary::KEY => new DrugDictionary(),
+            default => throw new InvalidArgumentException("Unknown dictionary key: $dictionaryKey")
+        };
+
+        return $dictionary->fetch($page);
     }
 }

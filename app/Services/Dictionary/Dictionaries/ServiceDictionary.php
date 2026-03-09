@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Dictionary\Dictionaries;
 
 use App\Classes\eHealth\EHealth;
-use App\Exceptions\EHealth\EHealthResponseException;
-use App\Exceptions\EHealth\EHealthValidationException;
+use App\Classes\eHealth\EHealthResponse;
 use App\Services\Dictionary\DictionaryInterface;
-use Illuminate\Http\Client\ConnectionException;
 
 class ServiceDictionary implements DictionaryInterface
 {
@@ -28,16 +26,12 @@ class ServiceDictionary implements DictionaryInterface
     }
 
     /**
-     * Fetch services from eHealth API.
-     *
-     * Retrieves all available medical services with their hierarchical
-     * structure including service groups and nested services.
-     *
-     * @return array Raw service data from eHealth API
-     * @throws ConnectionException|EHealthValidationException|EHealthResponseException
+     * @inheritDoc
      */
-    public function fetch(): array
+    public function fetch(int $page = 1): EHealthResponse
     {
-        return EHealth::service()->getMany()->getData();
+        $params = $page === 1 ? [] : ['page' => $page];
+
+        return EHealth::service()->getMany($params);
     }
 }

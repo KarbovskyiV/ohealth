@@ -11,14 +11,29 @@ use App\Exceptions\EHealth\EHealthValidationException;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\ConnectionException;
 
-class MedicalProgram extends EHealthRequest
+class Drug extends EHealthRequest
 {
-    public const string URL = '/api/medical_programs';
+    public const string URL = '/api/v3/drugs';
 
     /**
      * Receives a list of medical programs.
      *
-     * @param  array{id?: string, name?: string, is_active?: bool, mr_blank_type?: string, type?: string, page?: int, page_size?: int}  $filters
+     * @param  array{
+     *     innm_id?: string,
+     *     innm_name?: string,
+     *     innm_sctid?: string,
+     *     innm_dosage_form?: string,
+     *     innm_dosage_id?: string,
+     *     innm_dosage_name?: string,
+     *     medication_code_atc?: string,
+     *     medical_program_id?: string,
+     *     mr_blank_type?: string,
+     *     dosage_form_is_dosed?: bool,
+     *     medication_request_allowed?: bool,
+     *     care_plan_activity_allowed?: bool,
+     *     page?: int,
+     *     page_size?: int
+     * }  $filters
      * @return PromiseInterface|EHealthResponse
      * @throws ConnectionException|EHealthValidationException|EHealthResponseException
      */

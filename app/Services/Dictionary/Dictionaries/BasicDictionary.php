@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Dictionary\Dictionaries;
 
 use App\Classes\eHealth\EHealth;
-use App\Exceptions\EHealth\EHealthResponseException;
-use App\Exceptions\EHealth\EHealthValidationException;
+use App\Classes\eHealth\EHealthResponse;
 use App\Services\Dictionary\DictionaryInterface;
-use Illuminate\Http\Client\ConnectionException;
 
 class BasicDictionary implements DictionaryInterface
 {
@@ -28,16 +26,11 @@ class BasicDictionary implements DictionaryInterface
     }
 
     /**
-     * Fetch basic dictionaries from eHealth API.
-     *
-     * Retrieves all general-purpose dictionaries including device types,
-     * classification codes, status enums and other reference data.
-     *
-     * @return array Raw dictionary data from eHealth API
-     * @throws ConnectionException|EHealthValidationException|EHealthResponseException
+     * @inheritDoc
      */
-    public function fetch(): array
+    public function fetch(int $page = 1): EHealthResponse
     {
-        return EHealth::dictionary()->getMany()->getData();
+        // Basic dictionaries don't support pagination, ignore $page parameter
+        return EHealth::dictionary()->getMany();
     }
 }

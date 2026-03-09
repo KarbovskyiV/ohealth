@@ -8,12 +8,12 @@ use App\Classes\eHealth\EHealth;
 use App\Classes\eHealth\EHealthResponse;
 use App\Services\Dictionary\DictionaryInterface;
 
-class MedicalProgramDictionary implements DictionaryInterface
+class DrugDictionary implements DictionaryInterface
 {
     /**
      * Dictionary unique identifier key.
      */
-    public const string KEY = 'dictionaries.medical_program';
+    public const string KEY = 'dictionaries.drug';
 
     /**
      * Get the dictionary key.
@@ -32,6 +32,6 @@ class MedicalProgramDictionary implements DictionaryInterface
     {
         $params = $page === 1 ? [] : ['page' => $page];
 
-        return EHealth::medicalProgram()->asMis()->getMany($params);
+        return EHealth::drug()->getMany($params);
     }
 }

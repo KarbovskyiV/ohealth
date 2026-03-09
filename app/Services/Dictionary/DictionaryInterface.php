@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Dictionary;
 
+use App\Classes\eHealth\EHealthResponse;
+
 interface DictionaryInterface
 {
     /**
@@ -14,9 +16,10 @@ interface DictionaryInterface
     public function getKey(): string;
 
     /**
-     * Fetch raw dictionary data from the source.
+     * Fetch full response from API with pagination info.
      *
-     * @return array Raw dictionary data structure
+     * @param  int  $page  Page number (1-based)
+     * @return EHealthResponse Full API response with data and pagination
      */
-    public function fetch(): array;
+    public function fetch(int $page = 1): EHealthResponse;
 }
