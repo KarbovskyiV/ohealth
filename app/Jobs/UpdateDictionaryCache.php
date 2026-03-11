@@ -65,6 +65,14 @@ class UpdateDictionaryCache implements ShouldQueue
 
             $totalPages = $paging['total_pages'] ?? 1;
 
+            // If this is page 1 and there are more pages, dispatch jobs for other pages
+            if ($this->pageNumber === 1 && $totalPages > 1) {
+                for ($page = 2; $page <= $totalPages; $page++) {
+                    self::dispatch($this->dictionaryKey, $page)
+                        ->delay(now()->addSeconds($page * 2));
+                }
+            }
+
             // Check if this is the last page to set fresh marker
             if ($this->pageNumber === $totalPages) {
                 // All pages are cached, set fresh marker

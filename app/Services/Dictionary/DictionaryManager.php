@@ -156,23 +156,14 @@ class DictionaryManager
     }
 
     /**
-     * Trigger background refresh for dictionary.
+     * Trigger background refresh for dictionary without blocking current request.
      *
      * @param  DictionaryInterface  $dictionary
      */
     private function triggerBackgroundRefresh(DictionaryInterface $dictionary): void
     {
         try {
-            // Just get pagination info without updating cache yet
-            $response = $dictionary->fetch();
-            $paging = $response->getPaging();
-            $totalPages = $paging['total_pages'] ?? 1;
-
-            // Dispatch jobs for ALL pages (including page 1) to refresh everything in background
-            for ($page = 1; $page <= $totalPages; $page++) {
-                UpdateDictionaryCache::dispatch($dictionary->getKey(), $page)
-                    ->delay(now()->addSeconds($page * 2));
-            }
+            UpdateDictionaryCache::dispatch($dictionary->getKey(), 1);
         } catch (Exception $exception) {
             Log::error("Failed to trigger background refresh", [
                 'dictionary' => $dictionary->getKey(),

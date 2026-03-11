@@ -21,14 +21,14 @@ use App\Livewire\Dictionary\ConditionDiagnose;
 
 Route::prefix('dictionaries')->name('dictionaries.')
     ->group(function () {
-        Route::get('/drug-list', DrugList::class)
-            ->name('drug-list.index');
-
         Route::get('/medication-programs', MedicationProgram::class)
             ->name('medication-programs.index');
 
         Route::get('/service-programs', ServiceProgram::class)
             ->name('service-programs.index');
+
+        Route::get('/drug-list', DrugList::class)
+            ->name('drug-list.index');
 
         Route::get('/service-catalog', ServiceCatalog::class)
             ->name('service-catalog.index');

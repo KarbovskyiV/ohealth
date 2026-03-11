@@ -364,6 +364,7 @@
                         </li>
                     </ul>
                 </li>
-        @endif
+            @endif
+        </ul>
     </div>
 </aside>
