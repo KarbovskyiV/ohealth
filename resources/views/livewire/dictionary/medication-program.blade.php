@@ -3,6 +3,7 @@
         roleLabels: @js(__('users.role')),
         dictionaries: @js($dictionaries),
         selectedProgramId: '',
+        prescriptionWithoutDeclaration: '',
         get selectedProgram() {
             return this.programs.find(program => program.id === this.selectedProgramId) || null;
         },
@@ -49,6 +50,7 @@
                         <select id="prescriptionWithoutDeclaration"
                                 name="prescriptionWithoutDeclaration"
                                 class="peer input-select w-full"
+                                x-model="prescriptionWithoutDeclaration"
                         >
                             <option value="" selected>{{ __('forms.select') }}</option>
                             <option value="1">{{ __('forms.yes') }}</option>
@@ -76,10 +78,8 @@
                         <span class="font-semibold">{{ __('dictionaries.medication_programs.funding_source') }}:</span>
                         <span x-text="dictionaries.FUNDING_SOURCE[selectedProgram.funding_source]"></span>
                     </p>
-                    <p>{{ __('dictionaries.mr_blank_type') }}:
                     <p>
                         <span class="font-semibold">{{ __('dictionaries.medication_programs.mr_blank_type') }}:</span>
-                    <p>{{ __('dictionaries.mr_blank_type') }}:
                         <span x-text="selectedProgram.mr_blank_type"></span>
                     </p>
                     <p>
