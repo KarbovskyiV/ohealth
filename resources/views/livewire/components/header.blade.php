@@ -41,10 +41,10 @@
             <a href="{{ legalEntity() ? route('dashboard', [legalEntity()]) : url('/dashboard') }}" class="flex items-center justify-between mr-4">
                 <img src="{{ Vite::asset('resources/images/logo-180x180.png') }}"
                      class="mr-3 h-8"
-                     alt="Open Health logo"
+                     alt="Nation Health logo"
                 >
                 <span class="self-center text-l font-bold whitespace-nowrap dark:text-white text-teal uppercase">
-                    Open Health
+                    Nation Health
                 </span>
             </a>
         </div>

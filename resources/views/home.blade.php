@@ -9,7 +9,7 @@
     <div class="container mx-auto max-w-custom flex flex-col sm:flex-row items-center justify-between">
         <div class="text-left w-full">
             <h2 class="text-white text-xl sm:text-1xl font-semibold mb-4">{{ trans('Медична інформаційна система') }}</h2>
-            <h1 class="text-white text-4xl sm:text-6xl font-bold mb-10">{{ trans('OPEN HEALTH') }}</h1>
+            <h1 class="text-white text-4xl sm:text-6xl font-bold mb-10">{{ trans('NATION HEALTH') }}</h1>
             <p class="text-white text-3lg sm:text-2xl font-semibold mb-9">{{ trans('Перша МІС з відкритим вихідним кодом') }}</p>
             <a href="#consultation-form" class="bg-orange text-white text-lg font-bold py-3 px-6 rounded-full hover:bg-blue">{{ trans('Зворотній зв\'язок') }}</a>
         </div>

@@ -1,4 +1,4 @@
-# OHealth
+# Nation Health
 Health Information System (Медична інформаційна система)
 ## License & copyright
 The software is distributed under [GPL version 3](https://www.gnu.org/licenses/gpl-3.0.en.html). Copyright &copy; 2026 Vitalii Bezsheiko
@@ -20,7 +20,7 @@ npm run build
 cp .env.example .env
 ```
 ### Environment variables
-Before starting the application, see example of the [environment variables configuration](https://github.com/Vitaliy-1/openHealth/blob/main/.env.example).
+Before starting the application, see example of the [environment variables configuration](.env.example).
 #### Application
 ```
 APP_NAME=Laravel

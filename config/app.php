@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\ServiceProvider;
 
 return [
-    'email' => env('APP_EMAIL', 'mm@openhealths.com'),
-    'phone' => env('APP_PHONE', '+380505188617'),
+    'email' => env('APP_EMAIL', 'v@openhealths.com'),
+    'phone' => env('APP_PHONE', '+380506491244'),
 
     /*
     |--------------------------------------------------------------------------
@@ -20,7 +20,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Nation Health'),
 
     /*
     |--------------------------------------------------------------------------
