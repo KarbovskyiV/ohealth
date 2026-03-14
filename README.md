@@ -11,7 +11,9 @@ The software is distributed under [GPL version 3](https://www.gnu.org/licenses/g
 ## Installation for development
 ### Git
 ```
-git clone https://github.com/Vitaliy-1/openHealth mis-dev
+git clone https://github.com/openhealths/nationHealth mis-dev
+git clone  mis-dev
+git clone  mis-dev
 cd mis-dev
 git checkout dev
 composer install
