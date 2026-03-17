@@ -378,6 +378,14 @@
                                 <span>{{ __('dictionaries.medical_device.title') }}</span>
                             </a>
                         </li>
+                        <li>
+                            <a href="{{ route('dictionaries.device-definition.index', [legalEntity()]) }}"
+                               class="submenu-item"
+                            >
+                                @icon('boxicons-file')
+                                <span>{{ __('dictionaries.medical_device.page_title') }}</span>
+                            </a>
+                        </li>
                     </ul>
                 </li>
             @endif

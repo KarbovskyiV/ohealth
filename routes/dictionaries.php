@@ -10,6 +10,7 @@ use App\Livewire\Dictionary\ServiceProgram;
 use App\Livewire\Dictionary\ConditionDiagnose;
 use App\Livewire\Dictionary\SensitiveGroup;
 use App\Livewire\Dictionary\MedicalDevice;
+use App\Livewire\Dictionary\DeviceDefinition;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,4 +44,7 @@ Route::prefix('dictionaries')->name('dictionaries.')
 
         Route::get('/medical-device', MedicalDevice::class)
             ->name('medical-device.index');
+
+        Route::get('/device-definition', DeviceDefinition::class)
+            ->name('device-definition.index');
     });

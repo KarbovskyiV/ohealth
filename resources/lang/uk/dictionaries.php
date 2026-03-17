@@ -114,7 +114,24 @@ return [
 
     'medical_device' => [
         'title' => 'Програми - медичні вироби',
+        'page_title' => 'Медичні вироби',
         'medical_guarantees' => 'Програма медичних гарантій',
+        'other_program' => 'Інша програма',
+        'search' => 'Пошук медичних виробів',
+        'device_type' => 'Тип медичного виробу',
+        'device_model_number' => 'Номер моделі медичного виробу',
+        'prescription_medication_details' => 'Рецептурний лікарський засіб – деталі програми',
+        'table' => [
+            'name' => 'Назва',
+            'type' => 'Тип',
+            'package' => 'Пакування',
+            'program_participants' => 'Учасники програми',
+            'for' => 'Дія',
+        ],
+        'participant_details' => [
+            'period' => 'Період дії учасника програми',
+            'max_daily_dose' => 'Максимальна добова доза',
+        ],
         'funding_source' => 'Джерело фінансування',
         'employee_types_to_create_request' => 'Категорії лікарів яким дозволено створювати е-запит',
         'speciality_types_allowed' => 'Перелік спеціальностей лікарів СМД, яким дозволено створювати е-запит',
