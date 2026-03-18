@@ -275,9 +275,10 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getMainSpeciality(LegalEntity $legalEntity): Collection
     {
-        return $this->party->employees
+        return $this->employees()
             ->where('legal_entity_id', $legalEntity->id)
-            ->load('specialities')
+            ->get()
+            ->loadMissing('specialities')
             ->flatMap->specialities
             ->where('speciality_officio', true)
             ->pluck('speciality');
