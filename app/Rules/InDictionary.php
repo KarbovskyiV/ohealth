@@ -12,6 +12,11 @@ use Illuminate\Translation\PotentiallyTranslatedString;
 class InDictionary implements ValidationRule
 {
     /**
+     * Static cache for dictionary keys to avoid repeated lookups within same request
+     */
+    protected static array $dictionaryCache = [];
+
+    /**
      * Create a new rule instance.
      *
      * @param  string|array  $dictionaryNames  One or multiple dictionary names to check against
@@ -39,30 +44,33 @@ class InDictionary implements ValidationRule
         $isValid = false;
 
         foreach ($names as $name) {
-            if ($name === 'eHealth/ICF/classifiers') {
-                $dictionaryKeys = dictionary()->basics()
-                    ->byName('eHealth/ICF/classifiers')
-                    ->flattenedChildValues()
-                    ->keys()
-                    ->toArray();
-            } elseif ($name === 'eHealth/ICD10_AM/condition_codes') {
-                $dictionaryKeys = DB::table('icd_10')
-                    ->select(['code'])
-                    ->pluck('code')
-                    ->toArray();
-            } elseif ($name === 'device_definition_classification_type') {
-                // Convert all keys to string
-                $dictionaryKeys = dictionary()->basics()
-                    ->byName('device_definition_classification_type')
-                    ->asCodeDescription()
-                    ->keys()
-                    ->map(static fn (int|string $key) => (string)$key)
-                    ->toArray();
-            } else {
-                $dictionaryKeys = array_keys(dictionary()->basics()->byName($name)->asCodeDescription()->toArray());
+            // Check if we already have this dictionary cached in current request
+            if (!isset(self::$dictionaryCache[$name])) {
+                if ($name === 'eHealth/ICF/classifiers') {
+                    self::$dictionaryCache[$name] = dictionary()->basics()
+                        ->byName('eHealth/ICF/classifiers')
+                        ->flattenedChildValues()
+                        ->keys()
+                        ->toArray();
+                } elseif ($name === 'eHealth/ICD10_AM/condition_codes') {
+                    self::$dictionaryCache[$name] = DB::table('icd_10')
+                        ->select(['code'])
+                        ->pluck('code')
+                        ->toArray();
+                } elseif ($name === 'device_definition_classification_type') {
+                    // Convert all keys to string
+                    self::$dictionaryCache[$name] = dictionary()->basics()
+                        ->byName('device_definition_classification_type')
+                        ->asCodeDescription()
+                        ->keys()
+                        ->map(static fn (int|string $key) => (string)$key)
+                        ->toArray();
+                } else {
+                    self::$dictionaryCache[$name] = array_keys(dictionary()->basics()->byName($name)->asCodeDescription()->toArray());
+                }
             }
 
-            if (in_array($value, $dictionaryKeys, true)) {
+            if (in_array($value, self::$dictionaryCache[$name], true)) {
                 $isValid = true;
                 break;
             }
