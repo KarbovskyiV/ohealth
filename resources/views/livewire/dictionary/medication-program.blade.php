@@ -1,3 +1,5 @@
+@use('App\Enums\User\Role')
+
 <div x-data="{
         allPrograms: @js($activePrograms),
         roleLabels: @js(__('users.role')),
@@ -67,7 +69,7 @@
                         </label>
                     </div>
 
-                    @if(auth()->user()->hasRole('DOCTOR'))
+                    @if(auth()->user()->hasRole(Role::DOCTOR))
                         <div class="form-group group w-full">
                             <select id="skipDeclarationFilter"
                                     name="skipDeclarationFilter"
@@ -126,44 +128,58 @@
                         <span x-text="selectedProgram.mr_blank_type"></span>
                     </p>
                     <p>
-                        <span class="font-semibold">{{ __('dictionaries.medication_programs.care_plan_required') }}:</span>
-                        <span x-text="selectedProgram.medical_program_settings.care_plan_required ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
+                        <span class="font-semibold">
+                            {{ __('dictionaries.medication_programs.care_plan_required') }}:
+                        </span>
+                        <span
+                            x-text="selectedProgram.medical_program_settings.care_plan_required ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
                     </p>
                     <p>
                         <span class="font-semibold">{{ __('dictionaries.medication_programs.employee_types_to_create_request') }}:</span>
-                        <span x-text="translateRoles(selectedProgram.medical_program_settings.employee_types_to_create_request)"></span>
+                        <span
+                            x-text="translateRoles(selectedProgram.medical_program_settings.employee_types_to_create_request)"></span>
                     </p>
                     <p>
                         <span class="font-semibold">{{ __('dictionaries.medication_programs.speciality_types_allowed') }}:</span>
-                        <span x-text="translateSpecialities(selectedProgram.medical_program_settings.speciality_types_allowed)"></span>
+                        <span
+                            x-text="translateSpecialities(selectedProgram.medical_program_settings.speciality_types_allowed)"></span>
                     </p>
                     <p>
-                        <span class="font-semibold">{{ __('dictionaries.medication_programs.skip_treatment_period') }}:</span>
-                        <span x-text="selectedProgram.medical_program_settings.skip_treatment_period ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
+                        <span class="font-semibold">
+                            {{ __('dictionaries.medication_programs.skip_treatment_period') }}:
+                        </span>
+                        <span
+                            x-text="selectedProgram.medical_program_settings.skip_treatment_period ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
                     </p>
                     <p>
-                        <span class="font-semibold">{{ __('dictionaries.medication_programs.request_max_period_day') }}:</span>
+                        <span
+                            class="font-semibold">{{ __('dictionaries.medication_programs.request_max_period_day') }}:</span>
                         <span x-text="selectedProgram.medical_program_settings.request_max_period_day"></span>
                     </p>
                     <p>
                         <span class="font-semibold">{{ __('dictionaries.medication_programs.skip_request_employee_declaration_verify') }}:</span>
-                        <span x-text="selectedProgram.medical_program_settings.skip_request_employee_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
+                        <span
+                            x-text="selectedProgram.medical_program_settings.skip_request_employee_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
                     </p>
                     <p>
                         <span class="font-semibold">{{ __('dictionaries.medication_programs.skip_request_legal_entity_declaration_verify') }}:</span>
-                        <span x-text="selectedProgram.medical_program_settings.skip_request_legal_entity_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
+                        <span
+                            x-text="selectedProgram.medical_program_settings.skip_request_legal_entity_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
                     </p>
                     <p>
                         <span class="font-semibold">{{ __('dictionaries.medication_programs.multi_medication_dispense_allowed') }}:</span>
-                        <span x-text="selectedProgram.medical_program_settings.multi_medication_dispense_allowed ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
+                        <span
+                            x-text="selectedProgram.medical_program_settings.multi_medication_dispense_allowed ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
                     </p>
                     <p>
                         <span class="font-semibold">{{ __('dictionaries.medication_programs.request_notification_disabled') }}:</span>
-                        <span x-text="selectedProgram.medical_program_settings.request_notification_disabled ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
+                        <span
+                            x-text="selectedProgram.medical_program_settings.request_notification_disabled ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
                     </p>
                     <p>
                         <span class="font-semibold">{{ __('dictionaries.medication_programs.patient_categories_allowed') }}:</span>
-                        <span x-text="translatePatientCategories(selectedProgram.medical_program_settings.patient_categories_allowed)"></span>
+                        <span
+                            x-text="translatePatientCategories(selectedProgram.medical_program_settings.patient_categories_allowed)"></span>
                     </p>
                 </div>
             </fieldset>

@@ -71,6 +71,20 @@ class PersonIndex extends Component
     public function resetFilters(): void
     {
         $this->activeFilter = 'all';
+
+        // Reset search form fields
+        $this->form->firstName = '';
+        $this->form->lastName = '';
+        $this->form->birthDate = '';
+        $this->form->secondName = '';
+        $this->form->taxId = '';
+        $this->form->phoneNumber = '';
+        $this->form->birthCertificate = '';
+
+        // Clear patients list
+        $this->patients = [];
+
+        // Reset pagination after clearing data
         $this->resetPage();
     }
 
