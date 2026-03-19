@@ -36,12 +36,7 @@ class MedicationProgram extends Component
 
         $user = Auth::user();
         $roles = $user->roles->pluck('name');
-        $mainSpeciality = $user->party->employees
-            ->where('legal_entity_id', $legalEntity->id)
-            ->load('specialities')
-            ->flatMap->specialities
-            ->where('speciality_officio', true)
-            ->pluck('speciality');
+        $mainSpeciality = $user->getMainSpeciality($legalEntity);
         $filteredPrograms = dictionary()->medicalPrograms()
             ->where('is_active', '=', true)
             ->where('type', '=', Type::MEDICATION);

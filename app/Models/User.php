@@ -268,6 +268,23 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get main speciality for this user within a legal entity.
+     *
+     * @param  LegalEntity  $legalEntity
+     * @return Collection<int, string>
+     */
+    public function getMainSpeciality(LegalEntity $legalEntity): Collection
+    {
+        return $this->employees()
+            ->where('legal_entity_id', $legalEntity->id)
+            ->get()
+            ->loadMissing('specialities')
+            ->flatMap->specialities
+            ->where('speciality_officio', true)
+            ->pluck('speciality');
+    }
+
+    /**
      * OVERRIDE: the parent method.
      * Send the email verification notification with error handling.
      *

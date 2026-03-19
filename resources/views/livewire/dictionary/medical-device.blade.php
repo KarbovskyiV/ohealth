@@ -1,7 +1,34 @@
+@use('App\Enums\User\Role')
+
 <div x-data="{
+        allPrograms: @js($activePrograms),
+        roleLabels: @js(__('users.role')),
+        dictionaries: @js($dictionaries),
         selectedProgramId: '',
+        skipDeclarationFilter: '',
+        skipLegalEntityDeclarationFilter: '',
         get selectedProgram() {
-            return this.programs.find(program => program.id === this.selectedProgramId) || null;
+            const program = this.allPrograms.find(program => program.id === this.selectedProgramId);
+            if (!program) return null;
+
+            // If no filter is set, show the program
+            if (this.skipDeclarationFilter === '' && this.skipLegalEntityDeclarationFilter === '') {
+                return program;
+            }
+
+            // Filter by (skip_request_employee_declaration_verify)
+            if (this.skipDeclarationFilter !== '') {
+                const expected = this.skipDeclarationFilter === 'true';
+                if (program.medical_program_settings?.skip_request_employee_declaration_verify !== expected) return null;
+            }
+
+            // Filter by (skip_request_legal_entity_declaration_verify)
+            if (this.skipLegalEntityDeclarationFilter !== '') {
+                const expected = this.skipLegalEntityDeclarationFilter === 'true';
+                if (program.medical_program_settings?.skip_request_legal_entity_declaration_verify !== expected) return null;
+            }
+
+            return program;
         },
         translateRoles(roles) {
             return roles?.map(role => this.roleLabels[role] || role).join(', ') || '-';
@@ -12,9 +39,7 @@
     }"
 >
     <x-header-navigation x-data="{ showFilter: false }" class="breadcrumb-form">
-        <x-slot name="title">
-            {{ __('dictionaries.medical_device.title') }}
-        </x-slot>
+        <x-slot name="title">{{ __('dictionaries.medical_device.title') }}</x-slot>
 
         <x-slot name="navigation">
             <div class="flex flex-col gap-4">
@@ -31,7 +56,7 @@
                                 x-model="selectedProgramId"
                         >
                             <option value="" selected>{{ __('forms.select') }}</option>
-                            <template x-for="program in programs" :key="program.id">
+                            <template x-for="program in allPrograms" :key="program.id">
                                 <option :value="program.id" x-text="program.name"></option>
                             </template>
                         </select>
@@ -40,73 +65,108 @@
                             {{ __('dictionaries.program_label') }}
                         </label>
                     </div>
+
+                    @if(auth()->user()->hasRole(Role::DOCTOR))
+                        <div class="form-group group w-full">
+                            <select id="skipDeclarationFilter"
+                                    name="skipDeclarationFilter"
+                                    class="peer input-select w-full"
+                                    x-model="skipDeclarationFilter"
+                            >
+                                <option value="" selected>{{ __('forms.select') }}</option>
+                                <option value="true">{{ __('forms.yes') }}</option>
+                                <option value="false">{{ __('forms.no') }}</option>
+                            </select>
+
+                            <label for="skipDeclarationFilter"
+                                   class="label peer-focus:text-blue-600 peer-valid:text-blue-600 !top-0 !-translate-y-6 !scale-75"
+                            >
+                                {{ __('dictionaries.medical_device.skip_request_employee_declaration_verify') }}
+                            </label>
+                        </div>
+
+                        <div class="form-group group w-full">
+                            <select id="skipLegalEntityDeclarationFilter"
+                                    name="skipLegalEntityDeclarationFilter"
+                                    class="peer input-select w-full"
+                                    x-model="skipLegalEntityDeclarationFilter"
+                            >
+                                <option value="" selected>{{ __('forms.select') }}</option>
+                                <option value="true">{{ __('forms.yes') }}</option>
+                                <option value="false">{{ __('forms.no') }}</option>
+                            </select>
+
+                            <label for="skipLegalEntityDeclarationFilter"
+                                   class="label peer-focus:text-blue-600 peer-valid:text-blue-600 !top-0 !-translate-y-6 !scale-75"
+                            >
+                                {{ __('dictionaries.medical_device.skip_request_legal_entity_declaration_verify') }}
+                            </label>
+                        </div>
+                    @endif
                 </div>
             </div>
         </x-slot>
     </x-header-navigation>
 
     <section class="shift-content pl-3.5 mt-6 max-w-[1280px]">
-        <fieldset class="fieldset p-6 sm:p-8">
-            <legend class="legend">
-                {{ __('dictionaries.medical_device.medical_guarantees') }}
-            </legend>
+        <template x-if="selectedProgram">
+            <fieldset class="fieldset p-6 sm:p-8">
+                <legend class="legend" x-text="selectedProgram.name"></legend>
 
-            <div class="space-y-2 text-gray-900 dark:text-gray-100">
-                <p>
-                    <span class="font-semibold">{{ __('dictionaries.medical_device.funding_source') }}:</span>
-                    <span
-                        x-text="selectedProgram ? (dictionaries.FUNDING_SOURCE[selectedProgram.funding_source] ?? '') : ''"
-                    ></span>
-                </p>
-                <p>
-                    <span class="font-semibold">{{ __('dictionaries.medical_device.employee_types_to_create_request') }}:</span>
-                    <span
-                        x-text="selectedProgram ? translateRoles(selectedProgram.medical_program_settings.employee_types_to_create_request) : ''"
-                    ></span>
-                </p>
-                <p>
-                    <span class="font-semibold">{{ __('dictionaries.medical_device.speciality_types_allowed') }}:</span>
-                    <span
-                        x-text="selectedProgram ? translateSpecialities(selectedProgram.medical_program_settings.speciality_types_allowed) : ''"
-                    ></span>
-                </p>
-                <p>
-                    <span class="font-semibold">{{ __('dictionaries.medical_device.skip_treatment_period') }}:</span>
-                    <span
-                        x-text="selectedProgram
-                            ? (selectedProgram.medical_program_settings.skip_treatment_period ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}')
-                            : ''"
-                    ></span>
-                </p>
-                <p>
-                    <span class="font-semibold">{{ __('dictionaries.medical_device.request_max_period_day') }}:</span>
-                    <span
-                        x-text="selectedProgram ? (selectedProgram.medical_program_settings.request_max_period_day ?? '') : ''"
-                    ></span>
-                </p>
-                <p>
-                    <span class="font-semibold">{{ __('dictionaries.medical_device.skip_request_employee_declaration_verify') }}:</span>
-                    <span
-                        x-text="selectedProgram
-                            ? (selectedProgram.medical_program_settings.skip_request_employee_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}')
-                            : ''"
-                    ></span>
-                </p>
-                <p>
-                    <span class="font-semibold">{{ __('dictionaries.medical_device.skip_request_legal_entity_declaration_verify') }}:</span>
-                    <span
-                        x-text="selectedProgram
-                            ? (selectedProgram.medical_program_settings.skip_request_legal_entity_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}')
-                            : ''"
-                    ></span>
-                </p>
-            </div>
-        </fieldset>
+                <div class="space-y-2 text-gray-900 dark:text-gray-100">
+                    <p>
+                        <span class="font-semibold">{{ __('dictionaries.medical_device.funding_source') }}:</span>
+                        <span x-text="dictionaries.FUNDING_SOURCE[selectedProgram.funding_source]"></span>
+                    </p>
+                    <p>
+                        <span class="font-semibold">{{ __('dictionaries.medical_device.employee_types_to_create_request') }}:</span>
+                        <span
+                            x-text="selectedProgram ? translateRoles(selectedProgram.medical_program_settings.employee_types_to_create_request) : '-'"
+                        ></span>
+                    </p>
+                    <p>
+                        <span class="font-semibold">
+                            {{ __('dictionaries.medical_device.speciality_types_allowed') }}:
+                        </span>
+                        <span
+                            x-text="selectedProgram ? translateSpecialities(selectedProgram.medical_program_settings.speciality_types_allowed) : '-'"
+                        ></span>
+                    </p>
+                    <p>
+                        <span class="font-semibold">
+                            {{ __('dictionaries.medical_device.skip_treatment_period') }}:
+                        </span>
+                        <span
+                            x-text="selectedProgram.medical_program_settings.skip_treatment_period ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"
+                        ></span>
+                    </p>
+                    <p>
+                        <span class="font-semibold">
+                            {{ __('dictionaries.medical_device.request_max_period_day') }}:
+                        </span>
+                        <span x-text="selectedProgram.medical_program_settings.request_max_period_day ?? '-'"></span>
+                    </p>
+                    <p>
+                        <span class="font-semibold">
+                            {{ __('dictionaries.medical_device.skip_request_employee_declaration_verify') }}:
+                        </span>
+                        <span
+                            x-text="selectedProgram.medical_program_settings.skip_request_employee_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"
+                        ></span>
+                    </p>
+                    <p>
+                        <span class="font-semibold">
+                            {{ __('dictionaries.medical_device.skip_request_legal_entity_declaration_verify') }}:
+                        </span>
+                        <span
+                            x-text="selectedProgram.medical_program_settings.skip_request_legal_entity_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"
+                        ></span>
+                    </p>
+                </div>
+            </fieldset>
+        </template>
     </section>
 
-    <div class="mt-8 pl-3.5 pb-8 lg:pl-8 2xl:pl-5">
-        {{--{{ $device->links() }}--}}
-</div>
-<x-forms.loading />
-<livewire:components.x-message :key="time()" />
+    <x-forms.loading />
+    <livewire:components.x-message :key="time()" />
 </div>
