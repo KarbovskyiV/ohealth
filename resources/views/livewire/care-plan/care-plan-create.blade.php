@@ -1,7 +1,7 @@
 @use('App\Livewire\CarePlan\CarePlanCreate')
 
 <section class="section-form">
-    <x-header-navigation x-.data="{ showFilter: false }" class="breadcrumb-form">
+    <x-header-navigation x-data="{ showFilter: false }" class="breadcrumb-form">
         <x-slot name="title">
             {{ __('care-plan.new_care_plan') }}
         </x-slot>
