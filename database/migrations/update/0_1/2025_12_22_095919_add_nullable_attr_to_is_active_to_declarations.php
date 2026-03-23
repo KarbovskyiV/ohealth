@@ -34,7 +34,7 @@ return new class extends Migration
                 $table->dropColumn('sync_status');
             }
 
-            $table->date('issued_date')->nullable(false)->default(null)->change();
+            $table->boolean('is_active')->nullable(false)->default(null)->change();
         });
     }
 };

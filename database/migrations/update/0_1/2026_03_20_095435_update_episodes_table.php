@@ -14,12 +14,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('episodes', function (Blueprint $table) {
-            $table->foreignId('person_id')->after('uuid')->constrained('persons');
+            if (! Schema::hasColumn('episodes', 'person_id')) {
+                $table->foreignId('person_id')->after('uuid')->constrained('persons');
+            }
+
             $table->foreignId('episode_type_id')->nullable()->change();
             $table->foreignId('managing_organization_id')->nullable()->change();
             $table->foreignId('care_manager_id')->nullable()->change();
-            $table->timestamp('ehealth_inserted_at')->nullable()->after('care_manager_id');
-            $table->timestamp('ehealth_updated_at')->nullable()->after('ehealth_inserted_at');
+
+            if (! Schema::hasColumn('episodes', 'ehealth_inserted_at')) {
+                $table->timestamp('ehealth_inserted_at')->nullable()->after('care_manager_id');
+            }
+
+            if (! Schema::hasColumn('episodes', 'ehealth_updated_at')) {
+                $table->timestamp('ehealth_updated_at')->nullable()->after('ehealth_inserted_at');
+            }
         });
     }
 
