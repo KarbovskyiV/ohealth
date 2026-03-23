@@ -7,6 +7,7 @@ namespace App\Livewire\Person\Records;
 use App\Classes\eHealth\EHealth;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
+use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Repositories\MedicalEvents\Repository;
 use Illuminate\Contracts\View\View;
@@ -17,6 +18,8 @@ use Throwable;
 class PatientSummary extends BasePatientComponent
 {
     public array $episodes;
+
+    public array $encounters;
 
     public array $diagnoses;
 
@@ -47,6 +50,8 @@ class PatientSummary extends BasePatientComponent
             $this->episodes = $validatedData;
         } catch (ConnectionException|EHealthValidationException|EHealthResponseException $exception) {
             $this->handleEHealthExceptions($exception, 'Error when syncing episodes');
+
+            return;
         }
     }
 
@@ -55,17 +60,37 @@ class PatientSummary extends BasePatientComponent
         $this->episodes = Episode::with('period')->wherePersonId($this->id)->get()->toArray();
     }
 
-    public function getEncounter(): void
+    public function syncEncounters(): void
     {
         try {
-            $response = EHealth::patient()->getShortEpisodes($this->uuid);
+            $response = EHealth::patient()->getShortEncounters($this->uuid);
+            $validatedData = $response->validate();
 
-            $this->episodes = $response->getData();
+            try {
+                Repository::encounter()->sync($this->id, $validatedData);
+                Session::flash('success', __('patients.messages.encounters_synced_successfully'));
+            } catch (Throwable $exception) {
+                $this->logDatabaseErrors($exception, 'Error while synchronizing encounters');
+                Session::flash('error', __('messages.database_error'));
+
+                return;
+            }
+
+            // Refresh encounters data for display
+            $this->encounters = $validatedData;
         } catch (ConnectionException|EHealthValidationException|EHealthResponseException $exception) {
-            $this->handleEHealthExceptions($exception, 'Error when getting short episodes');
+            $this->handleEHealthExceptions($exception, 'Error when syncing encounters');
 
             return;
         }
+    }
+
+    public function getEncounters(): void
+    {
+        $this->encounters = Encounter::wherePersonId($this->id)
+            ->with(['class', 'episode.type.coding', 'type.coding', 'period', 'performerSpeciality.coding'])
+            ->get()
+            ->toArray();
     }
 
     public function getClinicalImpressions(): void

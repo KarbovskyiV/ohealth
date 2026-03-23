@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\MedicalEvents;
 
+use App\Core\Arr;
 use App\Models\MedicalEvents\Sql\Episode;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -99,21 +100,13 @@ class EpisodeRepository extends BaseRepository
      */
     public function sync(int $personId, array $validatedData): void
     {
-        foreach ($validatedData as $episodeData) {
+        foreach ($validatedData as $data) {
             $episode = $this->model::updateOrCreate(
-                [
-                    'uuid' => $episodeData['uuid'],
-                ],
-                [
-                    'person_id' => $personId,
-                    'name' => $episodeData['name'],
-                    'status' => $episodeData['status'],
-                    'ehealth_inserted_at' => $episodeData['ehealth_inserted_at'],
-                    'ehealth_updated_at' => $episodeData['ehealth_updated_at']
-                ]
+                ['uuid' => $data['uuid']],
+                array_merge(['person_id' => $personId], Arr::except($data, ['uuid', 'period']))
             );
 
-            Repository::period()->sync($episode, $episodeData['period']);
+            Repository::period()->sync($episode, $data['period']);
         }
     }
 }

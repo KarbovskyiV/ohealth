@@ -7,6 +7,7 @@ namespace App\Repositories\MedicalEvents;
 use App\Classes\eHealth\Api\PatientApi;
 use App\Core\Arr;
 use App\Models\MedicalEvents\Mongo\Encounter as EncounterMongo;
+use App\Models\MedicalEvents\Sql\CodeableConcept;
 use App\Models\MedicalEvents\Sql\Condition;
 use App\Models\MedicalEvents\Sql\Encounter as EncounterSql;
 use App\Models\MedicalEvents\Sql\EncounterDiagnose;
@@ -268,68 +269,71 @@ class EncounterRepository extends BaseRepository
      */
     public function formatConditionsRequest(array $conditions): array
     {
-        $conditionForm = array_map(function (array $condition, int $index) {
-            unset($condition['query']);
-            // set ID same as diagnose
-            $condition['id'] = $this->diagnoseUuids[$index];
+        $conditionForm = array_map(
+            function (array $condition, int $index) {
+                unset($condition['query']);
+                // set ID same as diagnose
+                $condition['id'] = $this->diagnoseUuids[$index];
 
-            $condition['context']['identifier']['type']['coding'][0] = [
-                'system' => 'eHealth/resources',
-                'code' => 'encounter'
-            ];
-            $condition['context']['identifier']['value'] = $this->encounterUuid;
+                $condition['context']['identifier']['type']['coding'][0] = [
+                    'system' => 'eHealth/resources',
+                    'code' => 'encounter'
+                ];
+                $condition['context']['identifier']['value'] = $this->encounterUuid;
 
-            // Remove coding with empty code
-            $condition['code']['coding'] = array_values(
-                array_filter(
-                    $condition['code']['coding'],
-                    static fn (array $coding) => !empty($coding['code']) && trim($coding['code']) !== ''
-                )
-            );
+                // Remove coding with empty code
+                $condition['code']['coding'] = array_values(
+                    array_filter(
+                        $condition['code']['coding'],
+                        static fn (array $coding) => !empty($coding['code']) && trim($coding['code']) !== ''
+                    )
+                );
 
-            // unset if code not provided
-            if ($condition['severity']['coding'][0]['code'] === '') {
-                unset($condition['severity']);
-            }
+                // unset if code not provided
+                if ($condition['severity']['coding'][0]['code'] === '') {
+                    unset($condition['severity']);
+                }
 
-            if ($condition['primarySource']) {
-                $condition['asserter']['identifier']['value'] = $this->employeeUuid;
+                if ($condition['primarySource']) {
+                    $condition['asserter']['identifier']['value'] = $this->employeeUuid;
 
-                unset($condition['reportOrigin']);
-            } else {
-                unset($condition['asserter']);
-            }
+                    unset($condition['reportOrigin']);
+                } else {
+                    unset($condition['asserter']);
+                }
 
-            // convert dates
-            if (isset($condition['onsetTime'])) {
-                $condition['onsetDate'] = convertToISO8601($condition['onsetDate'] . $condition['onsetTime']);
-                $condition['assertedDate'] = convertToISO8601($condition['assertedDate'] . $condition['assertedTime']);
-                unset($condition['onsetTime'], $condition['assertedTime'], $condition['diagnoses']);
-            }
+                // convert dates
+                if (isset($condition['onsetTime'])) {
+                    $condition['onsetDate'] = convertToISO8601($condition['onsetDate'] . $condition['onsetTime']);
+                    $condition['assertedDate'] = convertToISO8601(
+                        $condition['assertedDate'] . $condition['assertedTime']
+                    );
+                    unset($condition['onsetTime'], $condition['assertedTime'], $condition['diagnoses']);
+                }
 
-            if (!empty($condition['evidences'][0]['details'])) {
-                $condition['evidences'][0]['details'] = collect($condition['evidences'][0]['details'])
-                    ->map(static function (array $detail) {
-                        $data = [];
+                if (!empty($condition['evidences'][0]['details'])) {
+                    $condition['evidences'][0]['details'] = collect($condition['evidences'][0]['details'])
+                        ->map(static function (array $detail) {
+                            $data = [];
 
-                        Arr::set($data, 'identifier.type.coding', [
-                            [
-                                'system' => 'eHealth/resources',
-                                'code' => 'condition'
-                            ]
-                        ]);
-                        Arr::set($data, 'identifier.value', $detail['id']);
+                            Arr::set($data, 'identifier.type.coding', [
+                                [
+                                    'system' => 'eHealth/resources',
+                                    'code' => 'condition'
+                                ]
+                            ]);
+                            Arr::set($data, 'identifier.value', $detail['id']);
 
-                        return $data;
-                    })->toArray();
-            }
+                            return $data;
+                        })->toArray();
+                }
 
-            if (empty($condition['evidences'][0]['codes']) && empty($condition['evidences'][0]['details'])) {
-                unset($condition['evidences']);
-            }
+                if (empty($condition['evidences'][0]['codes']) && empty($condition['evidences'][0]['details'])) {
+                    unset($condition['evidences']);
+                }
 
-            return $condition;
-        },
+                return $condition;
+            },
             $conditions,
             array_keys($conditions)
         );
@@ -391,7 +395,9 @@ class EncounterRepository extends BaseRepository
             unset($immunization['time']);
 
             if ($immunization['expirationDate']) {
-                $immunization['expirationDate'] = convertToISO8601($immunization['expirationDate'] . now()->format('H:i'));
+                $immunization['expirationDate'] = convertToISO8601(
+                    $immunization['expirationDate'] . now()->format('H:i')
+                );
             }
 
             return removeEmptyKeys($immunization);
@@ -423,7 +429,9 @@ class EncounterRepository extends BaseRepository
                 unset($observation['dictionaryName']);
             }
 
-            $observation['effectiveDateTime'] = convertToISO8601($observation['effectiveDate'] . $observation['effectiveTime']);
+            $observation['effectiveDateTime'] = convertToISO8601(
+                $observation['effectiveDate'] . $observation['effectiveTime']
+            );
             unset($observation['effectiveDate'], $observation['effectiveTime']);
 
             if (empty($observation['effectiveDateTime'])) {
@@ -531,13 +539,19 @@ class EncounterRepository extends BaseRepository
 
             $diagnosticReport['recordedBy']['identifier']['value'] = $this->employeeUuid;
 
-            $diagnosticReport['issued'] = convertToISO8601($diagnosticReport['issuedDate'] . $diagnosticReport['issuedTime']);
+            $diagnosticReport['issued'] = convertToISO8601(
+                $diagnosticReport['issuedDate'] . $diagnosticReport['issuedTime']
+            );
             unset($diagnosticReport['issuedDate'], $diagnosticReport['issuedTime']);
 
-            $diagnosticReport['effectivePeriod']['start'] = convertToISO8601($diagnosticReport['effectivePeriodStartDate'] . $diagnosticReport['effectivePeriodStartTime']);
+            $diagnosticReport['effectivePeriod']['start'] = convertToISO8601(
+                $diagnosticReport['effectivePeriodStartDate'] . $diagnosticReport['effectivePeriodStartTime']
+            );
             unset($diagnosticReport['effectivePeriodStartDate'], $diagnosticReport['effectivePeriodStartTime']);
 
-            $diagnosticReport['effectivePeriod']['end'] = convertToISO8601($diagnosticReport['effectivePeriodEndDate'] . $diagnosticReport['effectivePeriodEndTime']);
+            $diagnosticReport['effectivePeriod']['end'] = convertToISO8601(
+                $diagnosticReport['effectivePeriodEndDate'] . $diagnosticReport['effectivePeriodEndTime']
+            );
             unset($diagnosticReport['effectivePeriodEndDate'], $diagnosticReport['effectivePeriodEndTime']);
 
             $diagnosticReport['encounter'] = [
@@ -624,10 +638,14 @@ class EncounterRepository extends BaseRepository
                 unset($procedure['performer']);
             }
 
-            $procedure['performedPeriod']['start'] = convertToISO8601($procedure['performedPeriodStartDate'] . $procedure['performedPeriodStartTime']);
+            $procedure['performedPeriod']['start'] = convertToISO8601(
+                $procedure['performedPeriodStartDate'] . $procedure['performedPeriodStartTime']
+            );
             unset($procedure['performedPeriodStartDate'], $procedure['performedPeriodStartTime']);
 
-            $procedure['performedPeriod']['end'] = convertToISO8601($procedure['performedPeriodEndDate'] . $procedure['performedPeriodEndTime']);
+            $procedure['performedPeriod']['end'] = convertToISO8601(
+                $procedure['performedPeriodEndDate'] . $procedure['performedPeriodEndTime']
+            );
             unset($procedure['performedPeriodEndDate'], $procedure['performedPeriodEndTime']);
 
             $procedure['managingOrganization'] = [
@@ -841,5 +859,88 @@ class EncounterRepository extends BaseRepository
         unset($encounterForm['period']['date']);
 
         return $encounterForm;
+    }
+
+    /**
+     * Sync encounter data and related data by deleting and creating.
+     *
+     * @param  int  $personId
+     * @param  array  $validatedData
+     * @return void
+     * @throws Throwable
+     */
+    public function sync(int $personId, array $validatedData): void
+    {
+        DB::transaction(function () use ($personId, $validatedData) {
+            // Load existing encounters with relations
+            $uuids = collect($validatedData)->pluck('uuid')->toArray();
+            $existingEncounters = $this->model::whereIn('uuid', $uuids)
+                ->with([
+                    'class',
+                    'type.coding',
+                    'performerSpeciality.coding',
+                    'episode.type.coding'
+                ])
+                ->get()
+                ->keyBy('uuid');
+
+            foreach ($validatedData as $data) {
+                $existing = $existingEncounters->get($data['uuid']);
+
+                // Store relationships
+                $class = Repository::coding()->store($data['class']);
+
+                $type = Repository::codeableConcept()->store($data['type']);
+                $performerSpeciality = Repository::codeableConcept()->store($data['performer_speciality']);
+
+                $episode = Repository::identifier()->store($data['episode']['identifier']['value']);
+                Repository::codeableConcept()->attach($episode, $data['episode']);
+
+                $encounter = $this->model::updateOrCreate(
+                    ['uuid' => $data['uuid']],
+                    [
+                        'person_id' => $personId,
+                        'status' => $data['status'],
+                        'class_id' => $class->id,
+                        'type_id' => $type->id,
+                        'performer_speciality_id' => $performerSpeciality->id,
+                        'episode_id' => $episode->id
+                    ]
+                );
+
+                // Remove old relationships if exist
+                if ($existing) {
+                    $this->cleanupRelations([
+                        'class' => $existing->class,
+                        'type' => $existing->type,
+                        'performerSpeciality' => $existing->performerSpeciality,
+                        'episode' => $existing->episode
+                    ]);
+                }
+
+                Repository::period()->sync($encounter, $data['period']);
+            }
+        });
+    }
+
+    /**
+     * Remove orphaned relations after encounter FK update.
+     *
+     * @param  array  $old
+     * @return void
+     */
+    private function cleanupRelations(array $old): void
+    {
+        $old['class']->delete();
+
+        $old['type']->coding()->delete();
+        $old['type']->delete();
+
+        $old['performerSpeciality']->coding()->delete();
+        $old['performerSpeciality']->delete();
+
+        $old['episode']->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+        $old['episode']->type()->delete();
+        $old['episode']->delete();
     }
 }

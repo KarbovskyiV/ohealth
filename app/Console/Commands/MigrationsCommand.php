@@ -85,7 +85,7 @@ abstract class MigrationsCommand extends Command
     {
         $isCacheCleared = (bool) ($this->option('clear') ?? false);
 
-        if (! $isCacheCleared) {
+        if (!$isCacheCleared) {
             return;
         }
 
@@ -148,7 +148,7 @@ abstract class MigrationsCommand extends Command
     // Perform the migrations (depends on the $migrationFiles set previously)
     protected function doMigrations(Migrator $migrator): void
     {
-        if($migrator->hasRunAnyMigrations()) {
+        if ($migrator->hasRunAnyMigrations()) {
             // Filter out already run migrations
             $migrationsAlreadyCompleted = $migrator?->getRepository()?->getRan() ?? [];
 
@@ -203,7 +203,7 @@ abstract class MigrationsCommand extends Command
     {
         $this->warn("Updating scopes...\n");
 
-        DB::transaction(function() {
+        DB::transaction(function () {
             $this->syncLegalEntityTypes();
             $this->syncLegalEntityRoles();
             $this->syncLegalEntityTypeRoles();
@@ -349,9 +349,9 @@ abstract class MigrationsCommand extends Command
         $now = Carbon::now()->format('Y-m-d H:i:s');
 
         $availableRoles = Role::get(['id', 'name'])
-                ->groupBy('name')
-                ->map(fn ($group) => $group->pluck('id')->values()->all())
-                ->toArray();
+            ->groupBy('name')
+            ->map(fn ($group) => $group->pluck('id')->values()->all())
+            ->toArray();
 
         $legalEntityTypes = LegalEntityType::all();
 
@@ -365,8 +365,8 @@ abstract class MigrationsCommand extends Command
             if (isset(config('ehealth.legal_entity_employee_types')[$legalEntityTypeName])) {
                 $roles = config('ehealth.legal_entity_employee_types')[$legalEntityTypeName];
 
-                 // Missing (need to add): types and roles relation that are in config but not in DB
-                $missingRoles= array_values((array_diff($roles, $legalEntityTypeRoles)));
+                // Missing (need to add): types and roles relation that are in config but not in DB
+                $missingRoles = array_values((array_diff($roles, $legalEntityTypeRoles)));
                 // Extra (in DB but not in config): types and roles relation that are in DB but not in config
                 $extraRoles = array_values((array_diff($legalEntityTypeRoles, $roles)));
 
@@ -512,9 +512,9 @@ abstract class MigrationsCommand extends Command
         $now = Carbon::now()->format('Y-m-d H:i:s');
 
         $availablePermissions = Permission::get(['id', 'name'])
-                ->groupBy('name')
-                ->map(fn ($group) => $group->pluck('id')->values()->all())
-                ->toArray();
+            ->groupBy('name')
+            ->map(fn ($group) => $group->pluck('id')->values()->all())
+            ->toArray();
 
         $legalEntityTypes = LegalEntityType::all();
 
@@ -593,14 +593,14 @@ abstract class MigrationsCommand extends Command
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $availablePermissions = Permission::get(['id', 'name', 'guard_name'])
-                ->groupBy('name')
-                ->map(fn ($group) => $group->pluck('id', 'guard_name')->all())
-                ->toArray();
+            ->groupBy('name')
+            ->map(fn ($group) => $group->pluck('id', 'guard_name')->all())
+            ->toArray();
 
         $roles = Role::get(['id', 'name', 'guard_name'])
-                ->groupBy('name')
-                ->map(fn ($group) => $group->pluck('id', 'guard_name')->all())
-                ->toArray();
+            ->groupBy('name')
+            ->map(fn ($group) => $group->pluck('id', 'guard_name')->all())
+            ->toArray();
 
         $currentRolePermissions = Role::with('permissions')->get()->mapWithKeys(function ($role) {
             return [$role->name => $role->permissions->pluck('name')->unique()->toArray()];
@@ -610,7 +610,7 @@ abstract class MigrationsCommand extends Command
         $permissionsToRemove = [];
 
         foreach ($roles as $roleName => $roleIds) {
-            foreach ($roleIds as $guardName =>$roleId) {
+            foreach ($roleIds as $guardName => $roleId) {
                 $rolePermissions = $currentRolePermissions[$roleName] ?? [];
 
                 $rolesFromConfig = config('ehealth.roles', []);

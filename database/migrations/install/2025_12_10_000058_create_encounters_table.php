@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Person\EncounterStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,15 +16,16 @@ return new class extends Migration
     {
         Schema::create('encounters', static function (Blueprint $table) {
             $table->id();
-            $table->foreignId('person_id')->constrained('persons');
             $table->uuid()->unique();
-            $table->enum('status', ['entered_in_error', 'finished']);
-            $table->foreignId('visit_id')->constrained('identifiers');
+            $table->foreignId('person_id')->constrained('persons');
+            $table->enum('status', EncounterStatus::values());
+            $table->foreignId('visit_id')->nullable()->constrained('identifiers');
             $table->foreignId('episode_id')->constrained('identifiers');
             $table->foreignId('class_id')->constrained('codings');
             $table->foreignId('type_id')->constrained('codeable_concepts');
             $table->foreignId('priority_id')->nullable()->constrained('codeable_concepts');
-            $table->foreignId('performer_id')->constrained('identifiers');
+            $table->foreignId('performer_id')->nullable()->constrained('identifiers');
+            $table->foreignId('performer_speciality_id')->nullable()->constrained('codeable_concepts');
             $table->foreignId('division_id')->nullable()->constrained('identifiers');
             $table->timestamps();
         });

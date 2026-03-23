@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('encounters', function (Blueprint $table) {
+            $table->foreignId('performer_speciality_id')->nullable()->after('performer_id')->constrained('codeable_concepts');
+            $table->foreignId('visit_id')->nullable()->change();
+            $table->foreignId('performer_id')->nullable()->change();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('encounters', function (Blueprint $table) {
+            $table->dropForeign(['performer_speciality_id']);
+            $table->dropColumn('performer_speciality_id');
+            $table->foreignId('visit_id')->nullable(false)->change();
+            $table->foreignId('performer_id')->nullable(false)->change();
+        });
+    }
+};

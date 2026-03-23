@@ -12,7 +12,19 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Encounter extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'uuid',
+        'person_id',
+        'status',
+        'visit_id',
+        'episode_id',
+        'class_id',
+        'type_id',
+        'priority_id',
+        'performer_id',
+        'performer_speciality_id',
+        'division_id'
+    ];
 
     protected $hidden = [
         'id',
@@ -23,6 +35,7 @@ class Encounter extends Model
         'type_id',
         'priority_id',
         'performer_id',
+        'performer_speciality_id',
         'division_id',
         'created_at',
         'updated_at'
@@ -81,5 +94,10 @@ class Encounter extends Model
     public function division(): BelongsTo
     {
         return $this->belongsTo(Identifier::class, 'division_id');
+    }
+
+    public function performerSpeciality(): BelongsTo
+    {
+        return $this->belongsTo(CodeableConcept::class, 'performer_speciality_id');
     }
 }

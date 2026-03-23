@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class CodeableConcept extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['text'];
 
     protected $hidden = [
         'id',

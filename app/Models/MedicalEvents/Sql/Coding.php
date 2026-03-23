@@ -9,14 +9,17 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Coding extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'system',
+        'code'
+    ];
 
     protected $hidden = [
         'id',
         'codeable_type',
         'codeable_id',
         'created_at',
-        'updated_at',
+        'updated_at'
     ];
 
     public function codeable(): MorphTo

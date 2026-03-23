@@ -409,5 +409,6 @@ return [
         'confidant_requests_list_updated' => 'Список даних про запити на створення законних представників оновлено.',
         'sync_auth_methods_and_try_again' => 'Будь ласка, синхронізуйте методи автентифікації та спробуйте знову.',
         'episodes_synced_successfully' => 'Епізоди успішно синхронізовані',
+        'encounters_synced_successfully' => 'Взаємодії успішно синхронізовані',
     ]
 ];

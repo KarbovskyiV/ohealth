@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Identifier extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['value'];
 
     protected $appends = ['identifier'];
 

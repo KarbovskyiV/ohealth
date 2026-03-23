@@ -9,7 +9,10 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Period extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'start',
+        'end'
+    ];
 
     protected $hidden = [
         'id',
