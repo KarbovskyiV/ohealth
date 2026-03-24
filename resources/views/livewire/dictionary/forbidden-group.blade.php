@@ -65,12 +65,10 @@
                 <p class="font-semibold">{{ __('dictionaries.forbidden_group.services_list_title') }}</p>
                 <div class="space-y-2">
                     @foreach($forbiddenDetails['forbidden_group_services'] as $service)
-                        <p class="text-base">
-                            <span class="font-semibold">{{ $service['id'] }}</span>
-                            @if(!empty($service['description']))
-                                <span> - {{ $service['description'] }}</span>
-                            @endif
-                        </p>
+                        @php
+                            $serviceName = dictionary()->services()->flattened()->where('id', $service['service_id'])->first()['name'];
+                        @endphp
+                        <p class="text-base"><span class="font-semibold">{{ $serviceName }}</span></p>
                     @endforeach
                 </div>
             </div>
