@@ -418,5 +418,6 @@ return [
         'episodes_synced_successfully' => 'Епізоди успішно синхронізовані',
         'encounters_synced_successfully' => 'Взаємодії успішно синхронізовані',
         'clinical_impressions_synced_successfully' => 'Клінічні взаємодії успішно синхронізовані',
+        'immunizations_synced_successfully' => 'Вакцинації успішно синхронізовані',
     ]
 ];

@@ -8,21 +8,20 @@ use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ImmunizationExplanation extends Model
+class ImmunizationReaction extends Model
 {
     use HasCamelCasing;
 
     protected $fillable = [
         'immunization_id',
-        'reasons_id',
-        'reasons_not_given_id'
+        'detail_id',
+        'display_value'
     ];
 
     protected $hidden = [
         'id',
         'immunization_id',
-        'reasons_id',
-        'reasons_not_given_id',
+        'detail_id',
         'created_at',
         'updated_at'
     ];
@@ -32,13 +31,8 @@ class ImmunizationExplanation extends Model
         return $this->belongsTo(Immunization::class);
     }
 
-    public function reasons(): BelongsTo
+    public function detail(): BelongsTo
     {
-        return $this->belongsTo(CodeableConcept::class, 'reasons_id');
-    }
-
-    public function reasonsNotGiven(): BelongsTo
-    {
-        return $this->belongsTo(CodeableConcept::class, 'reasons_not_given_id');
+        return $this->belongsTo(Identifier::class, 'detail_id');
     }
 }

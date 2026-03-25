@@ -304,16 +304,7 @@ class ClinicalImpressionRepository extends BaseRepository
             // Load existing clinical impressions with relations
             $uuids = collect($validatedData)->pluck('uuid')->toArray();
             $existingClinicalImpressions = $this->model::whereIn('uuid', $uuids)
-                ->with([
-                    'code.coding',
-                    'encounter.type.coding',
-                    'assessor.type.coding',
-                    'previous.type.coding',
-                    'effectivePeriod',
-                    'problems.type.coding',
-                    'findings.itemReference.type.coding',
-                    'supportingInfo.type.coding',
-                ])
+                ->withAllRelations()
                 ->get()
                 ->keyBy('uuid');
 
@@ -345,19 +336,16 @@ class ClinicalImpressionRepository extends BaseRepository
                         'assessor_id' => $assessor->id,
                         'previous_id' => $previous?->id,
                     ],
-                        Arr::except(
-                            $data,
-                            [
-                                'assessor',
-                                'code',
-                                'effective_period',
-                                'encounter',
-                                'findings',
-                                'previous',
-                                'problems',
-                                'supporting_info'
-                            ]
-                        )
+                        Arr::except($data, [
+                            'assessor',
+                            'code',
+                            'effective_period',
+                            'encounter',
+                            'findings',
+                            'previous',
+                            'problems',
+                            'supporting_info'
+                        ])
                     )
                 );
 
@@ -389,8 +377,7 @@ class ClinicalImpressionRepository extends BaseRepository
                             ->store($finding['item_reference']['identifier']['value']);
                         Repository::codeableConcept()->attach($identifier, $finding['item_reference']);
 
-                        ClinicalImpressionFinding::create([
-                            'clinical_impression_id' => $clinicalImpression->id,
+                        $clinicalImpression->findings()->create([
                             'item_reference_id' => $identifier->id,
                             'basis' => $finding['basis'] ?? null
                         ]);
@@ -425,41 +412,35 @@ class ClinicalImpressionRepository extends BaseRepository
      */
     private function cleanupRelations(ClinicalImpression $existing): void
     {
-        // Clean up code
         if ($existing->code) {
             $existing->code->coding()->delete();
             $existing->code->delete();
         }
 
-        // Clean up encounter
         if ($existing->encounter) {
             $existing->encounter->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
             $existing->encounter->type()->delete();
             $existing->encounter->delete();
         }
 
-        // Clean up assessor
         if ($existing->assessor) {
             $existing->assessor->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
             $existing->assessor->type()->delete();
             $existing->assessor->delete();
         }
 
-        // Clean up previous
         if ($existing->previous) {
             $existing->previous->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
             $existing->previous->type()->delete();
             $existing->previous->delete();
         }
 
-        // Clean up problems
         foreach ($existing->problems as $problem) {
             $problem->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
             $problem->type()->delete();
             $problem->delete();
         }
 
-        // Clean up findings
         foreach ($existing->findings as $finding) {
             if ($finding->itemReference) {
                 $finding->itemReference->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
@@ -468,7 +449,6 @@ class ClinicalImpressionRepository extends BaseRepository
             }
         }
 
-        // Clean up supporting info
         foreach ($existing->supportingInfo as $supportingInfo) {
             $supportingInfo->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
             $supportingInfo->type()->delete();

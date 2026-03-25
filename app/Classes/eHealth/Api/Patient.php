@@ -6,7 +6,10 @@ namespace App\Classes\eHealth\Api;
 
 use App\Classes\eHealth\EHealthRequest as Request;
 use App\Classes\eHealth\EHealthResponse;
+use App\Enums\Person\ClinicalImpressionStatus;
+use App\Enums\Person\EncounterStatus;
 use App\Enums\Person\EpisodeStatus;
+use App\Enums\Person\ImmunizationStatus;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use GuzzleHttp\Promise\PromiseInterface;
@@ -22,7 +25,7 @@ class Patient extends Request
     /**
      * Get brief information about episodes, in order not to disclose confidential and sensitive data.
      *
-     * @param  string  $id
+     * @param  string  $id  Patient ID
      * @param  array{
      *     period_start_from?: string,
      *     period_start_to?: string,
@@ -49,7 +52,7 @@ class Patient extends Request
     /**
      * Get a list of short Encounter info filtered by search params.
      *
-     * @param  string  $id
+     * @param  string  $id  Patient ID
      * @param  array{
      *     period_start_from?: string,
      *     period_start_to?: string,
@@ -81,7 +84,7 @@ class Patient extends Request
     /**
      * Get a list of summary info about clinical impressions.
      *
-     * @param  string  $id
+     * @param  string  $id  Patient ID
      * @param  array{encounter_id?: string, episode_id?: string, code?: string, status?: string, page?: int, page_size?: int}  $query
      * @return PromiseInterface|EHealthResponse
      * @throws ConnectionException|EHealthValidationException|EHealthResponseException
@@ -96,6 +99,26 @@ class Patient extends Request
         $mergedQuery = array_merge($this->options['query'], $query ?? []);
 
         return $this->get(self::URL . "/$id/summary/clinical_impressions", $mergedQuery);
+    }
+
+    /**
+     * Get a list of summary info about immunizations.
+     *
+     * @param  string  $id  Patient ID
+     * @param  array{vaccine_code?: string, date_from?: string, date_to?: string, page?: int, page_size?: int}  $query
+     * @return PromiseInterface|EHealthResponse
+     * @throws ConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/patient-summary/get-immunizations
+     */
+    public function getImmunizations(string $id, array $query = []): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateImmunizations(...));
+        $this->setDefaultPageSize();
+
+        $mergedQuery = array_merge($this->options['query'], $query ?? []);
+
+        return $this->get(self::URL . "/$id/summary/immunizations", $mergedQuery);
     }
 
     /**
@@ -152,7 +175,9 @@ class Patient extends Request
         $validator = Validator::make($replaced, $rules);
 
         if ($validator->fails()) {
-            Log::channel('e_health_errors')->error('Episode validation failed: ' . implode(', ', $validator->errors()->all()));
+            Log::channel('e_health_errors')->error(
+                'Episode validation failed: ' . implode(', ', $validator->errors()->all())
+            );
         }
 
         return $validator->validate();
@@ -178,7 +203,9 @@ class Patient extends Request
         $validator = Validator::make($replaced, $rules);
 
         if ($validator->fails()) {
-            Log::channel('e_health_errors')->error('Encounter validation failed: ' . implode(', ', $validator->errors()->all()));
+            Log::channel('e_health_errors')->error(
+                'Encounter validation failed: ' . implode(', ', $validator->errors()->all())
+            );
         }
 
         return $validator->validate();
@@ -204,7 +231,37 @@ class Patient extends Request
         $validator = Validator::make($replaced, $rules);
 
         if ($validator->fails()) {
-            Log::channel('e_health_errors')->error('Clinical impression validation failed: ' . implode(', ', $validator->errors()->all()));
+            Log::channel('e_health_errors')->error(
+                'Clinical impression validation failed: ' . implode(', ', $validator->errors()->all())
+            );
+        }
+
+        return $validator->validate();
+    }
+
+    /**
+     * Validate immunizations data from eHealth API.
+     *
+     * @param  EHealthResponse  $response
+     * @return array
+     */
+    protected function validateImmunizations(EHealthResponse $response): array
+    {
+        $replaced = [];
+        foreach ($response->getData() as $data) {
+            $replaced[] = self::replaceEHealthPropNames($data);
+        }
+
+        $rules = collect($this->immunizationValidationRules())
+            ->mapWithKeys(static fn ($rule, $key) => ["*.$key" => $rule])
+            ->toArray();
+
+        $validator = Validator::make($replaced, $rules);
+
+        if ($validator->fails()) {
+            Log::channel('e_health_errors')->error(
+                'Immunization validation failed: ' . implode(', ', $validator->errors()->all())
+            );
         }
 
         return $validator->validate();
@@ -238,15 +295,18 @@ class Patient extends Request
     {
         return [
             'uuid' => ['required', 'uuid'],
-            'status' => ['required', 'string'],
+            'status' => ['required', Rule::in(EncounterStatus::values())],
+
             'class' => ['required', 'array'],
             'class.code' => ['required', 'string'],
             'class.system' => ['required', 'string'],
+
             'type' => ['required', 'array'],
             'type.coding' => ['required', 'array'],
             'type.coding.*.code' => ['required', 'string'],
             'type.coding.*.system' => ['required', 'string'],
             'type.text' => ['nullable', 'string'],
+
             'episode' => ['required', 'array'],
             'episode.identifier' => ['required', 'array'],
             'episode.identifier.type' => ['required', 'array'],
@@ -255,11 +315,13 @@ class Patient extends Request
             'episode.identifier.type.coding.*.system' => ['required', 'string'],
             'episode.identifier.type.text' => ['nullable', 'string'],
             'episode.identifier.value' => ['required', 'uuid'],
+
             'performer_speciality' => ['required', 'array'],
             'performer_speciality.coding' => ['required', 'array'],
             'performer_speciality.coding.*.code' => ['required', 'string'],
             'performer_speciality.coding.*.system' => ['required', 'string'],
             'performer_speciality.text' => ['nullable', 'string'],
+
             'period' => ['required', 'array'],
             'period.start' => ['required', 'date'],
             'period.end' => ['required', 'date']
@@ -275,7 +337,7 @@ class Patient extends Request
     {
         return [
             'uuid' => ['required', 'uuid'],
-            'status' => ['required', 'string'],
+            'status' => ['required', Rule::in(ClinicalImpressionStatus::values())],
             'description' => ['nullable', 'string'],
             'note' => ['nullable', 'string'],
             'summary' => ['nullable', 'string'],
@@ -283,7 +345,6 @@ class Patient extends Request
             'ehealth_inserted_at' => ['required', 'date'],
             'ehealth_updated_at' => ['required', 'date'],
 
-            // assessor
             'assessor' => ['required', 'array'],
             'assessor.identifier' => ['required', 'array'],
             'assessor.identifier.type' => ['required', 'array'],
@@ -293,20 +354,17 @@ class Patient extends Request
             'assessor.identifier.type.text' => ['nullable', 'string'],
             'assessor.identifier.value' => ['required', 'uuid'],
 
-            // code
             'code' => ['required', 'array'],
             'code.coding' => ['required', 'array'],
             'code.coding.*.code' => ['required', 'string'],
             'code.coding.*.system' => ['required', 'string'],
             'code.text' => ['nullable', 'string'],
 
-            // effective_period
             'effective_period' => ['nullable', 'array'],
             'effective_period.start' => ['nullable', 'date'],
             'effective_period.end' => ['nullable', 'date'],
             'effective_date_time' => ['nullable', 'date'],
 
-            // encounter
             'encounter' => ['required', 'array'],
             'encounter.identifier' => ['required', 'array'],
             'encounter.identifier.type' => ['required', 'array'],
@@ -316,7 +374,6 @@ class Patient extends Request
             'encounter.identifier.type.text' => ['nullable', 'string'],
             'encounter.identifier.value' => ['required', 'uuid'],
 
-            // findings
             'findings' => ['nullable', 'array'],
             'findings.*.basis' => ['nullable', 'string'],
             'findings.*.item_reference' => ['required', 'array'],
@@ -328,7 +385,6 @@ class Patient extends Request
             'findings.*.item_reference.identifier.type.text' => ['nullable', 'string'],
             'findings.*.item_reference.identifier.value' => ['required', 'uuid'],
 
-            // previous
             'previous' => ['nullable', 'array'],
             'previous.identifier' => ['nullable', 'array'],
             'previous.identifier.type' => ['nullable', 'array'],
@@ -338,7 +394,6 @@ class Patient extends Request
             'previous.identifier.type.text' => ['nullable', 'string'],
             'previous.identifier.value' => ['nullable', 'uuid'],
 
-            // problems
             'problems' => ['nullable', 'array'],
             'problems.*.identifier' => ['required', 'array'],
             'problems.*.identifier.type' => ['required', 'array'],
@@ -348,7 +403,6 @@ class Patient extends Request
             'problems.*.identifier.type.text' => ['nullable', 'string'],
             'problems.*.identifier.value' => ['required', 'uuid'],
 
-            // supporting_info
             'supporting_info' => ['nullable', 'array'],
             'supporting_info.*.identifier' => ['required', 'array'],
             'supporting_info.*.identifier.type' => ['required', 'array'],
@@ -357,6 +411,115 @@ class Patient extends Request
             'supporting_info.*.identifier.type.coding.*.system' => ['required', 'string'],
             'supporting_info.*.identifier.type.text' => ['nullable', 'string'],
             'supporting_info.*.identifier.value' => ['required', 'uuid'],
+        ];
+    }
+
+    /**
+     * List of validation rules for immunizations from eHealth.
+     *
+     * @return array
+     */
+    protected function immunizationValidationRules(): array
+    {
+        return [
+            'uuid' => ['required', 'uuid'],
+            'status' => ['required', Rule::in(ImmunizationStatus::values())],
+            'not_given' => ['required', 'boolean'],
+            'primary_source' => ['required', 'boolean'],
+            'date' => ['required', 'date'],
+            'ehealth_inserted_at' => ['required', 'date'],
+            'ehealth_updated_at' => ['required', 'date'],
+            'manufacturer' => ['nullable', 'string'],
+            'lot_number' => ['nullable', 'string'],
+            'expiration_date' => ['nullable', 'date'],
+            'explanatory_letter' => ['nullable', 'string'],
+
+            'vaccine_code' => ['required', 'array'],
+            'vaccine_code.coding' => ['required', 'array'],
+            'vaccine_code.coding.*.code' => ['required', 'string'],
+            'vaccine_code.coding.*.system' => ['required', 'string'],
+            'vaccine_code.text' => ['nullable', 'string'],
+
+            'context' => ['required', 'array'],
+            'context.identifier' => ['required', 'array'],
+            'context.identifier.type' => ['required', 'array'],
+            'context.identifier.type.coding' => ['required', 'array'],
+            'context.identifier.type.coding.*.code' => ['required', 'string'],
+            'context.identifier.type.coding.*.system' => ['required', 'string'],
+            'context.identifier.type.text' => ['nullable', 'string'],
+            'context.identifier.value' => ['required', 'uuid'],
+
+            'performer' => ['nullable', 'array'],
+            'performer.identifier' => ['nullable', 'array'],
+            'performer.identifier.type' => ['nullable', 'array'],
+            'performer.identifier.type.coding' => ['nullable', 'array'],
+            'performer.identifier.type.coding.*.code' => ['nullable', 'string'],
+            'performer.identifier.type.coding.*.system' => ['nullable', 'string'],
+            'performer.identifier.type.text' => ['nullable', 'string'],
+            'performer.identifier.value' => ['nullable', 'uuid'],
+
+            'report_origin' => ['nullable', 'array'],
+            'report_origin.coding' => ['nullable', 'array'],
+            'report_origin.coding.*.code' => ['nullable', 'string'],
+            'report_origin.coding.*.system' => ['nullable', 'string'],
+            'report_origin.text' => ['nullable', 'string'],
+
+            'site' => ['nullable', 'array'],
+            'site.coding' => ['nullable', 'array'],
+            'site.coding.*.code' => ['nullable', 'string'],
+            'site.coding.*.system' => ['nullable', 'string'],
+            'site.text' => ['nullable', 'string'],
+
+            'route' => ['nullable', 'array'],
+            'route.coding' => ['nullable', 'array'],
+            'route.coding.*.code' => ['nullable', 'string'],
+            'route.coding.*.system' => ['nullable', 'string'],
+            'route.text' => ['nullable', 'string'],
+
+            'dose_quantity' => ['nullable', 'array'],
+            'dose_quantity.value' => ['nullable', 'numeric'],
+            'dose_quantity.comparator' => ['nullable', 'string'],
+            'dose_quantity.unit' => ['nullable', 'string'],
+            'dose_quantity.system' => ['nullable', 'string'],
+            'dose_quantity.code' => ['nullable', 'string'],
+
+            'explanation' => ['nullable', 'array'],
+            'explanation.reasons' => ['nullable', 'array'],
+            'explanation.reasons.*.coding' => ['nullable', 'array'],
+            'explanation.reasons.*.coding.*.code' => ['nullable', 'string'],
+            'explanation.reasons.*.coding.*.system' => ['nullable', 'string'],
+            'explanation.reasons.*.text' => ['nullable', 'string'],
+
+            'explanation.reasons_not_given' => ['nullable', 'array'],
+            'explanation.reasons_not_given.*.coding' => ['nullable', 'array'],
+            'explanation.reasons_not_given.*.coding.*.code' => ['nullable', 'string'],
+            'explanation.reasons_not_given.*.coding.*.system' => ['nullable', 'string'],
+            'explanation.reasons_not_given.*.text' => ['nullable', 'string'],
+
+            'reactions' => ['nullable', 'array'],
+            'reactions.*.detail' => ['required', 'array'],
+            'reactions.*.detail.identifier' => ['required', 'array'],
+            'reactions.*.detail.identifier.type' => ['required', 'array'],
+            'reactions.*.detail.identifier.type.coding' => ['required', 'array'],
+            'reactions.*.detail.identifier.type.coding.*.code' => ['required', 'string'],
+            'reactions.*.detail.identifier.type.coding.*.system' => ['required', 'string'],
+            'reactions.*.detail.identifier.value' => ['required', 'uuid'],
+            'reactions.*.detail.display_value' => ['nullable', 'string'],
+
+            'vaccination_protocols' => ['nullable', 'array'],
+            'vaccination_protocols.*.dose_sequence' => ['nullable', 'integer'],
+            'vaccination_protocols.*.description' => ['nullable', 'string'],
+            'vaccination_protocols.*.authority' => ['nullable', 'array'],
+            'vaccination_protocols.*.authority.coding' => ['nullable', 'array'],
+            'vaccination_protocols.*.authority.coding.*.code' => ['nullable', 'string'],
+            'vaccination_protocols.*.authority.coding.*.system' => ['nullable', 'string'],
+            'vaccination_protocols.*.series' => ['nullable', 'string'],
+            'vaccination_protocols.*.series_doses' => ['nullable', 'integer'],
+            'vaccination_protocols.*.target_diseases' => ['required', 'array'],
+            'vaccination_protocols.*.target_diseases.*.coding' => ['nullable', 'array'],
+            'vaccination_protocols.*.target_diseases.*.text' => ['nullable', 'string'],
+            'vaccination_protocols.*.target_diseases.*.coding.*.code' => ['nullable', 'string'],
+            'vaccination_protocols.*.target_diseases.*.coding.*.system' => ['nullable', 'string']
         ];
     }
 

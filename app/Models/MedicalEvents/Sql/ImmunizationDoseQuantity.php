@@ -8,7 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class ImmunizationDoseQuantity extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'immunization_id',
+        'value',
+        'comparator',
+        'unit',
+        'system',
+        'code'
+    ];
 
     protected $hidden = [
         'id',

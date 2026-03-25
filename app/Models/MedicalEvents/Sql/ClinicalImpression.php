@@ -7,12 +7,14 @@ namespace App\Models\MedicalEvents\Sql;
 use App\Enums\Person\ClinicalImpressionStatus;
 use Carbon\CarbonImmutable;
 use Eloquence\Behaviours\HasCamelCasing;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Illuminate\Database\Eloquent\Builder;
 
 class ClinicalImpression extends Model
 {
@@ -90,6 +92,24 @@ class ClinicalImpression extends Model
                 ? CarbonImmutable::parse($this->effectivePeriod['end'])->toTimeString()
                 : null
         );
+    }
+
+    /**
+     * Scope to eager load all clinical impression relationships.
+     */
+    #[Scope]
+    protected function withAllRelations(Builder $query): Builder
+    {
+        return $query->with([
+            'code.coding',
+            'encounter.type.coding',
+            'assessor.type.coding',
+            'previous.type.coding',
+            'effectivePeriod',
+            'problems.type.coding',
+            'findings.itemReference.type.coding',
+            'supportingInfo.type.coding'
+        ]);
     }
 
     public function code(): BelongsTo

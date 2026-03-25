@@ -13,7 +13,14 @@ class ImmunizationVaccinationProtocol extends Model
 {
     use HasCamelCasing;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'immunization_id',
+        'dose_sequence',
+        'description',
+        'authority_id',
+        'series',
+        'series_doses'
+    ];
 
     protected $hidden = [
         'id',

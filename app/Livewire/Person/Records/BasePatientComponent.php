@@ -32,22 +32,23 @@ abstract class BasePatientComponent extends Component
     public string $verificationStatus;
 
     /**
+     * Patient declaration number.
+     *
+     * @var string|null
+     */
+    public ?string $declarationNumber = null;
+
+    /**
      * Patient UUID.
      *
      * @var string
      */
     protected string $uuid;
 
-    public function boot(): void
-    {
-        if ($this->id) {
-            $this->loadPatientData();
-        }
-    }
-
     public function mount(LegalEntity $legalEntity, int $id): void
     {
         $this->id = $id;
+        $this->loadPatientData();
         $this->initializeComponent();
     }
 
@@ -59,12 +60,14 @@ abstract class BasePatientComponent extends Component
     protected function loadPatientData(): void
     {
         $patient = Person::whereId($this->id)
-            ->get(['uuid', 'first_name', 'last_name', 'second_name', 'verification_status'])
+            ->with(['declarations' => fn ($query) => $query->latest()->take(1)])
+            ->select(['id', 'uuid', 'first_name', 'last_name', 'second_name', 'verification_status'])
             ->firstOrFail();
 
         $this->patientFullName = $patient->fullName;
         $this->verificationStatus = $patient->verificationStatus;
         $this->uuid = $patient->uuid;
+        $this->declarationNumber = $patient->declarations->first()?->declaration_number ?? null;
     }
 
     /**

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repositories\MedicalEvents;
 
+use App\Core\Arr;
+use App\Models\MedicalEvents\Sql\CodeableConcept;
 use App\Models\MedicalEvents\Sql\Immunization;
 use App\Models\MedicalEvents\Sql\ImmunizationDoseQuantity;
 use App\Models\MedicalEvents\Sql\ImmunizationExplanation;
@@ -196,5 +198,235 @@ class ImmunizationRepository extends BaseRepository
 
             return $immunization;
         }, $immunizations);
+    }
+
+    /**
+     * Sync immunization data and related data by deleting and creating.
+     *
+     * @param  int  $personId
+     * @param  array  $validatedData
+     * @return void
+     * @throws Throwable
+     */
+    public function sync(int $personId, array $validatedData): void
+    {
+        DB::transaction(function () use ($personId, $validatedData) {
+            // Load existing immunizations with relations
+            $uuids = collect($validatedData)->pluck('uuid')->toArray();
+            $existingImmunizations = $this->model::whereIn('uuid', $uuids)
+                ->withAllRelations()
+                ->get()
+                ->keyBy('uuid');
+
+            foreach ($validatedData as $data) {
+                $existing = $existingImmunizations->get($data['uuid']);
+
+                // Store relationships
+                $vaccineCode = Repository::codeableConcept()->store($data['vaccine_code']);
+
+                $context = Repository::identifier()->store($data['context']['identifier']['value']);
+                Repository::codeableConcept()->attach($context, $data['context']);
+
+                $performer = null;
+                if (isset($data['performer'])) {
+                    $performer = Repository::identifier()->store($data['performer']['identifier']['value']);
+                    Repository::codeableConcept()->attach($performer, $data['performer']);
+                }
+
+                $reportOrigin = null;
+                if (isset($data['report_origin'])) {
+                    $reportOrigin = Repository::codeableConcept()->store($data['report_origin']);
+                }
+
+                $site = null;
+                if (isset($data['site'])) {
+                    $site = Repository::codeableConcept()->store($data['site']);
+                }
+
+                $route = null;
+                if (isset($data['route'])) {
+                    $route = Repository::codeableConcept()->store($data['route']);
+                }
+
+                $immunization = $this->model::updateOrCreate(
+                    ['uuid' => $data['uuid']],
+                    array_merge(
+                        [
+                        'person_id' => $personId,
+                        'vaccine_code_id' => $vaccineCode->id,
+                        'context_id' => $context->id,
+                        'performer_id' => $performer->id,
+                        'report_origin_id' => $reportOrigin->id,
+                        'site_id' => $site->id,
+                        'route_id' => $route?->id,
+                    ],
+                        Arr::except($data, [
+                            'vaccine_code',
+                            'context',
+                            'report_origin',
+                            'site',
+                            'route',
+                            'dose_quantity',
+                            'explanation',
+                            'reactions',
+                            'vaccination_protocols'
+                        ])
+                    )
+                );
+
+                // Sync dose quantity
+                if (isset($data['dose_quantity'])) {
+                    $immunization->doseQuantity()->delete();
+                    $immunization->doseQuantity()->create([
+                        'value' => $data['dose_quantity']['value'],
+                        'comparator' => $data['dose_quantity']['comparator'] ?? null,
+                        'unit' => $data['dose_quantity']['unit'] ?? null,
+                        'system' => $data['dose_quantity']['system'] ?? null,
+                        'code' => $data['dose_quantity']['code'] ?? null
+                    ]);
+                }
+
+                // Sync explanations (reasons)
+                $immunization->explanations()->delete();
+                if (isset($data['explanation']['reasons'])) {
+                    foreach ($data['explanation']['reasons'] as $reasonData) {
+                        $reasons = Repository::codeableConcept()->store($reasonData);
+
+                        $immunization->explanations()->create([
+                            'reasons_id' => $reasons->id,
+                            'reasons_not_given_id' => null
+                        ]);
+                    }
+                }
+
+                // Sync explanations (reasons not given)
+                if (isset($data['explanation']['reasons_not_given'])) {
+                    foreach ($data['explanation']['reasons_not_given'] as $reasonNotGiven) {
+                        $reasonsNotGiven = Repository::codeableConcept()->store($reasonNotGiven);
+
+                        $immunization->explanations()->create([
+                            'reasons_id' => null,
+                            'reasons_not_given_id' => $reasonsNotGiven->id
+                        ]);
+                    }
+                }
+
+                // Sync vaccination protocols
+                $immunization->vaccinationProtocols()->delete();
+                if (!empty($data['vaccination_protocols'])) {
+                    foreach ($data['vaccination_protocols'] as $vaccinationProtocolData) {
+                        $authority = Repository::codeableConcept()->store($vaccinationProtocolData['authority']);
+
+                        $immunizationVaccinationProtocol = $immunization->vaccinationProtocols()->create([
+                            'dose_sequence' => $vaccinationProtocolData['dose_sequence'] ?? null,
+                            'description' => $vaccinationProtocolData['description'] ?? null,
+                            'authority_id' => $authority->id ?? null,
+                            'series' => $vaccinationProtocolData['series'] ?? null,
+                            'series_doses' => $vaccinationProtocolData['series_doses'] ?? null
+                        ]);
+
+                        if (!empty($vaccinationProtocolData['target_diseases'])) {
+                            $targetDiseaseIds = [];
+                            foreach ($vaccinationProtocolData['target_diseases'] as $targetDiseaseData) {
+                                $targetDisease = Repository::codeableConcept()->store($targetDiseaseData);
+                                $targetDiseaseIds[] = $targetDisease->id;
+                            }
+
+                            $immunizationVaccinationProtocol->targetDiseases()->attach($targetDiseaseIds);
+                        }
+                    }
+                }
+
+                // Sync reactions
+                $immunization->reactions()->delete();
+                if (!empty($data['reactions'])) {
+                    foreach ($data['reactions'] as $reactionData) {
+                        $detail = Repository::identifier()->store($reactionData['detail']['identifier']['value']);
+                        Repository::codeableConcept()->attach($detail, $reactionData['detail']);
+
+                        $immunization->reactions()->create([
+                            'detail_id' => $detail->id,
+                            'display_value' => $reactionData['display_value'] ?? null
+                        ]);
+                    }
+                }
+
+                // Cleanup old relationships after all updates are done
+                if ($existing) {
+                    $this->cleanupRelations($existing);
+                }
+            }
+        });
+    }
+
+    /**
+     * Remove orphaned relations after immunization FK update.
+     *
+     * @param  Immunization  $existing
+     * @return void
+     */
+    private function cleanupRelations(Immunization $existing): void
+    {
+        if ($existing->vaccineCode) {
+            $existing->vaccineCode->coding()->delete();
+            $existing->vaccineCode->delete();
+        }
+
+        if ($existing->context) {
+            $existing->context->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->context->type()->delete();
+            $existing->context->delete();
+        }
+
+        if ($existing->performer) {
+            $existing->performer->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->performer->type()->delete();
+            $existing->performer->delete();
+        }
+
+        if ($existing->reportOrigin) {
+            $existing->reportOrigin->coding()->delete();
+            $existing->reportOrigin->delete();
+        }
+
+        if ($existing->site) {
+            $existing->site->coding()->delete();
+            $existing->site->delete();
+        }
+
+        if ($existing->route) {
+            $existing->route->coding()->delete();
+            $existing->route->delete();
+        }
+
+        foreach ($existing->explanations as $explanation) {
+            if ($explanation->reasons) {
+                $explanation->reasons->coding()->delete();
+                $explanation->reasons->delete();
+            }
+            if ($explanation->reasonsNotGiven) {
+                $explanation->reasonsNotGiven->coding()->delete();
+                $explanation->reasonsNotGiven->delete();
+            }
+        }
+
+        foreach ($existing->vaccinationProtocols as $protocol) {
+            if ($protocol->authority) {
+                $protocol->authority->coding()->delete();
+                $protocol->authority->delete();
+            }
+            foreach ($protocol->targetDiseases as $targetDisease) {
+                $targetDisease->coding()->delete();
+                $targetDisease->delete();
+            }
+        }
+
+        foreach ($existing->reactions as $reaction) {
+            if ($reaction->detail) {
+                $reaction->detail->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+                $reaction->detail->type()->delete();
+                $reaction->detail->delete();
+            }
+        }
     }
 }

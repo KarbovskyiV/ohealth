@@ -4,26 +4,51 @@ declare(strict_types=1);
 
 namespace App\Models\MedicalEvents\Sql;
 
+use App\Enums\Person\ImmunizationStatus;
 use Carbon\CarbonImmutable;
 use Eloquence\Behaviours\HasCamelCasing;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Builder;
 
 class Immunization extends Model
 {
     use HasCamelCasing;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'uuid',
+        'person_id',
+        'encounter_id',
+        'status',
+        'not_given',
+        'vaccine_code_id',
+        'context_id',
+        'date',
+        'primary_source',
+        'performer_id',
+        'report_origin_id',
+        'manufacturer',
+        'lot_number',
+        'expiration_date',
+        'explanatory_letter',
+        'site_id',
+        'route_id',
+        'ehealth_inserted_at',
+        'ehealth_updated_at'
+    ];
 
     protected $casts = [
-        'date' => 'date:Y-m-d'
+        'date' => 'date:Y-m-d',
+        'status' => ImmunizationStatus::class
     ];
 
     protected $hidden = [
         'id',
+        'person_id',
         'encounter_id',
         'vaccine_code_id',
         'context_id',
@@ -45,6 +70,28 @@ class Immunization extends Model
         return Attribute::make(
             get: fn () => CarbonImmutable::parse($this->attributes['date'])->toTimeString()
         );
+    }
+
+    /**
+     * Scope to eager load all immunization relationships.
+     */
+    #[Scope]
+    protected function withAllRelations(Builder $query): Builder
+    {
+        return $query->with([
+            'vaccineCode.coding',
+            'context.type.coding',
+            'performer.type.coding',
+            'reportOrigin.coding',
+            'site.coding',
+            'route.coding',
+            'doseQuantity',
+            'explanations.reasons.coding',
+            'explanations.reasonsNotGiven.coding',
+            'vaccinationProtocols.authority.coding',
+            'vaccinationProtocols.targetDiseases.coding',
+            'reactions.detail.type.coding'
+        ]);
     }
 
     public function encounter(): BelongsTo
@@ -100,17 +147,14 @@ class Immunization extends Model
                     ->with(['reasons.coding'])
                     ->get()
                     ->pluck('reasons')
-                    ->flatten()
                     ->filter()
-                    ?->toArray() ?: [['text' => null, 'coding' => [['system' => 'eHealth/reason_explanations', 'code' => '']]]],
+                    ?->toArray() ?: [],
                 'reasonsNotGiven' => $this->explanations()
                     ->with(['reasonsNotGiven.coding'])
                     ->get()
                     ->pluck('reasonsNotGiven')
-                    ->flatten()
                     ->filter()
-                    ->first()
-                    ?->toArray() ?: [['text' => null, 'coding' => [['system' => 'eHealth/reason_not_given_explanations', 'code' => '']]]]
+                    ?->toArray() ?: []
             ]
         );
     }
@@ -118,5 +162,10 @@ class Immunization extends Model
     public function vaccinationProtocols(): HasMany
     {
         return $this->hasMany(ImmunizationVaccinationProtocol::class, 'immunization_id');
+    }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(ImmunizationReaction::class, 'immunization_id');
     }
 }

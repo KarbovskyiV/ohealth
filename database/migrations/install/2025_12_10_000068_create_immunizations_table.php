@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Person\ImmunizationStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -16,8 +17,8 @@ return new class extends Migration
         Schema::create('immunizations', static function (Blueprint $table) {
             $table->id();
             $table->uuid()->unique();
-            $table->foreignId('encounter_id')->constrained('encounters');
-            $table->enum('status', ['completed', 'entered_in_error']);
+            $table->foreignId('encounter_id')->nullable()->constrained('encounters');
+            $table->enum('status', ImmunizationStatus::values());
             $table->boolean('not_given');
             $table->foreignId('vaccine_code_id')->constrained('codeable_concepts');
             $table->foreignId('context_id')->constrained('identifiers');
@@ -28,6 +29,7 @@ return new class extends Migration
             $table->string('manufacturer')->nullable();
             $table->string('lot_number')->nullable();
             $table->date('expiration_date')->nullable();
+            $table->string('explanatory_letter')->nullable();
             $table->foreignId('site_id')->nullable()->constrained('codeable_concepts');
             $table->foreignId('route_id')->nullable()->constrained('codeable_concepts');
             $table->timestamps();
@@ -49,6 +51,14 @@ return new class extends Migration
             $table->foreignId('immunization_id')->constrained('immunizations')->cascadeOnDelete();
             $table->foreignId('reasons_id')->nullable()->constrained('codeable_concepts')->cascadeOnDelete();
             $table->foreignId('reasons_not_given_id')->nullable()->constrained('codeable_concepts')->cascadeOnDelete();
+            $table->timestamps();
+        });
+
+        Schema::create('immunization_reactions', static function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('immunization_id')->constrained('immunizations')->cascadeOnDelete();
+            $table->foreignId('detail_id')->constrained('identifiers')->cascadeOnDelete();
+            $table->string('display_value')->nullable();
             $table->timestamps();
         });
 
@@ -86,6 +96,8 @@ return new class extends Migration
         Schema::dropIfExists('immunization_vaccination_protocols');
 
         Schema::dropIfExists('immunization_explanations');
+
+        Schema::dropIfExists('immunization_reactions');
 
         Schema::dropIfExists('immunization_dose_quantities');
 
