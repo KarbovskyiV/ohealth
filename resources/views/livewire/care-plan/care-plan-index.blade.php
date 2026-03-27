@@ -29,17 +29,17 @@
         </div>
 
         {{-- Plans Table --}}
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
+        <div class="index-table-wrapper">
+            <table class="index-table">
+                <thead class="index-table-thead">
                     <tr>
-                        <th>{{ __('care-plan.requisition') }}</th>
-                        <th>{{ __('care-plan.name_care_plan') }}</th>
-                        <th>{{ __('care-plan.category') }}</th>
-                        <th>{{ __('forms.status') }}</th>
-                        <th>{{ __('forms.start_date') }}</th>
-                        <th>{{ __('care-plan.patient') }}</th>
-                        <th></th>
+                        <th class="index-table-th">{{ __('care-plan.requisition') }}</th>
+                        <th class="index-table-th">{{ __('care-plan.name_care_plan') }}</th>
+                        <th class="index-table-th">{{ __('care-plan.category') }}</th>
+                        <th class="index-table-th">{{ __('forms.status') }}</th>
+                        <th class="index-table-th">{{ __('forms.start_date') }}</th>
+                        <th class="index-table-th">{{ __('care-plan.patient') }}</th>
+                        <th class="index-table-th"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -47,16 +47,26 @@
                         @php
                             /** @var \App\Models\CarePlan $plan */
                         @endphp
-                        <tr>
-                            <td>{{ $plan['requisition'] ?? $plan->requisition ?? '-' }}</td>
-                            <td>{{ $plan['title'] ?? $plan->title ?? '-' }}</td>
-                            <td>{{ $plan['category'] ?? $plan->category ?? '-' }}</td>
-                            <td>
-                                <span class="badge {{ in_array($plan['status'] ?? $plan->status ?? '', ['ACTIVE', 'active']) ? 'badge-success' : 'badge-secondary' }}">
-                                    {{ $plan['status'] ?? $plan->status ?? '-' }}
+                        <tr class="index-table-tr">
+                            <td class="index-table-td">{{ $plan['requisition'] ?? $plan->requisition ?? '-' }}</td>
+                            <td class="index-table-td">{{ $plan['title'] ?? $plan->title ?? '-' }}</td>
+                            <td class="index-table-td text-sm">
+                                @if(is_array($plan['category'] ?? []))
+                                    {{ ($plan['category'] ?? [])['text'] ?? ($plan['category'] ?? [])['coding'][0]['display'] ?? '-' }}
+                                @else
+                                    {{ $plan['category'] ?? $plan->category ?? '-' }}
+                                @endif
+                            </td>
+                            <td class="index-table-td">
+                                @php
+                                    $status = $plan['status'] ?? $plan->status ?? '';
+                                    if(is_array($status)) $status = $status['coding'][0]['code'] ?? ($status['text'] ?? '');
+                                @endphp
+                                <span class="badge {{ in_array(strtoupper($status), ['ACTIVE', 'active']) ? 'badge-success' : 'badge-secondary' }}">
+                                    {{ $plan['status_display'] ?? $status ?? '-' }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="index-table-td">
                                 @if(isset($plan['period']['start']))
                                     {{ \Carbon\Carbon::parse($plan['period']['start'])->format('d.m.Y') }}
                                 @elseif($plan->period_start ?? null)
@@ -65,14 +75,14 @@
                                     -
                                 @endif
                             </td>
-                            <td>
+                            <td class="index-table-td">
                                 @if(isset($plan['patient']))
                                     {{ $plan['patient']['display_name'] ?? '-' }}
                                 @else
                                     {{ $plan->person?->last_name }} {{ $plan->person?->first_name }}
                                 @endif
                             </td>
-                            <td>
+                            <td class="index-table-td-actions">
                                 @if(isset($plan->id))
                                     <a href="{{ route('carePlan.show', [legalEntity(), $plan->id]) }}"
                                        class="text-blue-500 hover:underline text-sm">
