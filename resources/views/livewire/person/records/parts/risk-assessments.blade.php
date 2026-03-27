@@ -27,20 +27,20 @@
 
                                     <div class="record-inner-body">
                                         <div class="flex-1 p-4 md:pl-[72px] flex justify-center">
-                                            <div class="grid grid-cols-2 xl:grid-cols-4 gap-y-4 gap-x-4 w-full [&>div]:min-w-0 [&_div.text-\[13px\]]:break-words">
-                                                <div><div class="record-inner-label">{{ __('patients.reason') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">Причина</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.doctor') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">Сидоренко О.В.</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.created') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">02.02.2025</div></div>
+                                            <div class="grid grid-cols-2 xl:grid-cols-4 gap-y-4 gap-x-4 w-full [&>div]:min-w-0 [&_.record-inner-subvalue]:break-words">
+                                                <div><div class="record-inner-label">{{ __('patients.reason') }}</div><div class="record-inner-subvalue">Причина</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.doctor') }}</div><div class="record-inner-subvalue">Сидоренко О.В.</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.created') }}</div><div class="record-inner-subvalue">02.02.2025</div></div>
                                                 <div></div>
 
-                                                <div><div class="record-inner-label">{{ __('patients.result') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">Результат</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.qualitative_analysis') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">Аналіз</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.source_label') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">Зі слів пацієнта</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.result') }}</div><div class="record-inner-subvalue">Результат</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.qualitative_analysis') }}</div><div class="record-inner-subvalue">Аналіз</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.source_label') }}</div><div class="record-inner-subvalue">Зі слів пацієнта</div></div>
                                             </div>
                                         </div>
-                                        <div class="w-full md:w-52 shrink-0 border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 p-4 flex flex-col justify-center gap-3">
-                                            <div class="min-w-0"><div class="record-inner-label">ID ECO3</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-300 truncate">1231-adsadas-aqeqe-casdda</div></div>
-                                            <div class="min-w-0"><div class="record-inner-label">{{ __('patients.medical_record_id') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-300 truncate">1231-adsadas-aqeqe-casdda</div></div>
+                                        <div class="record-inner-id-col">
+                                            <div class="min-w-0"><div class="record-inner-label">ID ECO3</div><div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div></div>
+                                            <div class="min-w-0"><div class="record-inner-label">{{ __('patients.medical_record_id') }}</div><div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div></div>
                                         </div>
                                     </div>
                                 </div>

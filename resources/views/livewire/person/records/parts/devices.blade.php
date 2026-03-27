@@ -27,23 +27,23 @@
 
                                     <div class="record-inner-body">
                                         <div class="flex-1 p-4 md:pl-[72px] flex justify-center">
-                                            <div class="grid grid-cols-2 xl:grid-cols-5 gap-y-4 gap-x-4 w-full [&>div]:min-w-0 [&_div.text-\[13px\]]:break-words">
-                                                <div><div class="record-inner-label">{{ __('patients.model_number') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">1231FDSE</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.type') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">Гістероскоп</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.lot_number') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">1231FDSE</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.manufacture_date') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">01.02.2025</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.comment') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">Імплант був вилучений по причині заміни на новий</div></div>
+                                            <div class="grid grid-cols-2 xl:grid-cols-5 gap-y-4 gap-x-4 w-full [&>div]:min-w-0 [&_.record-inner-subvalue]:break-words">
+                                                <div><div class="record-inner-label">{{ __('patients.model_number') }}</div><div class="record-inner-subvalue">1231FDSE</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.type') }}</div><div class="record-inner-subvalue">Гістероскоп</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.lot_number') }}</div><div class="record-inner-subvalue">1231FDSE</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.manufacture_date') }}</div><div class="record-inner-subvalue">01.02.2025</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.comment') }}</div><div class="record-inner-subvalue">Імплант був вилучений по причині заміни на новий</div></div>
 
-                                                <div><div class="record-inner-label">{{ __('patients.properties') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">10 шт</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.manufacturer_and_serial') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">GlobalMed, Inc <br> NSPX30</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.doctor') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">Сидоренко І.В.</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.expiration_date') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">02.02.2027</div></div>
-                                                <div><div class="record-inner-label">{{ __('patients.status_change_reason') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-200">-</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.properties') }}</div><div class="record-inner-subvalue">10 шт</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.manufacturer_and_serial') }}</div><div class="record-inner-subvalue">GlobalMed, Inc <br> NSPX30</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.doctor') }}</div><div class="record-inner-subvalue">Сидоренко І.В.</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.expiration_date') }}</div><div class="record-inner-subvalue">02.02.2027</div></div>
+                                                <div><div class="record-inner-label">{{ __('patients.status_change_reason') }}</div><div class="record-inner-subvalue">-</div></div>
                                             </div>
                                         </div>
-                                        <div class="w-full md:w-52 shrink-0 border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 p-4 flex flex-col justify-center gap-3">
-                                            <div class="min-w-0"><div class="record-inner-label">ID ECO3</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-300 truncate">1231-adsadas-aqeqe-casdda</div></div>
-                                            <div class="min-w-0"><div class="record-inner-label">{{ __('patients.medical_record_id') }}</div><div class="text-[13px] font-medium text-gray-800 dark:text-gray-300 truncate">1231-adsadas-aqeqe-casdda</div></div>
+                                        <div class="record-inner-id-col">
+                                            <div class="min-w-0"><div class="record-inner-label">ID ECO3</div><div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div></div>
+                                            <div class="min-w-0"><div class="record-inner-label">{{ __('patients.medical_record_id') }}</div><div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div></div>
                                         </div>
                                     </div>
                                 </div>

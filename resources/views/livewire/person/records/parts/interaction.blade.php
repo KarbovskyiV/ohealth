@@ -42,14 +42,14 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="w-full md:w-52 shrink-0 border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 p-4 flex flex-col justify-center gap-3">
+                                        <div class="record-inner-id-col">
                                             <div class="min-w-0">
                                                 <div class="record-inner-label">ID ECO3</div>
-                                                <div class="text-[13px] font-medium text-gray-800 dark:text-gray-300 truncate">1231-adsadas-aqeqe-casdda</div>
+                                                <div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div>
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="record-inner-label">ID Епізоду</div>
-                                                <div class="text-[13px] font-medium text-gray-800 dark:text-gray-300 truncate">1231-adsadas-aqeqe-casdda</div>
+                                                <div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div>
                                             </div>
                                         </div>
                                     </div>
