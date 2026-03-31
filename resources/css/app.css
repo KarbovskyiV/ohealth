@@ -652,11 +652,11 @@ input:-webkit-autofill {
     }
 
     .summary-section-active {
-        @apply border-gray-200 dark:border-gray-600 shadow-md
+        @apply border border-gray-200 dark:border-gray-600 shadow-md
     }
 
     .summary-section-inactive {
-        @apply border-gray-100 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700/80
+        @apply border border-gray-100 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700/80
     }
 
     .summary-sidebar-btn-active {

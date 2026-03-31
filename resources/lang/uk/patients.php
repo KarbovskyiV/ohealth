@@ -248,6 +248,20 @@ return [
 
     // Episodes record
     'episodes' => 'Епізоди',
+    'search_episode' => 'Пошук епізоду',
+    'filter_name' => 'Назва',
+    'filter_code' => 'ЕСОЗ ID',
+    'filter_doctor' => 'Лікар',
+    'search_button' => 'Шукати',
+    'reset_filters' => 'Скинути фільтри',
+    'additional_params' => 'Додаткові параметри пошуку',
+    'group_actions' => 'Групові дії',
+    'revoke_access' => 'Відкликати доступ до записів',
+    'filter_created_at_range' => 'Створено від - до',
+    'filter_status' => 'Статус',
+    'filter_icd_diagnosis' => 'Діагноз за МКХ',
+    'filter_icpc_diagnosis' => 'Діагноз за ICPC',
+    'filter_type' => 'Тип',
 
     // Diagnoses record
 

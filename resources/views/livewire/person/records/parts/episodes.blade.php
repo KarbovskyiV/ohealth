@@ -18,27 +18,75 @@
                                             </div>
                                         </div>
 
-                                        <div class="record-inner-action-col" x-data="{ openMenu: false }">
-                                            <button @click="openMenu = !openMenu"
-                                                    @click.away="openMenu = false"
-                                                    class="record-inner-action-btn"
-                                            >
-                                                @icon('edit-user-outline', 'w-5 h-5')
-                                            </button>
+                                        <div class="record-inner-action-col">
+                                            <div class="flex justify-center relative">
+                                                <div x-data="{
+                                                         open: false,
+                                                         toggle() {
+                                                             if (this.open) {
+                                                                 return this.close();
+                                                             }
+                                                             this.$refs.button.focus();
+                                                             this.open = true;
+                                                         },
+                                                         close(focusAfter) {
+                                                             if (!this.open) return;
+                                                             this.open = false;
+                                                             focusAfter && focusAfter.focus()
+                                                         }
+                                                    }"
+                                                     @keydown.escape.prevent.stop="close($refs.button)"
+                                                     @focusin.window="!$refs.panel.contains($event.target) && close()"
+                                                     x-id="['dropdown-button']"
+                                                     class="relative"
+                                                >
+                                                    <button @click="toggle()"
+                                                            x-ref="button"
+                                                            :aria-expanded="open"
+                                                            :aria-controls="$id('dropdown-button')"
+                                                            type="button"
+                                                            class="record-inner-action-btn"
+                                                    >
+                                                        @icon('edit-user-outline', 'w-5 h-5')
+                                                    </button>
 
-                                            <!-- Dropdown Menu -->
-                                            <div x-show="openMenu"
-                                                 x-transition.opacity.duration.200ms
-                                                 class="absolute right-[50%] md:right-0 top-1/2 md:top-[80%] w-56 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-lg rounded-xl z-20 py-2"
-                                                 style="display: none;"
-                                            >
-                                                <button class="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">
-                                                    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                    </svg>
-                                                    {{ __('patients.view_details') }}
-                                                </button>
+                                                    <div x-show="open"
+                                                         x-cloak
+                                                         x-ref="panel"
+                                                         x-transition.origin.top.right
+                                                         @click.outside="close($refs.button)"
+                                                         :id="$id('dropdown-button')"
+                                                         class="absolute right-0 mt-2 w-56 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-md z-50 py-1"
+                                                    >
+                                                        <button @click="close($refs.button)"
+                                                                class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                                        >
+                                                            @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                                            {{ __('patients.view_details') }}
+                                                        </button>
+
+                                                        <button @click="close($refs.button)"
+                                                                class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                                        >
+                                                            @icon('edit', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                                            {{ __('forms.edit') }}
+                                                        </button>
+
+                                                        <button @click="close($refs.button)"
+                                                                class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                                        >
+                                                            @icon('close', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                                            {{ __('forms.close') }}
+                                                        </button>
+
+                                                        <button @click="close($refs.button)"
+                                                                class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                                        >
+                                                            @icon('alert-circle', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                                            {{ __('patients.status.entered_in_error') }}
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -66,7 +114,7 @@
                                         </div>
                                         <div class="record-inner-id-col">
                                             <div class="min-w-0">
-                                                <div class="record-inner-label">ID ECO3</div>
+                                                <div class="record-inner-label">{{ __('patients.filter_code') }}</div>
                                                 <div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div>
                                             </div>
                                         </div>
@@ -93,26 +141,75 @@
                                             </div>
                                         </div>
 
-                                        <div class="record-inner-action-col" x-data="{ openMenu: false }">
-                                            <button @click="openMenu = !openMenu"
-                                                    @click.away="openMenu = false"
-                                                    class="record-inner-action-btn"
-                                            >
-                                                @icon('edit-user-outline', 'w-5 h-5')
-                                            </button>
+                                        <div class="record-inner-action-col">
+                                            <div class="flex justify-center relative">
+                                                <div x-data="{
+                                                         open: false,
+                                                         toggle() {
+                                                             if (this.open) {
+                                                                 return this.close();
+                                                             }
+                                                             this.$refs.button.focus();
+                                                             this.open = true;
+                                                         },
+                                                         close(focusAfter) {
+                                                             if (!this.open) return;
+                                                             this.open = false;
+                                                             focusAfter && focusAfter.focus()
+                                                         }
+                                                    }"
+                                                     @keydown.escape.prevent.stop="close($refs.button)"
+                                                     @focusin.window="!$refs.panel.contains($event.target) && close()"
+                                                     x-id="['dropdown-button']"
+                                                     class="relative"
+                                                >
+                                                    <button @click="toggle()"
+                                                            x-ref="button"
+                                                            :aria-expanded="open"
+                                                            :aria-controls="$id('dropdown-button')"
+                                                            type="button"
+                                                            class="record-inner-action-btn"
+                                                    >
+                                                        @icon('edit-user-outline', 'w-5 h-5')
+                                                    </button>
 
-                                            <!-- Dropdown Menu -->
-                                            <div x-show="openMenu"
-                                                 x-transition.opacity.duration.200ms
-                                                 class="absolute right-[50%] md:right-0 top-1/2 md:top-[80%] w-64 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-lg rounded-xl z-20 py-2"
-                                                 style="display: none;"
-                                            >
-                                                <button class="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">
-                                                    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                    </svg>
-                                                    {{ __('patients.get_data_access') }}
-                                                </button>
+                                                    <div x-show="open"
+                                                         x-cloak
+                                                         x-ref="panel"
+                                                         x-transition.origin.top.right
+                                                         @click.outside="close($refs.button)"
+                                                         :id="$id('dropdown-button')"
+                                                         class="absolute right-0 mt-2 w-56 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-md z-50 py-1"
+                                                    >
+                                                        <button @click="close($refs.button)"
+                                                                class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                                        >
+                                                            @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                                            {{ __('patients.view_details') }}
+                                                        </button>
+
+                                                        <button @click="close($refs.button)"
+                                                                class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                                        >
+                                                            @icon('edit', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                                            {{ __('forms.edit') }}
+                                                        </button>
+
+                                                        <button @click="close($refs.button)"
+                                                                class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                                        >
+                                                            @icon('close', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                                            {{ __('forms.close') }}
+                                                        </button>
+
+                                                        <button @click="close($refs.button)"
+                                                                class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                                        >
+                                                            @icon('alert-circle', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                                            {{ __('patients.status.entered_in_error') }}
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -140,7 +237,7 @@
                                         </div>
                                         <div class="record-inner-id-col">
                                             <div class="min-w-0">
-                                                <div class="record-inner-label">ID ECO3</div>
+                                                <div class="record-inner-label">{{ __('patients.filter_code') }}</div>
                                                 <div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div>
                                             </div>
                                         </div>

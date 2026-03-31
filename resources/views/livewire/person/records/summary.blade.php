@@ -45,6 +45,13 @@
                 {{ __('patients.summary') }}
             </button>
 
+            <a href="{{ route('persons.episodes', [legalEntity(), 'id' => $id]) }}"
+               :class="activeTab === 'episodes' ? 'summary-tab-active' : 'summary-tab-inactive'"
+               class="summary-tab"
+            >
+                {{ __('patients.episodes') }}
+            </a>
+
             <button type="button"
                     wire:click.once="getDiagnoses"
                     @click.prevent="activeTab = 'diagnoses'"
@@ -113,6 +120,7 @@
             </button>
         </div>
 
+
         @php
             $navItems = [
                 ['id' => 'episodes', 'action' => 'getEpisodes', 'label' => __('patients.episodes'), 'icon' => 'book'],
@@ -136,7 +144,7 @@
             <div class="flex-1 space-y-4">
                 @foreach($navItems as $item)
                     <div id="block-{{ $item['id'] }}"
-                         class="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl transition-all scroll-mt-8"
+                         class="bg-white dark:bg-gray-800 rounded-xl scroll-mt-8"
                          :class="activeSection === '{{ $item['id'] }}' ? 'summary-section-active' : 'summary-section-inactive'"
                     >
                         <button @if($item['action']) wire:click.once="{{ $item['action'] }}" @endif
