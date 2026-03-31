@@ -1,6 +1,6 @@
 <fieldset class="fieldset" x-data="{
-    localEpisodes: [],
-    localMedicalRecords: [],
+    localEpisodes: $wire.entangle('form.episodes'),
+    localMedicalRecords: $wire.entangle('form.medical_records'),
 
     openModal: false,
     openMedicalModal: false,
@@ -69,9 +69,9 @@
                 <table class="w-full mb-4 text-left border-collapse">
                     <thead>
                     <tr class="text-xs uppercase text-gray-400 border-b border-gray-100">
-                        <th class="py-3 px-2 font-medium w-32">Дата</th>
-                        <th class="py-3 px-2 font-medium">Назва епізоду</th>
-                        <th class="py-3 px-2 font-medium w-24 text-right">Дія</th>
+                        <th class="py-3 px-2 font-medium w-32">{{ __('care-plan.date') }}</th>
+                        <th class="py-3 px-2 font-medium">{{ __('care-plan.name_episode') }}</th>
+                        <th class="py-3 px-2 font-medium w-24 text-right">{{ __('forms.action') }}</th>
                     </tr>
                     </thead>
                     <tbody class="text-sm">
@@ -90,7 +90,7 @@
                 </table>
             </template>
             <button type="button" @click="initAdd('episode')" class="item-add flex items-center">
-                Додати епізод
+                {{ __('care-plan.add_episode') }}
             </button>
         </div>
 
@@ -99,9 +99,9 @@
                 <table class="w-full mb-4 text-left border-collapse">
                     <thead>
                     <tr class="text-xs uppercase text-gray-400 border-b border-gray-100">
-                        <th class="py-3 px-2 font-medium w-32">Дата</th>
-                        <th class="py-3 px-2 font-medium">Медичний запис</th>
-                        <th class="py-3 px-2 font-medium w-24 text-right">Дія</th>
+                        <th class="py-3 px-2 font-medium w-32">{{ __('care-plan.date') }}</th>
+                        <th class="py-3 px-2 font-medium">{{ __('care-plan.medical_record') }}</th>
+                        <th class="py-3 px-2 font-medium w-24 text-right">{{ __('forms.action') }}</th>
                     </tr>
                     </thead>
                     <tbody class="text-sm">
@@ -120,7 +120,7 @@
                 </table>
             </template>
             <button type="button" @click="openMedicalModal = true" class="item-add flex items-center">
-                Додати медичний запис
+                {{ __('care-plan.add_medical_record') }}
             </button>
         </div>
     </div>
@@ -154,9 +154,9 @@
                                        autocomplete="off">
                             </div>
                             <div>
-                                <label class="label-modal">Назва / Опис <span class="text-red-600">*</span></label>
+                                <label class="label-modal">{{ __('care-plan.name_description') }} <span class="text-red-600">*</span></label>
                                 <input type="text" x-model="modalForm.name"
-                                       :placeholder="modalTarget === 'episode' ? 'Назва епізоду...' : 'Назва запису...'"
+                                       :placeholder="modalTarget === 'episode' ? '{{ __('care-plan.episode_name_placeholder') }}' : '{{ __('care-plan.record_name_placeholder') }}'"
                                        class="input-modal w-full" required>
                             </div>
                         </div>
@@ -233,7 +233,7 @@
                                                id="recordTypeFilter"
                                                class="input peer w-full cursor-pointer text-gray-500 dark:text-gray-400"
                                                x-on:click="open = !open"
-                                               :value="types[selectedType] || 'Оберіть тип'"
+                                               :value="types[selectedType] || '{{ __('forms.select_type') }}'"
                                                readonly />
 
                                         <svg class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none"
@@ -255,12 +255,12 @@
                                             <ul class="py-2 text-sm text-gray-700 dark:text-gray-200">
                                                 <li class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
                                                     @click="selectedType = 'CONDITION'; open = false">
-                                                    Стани/діагнози
+                                                    {{ __('care-plan.conditions/diagnoses') }}
                                                 </li>
 
                                                 <li class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
                                                     @click="selectedType = 'OBSERVATION'; open = false">
-                                                    Спостереження
+                                                    {{ __('care-plan.observations') }}
                                                 </li>
                                             </ul>
                                         </div>

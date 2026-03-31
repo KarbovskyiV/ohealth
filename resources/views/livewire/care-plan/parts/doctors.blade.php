@@ -29,7 +29,10 @@
                         <select x-model="coAuthors[index]"
                                 class="input-select peer"
                                 :id="'coAuthor_' + index">
-                            <option value="" disabled selected hidden>{{ __('care-plan.find_doctor') }}</option>
+                            <option value="">{{ __('care-plan.find_doctor') }}</option>
+                            @foreach($doctors as $doctor)
+                                <option value="{{ $doctor['uuid'] }}">{{ $doctor['name'] }}</option>
+                            @endforeach
                         </select>
                         <label :for="'coAuthor_' + index" class="label">
                             {{ __('care-plan.co-author') }}

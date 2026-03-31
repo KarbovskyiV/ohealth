@@ -5,6 +5,45 @@
 
     <div class="form-row-2">
         <div class="form-group group">
+            <label for="clinical_protocol" class="label">
+                {{ __('care-plan.clinical_protocol') }}
+            </label>
+            <input type="text"
+                   name="clinical_protocol"
+                   id="clinical_protocol"
+                   class="input-select peer"
+                   placeholder="R53.0"
+                   wire:model="form.clinical_protocol"
+            >
+            @error('form.clinical_protocol')
+            <p class="text-error">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div class="form-group group">
+            <label for="context" class="label">
+                {{ __('care-plan.context') }}
+            </label>
+            <select id="context"
+                    name="context"
+                    class="input-select peer"
+                    wire:model="form.context"
+            >
+                <option value="">{{ __('forms.select') }}</option>
+                @isset($dictionaries['encounter_classes'])
+                    @foreach($dictionaries['encounter_classes'] as $code => $description)
+                        <option value="{{ $code }}">{{ $description }}</option>
+                    @endforeach
+                @endisset
+            </select>
+            @error('form.context')
+            <p class="text-error">{{ $message }}</p>
+            @enderror
+        </div>
+    </div>
+
+    <div class="form-row-2 mt-5">
+        <div class="form-group group">
             <label for="category" class="label">
                 {{ __('care-plan.category') }}
             </label>

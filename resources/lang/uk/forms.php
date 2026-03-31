@@ -315,6 +315,7 @@ return [
     'end_date' => 'Дата закінчення',
     'expiry_date' => 'Дата закінчення дії',
     'knedp' => 'КНЕДП',
+    'key_container' => 'Файл ключа (контейнер)',
     'key_container_upload' => 'Шлях до контейнера',
     'password' => 'Пароль',
     'password_confirmation' => 'Підтвердження пароля',

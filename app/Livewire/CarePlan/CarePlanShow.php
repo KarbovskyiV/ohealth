@@ -30,6 +30,7 @@ class CarePlanShow extends Component
     public string $actionType = ''; // 'cancel', 'complete', 'sign_activity'
     public string $statusReason = ''; // Used when cancelling or completing
     public ?int $activityToSign = null;
+    public array $dictionaries = [];
 
     // Activity Form state
     public array $activityForm = [
@@ -49,27 +50,33 @@ class CarePlanShow extends Component
         'product_codeable_concept' => '',
     ];
 
-    // KEP signature fields
-    public string $knedp = '';
-    public $keyContainerUpload = null;
-    public string $password = '';
+    public array $form = [
+        'knedp' => '',
+        'keyContainerUpload' => null,
+        'password' => '',
+    ];
 
-    public function mount(CarePlanRepository $repository, int $carePlan): void
+    public function mount(CarePlan $carePlan): void
     {
-        $plan = $repository->findById($carePlan);
-        if (!$plan) {
-            abort(404, 'Care Plan not found');
+        $this->carePlan = $carePlan;
+
+        try {
+            $basics = app(\App\Services\Dictionary\DictionaryManager::class)->basics();
+            $this->dictionaries['care_plan_categories'] = $basics->byName('eHealth/care_plan_categories')
+                ?->asCodeDescription()
+                ?->toArray() ?? [];
+        } catch (\Exception $exception) {
+            Log::warning('CarePlanShow: failed to load dictionaries: ' . $exception->getMessage());
         }
-        $this->carePlan = $plan;
     }
 
     protected function rulesForSigning(): array
     {
         return [
             'statusReason' => 'required|string',
-            'knedp' => 'required|string',
-            'keyContainerUpload' => 'required|file|max:1024',
-            'password' => 'required|string',
+            'form.knedp' => 'required|string',
+            'form.keyContainerUpload' => 'required|file|max:1024',
+            'form.password' => 'required|string',
         ];
     }
 
@@ -139,6 +146,10 @@ class CarePlanShow extends Component
         }
 
         if (empty($this->carePlan->uuid)) {
+            if ($this->actionType === 'sign_plan') {
+                $this->signPlan($repository);
+                return;
+            }
             Session::flash('error', __('care-plan.care_plan_not_synced'));
             $this->showSignatureModal = false;
             return;
@@ -158,9 +169,9 @@ class CarePlanShow extends Component
         try {
             $signedContent = signatureService()->signData(
                 Arr::toSnakeCase($payload),
-                $this->password,
-                $this->knedp,
-                $this->keyContainerUpload,
+                $this->form['password'],
+                $this->form['knedp'],
+                $this->form['keyContainerUpload'],
                 Auth::user()->party->taxId
             );
 
@@ -189,18 +200,92 @@ class CarePlanShow extends Component
 
         } catch (ConnectionException $exception) {
             Log::error('CarePlanShow: connection error: ' . $exception->getMessage());
-            Session::flash('error', "Виникла помилка. Відсутній зв'язок із ЕСОЗ.");
+            Session::flash('error', __('care-plan.connection_error'));
             $this->showSignatureModal = false;
         } catch (EHealthValidationException|EHealthResponseException $exception) {
             Log::error('CarePlanShow: eHealth error: ' . $exception->getMessage());
             $msg = $exception instanceof EHealthValidationException
                 ? $exception->getFormattedMessage()
-                : 'Помилка від ЕСОЗ: ' . $exception->getMessage();
+                : __('care-plan.ehealth_error_prefix') . $exception->getMessage();
             Session::flash('error', $msg);
             $this->showSignatureModal = false;
         } catch (\Throwable $exception) {
             Log::error('CarePlanShow: unexpected error: ' . $exception->getMessage());
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('care-plan.unexpected_error'));
+            $this->showSignatureModal = false;
+        }
+    }
+
+    private function signPlan(CarePlanRepository $repository): void
+    {
+        $legalEntity = legalEntity();
+
+        // Build eHealth payload from model
+        $carePlanPayload = removeEmptyKeys([
+            'intent' => 'order',
+            'status' => 'new',
+            'category' => is_array($this->carePlan->category) ? ($this->carePlan->category['coding'][0]['code'] ?? null) : $this->carePlan->category,
+            'instantiates_protocol' => $this->carePlan->clinical_protocol ? [['display' => $this->carePlan->clinical_protocol]] : null,
+            'context' => $this->carePlan->context ? ['identifier' => ['type_code' => $this->carePlan->context]] : null,
+            'title' => $this->carePlan->title,
+            'period' => array_filter([
+                'start' => $this->carePlan->period_start ? $this->carePlan->period_start->format('Y-m-d') : null,
+                'end' => $this->carePlan->period_end ? $this->carePlan->period_end->format('Y-m-d') : null,
+            ]),
+            'addresses' => $this->carePlan->addresses, // Already stored as array of diagnoses
+            'supporting_info' => array_merge(
+                array_map(fn($e) => ['display' => $e['name']], $this->carePlan->supporting_info['episodes'] ?? []),
+                array_map(fn($m) => ['display' => $m['name']], $this->carePlan->supporting_info['medical_records'] ?? [])
+            ),
+            'encounter' => $this->carePlan->encounter?->uuid ? ['identifier' => ['value' => $this->carePlan->encounter->uuid]] : null,
+            'care_manager' => ['identifier' => ['value' => Auth::user()?->activeEmployee()?->uuid]],
+            'description' => $this->carePlan->description ?: null,
+            'note' => $this->carePlan->note ?: null,
+            'inform_with' => $this->carePlan->inform_with ?: null,
+        ]);
+
+        try {
+            $signedContent = signatureService()->signData(
+                Arr::toSnakeCase($carePlanPayload),
+                $this->form['password'],
+                $this->form['knedp'],
+                $this->form['keyContainerUpload'],
+                Auth::user()->party->taxId
+            );
+
+            $eHealthResponse = EHealth::carePlan()->create([
+                'signed_content' => $signedContent,
+                'signed_content_encoding' => 'base64',
+            ]);
+
+            $responseData = $eHealthResponse->getData();
+
+            // Update local model
+            $repository->updateById($this->carePlan->id, [
+                'uuid' => $responseData['id'] ?? null,
+                'status' => $responseData['status'] ?? 'new',
+                'requisition' => $responseData['requisition'] ?? null,
+            ]);
+
+            $this->carePlan->refresh();
+
+            Session::flash('success', __('care-plan.signed_and_sent'));
+            $this->showSignatureModal = false;
+
+        } catch (ConnectionException $exception) {
+            Log::error('CarePlanShow: connection error: ' . $exception->getMessage());
+            Session::flash('error', __('care-plan.connection_error'));
+            $this->showSignatureModal = false;
+        } catch (EHealthValidationException|EHealthResponseException $exception) {
+            Log::error('CarePlanShow: eHealth error: ' . $exception->getMessage());
+            $msg = $exception instanceof EHealthValidationException
+                ? $exception->getFormattedMessage()
+                : __('care-plan.ehealth_error_prefix') . $exception->getMessage();
+            Session::flash('error', $msg);
+            $this->showSignatureModal = false;
+        } catch (\Throwable $exception) {
+            Log::error('CarePlanShow: unexpected error: ' . $exception->getMessage());
+            Session::flash('error', __('care-plan.unexpected_error'));
             $this->showSignatureModal = false;
         }
     }
@@ -238,9 +323,9 @@ class CarePlanShow extends Component
         try {
             $signedContent = signatureService()->signData(
                 Arr::toSnakeCase($activityPayload),
-                $this->password,
-                $this->knedp,
-                $this->keyContainerUpload,
+                $this->form['password'],
+                $this->form['knedp'],
+                $this->form['keyContainerUpload'],
                 Auth::user()->party->taxId
             );
 
@@ -265,18 +350,18 @@ class CarePlanShow extends Component
 
         } catch (ConnectionException $exception) {
             Log::error('CarePlanActivity: connection error: ' . $exception->getMessage());
-            Session::flash('error', "Виникла помилка. Відсутній зв'язок із ЕСОЗ.");
+            Session::flash('error', __('care-plan.connection_error'));
             $this->showSignatureModal = false;
         } catch (EHealthValidationException|EHealthResponseException $exception) {
             Log::error('CarePlanActivity: eHealth error: ' . $exception->getMessage());
             $msg = $exception instanceof EHealthValidationException
                 ? $exception->getFormattedMessage()
-                : 'Помилка від ЕСОЗ: ' . $exception->getMessage();
+                : __('care-plan.ehealth_error_prefix') . $exception->getMessage();
             Session::flash('error', $msg);
             $this->showSignatureModal = false;
         } catch (\Throwable $exception) {
             Log::error('CarePlanActivity: unexpected error: ' . $exception->getMessage());
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('care-plan.unexpected_error'));
             $this->showSignatureModal = false;
         }
     }

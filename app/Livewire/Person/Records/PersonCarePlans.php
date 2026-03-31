@@ -19,6 +19,15 @@ class PersonCarePlans extends BasePatientComponent
         /** @var CarePlanRepository $repository */
         $repository = app(CarePlanRepository::class);
         $this->carePlans = $repository->getByPersonId($this->id);
+
+        try {
+            $basics = app(\App\Services\Dictionary\DictionaryManager::class)->basics();
+            $this->dictionaries['care_plan_categories'] = $basics->byName('eHealth/care_plan_categories')
+                ?->asCodeDescription()
+                ?->toArray() ?? [];
+        } catch (\Exception $exception) {
+            \Illuminate\Support\Facades\Log::warning('PersonCarePlans: failed to load dictionaries: ' . $exception->getMessage());
+        }
     }
 
     public function render(): View

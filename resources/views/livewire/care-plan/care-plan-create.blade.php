@@ -3,11 +3,11 @@
 <section class="section-form">
     <x-header-navigation x-data="{ showFilter: false }" class="breadcrumb-form">
         <x-slot name="title">
-            {{ __('care-plan.new_care_plan') }}
+            {{ isset($carePlan) ? __('care-plan.edit_care_plan') : __('care-plan.new_care_plan') }}
         </x-slot>
     </x-header-navigation>
 
-    <div x-data="{ showSignatureModal: $wire.entangle('showSignatureModal').live }" class="form shift-content" wire:key="{{ time() }}">
+    <div x-data="{ showSignatureModal: $wire.entangle('showSignatureModal').live }" class="form shift-content">
 
         @include('livewire.care-plan.parts.doctors')
         @include('livewire.care-plan.parts.patient_data')
@@ -34,4 +34,12 @@
 
         @include('components.signature-modal', ['method' => 'sign'])
     </div>
+
+    @script
+    <script>
+        document.addEventListener('livewire:initialized', () => {
+            // Success/save feedback can be extended here if needed
+        });
+    </script>
+    @endscript
 </section>

@@ -32,4 +32,7 @@
             </tbody>
         </table>
     </div>
+    @error('form.encounter')
+    <p class="text-error mt-2">{{ $message }}</p>
+    @enderror
 </fieldset>

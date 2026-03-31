@@ -23,64 +23,80 @@
     class="form shift-content" wire:key="{{ time() }}">
 
         {{-- Plan Header --}}
-        <div class="flex items-center gap-3 mb-4">
-            <h2 class="title">{{ $carePlan->title }}</h2>
-            <span class="badge {{ in_array($carePlan->status, ['ACTIVE', 'active']) ? 'badge-success' : 'badge-secondary' }}">
-                {{ $carePlan->status }}
-            </span>
+        @php
+            $status = is_array($carePlan->status) ? ($carePlan->status['coding'][0]['code'] ?? ($carePlan->status['text'] ?? '')) : $carePlan->status;
+            $statusDisplay = is_array($carePlan->status) ? ($carePlan->status['text'] ?? ($carePlan->status['coding'][0]['display'] ?? $status)) : $status;
+            
+            $categoryCode = is_array($carePlan->category) ? ($carePlan->category['coding'][0]['code'] ?? ($carePlan->category['text'] ?? '')) : $carePlan->category;
+            $categoryLabel = $dictionaries['care_plan_categories'][$categoryCode] ?? $categoryCode;
+        @endphp
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <h2 class="title">{{ $carePlan->title }}</h2>
+                <span class="badge {{ in_array(strtoupper($status), ['ACTIVE', 'active']) ? 'badge-success' : 'badge-secondary' }}">
+                    {{ $statusDisplay }}
+                </span>
+            </div>
+            
+            @if(!$carePlan->uuid && in_array(strtoupper($status), ['NEW', 'DRAFT']))
+                <a href="{{ route('care-plan.edit', [legalEntity(), $carePlan->id]) }}" 
+                   class="button-secondary flex items-center gap-2"
+                   wire:navigate>
+                    @icon('edit-user-outline', 'w-4 h-4')
+                    <span>{{ __('forms.edit') }}</span>
+                </a>
+            @endif
         </div>
 
-        {{-- Core Details --}}
-        <fieldset class="fieldset">
-            <legend class="legend">{{ __('care-plan.care_plan_data') }}</legend>
+        {{-- Core Details Card --}}
+        <div class="record-inner-card">
+            <div class="record-inner-body">
+                <div class="record-inner-grid-container">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                        <div class="record-inner-column">
+                            <div class="record-inner-label">{{ __('care-plan.category') }}</div>
+                            <div class="record-inner-value">{{ $categoryLabel ?: '-' }}</div>
+                        </div>
+                        <div class="record-inner-column">
+                            <div class="record-inner-label">{{ __('care-plan.name_care_plan') }}</div>
+                            <div class="record-inner-value">{{ $carePlan->title }}</div>
+                        </div>
 
-            <div class="form-row-2">
-                <div>
-                    <p class="label">{{ __('care-plan.category') }}</p>
-                    <p class="value">{{ $carePlan->category ?? '-' }}</p>
-                </div>
-                <div>
-                    <p class="label">{{ __('care-plan.name_care_plan') }}</p>
-                    <p class="value">{{ $carePlan->title }}</p>
+                        <div class="record-inner-column border-t border-gray-100 dark:border-gray-700 pt-3">
+                            <div class="record-inner-label">{{ __('forms.start_date') }}</div>
+                            <div class="record-inner-value">{{ $carePlan->period_start?->format('d.m.Y') ?? '-' }}</div>
+                        </div>
+                        <div class="record-inner-column border-t border-gray-100 dark:border-gray-700 pt-3">
+                            <div class="record-inner-label">{{ __('forms.end_date') }}</div>
+                            <div class="record-inner-value">{{ $carePlan->period_end ? $carePlan->period_end->format('d.m.Y') : __('care-plan.no_end_date') }}</div>
+                        </div>
+
+                        <div class="record-inner-column border-t border-gray-100 dark:border-gray-700 pt-3">
+                            <div class="record-inner-label">{{ __('care-plan.patient') }}</div>
+                            <div class="record-inner-value text-blue-600">{{ $carePlan->person?->full_name ?? '-' }}</div>
+                        </div>
+                        <div class="record-inner-column border-t border-gray-100 dark:border-gray-700 pt-3">
+                            <div class="record-inner-label">{{ __('care-plan.author') }}</div>
+                            <div class="record-inner-value">{{ $carePlan->author?->party?->full_name ?? '-' }}</div>
+                        </div>
+                    </div>
+
+                    @if($carePlan->description)
+                    <div class="record-inner-column border-t border-gray-100 dark:border-gray-700 pt-3 mt-2">
+                        <div class="record-inner-label">{{ __('care-plan.extended_description') }}</div>
+                        <div class="record-inner-value whitespace-pre-line">{{ $carePlan->description }}</div>
+                    </div>
+                    @endif
                 </div>
             </div>
-
-            <div class="form-row-2 mt-3">
-                <div>
-                    <p class="label">{{ __('forms.start_date') }}</p>
-                    <p class="value">{{ $carePlan->period_start?->format('d.m.Y') ?? '-' }}</p>
-                </div>
-                <div>
-                    <p class="label">{{ __('forms.end_date') }}</p>
-                    <p class="value">{{ $carePlan->period_end ? $carePlan->period_end->format('d.m.Y') : __('care-plan.no_end_date') }}</p>
-                </div>
-            </div>
-
-            <div class="form-row-2 mt-3">
-                <div>
-                    <p class="label">{{ __('care-plan.patient') }}</p>
-                    <p class="value">{{ $carePlan->person?->last_name }} {{ $carePlan->person?->first_name }}</p>
-                </div>
-                <div>
-                    <p class="label">{{ __('care-plan.author') }}</p>
-                    <p class="value">{{ $carePlan->author?->party?->last_name }} {{ $carePlan->author?->party?->first_name }}</p>
-                </div>
-            </div>
-
-            @if($carePlan->description)
-            <div class="mt-3">
-                <p class="label">{{ __('care-plan.description') }}</p>
-                <p class="value">{{ $carePlan->description }}</p>
-            </div>
-            @endif
-        </fieldset>
+        </div>
 
         {{-- Activities Table --}}
         <fieldset class="fieldset mt-6">
             <div class="flex items-center justify-between mb-4">
                 <legend class="legend mb-0">{{ __('care-plan.activities') }}</legend>
                 
-                @if(in_array($carePlan->status, ['ACTIVE', 'active']))
+                @if(in_array(strtoupper($status), ['ACTIVE', 'active']))
                     {{-- Dropdown for New Prescription --}}
                     <div class="relative">
                         <button type="button" 
@@ -113,29 +129,47 @@
                 @endif
             </div>
 
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
+            <div class="flow-root mt-4">
+                <table class="table-input w-full table-fixed min-w-[800px] text-sm">
+                    <thead class="thead-input">
                         <tr>
-                            <th>{{ __('care-plan.kind') }}</th>
-                            <th>{{ __('care-plan.quantity') }}</th>
-                            <th>{{ __('forms.start_date') }}</th>
-                            <th>{{ __('forms.status') }}</th>
-                            <th></th>
+                            <th scope="col" class="th-input w-[30%]">{{ __('care-plan.kind') }}</th>
+                            <th scope="col" class="th-input w-[15%]">{{ __('care-plan.quantity') }}</th>
+                            <th scope="col" class="th-input w-[20%]">{{ __('forms.start_date') }}</th>
+                            <th scope="col" class="th-input w-[20%]">{{ __('forms.status.label') }}</th>
+                            <th scope="col" class="th-input w-[15%]"></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="divide-y divide-gray-100">
                         @forelse($carePlan->activities ?? [] as $activity)
                             <tr>
-                                <td>{{ $activity->kind }}</td>
-                                <td>{{ $activity->quantity ?? '-' }}</td>
-                                <td>{{ $activity->scheduled_period_start?->format('d.m.Y') }}</td>
-                                <td>
-                                    <span class="badge {{ $activity->status === 'NEW' ? 'badge-warning' : 'badge-success' }}">
-                                        {{ $activity->status }}
+                                <td class="td-input break-words whitespace-normal align-top">
+                                    @if(is_array($activity->kind))
+                                        {{ $activity->kind['text'] ?? $activity->kind['coding'][0]['display'] ?? $activity->kind['coding'][0]['code'] ?? '-' }}
+                                    @else
+                                        {{ $activity->kind ?? '-' }}
+                                    @endif
+                                </td>
+                                <td class="td-input break-words whitespace-normal align-top">
+                                    @if(is_array($activity->quantity))
+                                        {{ $activity->quantity['value'] ?? '-' }} {{ $activity->quantity['unit'] ?? '' }}
+                                    @else
+                                        {{ $activity->quantity ?? '-' }}
+                                    @endif
+                                </td>
+                                <td class="td-input break-words whitespace-normal align-top">
+                                    {{ $activity->scheduled_period_start?->format('d.m.Y') }}
+                                </td>
+                                <td class="td-input break-words whitespace-normal align-top">
+                                    @php
+                                        $activityStatus = is_array($activity->status) ? ($activity->status['coding'][0]['code'] ?? ($activity->status['text'] ?? '')) : $activity->status;
+                                        $activityStatusDisplay = is_array($activity->status) ? ($activity->status['text'] ?? ($activity->status['coding'][0]['display'] ?? $activityStatus)) : $activityStatus;
+                                    @endphp
+                                    <span class="badge {{ in_array(strtoupper($activityStatus), ['NEW', 'DRAFT']) ? 'badge-warning' : 'badge-success' }}">
+                                        {{ $activityStatusDisplay }}
                                     </span>
                                 </td>
-                                <td class="text-right">
+                                <td class="td-input text-right align-middle">
                                     @if($activity->status === 'NEW')
                                         <button type="button"
                                                 class="text-blue-600 hover:text-blue-800 text-sm font-medium"
@@ -147,7 +181,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center py-4 text-gray-400">
+                                <td colspan="5" class="td-input text-center py-8 text-gray-400">
                                     {{ __('care-plan.no_activities') }}
                                 </td>
                             </tr>
@@ -157,10 +191,18 @@
             </div>
         </fieldset>
 
-        {{-- Action Buttons for ACTIVE/NEW plans synced with eHealth --}}
-        @if(in_array($carePlan->status, ['ACTIVE', 'NEW', 'active', 'new']) && $carePlan->uuid)
-            <div class="mt-6 flex flex-row items-center gap-4 pt-6">
-
+        {{-- Action Buttons --}}
+        <div class="mt-6 flex flex-row items-center gap-4 pt-6">
+            @if(!$carePlan->uuid && in_array(strtoupper($status), ['NEW', 'DRAFT']))
+                {{-- Sign button for drafts --}}
+                <div class="flex items-center gap-3">
+                    <button type="button"
+                            class="button-primary"
+                            @click="$wire.openSignatureModal('sign_plan')">
+                        {{ __('care-plan.sign_and_send') }}
+                    </button>
+                </div>
+            @elseif($carePlan->uuid && in_array(strtoupper($status), ['ACTIVE', 'NEW', 'active', 'new']))
                 {{-- Status Reason (shown above the modal trigger) --}}
                 <x-forms.textarea
                     id="statusReason"
@@ -183,10 +225,10 @@
                         {{ __('care-plan.cancel_care_plan') }}
                     </button>
                 </div>
-            </div>
+            @endif
+        </div>
 
-            @include('components.signature-modal', ['method' => 'sign'])
-        @endif
+        @include('components.signature-modal', ['method' => 'sign'])
 
         {{-- Drawers --}}
         @include('livewire.care-plan.parts.modals.services-drawer')
