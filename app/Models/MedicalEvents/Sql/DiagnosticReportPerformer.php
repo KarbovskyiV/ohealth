@@ -11,7 +11,11 @@ class DiagnosticReportPerformer extends Model
 {
     protected $table = 'diagnostic_report_performer';
 
-    protected $guarded = [];
+    protected $fillable = [
+        'diagnostic_report_id',
+        'reference_id',
+        'text'
+    ];
 
     protected $hidden = [
         'id',

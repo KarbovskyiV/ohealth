@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Repositories\MedicalEvents;
 
 use App\Classes\eHealth\Api\PatientApi;
+use App\Core\Arr;
+use App\Models\MedicalEvents\Sql\CodeableConcept;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\MedicalEvents\Sql\DiagnosticReportPerformer;
 use App\Models\MedicalEvents\Sql\DiagnosticReportResultsInterpreter;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -313,5 +314,305 @@ class DiagnosticReportRepository extends BaseRepository
 
             return $diagnosticReport;
         }, $diagnosticReports);
+    }
+
+    /**
+     * Sync diagnostic report data and related data by deleting and creating.
+     *
+     * @param  int  $personId
+     * @param  array  $validatedData
+     * @return void
+     * @throws Throwable
+     */
+    public function sync(int $personId, array $validatedData): void
+    {
+        DB::transaction(function () use ($personId, $validatedData) {
+            // Load existing diagnostic reports with relations
+            $uuids = collect($validatedData)->pluck('uuid')->toArray();
+            $existingDiagnosticReports = $this->model::whereIn('uuid', $uuids)
+                ->withAllRelations()
+                ->get()
+                ->keyBy('uuid');
+
+            foreach ($validatedData as $data) {
+                $existing = $existingDiagnosticReports->get($data['uuid']);
+
+                // Store relationships
+                $basedOn = null;
+                if (isset($data['based_on'])) {
+                    $basedOn = Repository::identifier()->store($data['based_on']['identifier']['value']);
+                    Repository::codeableConcept()->attach($basedOn, $data['based_on']);
+                }
+
+                $code = Repository::identifier()->store($data['code']['identifier']['value']);
+                Repository::codeableConcept()->attach($code, $data['code']);
+
+                $encounter = null;
+                if (isset($data['encounter'])) {
+                    $encounter = Repository::identifier()->store($data['encounter']['identifier']['value']);
+                    Repository::codeableConcept()->attach($encounter, $data['encounter']);
+                }
+
+                $division = null;
+                if (isset($data['division'])) {
+                    $division = Repository::identifier()->store($data['division']['identifier']['value']);
+                    Repository::codeableConcept()->attach($division, $data['division']);
+                }
+
+                $conclusionCode = null;
+                if (isset($data['conclusion_code'])) {
+                    $conclusionCode = Repository::codeableConcept()->store($data['conclusion_code']);
+                }
+
+                $recordedBy = Repository::identifier()->store($data['recorded_by']['identifier']['value']);
+                Repository::codeableConcept()->attach($recordedBy, $data['recorded_by']);
+
+                $managingOrganization = null;
+                if (isset($data['managing_organization'])) {
+                    $managingOrganization = Repository::identifier()->store(
+                        $data['managing_organization']['identifier']['value']
+                    );
+                    Repository::codeableConcept()->attach($managingOrganization, $data['managing_organization']);
+                }
+
+                $reportOrigin = null;
+                if (isset($data['report_origin'])) {
+                    $reportOrigin = Repository::codeableConcept()->store($data['report_origin']);
+                }
+
+                $originEpisode = null;
+                if (isset($data['origin_episode'])) {
+                    $originEpisode = Repository::identifier()->store($data['origin_episode']['identifier']['value']);
+                    Repository::codeableConcept()->attach($originEpisode, $data['origin_episode']);
+                }
+
+                $cancellationReason = null;
+                if (isset($data['cancellation_reason'])) {
+                    $cancellationReason = Repository::codeableConcept()->store($data['cancellation_reason']);
+                }
+
+                // Create or update main diagnostic report
+                /** @var DiagnosticReport $diagnosticReport */
+                $diagnosticReport = $this->model::updateOrCreate(
+                    ['uuid' => $data['uuid']],
+                    array_merge(
+                        [
+                        'person_id' => $personId,
+                        'based_on_id' => $basedOn?->id,
+                        'code_id' => $code->id,
+                        'encounter_id' => $encounter?->id,
+                        'division_id' => $division?->id,
+                        'conclusion_code_id' => $conclusionCode?->id,
+                        'recorded_by_id' => $recordedBy->id,
+                        'managing_organization_id' => $managingOrganization?->id,
+                        'report_origin_id' => $reportOrigin?->id,
+                        'origin_episode_id' => $originEpisode?->id,
+                        'cancellation_reason_id' => $cancellationReason?->id
+                    ],
+                        Arr::except($data, [
+                            'based_on',
+                            'code',
+                            'encounter',
+                            'division',
+                            'conclusion_code',
+                            'recorded_by',
+                            'managing_organization',
+                            'report_origin',
+                            'origin_episode',
+                            'cancellation_reason',
+                            'paper_referral',
+                            'category',
+                            'effective_period',
+                            'performer',
+                            'results_interpreter',
+                            'specimens',
+                            'used_references'
+                        ])
+                    )
+                );
+
+                if (isset($data['paper_referral'])) {
+                    Repository::paperReferral()->sync($data['paper_referral'], $diagnosticReport);
+                }
+
+                $categoriesIds = [];
+                if (isset($data['category'])) {
+                    foreach ($data['category'] as $categoryData) {
+                        $category = Repository::codeableConcept()->store($categoryData);
+                        $categoriesIds[] = $category->id;
+                    }
+                }
+                $diagnosticReport->category()->sync($categoriesIds);
+
+                if (isset($data['effective_period'])) {
+                    $diagnosticReport->effectivePeriod()->delete();
+                    $diagnosticReport->effectivePeriod()->create([
+                        'start' => $data['effective_period']['start'],
+                        'end' => $data['effective_period']['end']
+                    ]);
+                }
+
+                $diagnosticReport->performer()->delete();
+                if (isset($data['performer'])) {
+                    $performerReference = null;
+                    if (isset($data['performer']['reference'])) {
+                        $performerReference = Repository::identifier()->store(
+                            $data['performer']['reference']['identifier']['value']
+                        );
+                        Repository::codeableConcept()->attach($performerReference, $data['performer']['reference']);
+                    }
+
+                    DiagnosticReportPerformer::create([
+                        'diagnostic_report_id' => $diagnosticReport->id,
+                        'reference_id' => $performerReference?->id,
+                        'text' => $data['performer']['text'] ?? null
+                    ]);
+                }
+
+                $diagnosticReport->resultsInterpreter()->delete();
+                if (isset($data['results_interpreter'])) {
+                    $interpreterReference = null;
+                    if (isset($data['results_interpreter']['reference'])) {
+                        $interpreterReference = Repository::identifier()->store(
+                            $data['results_interpreter']['reference']['identifier']['value']
+                        );
+                        Repository::codeableConcept()->attach(
+                            $interpreterReference,
+                            $data['results_interpreter']['reference']
+                        );
+                    }
+
+                    DiagnosticReportResultsInterpreter::create([
+                        'diagnostic_report_id' => $diagnosticReport->id,
+                        'reference_id' => $interpreterReference?->id,
+                        'text' => $data['results_interpreter']['text'] ?? null
+                    ]);
+                }
+
+                // Sync specimens (many-to-many relationship)
+                $specimenIds = [];
+                if (isset($data['specimens'])) {
+                    foreach ($data['specimens'] as $specimenData) {
+                        $specimen = Repository::identifier()->store($specimenData['identifier']['value']);
+                        Repository::codeableConcept()->attach($specimen, $specimenData);
+                        $specimenIds[] = $specimen->id;
+                    }
+                }
+                $diagnosticReport->specimens()->sync($specimenIds);
+
+                // Sync used references (many-to-many relationship)
+                $usedReferenceIds = [];
+                if (isset($data['used_references'])) {
+                    foreach ($data['used_references'] as $usedReferenceData) {
+                        $usedReference = Repository::identifier()->store($usedReferenceData['identifier']['value']);
+                        Repository::codeableConcept()->attach($usedReference, $usedReferenceData);
+                        $usedReferenceIds[] = $usedReference->id;
+                    }
+                }
+                $diagnosticReport->usedReferences()->sync($usedReferenceIds);
+
+                // Cleanup old relationships after all updates are done
+                if ($existing) {
+                    $this->cleanupRelations($existing);
+                }
+            }
+        });
+    }
+
+    /**
+     * Remove orphaned relations after diagnostic report FK update.
+     *
+     * @param  DiagnosticReport  $existing
+     * @return void
+     */
+    private function cleanupRelations(DiagnosticReport $existing): void
+    {
+        if ($existing->basedOn) {
+            $existing->basedOn->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->basedOn->type()->delete();
+            $existing->basedOn->delete();
+        }
+
+        if ($existing->code) {
+            $existing->code->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->code->type()->delete();
+            $existing->code->delete();
+        }
+
+        if ($existing->encounter) {
+            $existing->encounter->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->encounter->type()->delete();
+            $existing->encounter->delete();
+        }
+
+        if ($existing->division) {
+            $existing->division->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->division->type()->delete();
+            $existing->division->delete();
+        }
+
+        if ($existing->conclusionCode) {
+            $existing->conclusionCode->coding()->delete();
+            $existing->conclusionCode->delete();
+        }
+
+        if ($existing->recordedBy) {
+            $existing->recordedBy->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->recordedBy->type()->delete();
+            $existing->recordedBy->delete();
+        }
+
+        if ($existing->managingOrganization) {
+            $existing->managingOrganization->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->managingOrganization->type()->delete();
+            $existing->managingOrganization->delete();
+        }
+
+        if ($existing->reportOrigin) {
+            $existing->reportOrigin->coding()->delete();
+            $existing->reportOrigin->delete();
+        }
+
+        if ($existing->originEpisode) {
+            $existing->originEpisode->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->originEpisode->type()->delete();
+            $existing->originEpisode->delete();
+        }
+
+        if ($existing->cancellationReason) {
+            $existing->cancellationReason->coding()->delete();
+            $existing->cancellationReason->delete();
+        }
+
+        foreach ($existing->category as $category) {
+            $category->coding()->delete();
+            $category->delete();
+        }
+
+        if ($existing->performer && $existing->performer->reference) {
+            $existing->performer->reference->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->performer->reference->type()->delete();
+            $existing->performer->reference->delete();
+        }
+
+        if ($existing->resultsInterpreter && $existing->resultsInterpreter->reference) {
+            $existing->resultsInterpreter->reference->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $existing->resultsInterpreter->reference->type()->delete();
+            $existing->resultsInterpreter->reference->delete();
+        }
+
+        // Cleanup specimens relationships
+        foreach ($existing->specimens as $specimen) {
+            $specimen->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $specimen->type()->delete();
+            $specimen->delete();
+        }
+
+        // Cleanup used references relationships
+        foreach ($existing->usedReferences as $usedReference) {
+            $usedReference->type->each(fn (CodeableConcept $cc) => $cc->coding()->delete());
+            $usedReference->type()->delete();
+            $usedReference->delete();
+        }
     }
 }

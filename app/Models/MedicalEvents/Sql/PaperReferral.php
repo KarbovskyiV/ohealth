@@ -11,7 +11,14 @@ class PaperReferral extends Model
 {
     use HasCamelCasing;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'requisition',
+        'requester_legal_entity_name',
+        'requester_legal_entity_edrpou',
+        'requester_employee_name',
+        'service_request_date',
+        'note'
+    ];
 
     protected $hidden = [
         'id',

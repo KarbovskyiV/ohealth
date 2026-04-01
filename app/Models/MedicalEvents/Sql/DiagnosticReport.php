@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Models\MedicalEvents\Sql;
 
+use App\Enums\Person\DiagnosticReportStatus;
 use Carbon\CarbonImmutable;
 use Eloquence\Behaviours\HasCamelCasing;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,10 +20,33 @@ class DiagnosticReport extends Model
 {
     use HasCamelCasing;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'uuid',
+        'person_id',
+        'encounter_internal_id',
+        'based_on_id',
+        'status',
+        'code_id',
+        'effective_date_time',
+        'issued',
+        'conclusion',
+        'conclusion_code_id',
+        'recorded_by_id',
+        'encounter_id',
+        'primary_source',
+        'division_id',
+        'managing_organization_id',
+        'report_origin_id',
+        'origin_episode_id',
+        'explanatory_letter',
+        'cancellation_reason_id',
+        'ehealth_inserted_at',
+        'ehealth_updated_at'
+    ];
 
     protected $hidden = [
         'id',
+        'person_id',
         'encounter_internal_id',
         'based_on_id',
         'code_id',
@@ -30,12 +56,16 @@ class DiagnosticReport extends Model
         'division_id',
         'managing_organization_id',
         'encounter_id',
+        'report_origin_id',
+        'origin_episode_id',
+        'cancellation_reason_id',
         'created_at',
         'updated_at'
     ];
 
     protected $casts = [
         'issued' => 'immutable_datetime',
+        'status' => DiagnosticReportStatus::class
     ];
 
     protected $appends = [
@@ -137,6 +167,16 @@ class DiagnosticReport extends Model
         return $this->belongsTo(Identifier::class, 'encounter_id');
     }
 
+    public function originEpisode(): BelongsTo
+    {
+        return $this->belongsTo(Identifier::class, 'origin_episode_id');
+    }
+
+    public function cancellationReason(): BelongsTo
+    {
+        return $this->belongsTo(CodeableConcept::class, 'cancellation_reason_id');
+    }
+
     public function performer(): HasOne
     {
         return $this->hasOne(DiagnosticReportPerformer::class);
@@ -160,5 +200,42 @@ class DiagnosticReport extends Model
     public function resultsInterpreter(): HasOne
     {
         return $this->hasOne(DiagnosticReportResultsInterpreter::class);
+    }
+
+    public function specimens(): BelongsToMany
+    {
+        return $this->belongsToMany(Identifier::class, 'diagnostic_report_specimens', 'diagnostic_report_id', 'identifier_id')->withTimestamps();
+    }
+
+    public function usedReferences(): BelongsToMany
+    {
+        return $this->belongsToMany(Identifier::class, 'diagnostic_report_used_references', 'diagnostic_report_id', 'identifier_id')->withTimestamps();
+    }
+
+    /**
+     * Scope to eager load all diagnostic report relationships.
+     */
+    #[Scope]
+    protected function withAllRelations(Builder $query): Builder
+    {
+        return $query->with([
+            'basedOn.type.coding',
+            'paperReferral',
+            'code.type.coding',
+            'category.coding',
+            'effectivePeriod',
+            'conclusionCode.coding',
+            'recordedBy.type.coding',
+            'encounter.type.coding',
+            'originEpisode.type.coding',
+            'cancellationReason.coding',
+            'performer.reference.type.coding',
+            'managingOrganization.type.coding',
+            'division.type.coding',
+            'reportOrigin.coding',
+            'resultsInterpreter.reference.type.coding',
+            'specimens.type.coding',
+            'usedReferences.type.coding'
+        ]);
     }
 }

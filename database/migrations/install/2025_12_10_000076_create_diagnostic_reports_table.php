@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Person\DiagnosticReportStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -16,9 +17,10 @@ return new class extends Migration
         Schema::create('diagnostic_reports', static function (Blueprint $table) {
             $table->id();
             $table->uuid()->unique();
+            $table->foreignId('person_id')->constrained('persons');
             $table->foreignId('encounter_internal_id')->nullable()->constrained('encounters');
             $table->foreignId('based_on_id')->nullable()->constrained('identifiers');
-            $table->enum('status', ['final', 'entered_in_error']);
+            $table->enum('status', DiagnosticReportStatus::values());
             $table->foreignId('code_id')->constrained('identifiers');
             $table->timestamp('effective_date_time')->nullable();
             $table->timestamp('issued');

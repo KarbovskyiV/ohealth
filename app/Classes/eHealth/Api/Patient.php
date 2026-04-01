@@ -194,26 +194,7 @@ class Patient extends Request
     }
 
     /**
-     * Get a list of summary info about diagnostic reports.
-     *
-     * @param  string  $patientId
-     * @param  array{code?: string, issued_from?: string, issued_to?: string, page?: int, page_size?: int}  $query
-     * @return PromiseInterface|EHealthResponse
-     * @throws ConnectionException|EHealthValidationException|EHealthResponseException
-     *
-     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/patient-summary/get-diagnostic-report-by-search-params
-     */
-    public function getDiagnosticReports(string $patientId, array $query = []): PromiseInterface|EHealthResponse
-    {
-        $this->setDefaultPageSize();
-
-        $mergedQuery = array_merge($this->options['query'], $query ?? []);
-
-        return $this->get(self::URL . "/$patientId/summary/diagnostic_reports", $mergedQuery);
-    }
-
-    /**
-     * Get a list of summary info about diagnostic reports.
+     * Get a list of summary info about allergy intolerances.
      *
      * @param  string  $patientId
      * @param  array{code?: string, onset_date_time_from?: string, onset_date_time_to?: string, page?: int, page_size?: int}  $query
