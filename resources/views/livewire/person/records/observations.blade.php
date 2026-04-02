@@ -15,7 +15,7 @@
             {{ __('patients.data_access') }}
         </button>
 
-        <button wire:click.prevent="syncDiagnosticReports"
+        <button wire:click.prevent="syncObservations"
                 type="button"
                 class="button-sync flex items-center gap-2 whitespace-nowrap px-5 py-2 text-sm shadow-sm"
         >
@@ -28,7 +28,7 @@
         <div class="w-full mt-6" x-data="{ showAdditionalParams: @entangle('showAdditionalParams') }">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
                 @icon('search-outline', 'w-4.5 h-4.5')
-                <p>{{ __('patients.diagnostic_reports') }}</p>
+                <p>{{ __('patients.observations') }}</p>
             </div>
 
             <div class="form-row-3 mb-6">
@@ -128,7 +128,7 @@
                 </div>
             </div>
 
-            <div x-show="showAdditionalParams" x-transition x-cloak wire:key="examinations-search-filters">
+            <div x-show="showAdditionalParams" x-transition x-cloak wire:key="observations-search-filters">
                 <div class="form-row-3 mb-6">
                     <div class="form-group group">
                         <div class="datepicker-wrapper">

@@ -5,7 +5,7 @@ namespace App\Livewire\Person\Records;
 use App\Livewire\Person\Records\BasePatientComponent;
 use Livewire\Attributes\Url;
 
-class PatientExaminations extends BasePatientComponent
+class PatientObservation extends BasePatientComponent
 {
     public string $filterService = '';
 
@@ -33,7 +33,7 @@ class PatientExaminations extends BasePatientComponent
 
     public function render()
     {
-        return view('livewire.person.records.examinations');
+        return view('livewire.person.records.observations');
     }
 
     public function searchReports(): void
@@ -41,7 +41,7 @@ class PatientExaminations extends BasePatientComponent
         // Search logic here
     }
 
-    public function syncDiagnosticReports(): void
+    public function syncObservations(): void
     {
         // Sync logic here
     }
