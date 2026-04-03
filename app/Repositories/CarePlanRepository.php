@@ -82,4 +82,73 @@ class CarePlanRepository
             'inform_with' => $form['inform_with'] ?: null,
         ]);
     }
+
+    public function syncCarePlans(\App\Models\Person\Person $person, array $query = []): void
+    {
+        $response = EHealth::carePlan()->getSummary($person->uuid, $query);
+        $data = $response->getData();
+
+        if (!isset($data['data']) || !is_array($data['data'])) {
+            return;
+        }
+
+        $validator = \Illuminate\Support\Facades\Validator::make($data['data'], [
+            '*' => 'array',
+            '*.id' => 'required|uuid',
+            '*.status' => 'required|string',
+            '*.title' => 'required|string',
+            '*.description' => 'nullable|string',
+            '*.note' => 'nullable|string',
+            '*.category' => 'nullable|array',
+            '*.category.coding' => 'nullable|array',
+            '*.period' => 'nullable|array',
+            '*.period.start' => 'nullable|date',
+            '*.period.end' => 'nullable|date',
+        ]);
+
+        if ($validator->fails()) {
+            throw new \Illuminate\Validation\ValidationException($validator);
+        }
+        $validData = $validator->validated();
+
+        $activityRepo = app(CarePlanActivityRepository::class);
+
+        foreach ($validData as $index => $item) {
+            $rawFhir = $data['data'][$index];
+
+            \App\Models\MedicalEvents\Mongo\CarePlan::updateOrCreate(
+                ['uuid' => $item['id']],
+                ['data' => $rawFhir]
+            );
+
+            $periodStart = isset($item['period']['start']) ? \Carbon\Carbon::parse($item['period']['start']) : null;
+            $periodEnd = isset($item['period']['end']) ? \Carbon\Carbon::parse($item['period']['end']) : null;
+
+            $category = null;
+            if (isset($item['category']['text'])) {
+                $category = $item['category']['text'];
+            } elseif (isset($item['category']['coding'][0]['display'])) {
+                $category = $item['category']['coding'][0]['display'];
+            } elseif (isset($item['category']['coding'][0]['code'])) {
+                $category = $item['category']['coding'][0]['code'];
+            }
+
+            $carePlan = CarePlan::updateOrCreate(
+                ['uuid' => $item['id']],
+                [
+                    'person_id' => $person->id,
+                    'status' => $item['status'],
+                    'category' => $category,
+                    'title' => $item['title'],
+                    'description' => $item['description'] ?? null,
+                    'note' => $item['note'] ?? null,
+                    'period_start' => $periodStart,
+                    'period_end' => $periodEnd,
+                ]
+            );
+
+            // Trigger sync for activities directly for each plan found active or relevant
+            $activityRepo->syncActivities($person, $carePlan);
+        }
+    }
 }

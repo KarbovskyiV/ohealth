@@ -78,4 +78,16 @@ class CarePlan extends Request
     {
         return $this->patch("/api/patients/$personId/care_plans/$id/actions/complete", $payload);
     }
+
+    /**
+     * Fetch a summary of Care Plans for a specific patient.
+     *
+     * @param string $personId
+     * @param array $query
+     * @return PromiseInterface|EHealthResponse
+     */
+    public function getSummary(string $personId, array $query = []): PromiseInterface|EHealthResponse
+    {
+        return $this->get("/api/patients/$personId/care_plans", $query);
+    }
 }
