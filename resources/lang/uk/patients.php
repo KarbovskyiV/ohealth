@@ -267,7 +267,8 @@ return [
     'filter_type' => 'Тип',
 
     // Diagnoses record
-
+    'diagnoses_search' => 'Пошук діагнозів',
+    'diagnoses' => 'Діагнози',
     // Observations record
     'observations' => 'Обстеження',
     'condition_search' => 'Пошук станів',

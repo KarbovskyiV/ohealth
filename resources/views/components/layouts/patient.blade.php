@@ -65,8 +65,8 @@
                     {{ __('patients.condition') }}
                 </a>
 
-                <a href="javascript:void(0)"
-                   class="summary-tab summary-tab-inactive cursor-not-allowed opacity-60"
+                <a href="{{ route('persons.diagnoses', [legalEntity(), 'id' => $id]) }}"
+                   class="summary-tab {{ request()->routeIs('persons.diagnoses') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                 >
                     {{ __('patients.diagnoses') }}
                 </a>

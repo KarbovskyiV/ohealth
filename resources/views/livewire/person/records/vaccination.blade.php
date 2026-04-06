@@ -381,7 +381,7 @@
                         <div class="record-inner-column-bordered w-full md:w-[180px] shrink-0">
                             <div class="record-inner-label">{{ __('patients.status_label') }}</div>
                             <div>
-                                <span class="record-inner-status-badge">
+                                <span class="badge-green">
                                     {{ __('patients.status_done') }}
                                 </span>
                             </div>
@@ -432,7 +432,7 @@
                                     </button>
 
                                     <button @click="close($refs.button)"
-                                            class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors text-red-600/90"
+                                            class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
                                     >
                                         @icon('alert-circle', 'w-5 h-5 text-gray-500')
                                         {{ __('patients.status.entered_in_error') }}

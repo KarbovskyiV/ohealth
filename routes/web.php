@@ -73,6 +73,7 @@ use App\Livewire\Person\Records\PatientObservation;
 use App\Livewire\Person\Records\PatientCondition;
 use App\Livewire\Person\Records\PatientSummary;
 use App\Livewire\Person\Records\PatientVaccination;
+use App\Livewire\Person\Records\PatientDiagnoses;
 use App\Livewire\Procedure\ProcedureCreate;
 use App\Models\Declaration;
 use App\Models\DeclarationRequest;
@@ -287,6 +288,7 @@ Route::middleware(['auth:web,ehealth', 'verified'])->group(function () {
                         Route::get('/{id}/observations', PatientObservation::class)->name('observations');
                         Route::get('/{id}/vaccination', PatientVaccination::class)->name('vaccination');
                         Route::get('/{id}/condition', PatientCondition::class)->name('condition');
+                        Route::get('/{id}/diagnoses', PatientDiagnoses::class)->name('diagnoses');
                     });
                 });
 

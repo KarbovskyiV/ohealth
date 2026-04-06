@@ -15,7 +15,7 @@
             {{ __('patients.data_access') }}
         </button>
 
-        <button wire:click.prevent="syncConditions"
+        <button wire:click.prevent="syncDiagnoses"
                 type="button"
                 class="button-sync flex items-center gap-2 whitespace-nowrap px-5 py-2 text-sm shadow-sm"
         >
@@ -28,7 +28,7 @@
         <div class="w-full mt-6" x-data="{ showAdditionalParams: $wire.entangle('showAdditionalParams') }">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
                 @icon('search-outline', 'w-4.5 h-4.5')
-                <p>{{ __('patients.condition_search') }}</p>
+                <p>{{ __('patients.diagnoses_search') }}</p>
             </div>
 
             <div class="form-row-3 mb-6">
@@ -39,7 +39,7 @@
                             class="input-select peer w-full"
                     >
                         <option value="">{{ __('forms.select') }} ...</option>
-                        <option value="A08">A08 - Припухлість</option>
+                        <option value="2A00.00">2A00.00 Гліобластома головного мозку</option>
                     </select>
                     <label for="filterCode" class="label">
                         {{ __('patients.code_and_name') }}
@@ -135,7 +135,7 @@
                 </div>
             </div>
 
-            <div x-show="showAdditionalParams" x-transition x-cloak wire:key="condition-search-filters">
+            <div x-show="showAdditionalParams" x-transition x-cloak wire:key="diagnoses-search-filters">
                 <div class="form-row-3 mb-6">
                     <div class="form-group group">
                         <div class="datepicker-wrapper">
@@ -268,7 +268,7 @@
 
                         <div class="record-inner-column !pl-4 flex-1">
                             <div class="record-inner-label">{{ __('patients.code_and_name') }}</div>
-                            <div class="record-inner-value text-[17px] font-semibold text-gray-900 dark:text-gray-100">A08 - Припухлість</div>
+                            <div class="record-inner-value text-[17px] font-semibold text-gray-900 dark:text-gray-100">2A00.00 Гліобластома головного мозку</div>
                         </div>
 
                         <div class="record-inner-column-bordered w-full md:w-[180px] shrink-0">
@@ -388,7 +388,7 @@
                                         <span class="w-1 h-1 rounded-full bg-gray-400 mt-1.5 shrink-0"></span>
                                         <div class="min-w-0">
                                             <div class="text-gray-500 dark:text-gray-400 text-[10px] mb-0.5 uppercase">{{ __('patients.evidence_conditions') }}:</div>
-                                            <div class="text-gray-800 dark:text-gray-200 font-semibold break-words whitespace-normal">- A01 - Кома</div>
+                                            <div class="text-gray-800 dark:text-gray-200 font-semibold break-words whitespace-normal">- А01 - Кома</div>
                                         </div>
                                     </li>
                                 </ul>
