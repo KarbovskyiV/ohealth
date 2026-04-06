@@ -62,7 +62,7 @@
 
                     {{-- Show additional filters --}}
                     <div x-show="showFilter" x-cloak x-transition class="mt-8" x-data="{ openType: false }">
-                        @if(Auth::user()->hasRole(Role::OWNER))
+                        @if(Auth::user()->hasAllowedRole(Role::OWNER))
                             @include('livewire.declaration.parts.owner-filters')
                         @else
                             @include('livewire.declaration.parts.basic-filters')

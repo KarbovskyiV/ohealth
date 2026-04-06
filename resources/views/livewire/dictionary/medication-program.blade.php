@@ -69,7 +69,7 @@
                         </label>
                     </div>
 
-                    @if(auth()->user()->hasRole(Role::DOCTOR))
+                    @if(auth()->user()->hasAllowedRole(Role::DOCTOR))
                         <div class="form-group group w-full">
                             <select id="skipDeclarationFilter"
                                     name="skipDeclarationFilter"

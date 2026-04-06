@@ -67,6 +67,7 @@ return [
         ],
 
         'no_ehealth_login' => 'Without eHealth authentication',
+        'single_role_login' => 'Single role login',
         'forgot_password' => 'Forgot password?',
         'vlink_sent' => 'Verification link has been sent successfully'
     ]

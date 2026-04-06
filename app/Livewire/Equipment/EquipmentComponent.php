@@ -84,7 +84,7 @@ class EquipmentComponent extends Component
             ->toArray();
 
         // Skip check for verified party, if user has any of that role
-        $skip = Auth::user()->hasAnyRole([Role::OWNER, Role::HR, Role::ADMIN]);
+        $skip = Auth::user()->hasAllowedRole([Role::OWNER, Role::HR, Role::ADMIN]);
 
         $recorderData = Auth::user()->employees()
             ->activeRecorders($legalEntity->id, $skip)

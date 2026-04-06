@@ -12,6 +12,7 @@ use InvalidArgumentException;
 use App\Models\Person\Person;
 use App\Models\Relations\Party;
 use App\Models\Employee\Employee;
+use App\Models\Role as ModelsRole;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -382,6 +383,60 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get the roles the user is allowed to hold, based on their directly assigned permissions.
+     *
+     * A role is considered "allowed" when:
+     * - Its full permission set is covered by the user's direct permissions (model_has_permissions), and
+     * - The user is actually assigned that role (model_has_roles).
+     *
+     * Accessible as a property: $user->allowedRoles
+     *
+     * @return Collection<int, string> Role names
+     */
+    public function getAllowedRolesAttribute(): Collection
+    {
+        $guard = Auth::getDefaultDriver();
+
+        // Why this need?
+        // If $this->permissions was already eager-loaded before getAllowedRolesAttribute is called (e.g., via $this->load('permissions')
+        // or $this->with = ['permissions'] in a different team context), the cached relation won't re-query —
+        // it will return whatever was loaded earlier, which may not match the current team.
+        $this->unsetRelation('permissions');
+
+        // Direct permissions from model_has_permissions only
+        $permissions = $this->getDirectPermissions()->pluck('name')->unique();
+
+        // Roles whose full permission set fits within those direct permissions
+        $possibleAllowedRoles = ModelsRole::coveredByPermissions($permissions)
+            ->whereHas('permissions') // only consider roles that actually have permissions
+            ->get()
+            ->pluck('name')
+            ->unique();
+
+        // Roles actually assigned to the user (model_has_roles)
+        $modelAllowedRoles = $this->roles->where('guard_name', $guard)->pluck('name')->unique();
+
+        // Intersection: roles the user HAS that are also justified by their direct permissions
+        return $possibleAllowedRoles->intersect($modelAllowedRoles)->values();
+    }
+
+    /**
+     * Determine if the user holds ALL of the given role(s), each justified by their direct permissions.
+     *
+     *
+     * @param  string|BackedEnum|array<string|BackedEnum>  $roles  Single role or array of roles
+     */
+    public function hasAllowedRole(string|BackedEnum|array $roles, bool $exactMatch = false): bool
+    {
+        $names = collect(is_array($roles) ? $roles : [$roles])
+            ->map(fn ($role) => $role instanceof BackedEnum ? $role->value : $role);
+
+        return $exactMatch
+            ? $names->every(fn ($name) => $this->allowedRoles->contains($name)) // Return TRUE if user has assigned to ALL of incoming roles
+            : $names->contains(fn ($name) => $this->allowedRoles->contains($name)); // Return TRUE if user is assigned to at least of the ONE of incoming roles
+    }
+
+    /**
      * Get employee by priority with specific write permission. Example: procedure:write.
      *
      * @param  Role  ...$priorityRoles  Ordered role from most valuable to least
@@ -657,6 +712,13 @@ class User extends Authenticatable implements MustVerifyEmail
             $name = $permModel->name;
         } catch (PermissionDoesNotExist) {
             return false;
+        }
+
+        // If user is in the "single role login" state with a temporary role, only check direct permissions
+        if (session('first_login_role')) {
+            return $this->getDirectPermissions()
+                ->pluck('name')
+                ->contains($name);
         }
 
         // Check against filtered union of user's permissions (direct + via roles),

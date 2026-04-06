@@ -34,7 +34,7 @@ class MedicalDevice extends Component
         $this->getDictionary();
 
         $user = Auth::user();
-        $roles = $user->roles->pluck('name');
+        $roles = $user->allowedRoles->get();
         $mainSpeciality = $user->getMainSpeciality($legalEntity);
         $filteredPrograms = dictionary()->medicalPrograms()
             ->where('is_active', '=', true)
@@ -48,7 +48,7 @@ class MedicalDevice extends Component
         });
 
         // Additional filter for SPECIALIST role - check speciality_types_allowed
-        if ($roles->contains(Role::SPECIALIST->value)) {
+        if ($user->hasAllowedRole(Role::SPECIALIST->value)) {
             $filteredPrograms = $filteredPrograms->filter(function (array $program) use ($mainSpeciality) {
                 $allowedSpecialities = Arr::get($program, 'medical_program_settings.speciality_types_allowed', []);
 

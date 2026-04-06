@@ -37,13 +37,15 @@ class Login extends Component
      */
     public array $legalEntitiesList = [];
 
-    public string $role;
+    public ?string $role = null;
 
     public string $email = '';
 
     public string $password = '';
 
     public bool $isLocalAuth = false;
+
+    public bool $isSingleRoleAuth = false;
 
     public bool $isFirstLogin = false;
 
@@ -96,13 +98,13 @@ class Login extends Component
         }
 
         // If first login(user doesn't exist in users table, or user doesn't have roles for the selected legal entity)
-        if (!$this->isLocalAuth && (!$user || !$this->userHasRolesForLegalEntity($user))) {
+        if (!$this->isLocalAuth && (!$user || !$this->userHasRolesForLegalEntity($user) || $this->isSingleRoleAuth)) {
             $this->showRoleSelect = true;
 
             Log::info('[Login] Користувач не знайдений або не має ролей. Перехід до "першого входу" eHealth.', ['email' => $this->email, 'legalEntityUUID' => $this->legalEntityUUID]);
 
             if (empty($this->role)) {
-                $this->addError('role', __('Будь ласка, оберіть роль.'));
+                $this->isFirstLogin = true;
 
                 return Redirect::back()->withInput();
             }
@@ -285,6 +287,7 @@ class Login extends Component
             $queryParams['scope'] = $user->getScopes();
         }
 
+        // If user doesn't have verified email - show error
         Session::put(config('ehealth.api.auth_ehealth'), $user->id);
 
         // Build the full URL with query parameters

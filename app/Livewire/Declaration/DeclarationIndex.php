@@ -187,7 +187,7 @@ class DeclarationIndex extends Component
 
         $this->employeeIds = $user->party->employees()->filterByLegalEntityId($legalEntity->id)->pluck('id')->all();
 
-        if ($user->hasRole(Role::OWNER)) {
+        if ($user->hasAllowedRole(Role::OWNER)) {
             $this->doctors = $this->getDoctors();
         } else {
             $this->countActive = Declaration::query()->forEmployees($this->employeeIds)->count();
@@ -228,7 +228,7 @@ class DeclarationIndex extends Component
                 'employee.party:id,first_name,last_name,second_name'
             ])
                 ->when(
-                    !$user->hasRole(Role::OWNER),
+                    !$user->hasAllowedRole(Role::OWNER),
                     fn (Builder $query) => $query->forEmployees($this->employeeIds)
                 )
                 ->filterByLegalEntityId(legalEntity()->id)
@@ -237,7 +237,7 @@ class DeclarationIndex extends Component
         }
 
         // Don't show declaration requests for OWNER
-        if (!$user->hasRole(Role::OWNER) && $user->can('viewAny', DeclarationRequest::class)) {
+        if (!$user->hasAllowedRole(Role::OWNER) && $user->can('viewAny', DeclarationRequest::class)) {
             $declarationRequests = DeclarationRequest::with([
                 'person:id,first_name,last_name,second_name,birth_date',
                 'employee:id,party_id',
@@ -356,7 +356,7 @@ class DeclarationIndex extends Component
         $query = ['legal_entity_id' => $legalEntity->uuid];
 
         // If user is doctor, get only his declarations
-        if ($user->hasRole(Role::DOCTOR) && !$user->hasRole(Role::OWNER)) {
+        if ($user->hasAllowedRole(Role::DOCTOR) && !$user->hasAllowedRole(Role::OWNER)) {
             $query['employee_id'] = Auth::user()->party
                 ->employees()
                 ->forParty(Auth::user()->party->id)

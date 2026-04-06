@@ -1,3 +1,7 @@
+@php
+    $chooseRole = __('auth.login.choose_role');
+@endphp
+
 <div class="fragment">
     <livewire:components.x-message :key="now()->timestamp" />
 
@@ -7,7 +11,37 @@
             {{ __('forms.enter') }}
         </h2>
 
-        <form wire:submit.prevent="login" x-data="{ isLocalAuth: $wire.entangle('isLocalAuth') }">
+        <form
+            wire:submit.prevent="login"
+            x-data="{
+                roleMsg: '{{ $chooseRole }}',
+                role: $wire.entangle('role'),
+                isLocalAuth: $wire.entangle('isLocalAuth'),
+                showRoleSelect: $wire.entangle('showRoleSelect'),
+                isSingleRoleAuth: $wire.entangle('isSingleRoleAuth'),
+                init() {
+                    this.$watch('isSingleRoleAuth', value => {
+                        if (this.isSingleRoleAuth && !this.isLocalAuth) {
+                            this.showRoleSelect = true;
+                        } else if (this.isFirstLogin) {
+                            this.showRoleSelect = true;
+                        } else {
+                            this.showRoleSelect = false;
+                            this.isSingleRoleAuth = false; // Reset single role auth when checkbox is still checked (for isLocalAuth case)
+                            this.role = null;
+                        }
+                    });
+
+                    this.$watch('role', value => {
+                        if (value) {
+                            this.roleMsg = '';
+                        } else {
+                            this.roleMsg = '{{ $chooseRole }}';
+                        }
+                    });
+                }
+            }"
+        >
             <div class="form-group group">
                 <input wire:model="email"
                        required
@@ -46,7 +80,7 @@
             />
 
             {{-- Role select --}}
-            @if($showRoleSelect && !$isLocalAuth)
+            <div x-show="showRoleSelect && !isLocalAuth" x-cloak>
                 <div class="form-group group">
                     <select wire:model="role" class="input-select peer">
                         <option value="" selected>{{ __('forms.select') }}</option>
@@ -55,9 +89,9 @@
                         @endforeach
                     </select>
 
-                    @error('role')<p class="text-error">{{ $message }}</p>@enderror
+                    <p x-text="roleMsg" class="text-error"></p>
                 </div>
-            @endif
+            </div>
 
             @yield('showPassword')
 

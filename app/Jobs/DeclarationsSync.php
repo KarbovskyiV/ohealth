@@ -35,7 +35,7 @@ class DeclarationsSync extends EHealthJob
         $query = ['page' => $this->page];
 
         // If user is doctor, get only his declarations
-        if ($this->user->hasRole(Role::DOCTOR) && !$this->user->hasRole(Role::OWNER)) {
+        if ($this->user->hasAllowedRole(Role::DOCTOR) && !$this->user->hasAllowedRole(Role::OWNER)) {
             $query['employee_id'] = $this->user
                 ->employees()
                 ->forParty($this->user->party->id)

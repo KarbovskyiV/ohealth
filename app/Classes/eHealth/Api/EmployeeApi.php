@@ -30,9 +30,9 @@ class EmployeeApi
 
         setPermissionsTeamId($legalEntity->id);
 
-        if (!$user) {
-            $role = Session::get('first_login_role');
+        $role = Session::get('first_login_role');
 
+        if (!$user || $role) {
             $permissions = Role::where('name', $role)
                 ->whereGuardName('ehealth')
                 ->firstOrFail()

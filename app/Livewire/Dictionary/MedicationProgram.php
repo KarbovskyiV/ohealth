@@ -35,14 +35,13 @@ class MedicationProgram extends Component
         $this->getDictionary();
 
         $user = Auth::user();
-        $roles = $user->roles->pluck('name');
         $mainSpeciality = $user->getMainSpeciality($legalEntity);
         $filteredPrograms = dictionary()->medicalPrograms()
             ->where('is_active', '=', true)
             ->where('type', '=', Type::MEDICATION);
 
         // Main speciality filter
-        if ($roles->contains(Role::SPECIALIST->value) || $roles->contains(Role::DOCTOR->value)) {
+        if ($user->hasAllowedRole(Role::SPECIALIST) || $user->hasAllowedRole(Role::DOCTOR)) {
             $filteredPrograms = $filteredPrograms->filter(function (array $program) use ($mainSpeciality) {
                 $allowedSpecialities = Arr::get($program, 'medical_program_settings.speciality_types_allowed', []);
 

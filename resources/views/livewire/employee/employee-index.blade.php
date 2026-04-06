@@ -12,7 +12,7 @@
         'employee_view' => $currentUser->can('employee:details'),
         'employee_write' => $currentUser->can('employee:write'),
         'employee_deactivate' => $currentUser->can('employee:deactivate'),
-        'request_view' => $currentUser->can('employee_request:details'),
+        'request_view' => $currentUser->can('employee_request:read'),
         'request_write' => $currentUser->can('employee_request:write'),
         'request_delete' => $currentUser->can('employee_request:write'),
     ];

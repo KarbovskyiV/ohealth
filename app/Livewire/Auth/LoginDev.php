@@ -59,14 +59,14 @@ class LoginDev extends Login
         $selectedLegalEntityId = LegalEntity::whereUuid($this->legalEntityUUID)->value('id');
         setPermissionsTeamId($selectedLegalEntityId);
 
-        if ($user) {
+        if ($user && !$this->isSingleRoleAuth) {
             $scopes = $user->getScopes();
             Session::put(config('ehealth.api.auth_ehealth'), $user->id);
         } else {
+            $this->isFirstLogin = !(bool)$user; // If user exists - it's not first login, otherwise - it's first login and we need to show role select
+
             if (empty($this->role)) {
                 $this->showRoleSelect = true;
-
-                $this->addError('role', __('Будь ласка, оберіть роль.'));
 
                 return Redirect::back()->withInput();
             }

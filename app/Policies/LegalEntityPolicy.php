@@ -65,7 +65,7 @@ class LegalEntityPolicy
      */
     public function create(User $user): Response
     {
-        if ($user->hasAnyRole([Role::OWNER, Role::ADMIN, Role::HR])) {
+        if ($user->hasAllowedRole([Role::OWNER, Role::ADMIN, Role::HR])) {
             return Response::allow();
         }
 
@@ -79,7 +79,7 @@ class LegalEntityPolicy
             return Response::denyWithStatus(404);
         }
 
-        if ($user->hasRole([Role::OWNER]) && Auth::guard('ehealth')->check()) {
+        if ($user->hasAllowedRole([Role::OWNER]) && Auth::guard('ehealth')->check()) {
             return Response::allow();
         }
 
@@ -99,7 +99,7 @@ class LegalEntityPolicy
             return Response::denyWithStatus(404);
         }
 
-        if ($user->hasAnyRole([Role::OWNER, Role::ADMIN, Role::HR]) && Auth::guard('ehealth')->check()) {
+        if ($user->hasAllowedRole([Role::OWNER, Role::ADMIN, Role::HR]) && Auth::guard('ehealth')->check()) {
             return Response::allow();
         }
 

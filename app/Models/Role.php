@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Override;
 use App\Enums\Status;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Override;
+use Illuminate\Database\Eloquent\Builder;
 use Spatie\Permission\Models\Role as SpatieRole;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -109,5 +111,20 @@ class Role extends SpatieRole
 
             return $role;
         });
+    }
+
+    /**
+     * Scope to roles whose entire permission set is covered by the given permissions.
+     *
+     * Example usage: Role::coveredByPermissions($user->getAllPermissions()->pluck('name'))->get();
+     *
+     * @param  Builder  $query
+     * @param  Collection|array<string>  $permissions  Permission names the user already holds
+     */
+    public function scopeCoveredByPermissions(Builder $query, Collection|array $permissions): void
+    {
+        $permissions = collect($permissions);
+
+        $query->whereDoesntHave('permissions', fn (Builder $q) => $q->whereNotIn('name', $permissions));
     }
 }

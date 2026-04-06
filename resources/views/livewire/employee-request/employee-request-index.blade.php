@@ -6,7 +6,7 @@
         $currentUser = auth()->user();
 
        $permissions = [
-        'request_view'   => $currentUser->can('employee_request:details'),
+        'request_view'   => $currentUser->can('employee_request:read'),
         'request_write'  => $currentUser->can('employee_request:write'),
         'request_delete' => $currentUser->can('employee_request:write'),
 
