@@ -89,7 +89,7 @@ return [
             'risk_assessment:write', 'approval:create', 'diagnostic_report:cancel', 'diagnostic_report:read', 'diagnostic_report:write', 'procedure:read', 'procedure:write', 'procedure:cancel',
             'program_service:read', 'medication_administration:read', 'medication_administration:write', 'equipment:write', 'equipment:read', 'person_request:write', 'person_request:read',
             'authentication_method_request:write', 'care_plan:write', 'care_plan:read', 'approval:read', 'approval:cancel', 'composition:create', 'composition:sign', 'composition:cancel',
-            'composition:read', 'composition:search', 'license:details', 'license:read', 'license:write', '', 'clinical_impression:read', 'clinical_impression:write', 'rule_engine_rule:read',
+            'composition:read', 'composition:search', 'license:details', 'license:read', 'license:write', 'clinical_impression:read', 'clinical_impression:write', 'rule_engine_rule:read',
             'medical_event_context:read', 'party_verification:read', 'party_verification:details', 'party_verification:write', 'person_verification:read', 'person_verification:details',
             'person_verification:write', 'device_definition:read', 'device_request:write', 'device_request:read', 'device_request:resend', 'device_request:revoke', 'specimen:write', 'specimen:read',
             'specimen:process', 'specimen:cancel', 'specimen:reject', 'specimen:invalidate', 'service_request:read_impersonal', 'device_request:mark_in_error', 'device_request:complete',
