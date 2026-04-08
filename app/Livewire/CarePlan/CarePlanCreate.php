@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use App\Livewire\Person\Records\BasePatientComponent;
+use App\Models\LegalEntity;
 use Livewire\WithFileUploads;
 
 class CarePlanCreate extends BasePatientComponent
@@ -54,12 +55,12 @@ class CarePlanCreate extends BasePatientComponent
     public array $diagnoses = [];
     public array $authMethods = [];
     public array $patientSuggestions = [];
-    public array $dictionaries = [];
+    public ?array $dictionaries = [];
     public array $doctors = [];
 
     public function mount(LegalEntity $legalEntity, ?int $id = null): void
     {
-        $this->id = $id ?? (int) \App\Models\Person\Person::where('uuid', request()->query('patientUuid'))->value('id') ?? 
+        $this->id = $id ?? (int) \App\Models\Person\Person::where('uuid', request()->query('patientUuid'))->value('id') ??
                     (int) request()->query('id', 0);
 
         if ($this->id) {

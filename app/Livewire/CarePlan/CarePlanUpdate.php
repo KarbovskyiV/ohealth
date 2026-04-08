@@ -14,6 +14,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use App\Models\LegalEntity;
 use Livewire\WithFileUploads;
 
 class CarePlanUpdate extends CarePlanCreate
@@ -22,7 +23,7 @@ class CarePlanUpdate extends CarePlanCreate
 
     public CarePlan $carePlan;
 
-    public function mount(): void
+    public function mount(?LegalEntity $legalEntity = null, ?int $id = null): void
     {
         $carePlan = request()->route('carePlan');
         if (!$carePlan instanceof CarePlan) {
