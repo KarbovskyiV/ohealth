@@ -30,7 +30,7 @@
                 ['id' => 'encounters', 'action' => 'getEncounters', 'syncAction' => 'syncEncounters', 'label' => __('patients.encounters'), 'icon' => 'users'],
                 ['id' => 'clinicalImpressions', 'action' => 'getClinicalImpressions', 'syncAction' => 'syncClinicalImpressions', 'label' => __('patients.clinical_impressions'), 'icon' => 'check'],
                 ['id' => 'immunizations', 'action' => 'getImmunizations', 'syncAction' => 'syncImmunizations', 'label' => __('patients.immunizations'), 'icon' => 'shield'],
-                ['id' => 'observation', 'action' => 'syncObservations', 'syncAction' => 'getObservations', 'label' => __('patients.observation'), 'icon' => 'heart'],
+                ['id' => 'observations', 'action' => 'getObservations', 'syncAction' => 'syncObservations', 'label' => __('patients.observation'), 'icon' => 'heart'],
                 ['id' => 'diagnoses', 'action' => 'getConditions', 'syncAction' => 'syncConditions', 'label' => __('patients.diagnoses'), 'icon' => 'file'],
                 ['id' => 'condition', 'action' => 'getConditions', 'syncAction' => 'syncConditions', 'label' => __('patients.condition'), 'icon' => 'file-minus'],
                 ['id' => 'diagnostic_reports', 'action' => 'getDiagnosticReports', 'syncAction' => 'syncDiagnosticReports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity'],
@@ -88,8 +88,8 @@
                                 @include('livewire.person.records.parts.clinical-impressions')
                             @elseif($item['id'] === 'immunizations')
                                 @include('livewire.person.records.parts.immunizations')
-                            @elseif($item['id'] === 'observation')
-                                @include('livewire.person.records.parts.observation')
+                            @elseif($item['id'] === 'observations')
+                                @include('livewire.person.records.parts.observations')
                             @elseif($item['id'] === 'diagnoses')
                                 @include('livewire.person.records.parts.diagnoses')
                             @elseif($item['id'] === 'condition')

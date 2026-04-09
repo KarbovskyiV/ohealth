@@ -296,9 +296,9 @@ class ImmunizationRepository extends BaseRepository
             $vaccineCode = $orphaned->pluck('vaccine_code_id')->filter()->toArray();
             $contextIds = $orphaned->pluck('context_id')->filter()->toArray();
             $performerIds = $orphaned->pluck('performer_id')->filter()->toArray();
-            $reportOriginCode = $orphaned->pluck('report_origin_id')->filter()->toArray();
-            $siteCode = $orphaned->pluck('site_id')->filter()->toArray();
-            $routeCode = $orphaned->pluck('route_id')->filter()->toArray();
+            $reportOriginIds = $orphaned->pluck('report_origin_id')->filter()->toArray();
+            $siteIds = $orphaned->pluck('site_id')->filter()->toArray();
+            $routeIds = $orphaned->pluck('route_id')->filter()->toArray();
             $doseQuantityIds = $orphaned->pluck('doseQuantity.id')->filter()->toArray();
             $explanationIds = $orphaned->flatMap->explanations->pluck('id')->toArray();
             $reactionIds = $orphaned->flatMap->reactions->pluck('id')->toArray();
@@ -311,9 +311,9 @@ class ImmunizationRepository extends BaseRepository
             $identifierIds = array_merge($contextIds, $performerIds, $reactionIds);
             $codeableConceptIds = array_merge(
                 $vaccineCode,
-                $reportOriginCode,
-                $siteCode,
-                $routeCode,
+                $reportOriginIds,
+                $siteIds,
+                $routeIds,
                 $explanationIds,
                 $authorityIds,
                 $targetDiseaseIds
