@@ -28,76 +28,96 @@
         </x-slot>
 
         <x-slot name="navigation">
-            <div class="w-full flex items-center justify-between overflow-x-auto bg-gray-100 dark:bg-gray-800/50 p-1 px-2 xl:p-1.5 xl:px-3 rounded-xl text-[13px] xl:text-sm border border-transparent dark:border-gray-700/50">
-                <a href="{{ route('persons.patient-data', [legalEntity(), 'id' => $id]) }}"
-                   class="summary-tab {{ request()->routeIs('persons.patient-data') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                >
-                    {{ __('patients.patient_data') }}
-                </a>
+            <div class="space-y-1">
+                <div class="summary-nav-row">
+                    <a href="{{ route('persons.patient-data', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.patient-data') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.patient_data') }}
+                    </a>
 
-                <a href="{{ route('persons.summary', [legalEntity(), 'id' => $id]) }}"
-                   class="summary-tab {{ request()->routeIs('persons.summary') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                >
-                    {{ __('patients.summary') }}
-                </a>
+                    <a href="{{ route('persons.summary', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.summary') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.summary') }}
+                    </a>
 
-                <a href="{{ route('persons.episodes', [legalEntity(), 'id' => $id]) }}"
-                   class="summary-tab {{ request()->routeIs('persons.episodes') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                >
-                    {{ __('patients.episodes') }}
-                </a>
+                    <a href="{{ route('persons.episodes', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.episodes') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.episodes') }}
+                    </a>
 
-                <a href="{{ route('persons.observations', [legalEntity(), 'id' => $id]) }}"
-                   class="summary-tab {{ request()->routeIs('persons.observations') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                >
-                    {{ __('patients.observation') }}
-                </a>
+                    <a href="{{ route('persons.observations', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.observations') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.observation') }}
+                    </a>
 
-                <a href="{{ route('persons.vaccination', [legalEntity(), 'id' => $id]) }}"
-                   class="summary-tab {{ request()->routeIs('persons.vaccination') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                >
-                    {{ __('patients.immunizations') }}
-                </a>
+                    <a href="{{ route('persons.vaccination', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.vaccination') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.immunizations') }}
+                    </a>
 
-                <a href="{{ route('persons.condition', [legalEntity(), 'id' => $id]) }}"
-                   class="summary-tab {{ request()->routeIs('persons.condition') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                >
-                    {{ __('patients.condition') }}
-                </a>
+                    <a href="{{ route('persons.condition', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.condition') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.condition') }}
+                    </a>
 
-                <a href="{{ route('persons.diagnoses', [legalEntity(), 'id' => $id]) }}"
-                   class="summary-tab {{ request()->routeIs('persons.diagnoses') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                >
-                    {{ __('patients.diagnoses') }}
-                </a>
+                    <a href="{{ route('persons.diagnoses', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.diagnoses') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.diagnoses') }}
+                    </a>
 
-                <a href="javascript:void(0)"
-                   class="summary-tab summary-tab-inactive cursor-not-allowed opacity-60"
-                >
-                    {{ __('patients.prescriptions') }}
-                </a>
+                    <a href="javascript:void(0)"
+                       class="summary-tab summary-tab-inactive cursor-not-allowed opacity-60"
+                    >
+                        {{ __('patients.prescriptions') }}
+                    </a>
 
-                <a href="{{ route('persons.diagnostic-reports', [legalEntity(), 'id' => $id]) }}"
-                   class="summary-tab {{ request()->routeIs('persons.diagnostic-reports') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                >
-                    {{ __('patients.diagnostic_reports') }}
-                </a>
+                    <a href="{{ route('persons.diagnostic-reports', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.diagnostic-reports') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.diagnostic_reports') }}
+                    </a>
+                </div>
 
-                <a href="{{ route('persons.encounters', [legalEntity(), 'id' => $id]) }}"
-                   class="summary-tab {{ request()->routeIs('persons.encounters') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                >
-                    {{ __('patients.encounters') }}
-                </a>
+                <div class="summary-nav-row">
+                    <a href="{{ route('persons.clinical-impressions', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.clinical-impressions') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.clinical_impressions') }}
+                    </a>
 
-                <button type="button"
-                        class="inline-flex items-center px-2 py-1.5 text-gray-900 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors ml-1"
-                >
-                    <span class="block px-2 flex items-center justify-center space-x-1">
-                        <span class="w-1.5 h-1.5 bg-gray-700 dark:bg-gray-400 rounded-full"></span>
-                        <span class="w-1.5 h-1.5 bg-gray-700 dark:bg-gray-400 rounded-full"></span>
-                        <span class="w-1.5 h-1.5 bg-gray-700 dark:bg-gray-400 rounded-full"></span>
-                    </span>
-                </button>
+                    <a href="javascript:void(0)"
+                       class="summary-tab summary-tab-inactive cursor-not-allowed opacity-60"
+                    >
+                        {{ __('patients.medical_reports') }}
+                    </a>
+
+                    <a href="javascript:void(0)"
+                       class="summary-tab summary-tab-inactive cursor-not-allowed opacity-60"
+                    >
+                        {{ __('patients.referrals') }}
+                    </a>
+
+                    <a href="{{ route('persons.care-plans', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.care-plans') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.care_plans') }}
+                    </a>
+
+                    <a href="{{ route('persons.encounters', [legalEntity(), 'id' => $id]) }}"
+                       class="summary-tab {{ request()->routeIs('persons.encounters') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                    >
+                        {{ __('patients.encounters') }}
+                    </a>
+
+                    <div class="flex-1"></div>
+                </div>
             </div>
         </x-slot>
     </x-header-navigation>

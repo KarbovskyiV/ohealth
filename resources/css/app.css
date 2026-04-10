@@ -651,6 +651,10 @@ input:-webkit-autofill {
         @apply text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700
     }
 
+    .summary-nav-row {
+        @apply w-full flex items-center justify-between gap-1 overflow-x-auto p-1 px-2 xl:p-1.5 xl:px-3 rounded-xl text-[13px] xl:text-sm border border-transparent dark:border-gray-700/50 bg-gray-100 dark:bg-gray-800/50
+    }
+
     .summary-section-active {
         @apply border border-gray-200 dark:border-gray-600 shadow-md
     }

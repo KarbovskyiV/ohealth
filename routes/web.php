@@ -75,6 +75,7 @@ use App\Livewire\Person\Records\PatientDiagnoses;
 use App\Livewire\Person\Records\PatientCondition;
 use App\Livewire\Person\Records\PatientDiagnosticReports;
 use App\Livewire\Person\Records\PatientEncounters;
+use App\Livewire\Person\Records\PatientClinicalImpressions;
 use App\Livewire\Person\Records\PatientObservation;
 use App\Livewire\Procedure\ProcedureCreate;
 use App\Models\Declaration;
@@ -299,6 +300,7 @@ Route::middleware(['auth:web,ehealth', 'verified'])->group(function () {
                         Route::get('/{id}/condition', PatientCondition::class)->name('condition');
                         Route::get('/{id}/diagnoses', PatientDiagnoses::class)->name('diagnoses');
                         Route::get('/{id}/diagnostic-reports', PatientDiagnosticReports::class)->name('diagnostic-reports');
+                        Route::get('/{id}/clinical-impressions', PatientClinicalImpressions::class)->name('clinical-impressions');
                         Route::get('/{id}/encounters', PatientEncounters::class)->name('encounters');
                     });
                 });

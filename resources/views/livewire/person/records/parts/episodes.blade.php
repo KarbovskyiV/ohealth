@@ -96,7 +96,7 @@
 
         <div class="record-inner-body">
             <div class="record-inner-grid-container">
-                <div class="flex items-start justify-between gap-2 xl:gap-4 overflow-hidden">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
                         <div class="record-inner-label">{{ __('patients.date_opened') }}</div>
                         <div class="record-inner-value">{{ data_get($episode, 'period.start', '-') }}</div>

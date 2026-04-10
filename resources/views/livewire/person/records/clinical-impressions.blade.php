@@ -5,7 +5,7 @@
                class="flex items-center gap-2 button-primary px-5 py-2 text-sm shadow-sm"
             >
                 @icon('plus', 'w-4 h-4')
-                {{ __('patients.start_interacting') }}
+                {{ __('patients.starts_interacting') }}
             </a>
         @endcan
 
@@ -15,7 +15,7 @@
             {{ __('patients.data_access') }}
         </button>
 
-        <button wire:click.prevent="syncEpisodes"
+        <button wire:click.prevent="syncClinicalImpressions"
                 type="button"
                 class="button-sync flex items-center gap-2 whitespace-nowrap px-5 py-2 text-sm shadow-sm"
         >
@@ -28,56 +28,62 @@
         <div class="w-full mt-6" x-data="{ showAdditionalParams: $wire.entangle('showAdditionalParams') }">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
                 @icon('search-outline', 'w-4.5 h-4.5')
-                <p>{{ __('patients.search_episode') }}</p>
+                <p>Пошук клінічних оцінок</p>
             </div>
 
             <div class="form-row-3 mb-6">
                 <div class="form-group group">
-                    <input wire:model="filterName"
-                           type="text"
-                           name="filterName"
-                           id="filterName"
-                           class="input peer"
-                           placeholder=" "
-                           autocomplete="off"
-                    />
-                    <label for="filterName" class="label">
-                        {{ __('patients.filter_name') }}
-                    </label>
-                </div>
-
-                <div class="form-group group">
-                    <input wire:model="filterCode"
-                           type="text"
-                           name="filterCode"
-                           id="filterCode"
-                           class="input peer"
-                           placeholder=" "
-                           autocomplete="off"
-                    />
-                    <label for="filterCode" class="label">
-                        {{ __('patients.filter_code') }}
-                    </label>
-                </div>
-
-                <div class="form-group group">
-                    <select wire:model="filterDoctor"
-                            name="filterDoctor"
-                            id="filterDoctor"
+                    <select wire:model="filterCode"
+                            name="filterCode"
+                            id="filterCode"
                             class="input-select peer w-full"
                     >
                         <option value="">{{ __('forms.select') }} ...</option>
-                        <option value="1">Шевченко Т.Г.</option>
+                        <option value="1">ЦД. Категорія 3 (студенти)</option>
                     </select>
-                    <label for="filterDoctor" class="label">
-                        {{ __('patients.doctor') }}
+                    <label for="filterCode" class="label">
+                        Код
                     </label>
+                </div>
+
+                <div class="form-group group">
+                    <input wire:model="filterEcozId"
+                           type="text"
+                           name="filterEcozId"
+                           id="filterEcozId"
+                           class="input peer"
+                           placeholder=" "
+                           autocomplete="off"
+                    />
+                    <label for="filterEcozId" class="label">
+                        ID ECO3
+                    </label>
+                    <button type="button" @click="$wire.set('filterEcozId', '')" class="absolute right-0 top-3 text-gray-400 hover:text-gray-600">
+                         @icon('close', 'w-4 h-4')
+                    </button>
+                </div>
+
+                <div class="form-group group">
+                    <input wire:model="filterMedicalRecordId"
+                           type="text"
+                           name="filterMedicalRecordId"
+                           id="filterMedicalRecordId"
+                           class="input peer"
+                           placeholder=" "
+                           autocomplete="off"
+                    />
+                    <label for="filterMedicalRecordId" class="label">
+                        ID Мед. запису
+                    </label>
+                    <button type="button" @click="$wire.set('filterMedicalRecordId', '')" class="absolute right-0 top-3 text-gray-400 hover:text-gray-600">
+                         @icon('close', 'w-4 h-4')
+                    </button>
                 </div>
             </div>
 
             <div class="mb-9 flex flex-wrap items-center justify-between gap-4">
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" wire:click="searchEpisodes"
+                    <button type="button" wire:click="search"
                             class="flex items-center gap-2 button-primary px-5 py-2.5 text-sm shadow-sm"
                     >
                         @icon('search', 'w-4 h-4')
@@ -125,20 +131,34 @@
                 </div>
             </div>
 
-            <div x-show="showAdditionalParams" x-transition x-cloak wire:key="episodes-search-filters">
+            <div x-show="showAdditionalParams" x-transition x-cloak wire:key="clinical-impressions-search-filters">
                 <div class="form-row-3 mb-6">
                     <div class="form-group group">
                         <div class="datepicker-wrapper">
-                            <input wire:model="filterCreatedAtRange"
+                            <input wire:model="filterStartRange"
                                    type="text"
-                                   name="filterCreatedAtRange"
-                                   id="filterCreatedAtRange"
+                                   id="filterStartRange"
                                    class="datepicker-input with-leading-icon input peer"
                                    placeholder=" "
                                    autocomplete="off"
                             />
-                            <label for="filterCreatedAtRange" class="wrapped-label">
-                                {{ __('patients.filter_created_at_range') }}
+                            <label for="filterStartRange" class="wrapped-label">
+                                Дата початку від - до
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group group">
+                        <div class="datepicker-wrapper">
+                            <input wire:model="filterEndRange"
+                                   type="text"
+                                   id="filterEndRange"
+                                   class="datepicker-input with-leading-icon input peer"
+                                   placeholder=" "
+                                   autocomplete="off"
+                            />
+                            <label for="filterEndRange" class="wrapped-label">
+                                Дата завершення від - до
                             </label>
                         </div>
                     </div>
@@ -150,8 +170,8 @@
                                 class="input-select peer w-full"
                         >
                             <option value="">{{ __('forms.select') }} ...</option>
-                            <option value="active">Діючий</option>
-                            <option value="cancelled">Скасований</option>
+                            <option value="completed">Завершена</option>
+                            <option value="entered_in_error">Внесено помилково</option>
                         </select>
                         <label for="filterStatus" class="label">
                             {{ __('forms.status.label') }}
@@ -161,49 +181,23 @@
 
                 <div class="form-row-3 mb-9">
                     <div class="form-group group">
-                        <select wire:model="filterIcdDiagnosis"
-                                name="filterIcdDiagnosis"
-                                id="filterIcdDiagnosis"
+                        <select wire:model="filterDoctor"
+                                name="filterDoctor"
+                                id="filterDoctor"
                                 class="input-select peer w-full"
                         >
                             <option value="">{{ __('forms.select') }} ...</option>
+                            <option value="1">Шевченко Т.Г.</option>
                         </select>
-                        <label for="filterIcdDiagnosis" class="label">
-                            {{ __('patients.filter_icd_diagnosis') }}
-                        </label>
-                    </div>
-
-                    <div class="form-group group">
-                        <select wire:model="filterIcpcDiagnosis"
-                                name="filterIcpcDiagnosis"
-                                id="filterIcpcDiagnosis"
-                                class="input-select peer w-full"
-                        >
-                            <option value="">{{ __('forms.select') }} ...</option>
-                        </select>
-                        <label for="filterIcpcDiagnosis" class="label">
-                            {{ __('patients.filter_icpc_diagnosis') }}
-                        </label>
-                    </div>
-
-                    <div class="form-group group">
-                        <select wire:model="filterType"
-                                name="filterType"
-                                id="filterType"
-                                class="input-select peer w-full"
-                        >
-                            <option value="">{{ __('forms.select') }} ...</option>
-                            <option value="treatment">Лікування</option>
-                        </select>
-                        <label for="filterType" class="label">
-                            {{ __('forms.type') }}
+                        <label for="filterDoctor" class="label">
+                            {{ __('patients.doctor') }}
                         </label>
                     </div>
                 </div>
             </div>
 
             <div class="space-y-4">
-                @include('livewire.person.records.parts.episodes')
+                @include('livewire.person.records.parts.clinical-impressions')
             </div>
         </div>
     </div>

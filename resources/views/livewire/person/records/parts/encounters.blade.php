@@ -32,22 +32,22 @@
 
         <div class="record-inner-body">
             <div class="record-inner-grid-container">
-                <div class="flex items-start justify-between gap-2 xl:gap-4 overflow-hidden">
-                    <div class="flex-1 min-w-0">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="min-w-0">
                         <div class="record-inner-label">{{ __('patients.class') }}</div>
                         <div class="record-inner-value truncate">
                             {{ data_get($this->dictionaries, 'eHealth/encounter_classes.' . data_get($encounter, 'class.code'), data_get($encounter, 'class.code', '-')) }}
                         </div>
                     </div>
 
-                    <div class="flex-1 min-w-0">
+                    <div class="min-w-0">
                         <div class="record-inner-label">{{ __('forms.type') }}</div>
                         <div class="record-inner-value truncate">
                             {{ data_get($this->dictionaries, 'eHealth/encounter_types.' . data_get($encounter, 'type.coding.0.code'), data_get($encounter, 'type.coding.0.code', '-')) }}
                         </div>
                     </div>
 
-                    <div class="flex-1 min-w-0">
+                    <div class="min-w-0">
                         <div class="record-inner-label">{{ __('patients.doctor_speciality') }}</div>
                         <div class="record-inner-value truncate">
                             {{ $this->dictionaries['SPECIALITY_TYPE'][data_get($encounter, 'performer_speciality.coding.0.code')] ?? '-' }}
