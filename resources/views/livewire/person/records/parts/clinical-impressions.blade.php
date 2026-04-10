@@ -1,33 +1,6 @@
 @use('App\Enums\Person\ClinicalImpressionStatus')
 
-@php
-    $items = !empty($this->clinicalImpressions) ? $this->clinicalImpressions : [
-        [
-            'uuid' => '1231-adsadas-aqeqe-casdda',
-            'status' => 'completed',
-            'code' => [
-                'coding' => [['code' => '1']]
-            ],
-            'ehealthInsertedAt' => '02.04.2025',
-            'effectivePeriod' => [
-                'start' => '02.04.2025',
-                'end' => '02.04.2025'
-            ],
-            'assessor' => ['display_value' => 'Петров І.І.'],
-            'summary' => 'Проведена',
-            'supportingInfo' => [
-                [
-                    'identifier' => [
-                        'type' => ['coding' => [['code' => 'episode_of_care']]],
-                        'value' => '1231-adsadas-aqeqe-casdda'
-                    ]
-                ]
-            ]
-        ]
-    ];
-@endphp
-
-@foreach($items as $clinicalImpression)
+@foreach($this->clinicalImpressions as $clinicalImpression)
     <div class="record-inner-card">
         <div class="record-inner-header">
             <div class="record-inner-checkbox-col">
