@@ -59,6 +59,20 @@ return new class extends Migration
             $table->string('text')->nullable();
             $table->timestamps();
         });
+
+        Schema::create('diagnostic_report_specimens', static function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('diagnostic_report_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('identifier_id')->constrained('identifiers')->cascadeOnDelete();
+            $table->timestamps();
+        });
+
+        Schema::create('diagnostic_report_used_references', static function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('diagnostic_report_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('identifier_id')->constrained('identifiers')->cascadeOnDelete();
+            $table->timestamps();
+        });
     }
 
     /**
@@ -66,6 +80,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('diagnostic_report_specimens');
+
+        Schema::dropIfExists('diagnostic_report_used_references');
+
         Schema::dropIfExists('diagnostic_report_results_interpreter');
 
         Schema::dropIfExists('diagnostic_report_performer');

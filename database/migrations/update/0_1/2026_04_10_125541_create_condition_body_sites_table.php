@@ -13,12 +13,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('condition_body_sites', static function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('condition_id')->constrained('conditions')->cascadeOnDelete();
-            $table->foreignId('codeable_concept_id')->constrained('codeable_concepts')->cascadeOnDelete();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('condition_body_sites')) {
+            Schema::create('condition_body_sites', static function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('condition_id')->constrained('conditions')->cascadeOnDelete();
+                $table->foreignId('codeable_concept_id')->constrained('codeable_concepts')->cascadeOnDelete();
+                $table->timestamps();
+            });
+        }
     }
 
     /**
