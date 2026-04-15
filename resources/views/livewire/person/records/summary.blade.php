@@ -33,7 +33,7 @@
                 ['id' => 'observations', 'action' => 'getObservations', 'syncAction' => 'syncObservations', 'label' => __('patients.observation'), 'icon' => 'heart'],
                 ['id' => 'diagnoses', 'action' => 'getDiagnoses', 'syncAction' => 'syncDiagnoses', 'label' => __('patients.diagnoses'), 'icon' => 'file'],
                 ['id' => 'conditions', 'action' => 'getConditions', 'syncAction' => 'syncConditions', 'label' => __('patients.conditions'), 'icon' => 'file-minus'],
-                ['id' => 'diagnostic_reports', 'action' => 'getDiagnosticReports', 'syncAction' => 'syncDiagnosticReports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity'],
+                ['id' => 'diagnosticReports', 'action' => 'getDiagnosticReports', 'syncAction' => 'syncDiagnosticReports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity'],
                 ['id' => 'allergies', 'action' => 'syncAllergyIntolerances', 'syncAction' => 'syncAllergyIntolerances', 'label' => __('patients.allergies'), 'icon' => 'alert'],
                 ['id' => 'risk_assessments', 'action' => 'syncRiskAssessments', 'syncAction' => 'syncRiskAssessments', 'label' => __('patients.risk_assessments'), 'icon' => 'alert-octagon'],
                 ['id' => 'devices', 'action' => 'syncDevices', 'syncAction' => 'syncDevices', 'label' => __('patients.devices'), 'icon' => 'equipment'],
@@ -94,7 +94,7 @@
                                 @include('livewire.person.records.parts.diagnoses')
                             @elseif($item['id'] === 'conditions')
                                 @include('livewire.person.records.parts.conditions')
-                            @elseif($item['id'] === 'diagnostic_reports')
+                            @elseif($item['id'] === 'diagnosticReports')
                                 @include('livewire.person.records.parts.diagnostic-reports')
                             @elseif($item['id'] === 'allergies')
                                 @include('livewire.person.records.parts.allergies')

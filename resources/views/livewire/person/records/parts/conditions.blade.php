@@ -46,8 +46,7 @@
                     <div>
                         <div class="record-inner-label">{{ __('forms.type') }}</div>
                         <div class="record-inner-subvalue">
-                            {{ data_get($this->dictionaries, 'eHealth/report_origins.' . data_get($condition, 'reportOrigin.coding.0.code', '-'), '-') }}
-
+                            {{ data_get($this->dictionaries, 'eHealth/report_origins.' . data_get($condition, 'reportOrigin.coding.0.code'), '-') }}
                         </div>
                     </div>
                     <div>
@@ -76,7 +75,7 @@
                     <div>
                         <div class="record-inner-label">{{ __('patients.severity') }}</div>
                         <div class="record-inner-subvalue">
-                            {{ data_get($this->dictionaries, 'eHealth/condition_severities.' . data_get($condition, 'severity.coding.0.code', '-'), '-') }}
+                            {{ data_get($this->dictionaries, 'eHealth/condition_severities.' . data_get($condition, 'severity.coding.0.code'), '-') }}
                         </div>
                     </div>
                     <div>

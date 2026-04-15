@@ -11,15 +11,6 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class CodeableConcept extends Model
 {
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::deleting(static function (CodeableConcept $codeableConcept) {
-            $codeableConcept->coding()->each(static fn (Coding $coding) => $coding->delete());
-        });
-    }
-
     protected $fillable = ['text'];
 
     protected $hidden = [
@@ -28,7 +19,7 @@ class CodeableConcept extends Model
         'codeable_conceptable_type',
         'codeable_conceptable_id',
         'created_at',
-        'updated_at',
+        'updated_at'
     ];
 
     public function codeableConceptable(): MorphTo

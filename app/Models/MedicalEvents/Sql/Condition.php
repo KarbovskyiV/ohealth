@@ -20,26 +20,6 @@ class Condition extends Model
 {
     use HasCamelCasing;
 
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::deleting(static function (Condition $condition) {
-            // Delete related identifiers and their nested relationships
-            $condition->asserter?->delete();
-            $condition->context->delete();
-
-            // Delete related codeable concepts and their nested relationships
-            $condition->reportOrigin?->delete();
-            $condition->code->delete();
-            $condition->severity?->delete();
-            $condition->stageSummary?->delete();
-
-            // Delete body sites (many-to-many) - detach from pivot, then delete if not used elsewhere
-            $condition->bodySites()->each(static fn (object $bodySite) => $bodySite->delete());
-        });
-    }
-
     protected $fillable = [
         'uuid',
         'person_id',
@@ -78,7 +58,7 @@ class Condition extends Model
         'severity_id',
         'stage_summary_id',
         'created_at',
-        'updated_at',
+        'updated_at'
     ];
 
     protected $appends = [

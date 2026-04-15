@@ -186,14 +186,6 @@ class ConditionRepository extends BaseRepository
                 ->get()
                 ->keyBy('uuid');
 
-            // Delete conditions and relationships that exist in DB but not in API response
-            $conditionsToDelete = $this->model::where('person_id', $personId)
-                ->whereNotNull('uuid')
-                ->whereNotIn('uuid', $apiUuids)
-                ->get();
-
-            $conditionsToDelete->each(static fn (Condition $condition) => $condition->delete());
-
             foreach ($validatedData as $data) {
                 $existing = $existingConditions->get($data['uuid']);
 
@@ -316,7 +308,7 @@ class ConditionRepository extends BaseRepository
                         // Create new identifier
                         $identifier = Repository::identifier()->store(
                             $detailData['identifier']['value'],
-                            $detailData['identifier']['display_value'] ?? null
+                            $detailData['display_value'] ?? null
                         );
                         if (isset($detailData['identifier']['type'])) {
                             Repository::codeableConcept()->attach($identifier, $detailData);

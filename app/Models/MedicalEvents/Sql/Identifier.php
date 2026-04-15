@@ -13,15 +13,6 @@ class Identifier extends Model
 {
     use HasCamelCasing;
 
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::deleting(static function (Identifier $identifier) {
-            $identifier->type()->each(static fn (CodeableConcept $codeableConcept) => $codeableConcept->delete());
-        });
-    }
-
     protected $fillable = [
         'value',
         'display_value'

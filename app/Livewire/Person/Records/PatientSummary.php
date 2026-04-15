@@ -37,7 +37,7 @@ class PatientSummary extends BasePatientComponent
 
     public array $conditions = [];
 
-    public array $diagnosticReports;
+    public array $diagnosticReports = [];
 
     public array $allergyIntolerances;
 
@@ -66,6 +66,7 @@ class PatientSummary extends BasePatientComponent
         'eHealth/ICPC2/condition_codes',
         'eHealth/ICD10/condition_codes',
         'eHealth/condition_severities',
+        'eHealth/diagnostic_report_categories',
     ];
 
     protected function initializeComponent(): void
