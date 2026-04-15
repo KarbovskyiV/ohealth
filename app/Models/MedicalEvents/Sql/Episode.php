@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\MedicalEvents\Sql;
 
-use App\Casts\EHealthDateCast;
+use App\Casts\EHealthTimestampCast;
 use App\Enums\Person\EpisodeStatus;
 use Eloquence\Behaviours\HasCamelCasing;
 use App\Models\Person\Person;
@@ -42,8 +42,8 @@ class Episode extends Model
 
     protected $casts = [
         'status' => EpisodeStatus::class,
-        'ehealth_inserted_at' => EHealthDateCast::class,
-        'ehealth_updated_at' => EHealthDateCast::class
+        'ehealth_inserted_at' => EHealthTimestampCast::class,
+        'ehealth_updated_at' => EHealthTimestampCast::class
     ];
 
     public function period(): MorphOne

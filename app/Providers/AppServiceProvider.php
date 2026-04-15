@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Jobs\EmployeeRoleSync;
+use App\Jobs\EpisodeSync;
 use App\Jobs\EquipmentSync;
 use App\Jobs\HealthcareServiceSync;
 use App\Rules\TranslatedDateValidator;
@@ -109,5 +110,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('ehealth-declaration-get', function (object $job) {
             return Limit::perMinute(config('ehealth.rate_limit.declaration'))->by($job->user->id);
         });
+
+        RateLimiter::for(
+            'ehealth-episode-get',
+            static fn (EpisodeSync $job) => Limit::perMinute(config('ehealth.rate_limit.episode'))->by($job->user->id)
+        );
     }
 }

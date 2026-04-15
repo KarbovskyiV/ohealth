@@ -182,6 +182,7 @@ return [
         'division_request' => 50,
         'healthcare_service' => 50,
         'equipment' => 50,
+        'episode' => 50,
         'employee_role' => 50,
         'party_request' => 30,
         'declaration' => 10,

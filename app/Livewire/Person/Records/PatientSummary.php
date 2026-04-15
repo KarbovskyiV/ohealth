@@ -6,8 +6,11 @@ namespace App\Livewire\Person\Records;
 
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
+use App\Enums\JobStatus;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
+use App\Jobs\EpisodeSync;
+use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\ClinicalImpression;
 use App\Models\MedicalEvents\Sql\Condition;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
@@ -15,14 +18,26 @@ use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\Immunization;
 use App\Models\MedicalEvents\Sql\Observation;
+use App\Models\User;
+use App\Notifications\SyncNotification;
 use App\Repositories\MedicalEvents\Repository;
+use App\Traits\BatchLegalEntityQueries;
+use Illuminate\Bus\Batch;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Throwable;
 
 class PatientSummary extends BasePatientComponent
 {
+    use BatchLegalEntityQueries;
+
+    protected const string EPISODE_BATCH_NAME = 'EpisodeSync';
+
     public array $episodes = [];
 
     public array $encounters = [];
@@ -47,6 +62,13 @@ class PatientSummary extends BasePatientComponent
 
     public array $medicationStatements;
 
+    /**
+     * Stores synchronization statuses for all entity types.
+     *
+     * @var array
+     */
+    public array $syncStatuses = [];
+
     protected array $dictionaryNames = [
         'eHealth/encounter_classes',
         'eHealth/encounter_types',
@@ -69,6 +91,21 @@ class PatientSummary extends BasePatientComponent
         'eHealth/diagnostic_report_categories',
     ];
 
+    /**
+     * Generic method to check if any entity is currently syncing.
+     *
+     * @param  string  $entityConstant  The entity constant from LegalEntity class (e.g., 'ENTITY_EPISODE')
+     * @return bool
+     */
+    public function isEntitySyncing(string $entityConstant): bool
+    {
+        if ($entityConstant === 'ENTITY_EPISODE') {
+            return $this->isEpisodeSyncProcessing();
+        }
+
+        return false;
+    }
+
     protected function initializeComponent(): void
     {
         $this->getDictionary();
@@ -77,6 +114,24 @@ class PatientSummary extends BasePatientComponent
             ->byName('eHealth/ICF/classifiers')
             ->flattenedChildValues()
             ->toArray();
+
+        // Initialize sync statuses for all entities
+        $this->syncStatuses = [
+            'ENTITY_EPISODE' => legalEntity()->getEntityStatus(LegalEntity::ENTITY_EPISODE),
+        ];
+    }
+
+    /**
+     * Determine if episode synchronization is currently running.
+     *
+     * @return bool True if a sync process is actively processing, false otherwise.
+     */
+    protected function isEpisodeSyncProcessing(): bool
+    {
+        // Check if there are any active episode sync batches for this patient
+        $runningBatches = $this->findRunningBatchesByLegalEntity(legalEntity()->id);
+
+        return $runningBatches->where('name', self::EPISODE_BATCH_NAME . '_' . $this->uuid)->isNotEmpty();
     }
 
     /**
@@ -86,27 +141,121 @@ class PatientSummary extends BasePatientComponent
      */
     public function syncEpisodes(): void
     {
-        try {
-            $response = EHealth::episode()->getShortEpisodes($this->uuid);
-            $validatedData = $response->validate();
-
-            try {
-                Repository::episode()->sync($this->id, $validatedData);
-                Session::flash('success', __('patients.messages.episodes_synced_successfully'));
-            } catch (Throwable $exception) {
-                $this->logDatabaseErrors($exception, 'Error while synchronizing episodes');
-                Session::flash('error', __('messages.database_error'));
-
-                return;
-            }
-
-            // Refresh data for display
-            $this->episodes = Arr::toCamelCase($this->formatDatesForDisplay($validatedData));
-        } catch (ConnectionException|EHealthValidationException|EHealthResponseException $exception) {
-            $this->handleEHealthExceptions($exception, 'Error when syncing episodes');
+        if ($this->isEpisodeSyncProcessing()) {
+            Session::flash('error', __('patients.messages.episode_sync_already_running'));
 
             return;
         }
+
+        $user = Auth::user();
+        $token = Session::get(config('ehealth.api.oauth.bearer_token'));
+
+        // Try to resume previous sync if it was paused or failed
+        if ($this->syncStatuses['ENTITY_EPISODE'] === JobStatus::PAUSED->value || $this->syncStatuses['ENTITY_EPISODE'] === JobStatus::FAILED->value) {
+            $this->resumeEpisodeSynchronization($user, $token);
+            Session::flash('success', __('patients.messages.episode_sync_resume_started'));
+            $user->notify(new SyncNotification('episode', 'resumed'));
+
+            return;
+        }
+
+        try {
+            $response = EHealth::episode()->getShortEpisodes($this->uuid);
+        } catch (ConnectionException|EHealthValidationException|EHealthResponseException $exception) {
+            $this->handleEHealthExceptions($exception, 'Error while synchronizing episodes');
+
+            return;
+        }
+
+        try {
+            $validatedData = $response->validate();
+
+            Repository::episode()->sync($this->id, $validatedData);
+        } catch (Throwable $exception) {
+            $this->logDatabaseErrors($exception, 'Error while synchronizing episodes');
+            Session::flash('error', __('patients.messages.episode_sync_database_error'));
+
+            return;
+        }
+
+        // If there are more pages, dispatch a job to handle the rest
+        if ($response->isNotLast()) {
+            try {
+                $user->notify(new SyncNotification('episode', 'started'));
+                $this->dispatchNextSyncJobs($user, $token);
+                Session::flash('success', __('patients.messages.episodes_first_page_synced_successfully'));
+            } catch (Throwable $exception) {
+                Log::error('Failed to dispatch EpisodeSync batch', ['exception' => $exception]);
+                $user->notify(new SyncNotification('episode', 'failed'));
+                Session::flash('error', __('patients.messages.episode_sync_background_dispatch_error'));
+            }
+        } else {
+            legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_EPISODE);
+            Session::flash('success', __('patients.messages.episodes_synced_successfully'));
+        }
+
+        // Refresh data for display
+        $this->episodes = Arr::toCamelCase($this->formatDatesForDisplay($validatedData));
+    }
+
+    /**
+     * Resume the synchronization process for episodes with the provided token.
+     *
+     * @param  User  $user
+     * @param  string  $token
+     * @return void
+     */
+    protected function resumeEpisodeSynchronization(User $user, string $token): void
+    {
+        $encryptedToken = Crypt::encryptString($token);
+
+        // Find all the Episode's failed batches for this patient and retry them
+        $failedBatches = $this->findFailedBatchesByLegalEntity(legalEntity()->id, 'ASC');
+
+        foreach ($failedBatches as $batch) {
+            if ($batch->name === self::EPISODE_BATCH_NAME . '_' . $this->uuid) {
+                Log::info('Resuming Episode sync batch: ' . $batch->name . ' id: ' . $batch->id);
+
+                legalEntity()->setEntityStatus(JobStatus::PROCESSING, LegalEntity::ENTITY_EPISODE);
+
+                $this->restartBatch($batch, $user, $encryptedToken, legalEntity());
+
+                break;
+            }
+        }
+    }
+
+    /**
+     * Dispatch next sync jobs for remaining episode pages.
+     *
+     * @param  User  $user
+     * @param  string  $token
+     * @return void
+     * @throws Throwable
+     */
+    protected function dispatchNextSyncJobs(User $user, string $token): void
+    {
+        Bus::batch([new EpisodeSync(legalEntity(), page: 2)])
+            ->withOption('legal_entity_id', legalEntity()->id)
+            ->withOption('token', Crypt::encryptString($token))
+            ->withOption('user', $user)
+            ->withOption('patient_uuid', $this->uuid)
+            ->withOption('person_id', $this->id)
+            ->then(fn () => $user->notify(new SyncNotification('episode', 'completed')))
+            ->catch(function (Batch $batch, Throwable $exception) use ($user) {
+                Log::error('Episode sync batch failed.', [
+                    'batch_id' => $batch->id,
+                    'patient_uuid' => $this->uuid,
+                    'exception' => $exception
+                ]);
+
+                $user->notify(new SyncNotification('episode', 'failed'));
+            })
+            ->onQueue('sync')
+            ->name(self::EPISODE_BATCH_NAME . '_' . $this->uuid)
+            ->dispatch();
+
+        legalEntity()->setEntityStatus(JobStatus::PROCESSING, LegalEntity::ENTITY_EPISODE);
     }
 
     public function getEpisodes(): void

@@ -1,6 +1,11 @@
+@php
+    use App\Enums\JobStatus;
+    use App\Models\MedicalEvents\Sql\Encounter;
+@endphp
+
 <x-layouts.patient :id="$id" :patientFullName="$patientFullName">
     <x-slot name="headerActions">
-        @can('create', \App\Models\MedicalEvents\Sql\Encounter::class)
+        @can('create', Encounter::class)
             <a href="{{ route('encounter.create', [legalEntity(), 'patientId' => $id]) }}"
                class="flex items-center gap-2 button-primary px-5 py-2 text-sm shadow-sm"
             >
@@ -26,18 +31,18 @@
     <div class="breadcrumb-form p-4 shift-content">
         @php
             $navItems = [
-                ['id' => 'episodes', 'action' => 'getEpisodes', 'syncAction' => 'syncEpisodes', 'label' => __('patients.episodes'), 'icon' => 'book'],
-                ['id' => 'encounters', 'action' => 'getEncounters', 'syncAction' => 'syncEncounters', 'label' => __('patients.encounters'), 'icon' => 'users'],
-                ['id' => 'clinicalImpressions', 'action' => 'getClinicalImpressions', 'syncAction' => 'syncClinicalImpressions', 'label' => __('patients.clinical_impressions'), 'icon' => 'check'],
-                ['id' => 'immunizations', 'action' => 'getImmunizations', 'syncAction' => 'syncImmunizations', 'label' => __('patients.immunizations'), 'icon' => 'shield'],
-                ['id' => 'observations', 'action' => 'getObservations', 'syncAction' => 'syncObservations', 'label' => __('patients.observation'), 'icon' => 'heart'],
-                ['id' => 'diagnoses', 'action' => 'getDiagnoses', 'syncAction' => 'syncDiagnoses', 'label' => __('patients.diagnoses'), 'icon' => 'file'],
-                ['id' => 'conditions', 'action' => 'getConditions', 'syncAction' => 'syncConditions', 'label' => __('patients.conditions'), 'icon' => 'file-minus'],
-                ['id' => 'diagnosticReports', 'action' => 'getDiagnosticReports', 'syncAction' => 'syncDiagnosticReports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity'],
-                ['id' => 'allergies', 'action' => 'syncAllergyIntolerances', 'syncAction' => 'syncAllergyIntolerances', 'label' => __('patients.allergies'), 'icon' => 'alert'],
-                ['id' => 'risk_assessments', 'action' => 'syncRiskAssessments', 'syncAction' => 'syncRiskAssessments', 'label' => __('patients.risk_assessments'), 'icon' => 'alert-octagon'],
-                ['id' => 'devices', 'action' => 'syncDevices', 'syncAction' => 'syncDevices', 'label' => __('patients.devices'), 'icon' => 'equipment'],
-                ['id' => 'medicines', 'action' => 'syncMedicationStatements', 'syncAction' => 'syncMedicationStatements', 'label' => __('patients.medicines'), 'icon' => 'pill-outline'],
+                ['id' => 'episodes', 'action' => 'getEpisodes', 'syncAction' => 'syncEpisodes', 'label' => __('patients.episodes'), 'icon' => 'book', 'syncEntity' => 'ENTITY_EPISODE'],
+                ['id' => 'encounters', 'action' => 'getEncounters', 'syncAction' => 'syncEncounters', 'label' => __('patients.encounters'), 'icon' => 'users', 'syncEntity' => ''],
+                ['id' => 'clinicalImpressions', 'action' => 'getClinicalImpressions', 'syncAction' => 'syncClinicalImpressions', 'label' => __('patients.clinical_impressions'), 'icon' => 'check', 'syncEntity' => ''],
+                ['id' => 'immunizations', 'action' => 'getImmunizations', 'syncAction' => 'syncImmunizations', 'label' => __('patients.immunizations'), 'icon' => 'shield', 'syncEntity' => ''],
+                ['id' => 'observations', 'action' => 'getObservations', 'syncAction' => 'syncObservations', 'label' => __('patients.observation'), 'icon' => 'heart', 'syncEntity' => ''],
+                ['id' => 'diagnoses', 'action' => 'getDiagnoses', 'syncAction' => 'syncDiagnoses', 'label' => __('patients.diagnoses'), 'icon' => 'file', 'syncEntity' => ''],
+                ['id' => 'conditions', 'action' => 'getConditions', 'syncAction' => 'syncConditions', 'label' => __('patients.conditions'), 'icon' => 'file-minus', 'syncEntity' => ''],
+                ['id' => 'diagnosticReports', 'action' => 'getDiagnosticReports', 'syncAction' => 'syncDiagnosticReports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity', 'syncEntity' => ''],
+                ['id' => 'allergies', 'action' => 'syncAllergyIntolerances', 'syncAction' => 'syncAllergyIntolerances', 'label' => __('patients.allergies'), 'icon' => 'alert', 'syncEntity' => ''],
+                ['id' => 'risk_assessments', 'action' => 'syncRiskAssessments', 'syncAction' => 'syncRiskAssessments', 'label' => __('patients.risk_assessments'), 'icon' => 'alert-octagon', 'syncEntity' => ''],
+                ['id' => 'devices', 'action' => 'syncDevices', 'syncAction' => 'syncDevices', 'label' => __('patients.devices'), 'icon' => 'equipment', 'syncEntity' => ''],
+                ['id' => 'medicines', 'action' => 'syncMedicationStatements', 'syncAction' => 'syncMedicationStatements', 'label' => __('patients.medicines'), 'icon' => 'pill-outline', 'syncEntity' => ''],
             ];
         @endphp
 
@@ -63,12 +68,19 @@
                             </div>
 
                             <div class="flex items-center gap-4 text-sm font-medium">
+                                @php
+                                    $isEntitySync = $item['syncEntity'] ? $this->isEntitySyncing($item['syncEntity']) : false;
+                                    $entitySyncStatus = $item['syncEntity'] ? $this->syncStatuses[$item['syncEntity']] ?? null : null;
+                                    $isRetryable = $entitySyncStatus === JobStatus::PAUSED->value || $entitySyncStatus === JobStatus::FAILED->value;
+                                @endphp
+
                                 <span x-show="activeSection === '{{ $item['id'] }}'"
-                                      @click.stop="$wire.{{ $item['syncAction'] }}()"
-                                      class="hidden sm:flex text-blue-600 dark:text-blue-400 cursor-pointer items-center gap-1.5 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                                      @click.stop="@if(!$isEntitySync) $wire.{{ $item['syncAction'] }}() @endif"
+                                      class="hidden sm:flex items-center gap-1.5 transition-colors
+                                      @if($isEntitySync) text-gray-400 dark:text-gray-500 cursor-not-allowed @else text-blue-600 dark:text-blue-400 cursor-pointer hover:text-blue-700 dark:hover:text-blue-300 @endif"
                                 >
                                     @icon('refresh', 'w-4 h-4')
-                                    {{ __('patients.sync_ehealth_data') }}
+                                    <span>{{ $item['syncEntity'] && $isRetryable ? __('forms.sync_retry') : __('patients.sync_ehealth_data') }}</span>
                                 </span>
                                 <div class="shrink-0 text-gray-400 dark:text-gray-500 transition-transform duration-300"
                                      :class="activeSection === '{{ $item['id'] }}' ? '' : '-rotate-90'"

@@ -26,7 +26,7 @@ class CompleteSync extends EHealthJob
 
         parent::handle();
 
-        //notify user about completion of sync of other entities (used for manual syncs)
+        // Notify user about completion of sync of other entities (used for manual syncs)
         $this->sendEntityNotification(null, 'completed');
     }
 

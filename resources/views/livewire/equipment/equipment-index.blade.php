@@ -20,10 +20,9 @@
             </a>
 
             @can('sync', Equipment::class)
-                <button
-                    type="button"
-                    wire:click="{{ !$this->isSync ? 'sync' : '' }}"
-                    class="{{ $this->isSync ? 'button-sync-disabled' : 'button-sync' }} flex items-center gap-2 whitespace-nowrap"
+                <button type="button"
+                        wire:click="{{ !$this->isSync ? 'sync' : '' }}"
+                        class="{{ $this->isSync ? 'button-sync-disabled' : 'button-sync' }} flex items-center gap-2 whitespace-nowrap"
                     {{ $this->isSync ? 'disabled' : '' }}
                 >
                     @icon('refresh', 'w-4 h-4')

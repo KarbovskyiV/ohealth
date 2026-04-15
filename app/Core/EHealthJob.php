@@ -165,7 +165,7 @@ abstract class EHealthJob implements ShouldQueue
     // Handle job failure
     public function failed(?Throwable $exception): void
     {
-        // It is need beacuse if job is failed the middleware doesn't called
+        // It is need because if job is failed the middleware doesn't called
         $olduser = $this->user ?? ($this->batch()->options['user'] ?? null);
 
         Log::channel('e_health_errors')->error('Sync job failed: ', [
@@ -254,12 +254,14 @@ abstract class EHealthJob implements ShouldQueue
 
         $payload = unserialize(base64_decode($session->payload));
 
-        $token = $payload['auth_token'] ?? '';
-
-        return $token;
+        return $payload['auth_token'] ?? '';
     }
 
-    // Get next entity job if needed
+    /**
+     * Get next entity job if needed.
+     *
+     * @return EHealthJob|null
+     */
     protected function getNextEntityJob(): ?EHealthJob
     {
         return $this->nextEntity;
@@ -358,10 +360,20 @@ abstract class EHealthJob implements ShouldQueue
         return static::SCOPE_REQUIRED;
     }
 
-    // Get data from EHealth API
+    /**
+     * Get data from EHealth API.
+     *
+     * @param  string  $token
+     * @return PromiseInterface|EHealthResponse|null
+     */
     abstract protected function sendRequest(string $token): PromiseInterface|EHealthResponse|null;
 
-    // Store or update data in the database
+    /**
+     * Store or update data in the database.
+     *
+     * @param  EHealthResponse|null  $response
+     * @return void
+     */
     abstract protected function processResponse(?EHealthResponse $response): void;
 
     /**

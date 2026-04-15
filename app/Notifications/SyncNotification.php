@@ -23,6 +23,7 @@ class SyncNotification extends Notification
         'patient' => 'Синхронізація пацієнтів',
         'license' => 'Синхронізація ліцензій',
         'declaration' => 'Синхронізація декларацій',
+        'episode' => 'Синхронізація епізодів',
     ];
 
     /** @var array Sync action statuses mapping with Ukrainian descriptions */
@@ -39,6 +40,7 @@ class SyncNotification extends Notification
     protected string $action;
 
     /**
+     * TODO: implement enum
      * Create a new notification instance.
      */
     public function __construct(?string $type, string $action)

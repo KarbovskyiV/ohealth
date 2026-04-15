@@ -103,7 +103,7 @@
                     </div>
                     <div>
                         <div class="record-inner-label">{{ __('patients.date_closed') }}</div>
-                        <div class="record-inner-value">{{ data_get($episode, 'period.end', '-') }}</div>
+                        <div class="record-inner-value">{{ data_get($episode, 'period.end') ?? '-' }}</div>
                     </div>
                     <div>
                         <div class="record-inner-label">{{ __('patients.date_updated') }}</div>
