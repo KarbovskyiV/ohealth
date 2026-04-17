@@ -28,7 +28,7 @@ class DiagnosticReportCreate extends DiagnosticReportComponent
      */
     public function save(array $diagnosticReportData): void
     {
-        if (Auth::user()?->cannot('create', DiagnosticReport::class)) {
+        if (Auth::user()->cannot('create', DiagnosticReport::class)) {
             Session::flash('error', 'У вас немає дозволу на створення діагностичного звіту.');
 
             return;
@@ -50,7 +50,7 @@ class DiagnosticReportCreate extends DiagnosticReportComponent
         try {
             $this->storeValidatedData($formattedData);
         } catch (Exception|Throwable $exception) {
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
             $this->logDatabaseErrors($exception, 'Error while saving diagnostic report');
 
             return;
@@ -68,7 +68,7 @@ class DiagnosticReportCreate extends DiagnosticReportComponent
      */
     public function sign(array $diagnosticReportData): void
     {
-        if (Auth::user()?->cannot('create', DiagnosticReport::class)) {
+        if (Auth::user()->cannot('create', DiagnosticReport::class)) {
             Session::flash('error', 'У вас немає дозволу на створення діагностичного звіту.');
 
             return;
@@ -91,7 +91,7 @@ class DiagnosticReportCreate extends DiagnosticReportComponent
         try {
             $this->storeValidatedData($formattedData);
         } catch (Exception|Throwable $exception) {
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
             $this->logDatabaseErrors($exception, 'Error while saving diagnostic report');
 
             return;
@@ -162,7 +162,7 @@ class DiagnosticReportCreate extends DiagnosticReportComponent
             $diagnosticReportId = Repository::diagnosticReport()->store([$formattedData['diagnosticReport']]);
 
             if (isset($formattedData['observations'])) {
-                Repository::observation()->store($formattedData['observations'], $this->patientId, diagnosticReportId: $diagnosticReportId);
+                Repository::observation()->store($formattedData['observations'], $this->personId, diagnosticReportId: $diagnosticReportId);
             }
         });
     }

@@ -54,7 +54,7 @@ class LicenseIndex extends Component
             return;
         } catch (EHealthValidationException|EHealthResponseException $exception) {
             $this->logEHealthException($exception, 'Error when getting licenses');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }
@@ -64,7 +64,7 @@ class LicenseIndex extends Component
         try {
             License::upsert($response->map($licences), uniqueBy: ['uuid'], update: new License()->getFillable());
         } catch (Exception $exception) {
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
             $this->logDatabaseErrors($exception, 'Error while synchronizing licenses with eHealth: ');
 
             return;

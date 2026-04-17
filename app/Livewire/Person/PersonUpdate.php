@@ -328,7 +328,7 @@ class PersonUpdate extends PersonComponent
                 Repository::personRequest()->update(removeEmptyKeys($response->map($response->validate())));
             } catch (Throwable $exception) {
                 $this->logDatabaseErrors($exception, 'Failed to update person request');
-                Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+                Session::flash('error', __('messages.database_error'));
 
                 return;
             }

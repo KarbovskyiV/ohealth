@@ -32,7 +32,7 @@ class DiagnosticReportComponent extends Component
      * @var int
      */
     #[Locked]
-    public int $patientId;
+    public int $personId;
 
     /**
      * Patient UUID for API requests.
@@ -131,7 +131,7 @@ class DiagnosticReportComponent extends Component
         'POSITION'
     ];
 
-    public function mount(LegalEntity $legalEntity, int $patientId): void
+    public function mount(LegalEntity $legalEntity, int $personId): void
     {
         $authUser = Auth::user();
 
@@ -149,7 +149,7 @@ class DiagnosticReportComponent extends Component
                 ->error('Error while loading observation dictionary in DiagnosticReportComponent');
         }
 
-        $this->patientId = $patientId;
+        $this->personId = $personId;
         $this->employeeFullName = $authUser->getDiagnosticReportWriterEmployee()->fullName;
 
         $employees = $authUser->party->employees()
@@ -194,7 +194,7 @@ class DiagnosticReportComponent extends Component
     protected function setPatientData(): void
     {
         $patient = Person::select(['uuid', 'first_name', 'last_name', 'second_name'])
-            ->whereId($this->patientId)
+            ->whereId($this->personId)
             ->firstOrFail();
 
         $this->patientUuid = $patient->uuid;

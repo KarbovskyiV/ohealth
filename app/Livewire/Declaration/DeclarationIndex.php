@@ -376,12 +376,12 @@ class DeclarationIndex extends Component
             return;
         } catch (EHealthValidationException|EHealthResponseException $exception) {
             $this->logEHealthException($exception, 'Error while syncing declaration requests');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         } catch (Exception $exception) {
             $this->logDatabaseErrors($exception, 'Error while syncing declaration requests');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }
@@ -443,11 +443,11 @@ class DeclarationIndex extends Component
                             'exception' => $err
                         ]);
 
-                    $user->notify(new DeclarationSyncCompleted($message, 'error'));
-                })
-                ->onQueue('sync')
-                ->name(self::DEPENDENT_BATCH_NAME)
-                ->dispatch();
+                        $user->notify(new DeclarationSyncCompleted($message, 'error'));
+                    })
+                    ->onQueue('sync')
+                    ->name(self::DEPENDENT_BATCH_NAME)
+                    ->dispatch();
 
                 legalEntity()?->setEntityStatus(JobStatus::PROCESSING, LegalEntity::ENTITY_DECLARATION);
 
@@ -467,8 +467,8 @@ class DeclarationIndex extends Component
      * This method handles the continuation of a previously initiated synchronization
      * operation for a specific user using an authentication or session token.
      *
-     * @param User $user The user instance for whom synchronization should be resumed
-     * @param string $token The authentication or session token used to resume the sync process
+     * @param  User  $user  The user instance for whom synchronization should be resumed
+     * @param  string  $token  The authentication or session token used to resume the sync process
      * @return void
      */
     protected function resumeSynchronization(User $user, string $token): void
@@ -491,7 +491,7 @@ class DeclarationIndex extends Component
         }
     }
 
-    public function approve(int $patientId, int $declarationRequestId): void
+    public function approve(int $personId, int $declarationRequestId): void
     {
         if (!$this->ensureAbility('approve', __('declarations.policy.approve'))) {
             return;
@@ -501,12 +501,12 @@ class DeclarationIndex extends Component
 
         $this->redirectRoute(
             'declaration.edit',
-            [legalEntity(), 'patientId' => $patientId, 'declarationRequest' => $declarationRequest],
+            [legalEntity(), 'personId' => $personId, 'declarationRequest' => $declarationRequest],
             navigate: true
         );
     }
 
-    public function sign(int $patientId, int $declarationRequestId): void
+    public function sign(int $personId, int $declarationRequestId): void
     {
         if (!$this->ensureAbility('sign', __('declarations.policy.sign'))) {
             return;
@@ -517,7 +517,7 @@ class DeclarationIndex extends Component
 
         $this->redirectRoute(
             'declaration.edit',
-            [legalEntity(), 'patientId' => $patientId, 'declarationRequest' => $declarationRequest],
+            [legalEntity(), 'personId' => $personId, 'declarationRequest' => $declarationRequest],
             navigate: true
         );
     }
@@ -551,7 +551,7 @@ class DeclarationIndex extends Component
             return;
         } catch (Exception $exception) {
             $this->logDatabaseErrors($exception, 'Error updating status in declaration request');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }
@@ -575,7 +575,7 @@ class DeclarationIndex extends Component
             DeclarationRequest::destroy($declarationRequest->id);
         } catch (Exception $exception) {
             $this->logDatabaseErrors($exception, 'Error while deleting declaration request');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }

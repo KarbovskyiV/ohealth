@@ -25,9 +25,6 @@ class PersonCarePlans extends BasePatientComponent
      */
     protected function initializeComponent(): void
     {
-//        /** @var CarePlanRepository $repository */
-//        $repository = app(CarePlanRepository::class);
-//        $this->carePlans = $repository->getByPersonId($this->id);
         // Mock data
         $this->carePlans = collect([
             (object)[

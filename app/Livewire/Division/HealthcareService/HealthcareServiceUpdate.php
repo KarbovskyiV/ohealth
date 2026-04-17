@@ -110,7 +110,7 @@ class HealthcareServiceUpdate extends Component
             $this->redirectRoute('healthcare-service.index', [legalEntity()], navigate: true);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Failed to update healthcare service');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }

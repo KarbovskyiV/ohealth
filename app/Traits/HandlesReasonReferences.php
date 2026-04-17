@@ -62,7 +62,7 @@ trait HandlesReasonReferences
                 Repository::condition()->store([Arr::toCamelCase($conditionData)], $encounterId);
             }
         } catch (ApiException|Throwable $e) {
-            session()?->flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             Log::error('Failed while ensuring condition existence', [
                 'error' => $e->getMessage(),
@@ -87,9 +87,9 @@ trait HandlesReasonReferences
         }
 
         try {
-            $encounterData = EHealth::patient()->getEncounterById($this->patientUuid, $encounterUuid)->getData();
+            $encounterData = EHealth::encounter()->getById($this->patientUuid, $encounterUuid)->getData();
 
-            return Repository::encounter()->store($encounterData, $this->patientId);
+            return Repository::encounter()->store($encounterData, $this->personId);
         } catch (ConnectionException|EHealthValidationException|EHealthResponseException $exception) {
             $this->handleEHealthExceptions($exception, 'Failed while ensuring encounter existence');
         } catch (Throwable $exception) {
@@ -124,7 +124,7 @@ trait HandlesReasonReferences
         }
 
         try {
-            Repository::observation()->store([Arr::toCamelCase($observationData)], $this->patientId, $encounterId);
+            Repository::observation()->store([Arr::toCamelCase($observationData)], $this->personId, $encounterId);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Error while storing observation');
             Session::flash('error', __('messages.database_error'));

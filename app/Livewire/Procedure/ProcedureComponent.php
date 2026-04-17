@@ -38,7 +38,7 @@ class ProcedureComponent extends Component
      * @var int
      */
     #[Locked]
-    public int $patientId;
+    public int $personId;
 
     /**
      * Patient UUID for API requests.
@@ -108,7 +108,7 @@ class ProcedureComponent extends Component
         }
     }
 
-    public function mount(LegalEntity $legalEntity, int $patientId): void
+    public function mount(LegalEntity $legalEntity, int $personId): void
     {
         $authUser = Auth::user();
 
@@ -116,7 +116,7 @@ class ProcedureComponent extends Component
             throw new RuntimeException('Authenticated user not found');
         }
 
-        $this->patientId = $patientId;
+        $this->personId = $personId;
         $this->employeeFullName = $authUser->getProcedureWriterEmployee()->fullName;
 
         $this->setPatientData();
@@ -184,7 +184,7 @@ class ProcedureComponent extends Component
     protected function setPatientData(): void
     {
         $patient = Person::select(['uuid', 'first_name', 'last_name', 'second_name'])
-            ->where('id', $this->patientId)
+            ->where('id', $this->personId)
             ->firstOrFail();
 
         $this->patientUuid = $patient->uuid;

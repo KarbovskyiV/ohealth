@@ -55,7 +55,7 @@ class LicenseEdit extends LicenseComponent
                 $this->redirectRoute('license.index', [legalEntity()], navigate: true);
             } catch (Exception $exception) {
                 $this->logDatabaseErrors($exception, 'Error while updating license');
-                Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+                Session::flash('error', __('messages.database_error'));
 
                 return;
             }

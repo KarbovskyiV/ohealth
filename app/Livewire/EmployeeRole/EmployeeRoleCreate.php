@@ -105,7 +105,7 @@ class EmployeeRoleCreate extends Component
             $this->redirectRoute('employee-role.index', [legalEntity()], navigate: true);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Failed to store employee role');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }

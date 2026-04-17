@@ -56,7 +56,7 @@ class PatientData extends BasePatientComponent
 
     protected function initializeComponent(): void
     {
-        $patient = Person::with('phones')->whereId($this->id)->firstOrFail();
+        $patient = Person::with('phones')->whereId($this->personId)->firstOrFail();
 
         $this->firstName = $patient->firstName;
         $this->lastName = $patient->lastName;

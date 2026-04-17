@@ -19,9 +19,9 @@ class EncounterEdit extends EncounterComponent
     #[Locked]
     public int $encounterId;
 
-    public function mount(LegalEntity $legalEntity, int $patientId, int $encounterId): void
+    public function mount(LegalEntity $legalEntity, int $personId, int $encounterId): void
     {
-        $this->initializeComponent($patientId);
+        $this->initializeComponent($personId);
         $this->encounterId = $encounterId;
 
         $encounter = Repository::encounter()->get($this->encounterId);
@@ -81,7 +81,7 @@ class EncounterEdit extends EncounterComponent
 
         $createdEncounterId = Repository::encounter()->store(
             $formattedEncounter,
-            $this->patientId
+            $this->personId
         );
         Repository::condition()->store($this->form->conditions, $createdEncounterId);
     }
@@ -105,11 +105,11 @@ class EncounterEdit extends EncounterComponent
                 $this->form->encounter['episode']['identifier']['value']
             );
 
-            Repository::episode()->store(Arr::toCamelCase($episodeData), $this->patientId, $this->encounterId);
+            Repository::episode()->store(Arr::toCamelCase($episodeData), $this->personId, $this->encounterId);
 
             return Repository::episode()->get($this->encounterId);
         } catch (ApiException|Throwable) {
-            session()?->flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            session()?->flash('error', __('messages.database_error'));
 
             return [];
         }

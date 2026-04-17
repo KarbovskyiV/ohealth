@@ -291,17 +291,17 @@ Route::middleware(['auth:web,ehealth', 'verified'])->group(function () {
                     Route::get('/update/{person}', PersonUpdate::class)->can('create', PersonRequest::class)->name('update');
 
                     Route::middleware('can:view,' . Person::class)->group(function () {
-                        Route::get('/{id}/patient-data', PatientData::class)->name('patient-data');
-                        Route::get('/{id}/summary', PatientSummary::class)->can('view', Person::class)->name('summary');
-                        Route::get('/{id}/episodes', PatientEpisodes::class)->name('episodes');
-                        Route::get('/{id}/care-plans', \App\Livewire\Person\Records\PersonCarePlans::class)->name('care-plans');
-                        Route::get('/{id}/observations', PatientObservation::class)->name('observations');
-                        Route::get('/{id}/vaccination', PatientVaccination::class)->name('vaccination');
-                        Route::get('/{id}/condition', PatientCondition::class)->name('condition');
-                        Route::get('/{id}/diagnoses', PatientDiagnoses::class)->name('diagnoses');
-                        Route::get('/{id}/diagnostic-reports', PatientDiagnosticReports::class)->name('diagnostic-reports');
-                        Route::get('/{id}/clinical-impressions', PatientClinicalImpressions::class)->name('clinical-impressions');
-                        Route::get('/{id}/encounters', PatientEncounters::class)->name('encounters');
+                        Route::get('/{personId}/patient-data', PatientData::class)->name('patient-data');
+                        Route::get('/{personId}/summary', PatientSummary::class)->can('view', Person::class)->name('summary');
+                        Route::get('/{personId}/episodes', PatientEpisodes::class)->name('episodes');
+                        Route::get('/{personId}/care-plans', \App\Livewire\Person\Records\PersonCarePlans::class)->name('care-plans');
+                        Route::get('/{personId}/observations', PatientObservation::class)->name('observations');
+                        Route::get('/{personId}/vaccination', PatientVaccination::class)->name('vaccination');
+                        Route::get('/{personId}/condition', PatientCondition::class)->name('condition');
+                        Route::get('/{personId}/diagnoses', PatientDiagnoses::class)->name('diagnoses');
+                        Route::get('/{personId}/diagnostic-reports', PatientDiagnosticReports::class)->name('diagnostic-reports');
+                        Route::get('/{personId}/clinical-impressions', PatientClinicalImpressions::class)->name('clinical-impressions');
+                        Route::get('/{personId}/encounters', PatientEncounters::class)->name('encounters');
                     });
                 });
 
@@ -310,27 +310,27 @@ Route::middleware(['auth:web,ehealth', 'verified'])->group(function () {
                         ->can('view', 'declaration')
                         ->name('view')
                         ->whereNumber('declaration');
-                    Route::get('/{patientId}/declaration/create', DeclarationCreate::class)
+                    Route::get('/{personId}/declaration/create', DeclarationCreate::class)
                         ->name('create')
                         ->can('create', DeclarationRequest::class)
-                        ->whereNumber('patientId');
-                    Route::get('/{patientId}/declaration/{declarationRequest}', DeclarationEdit::class)
+                        ->whereNumber('personId');
+                    Route::get('/{personId}/declaration/{declarationRequest}', DeclarationEdit::class)
                         ->name('edit')
                         ->can('update', 'declarationRequest')
-                        ->whereNumber(['patientId', 'declarationRequest']);
+                        ->whereNumber(['personId', 'declarationRequest']);
                 });
 
                 Route::middleware('can:create,' . Encounter::class)->name('encounter.')->group(function () {
-                    Route::get('/{patientId}/encounter/create', EncounterCreate::class)->name('create');
-                    Route::get('/{patientId}/encounter/{encounterId}', EncounterEdit::class)->name('edit');
+                    Route::get('/{personId}/encounter/create', EncounterCreate::class)->name('create');
+                    Route::get('/{personId}/encounter/{encounterId}', EncounterEdit::class)->name('edit');
                 });
 
-                Route::whereNumber('patientId')->group(static function () {
-                    Route::get('{patientId}/diagnostic-report/create', DiagnosticReportCreate::class)
+                Route::whereNumber('personId')->group(static function () {
+                    Route::get('{personId}/diagnostic-report/create', DiagnosticReportCreate::class)
                         ->can('create', DiagnosticReport::class)
                         ->name('diagnostic-report.create');
 
-                    Route::get('{patientId}/procedure/create', ProcedureCreate::class)
+                    Route::get('{personId}/procedure/create', ProcedureCreate::class)
                         ->can('create', Procedure::class)
                         ->name('procedure.create');
                 });

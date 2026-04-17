@@ -1,4 +1,4 @@
-<x-layouts.patient :id="$id" :uuid="$uuid" :patientFullName="$patientFullName">
+<x-layouts.patient :personId="$personId" :uuid="$uuid" :patientFullName="$patientFullName">
     <div x-data="{ activeSection: 'doctors' }" class="flex flex-col lg:flex-row gap-6 relative" @scroll.window.throttle.50ms="
         const sections = ['doctors', 'patient_data', 'care_plan_data', 'condition_diagnosis', 'supporting_information', 'additional_info'];
         for (const section of sections) {

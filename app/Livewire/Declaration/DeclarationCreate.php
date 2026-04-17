@@ -14,9 +14,9 @@ use Illuminate\Validation\ValidationException;
 
 class DeclarationCreate extends DeclarationComponent
 {
-    public function mount(LegalEntity $legalEntity, int $patientId): void
+    public function mount(LegalEntity $legalEntity, int $personId): void
     {
-        $this->baseMount($patientId);
+        $this->baseMount($personId);
     }
 
     public function createLocally(): void
@@ -44,7 +44,7 @@ class DeclarationCreate extends DeclarationComponent
             $this->redirectRoute('declaration.index', [legalEntity()], navigate: true);
         } catch (Exception $exception) {
             $this->logDatabaseErrors($exception, 'Error saving declaration request');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }

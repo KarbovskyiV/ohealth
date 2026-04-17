@@ -49,16 +49,16 @@ class TreatmentPlanCreate extends BasePatientComponent
 
     public string $patientUuid = '';
 
-    public function mount(LegalEntity $legalEntity, int $id): void
+    public function mount(LegalEntity $legalEntity, int $personId): void
     {
-        parent::mount($legalEntity, $id);
+        parent::mount($legalEntity, $personId);
     }
 
     protected function initializeComponent(): void
     {
         $this->patientUuid = $this->uuid;
         $this->form['period_start'] = now()->format('d.m.Y');
-        
+
         // Pre-fill author from current employee
         $employee = Auth::user()?->activeEmployee();
         if ($employee) {
@@ -280,14 +280,14 @@ class TreatmentPlanCreate extends BasePatientComponent
 
         if ($encounter) {
             $data['id'] = $encounter->id;
-            
+
             // Extract the UUID of the conditions (addresses for the care plan)
             $conditionUuids = $encounter->diagnoses
                 ->map(fn($d) => $d->condition?->value)
                 ->filter()
                 ->values()
                 ->toArray();
-                
+
             // Use the primary condition (first one per eHealth typical usage for 'addresses' in care plan)
             if (!empty($conditionUuids)) {
                 $primaryCondition = $conditionUuids[0];

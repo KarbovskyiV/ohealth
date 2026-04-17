@@ -32,9 +32,9 @@ class EncounterCreate extends EncounterComponent
 {
     use HandlesReasonReferences;
 
-    public function mount(LegalEntity $legalEntity, int $patientId): void
+    public function mount(LegalEntity $legalEntity, int $personId): void
     {
-        $this->initializeComponent($patientId);
+        $this->initializeComponent($personId);
 
         $uuid = Auth::user()->party->employees()->whereStatus('APPROVED')->first()->uuid;
 
@@ -215,10 +215,10 @@ class EncounterCreate extends EncounterComponent
     {
         try {
             DB::transaction(function () use ($formattedData) {
-                $createdEncounterId = Repository::encounter()->store($formattedData['encounter'], $this->patientId);
+                $createdEncounterId = Repository::encounter()->store($formattedData['encounter'], $this->personId);
 
                 if (isset($formattedData['episode'])) {
-                    Repository::episode()->store($formattedData['episode'], $this->patientId, $createdEncounterId);
+                    Repository::episode()->store($formattedData['episode'], $this->personId, $createdEncounterId);
                 }
 
                 Repository::condition()->store($formattedData['conditions'], $createdEncounterId);
@@ -226,7 +226,7 @@ class EncounterCreate extends EncounterComponent
                 if (isset($formattedData['immunizations'])) {
                     Repository::immunization()->store(
                         $formattedData['immunizations'],
-                        $this->patientId,
+                        $this->personId,
                         $createdEncounterId
                     );
                 }
@@ -238,7 +238,7 @@ class EncounterCreate extends EncounterComponent
                 if (isset($formattedData['observations'])) {
                     Repository::observation()->store(
                         $formattedData['observations'],
-                        $this->patientId,
+                        $this->personId,
                         $createdEncounterId
                     );
                 }
@@ -256,7 +256,7 @@ class EncounterCreate extends EncounterComponent
                 if (isset($formattedData['clinicalImpressions'])) {
                     Repository::clinicalImpression()->store(
                         $formattedData['clinicalImpressions'],
-                        $this->patientId,
+                        $this->personId,
                         $createdEncounterId
                     );
 
@@ -272,7 +272,7 @@ class EncounterCreate extends EncounterComponent
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }
@@ -359,7 +359,7 @@ class EncounterCreate extends EncounterComponent
             $episodeData = EHealth::episode()->getById($this->patientUuid, $uuid)->getData();
 
             try {
-                Repository::episode()->store(Arr::toCamelCase($episodeData), $this->patientId);
+                Repository::episode()->store(Arr::toCamelCase($episodeData), $this->personId);
             } catch (Throwable $exception) {
                 $this->logDatabaseErrors($exception, 'Failed to store episode');
                 Session::flash('error', __('messages.database_error'));

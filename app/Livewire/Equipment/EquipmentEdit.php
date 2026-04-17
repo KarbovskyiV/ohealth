@@ -56,7 +56,7 @@ class EquipmentEdit extends EquipmentComponent
             $this->redirectRoute('equipment.index', [legalEntity()], navigate: true);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Failed to store equipment');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }

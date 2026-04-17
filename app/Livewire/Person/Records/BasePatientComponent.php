@@ -20,7 +20,7 @@ abstract class BasePatientComponent extends Component
      * @var int
      */
     #[Locked]
-    public int $id;
+    public int $personId;
 
     /**
      * Patient full name.
@@ -46,9 +46,9 @@ abstract class BasePatientComponent extends Component
     #[Locked]
     public string $uuid;
 
-    public function mount(LegalEntity $legalEntity, int $id): void
+    public function mount(LegalEntity $legalEntity, int $personId): void
     {
-        $this->id = $id;
+        $this->personId = $personId;
         $this->loadPatientData();
         $this->initializeComponent();
     }
@@ -60,7 +60,7 @@ abstract class BasePatientComponent extends Component
      */
     protected function loadPatientData(): void
     {
-        $patient = Person::whereId($this->id)
+        $patient = Person::whereId($this->personId)
             ->with(['declarations' => fn ($query) => $query->latest()->take(1)])
             ->select(['id', 'uuid', 'first_name', 'last_name', 'second_name', 'verification_status'])
             ->firstOrFail();

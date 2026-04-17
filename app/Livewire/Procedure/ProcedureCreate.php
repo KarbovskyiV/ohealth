@@ -52,7 +52,7 @@ class ProcedureCreate extends ProcedureComponent
         try {
             $this->storeValidatedData($formattedData);
         } catch (Throwable $exception) {
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
             $this->logDatabaseErrors($exception, 'Error saving procedure');
 
             return;
@@ -93,7 +93,7 @@ class ProcedureCreate extends ProcedureComponent
         try {
             $this->storeValidatedData($formattedData);
         } catch (Throwable $exception) {
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
             $this->logDatabaseErrors($exception, 'Error saving procedure');
 
             return;

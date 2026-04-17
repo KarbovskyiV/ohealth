@@ -9,9 +9,9 @@ use App\Models\LegalEntity;
 
 class DeclarationEdit extends DeclarationComponent
 {
-    public function mount(LegalEntity $legalEntity, int $patientId, DeclarationRequest $declarationRequest): void
+    public function mount(LegalEntity $legalEntity, int $personId, DeclarationRequest $declarationRequest): void
     {
-        $this->baseMount($patientId);
+        $this->baseMount($personId);
         $this->declarationRequestId = $declarationRequest->id;
 
         if (session('showSignModal')) {

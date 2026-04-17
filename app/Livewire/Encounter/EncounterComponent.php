@@ -45,7 +45,7 @@ class EncounterComponent extends Component
      * @var int
      */
     #[Locked]
-    public int $patientId;
+    public int $personId;
 
     /**
      * Patient full name.
@@ -322,10 +322,10 @@ class EncounterComponent extends Component
     /**
      * Initialize the component data based on the patient ID.
      *
-     * @param  int  $patientId
+     * @param  int  $personId
      * @return void
      */
-    protected function initializeComponent(int $patientId): void
+    protected function initializeComponent(int $personId): void
     {
         $authUser = Auth::user();
 
@@ -347,7 +347,7 @@ class EncounterComponent extends Component
             ];
         })->toArray();
 
-        $this->patientId = $patientId;
+        $this->personId = $personId;
         $this->legalEntityType = legalEntity()->type->name;
         $this->role = $authUser->roles->first()->name;
         $this->divisions = legalEntity()->divisions->toArray();
@@ -437,7 +437,7 @@ class EncounterComponent extends Component
             Log::channel('e_health_errors')
                 ->error('Error while searching for conditions and observations in Encounter Component');
 
-            session()?->flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            session()?->flash('error', __('messages.database_error'));
         }
     }
 
@@ -469,7 +469,7 @@ class EncounterComponent extends Component
             Log::channel('e_health_errors')
                 ->error('Error while searching for clinical impressions in Encounter Component');
 
-            session()?->flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            session()?->flash('error', __('messages.database_error'));
         }
     }
 
@@ -499,7 +499,7 @@ class EncounterComponent extends Component
             Log::channel('e_health_errors')
                 ->error('Error while searching for complication details in Encounter Component');
 
-            session()?->flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            session()?->flash('error', __('messages.database_error'));
         }
     }
 
@@ -528,7 +528,7 @@ class EncounterComponent extends Component
             Log::channel('e_health_errors')
                 ->error('Error while searching for problems in Encounter Component');
 
-            session()?->flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            session()?->flash('error', __('messages.database_error'));
         }
     }
 
@@ -585,7 +585,7 @@ class EncounterComponent extends Component
     protected function setPatientData(): void
     {
         $patient = Person::select(['uuid', 'first_name', 'last_name', 'second_name'])
-            ->where('id', $this->patientId)
+            ->where('id', $this->personId)
             ->firstOrFail();
 
         $this->patientUuid = $patient->uuid;

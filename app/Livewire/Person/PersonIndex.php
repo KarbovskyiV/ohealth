@@ -252,9 +252,9 @@ class PersonIndex extends Component
                 }
             }
 
-            $this->redirectRoute($routeName, [legalEntity(), 'id' => $person->id]);
+            $this->redirectRoute($routeName, [legalEntity(), 'personId' => $person->id]);
         } else {
-            $this->redirectRoute($routeName, [legalEntity(), 'id' => $patientId]);
+            $this->redirectRoute($routeName, [legalEntity(), 'personId' => $patientId]);
         }
     }
 

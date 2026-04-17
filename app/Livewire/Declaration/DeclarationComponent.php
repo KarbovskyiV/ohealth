@@ -43,7 +43,7 @@ abstract class DeclarationComponent extends Component
     public Form $form;
 
     #[Locked]
-    public $patientId;
+    public $personId;
 
     public bool $showInformationMessageModal = false;
     public bool $showAuthModal = false;
@@ -130,13 +130,13 @@ abstract class DeclarationComponent extends Component
         $this->getDictionary();
     }
 
-    protected function baseMount(int $patientId): void
+    protected function baseMount(int $personId): void
     {
         $patient = Person::select(['uuid', 'first_name', 'last_name', 'second_name'])
-            ->whereId($patientId)
+            ->whereId($personId)
             ->firstOrFail();
         $this->patientFullName = $patient->fullName;
-        $this->patientId = $patientId;
+        $this->personId = $personId;
         $this->patientUuid = $patient->uuid;
 
         $this->setEmployeesInfo();
@@ -185,7 +185,7 @@ abstract class DeclarationComponent extends Component
         } catch (Exception $exception) {
             $action = $this->declarationRequestId ? 'updating' : 'creating';
             $this->logDatabaseErrors($exception, "Error $action declaration request");
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }
@@ -197,7 +197,7 @@ abstract class DeclarationComponent extends Component
                 Repository::declarationRequest()->update($declarationRequest->id, $response->getData());
             } catch (Exception $exception) {
                 $this->logDatabaseErrors($exception, 'Error updating declaration request after response');
-                Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+                Session::flash('error', __('messages.database_error'));
 
                 return;
             }
@@ -277,7 +277,7 @@ abstract class DeclarationComponent extends Component
                     DB::transaction(fn () => $this->syncDeclarationRelatedData($toBeSignedData));
                 } catch (Exception|Throwable $exception) {
                     $this->logDatabaseErrors($exception, 'Error while approving declaration request');
-                    Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+                    Session::flash('error', __('messages.database_error'));
 
                     return;
                 }
@@ -358,7 +358,7 @@ abstract class DeclarationComponent extends Component
                     $successCount++;
                 } else {
                     logger()?->error('Error while uploading document', ['body' => $response->getBody()]);
-                    Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+                    Session::flash('error', __('messages.database_error'));
                 }
             } catch (ConnectionException $exception) {
                 $this->logConnectionError($exception, 'Error while uploading document');
@@ -451,7 +451,7 @@ abstract class DeclarationComponent extends Component
                 DB::transaction(fn () => $this->syncDeclarationRelatedData($toBeSignedData));
             } catch (Exception|Throwable $exception) {
                 $this->logDatabaseErrors($exception, 'Error while approving uploaded declaration request');
-                Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+                Session::flash('error', __('messages.database_error'));
 
                 return;
             }
@@ -515,7 +515,7 @@ abstract class DeclarationComponent extends Component
                     Repository::declaration()->store($response->getData());
                 } catch (Exception $exception) {
                     $this->logDatabaseErrors($exception, "Error while $context");
-                    Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+                    Session::flash('error', __('messages.database_error'));
 
                     return;
                 }
@@ -581,7 +581,7 @@ abstract class DeclarationComponent extends Component
             return [];
         } catch (EHealthValidationException|EHealthResponseException $exception) {
             $this->logEHealthException($exception, 'Error when getting auth methods');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return [];
         }

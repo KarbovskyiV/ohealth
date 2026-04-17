@@ -163,7 +163,7 @@ class PatientSummary extends BasePatientComponent
 
         try {
             $validatedData = $response->validate();
-            Repository::episode()->sync($this->id, $validatedData);
+            Repository::episode()->sync($this->personId, $validatedData);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Error while synchronizing episodes');
             Session::flash('error', __('patients.messages.episode_sync_database_error'));
@@ -183,7 +183,7 @@ class PatientSummary extends BasePatientComponent
 
     public function getEpisodes(): void
     {
-        $this->episodes = Episode::with('period')->wherePersonId($this->id)->get()->toArray();
+        $this->episodes = Episode::with('period')->wherePersonId($this->personId)->get()->toArray();
     }
 
     public function syncEncounters(): void
@@ -208,7 +208,7 @@ class PatientSummary extends BasePatientComponent
 
         try {
             $validatedData = $response->validate();
-            Repository::encounter()->sync($this->id, $validatedData);
+            Repository::encounter()->sync($this->personId, $validatedData);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Error while synchronizing encounters');
             Session::flash('error', __('patients.messages.encounter_sync_database_error'));
@@ -228,7 +228,7 @@ class PatientSummary extends BasePatientComponent
 
     public function getEncounters(): void
     {
-        $this->encounters = Encounter::wherePersonId($this->id)
+        $this->encounters = Encounter::wherePersonId($this->personId)
             ->with(['class', 'episode.type.coding', 'type.coding', 'period', 'performerSpeciality.coding'])
             ->get()
             ->toArray();
@@ -256,7 +256,7 @@ class PatientSummary extends BasePatientComponent
 
         try {
             $validatedData = $response->validate();
-            Repository::clinicalImpression()->sync($this->id, $validatedData);
+            Repository::clinicalImpression()->sync($this->personId, $validatedData);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Error while synchronizing clinical impressions');
             Session::flash('error', __('patients.messages.clinical_impression_sync_database_error'));
@@ -276,7 +276,7 @@ class PatientSummary extends BasePatientComponent
 
     public function getClinicalImpressions(): void
     {
-        $this->clinicalImpressions = ClinicalImpression::wherePersonId($this->id)
+        $this->clinicalImpressions = ClinicalImpression::wherePersonId($this->personId)
             ->withAllRelations()
             ->get()
             ->toArray();
@@ -304,7 +304,7 @@ class PatientSummary extends BasePatientComponent
 
         try {
             $validatedData = $response->validate();
-            Repository::immunization()->sync($this->id, $validatedData);
+            Repository::immunization()->sync($this->personId, $validatedData);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Error while synchronizing immunizations');
             Session::flash('error', __('patients.messages.immunization_sync_database_error'));
@@ -324,7 +324,7 @@ class PatientSummary extends BasePatientComponent
 
     public function getImmunizations(): void
     {
-        $this->immunizations = Immunization::wherePersonId($this->id)
+        $this->immunizations = Immunization::wherePersonId($this->personId)
             ->withAllRelations()
             ->get()
             ->toArray();
@@ -355,7 +355,7 @@ class PatientSummary extends BasePatientComponent
 
         try {
             $validatedData = $response->validate();
-            Repository::observation()->sync($this->id, $validatedData);
+            Repository::observation()->sync($this->personId, $validatedData);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Error while synchronizing observations');
             Session::flash('error', __('patients.messages.observation_sync_database_error'));
@@ -375,7 +375,7 @@ class PatientSummary extends BasePatientComponent
 
     public function getObservations(): void
     {
-        $this->observations = Observation::wherePersonId($this->id)
+        $this->observations = Observation::wherePersonId($this->personId)
             ->withAllRelations()
             ->get()
             ->toArray();
@@ -425,7 +425,7 @@ class PatientSummary extends BasePatientComponent
 
         try {
             $validatedData = $response->validate();
-            Repository::condition()->sync($this->id, $validatedData);
+            Repository::condition()->sync($this->personId, $validatedData);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Error while synchronizing conditions');
             Session::flash('error', __('patients.messages.condition_sync_database_error'));
@@ -445,7 +445,7 @@ class PatientSummary extends BasePatientComponent
 
     public function getConditions(): void
     {
-        $this->conditions = Condition::wherePersonId($this->id)
+        $this->conditions = Condition::wherePersonId($this->personId)
             ->withAllRelations()
             ->get()
             ->toArray();
@@ -476,7 +476,7 @@ class PatientSummary extends BasePatientComponent
 
         try {
             $validatedData = $response->validate();
-            Repository::diagnosticReport()->sync($this->id, $validatedData);
+            Repository::diagnosticReport()->sync($this->personId, $validatedData);
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Error while synchronizing diagnostic reports');
             Session::flash('error', __('patients.messages.diagnostic_report_sync_database_error'));
@@ -496,7 +496,7 @@ class PatientSummary extends BasePatientComponent
 
     public function getDiagnosticReports(): void
     {
-        $this->diagnosticReports = DiagnosticReport::wherePersonId($this->id)
+        $this->diagnosticReports = DiagnosticReport::wherePersonId($this->personId)
             ->withAllRelations()
             ->get()
             ->toArray();
@@ -679,7 +679,7 @@ class PatientSummary extends BasePatientComponent
             ->withOption('token', Crypt::encryptString($token))
             ->withOption('user', $user)
             ->withOption('patient_uuid', $this->uuid)
-            ->withOption('person_id', $this->id)
+            ->withOption('person_id', $this->personId)
             ->then(fn () => $user->notify(new SyncNotification($entityType, 'completed')))
             ->catch(function (Batch $batch, Throwable $exception) use ($user, $entityType) {
                 Log::error(ucfirst($entityType) . ' sync batch failed.', [

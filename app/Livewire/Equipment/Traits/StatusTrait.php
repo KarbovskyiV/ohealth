@@ -73,7 +73,7 @@ trait StatusTrait
             $this->dispatch('close-update-status-modal');
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Failed to store equipment');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }
@@ -126,7 +126,7 @@ trait StatusTrait
             $this->dispatch('close-update-availability-status-modal');
         } catch (Throwable $exception) {
             $this->logDatabaseErrors($exception, 'Failed to store equipment');
-            Session::flash('error', 'Виникла помилка. Зверніться до адміністратора.');
+            Session::flash('error', __('messages.database_error'));
 
             return;
         }

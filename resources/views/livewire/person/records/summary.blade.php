@@ -4,10 +4,10 @@
     use App\Livewire\Person\Records\PatientSummary;
 @endphp
 
-<x-layouts.patient :id="$id" :patientFullName="$patientFullName">
+<x-layouts.patient :personId="$personId" :patientFullName="$patientFullName">
     <x-slot name="headerActions">
         @can('create', Encounter::class)
-            <a href="{{ route('encounter.create', [legalEntity(), 'patientId' => $id]) }}"
+            <a href="{{ route('encounter.create', [legalEntity(), 'personId' => $personId]) }}"
                class="flex items-center gap-2 button-primary px-5 py-2 text-sm shadow-sm"
             >
                 @icon('plus', 'w-4 h-4')
