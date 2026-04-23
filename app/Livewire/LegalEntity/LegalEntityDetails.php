@@ -393,7 +393,7 @@ class LegalEntityDetails extends LegalEntityComponent
 
         $this->redirect(route('legal-entity.details', [legalEntity()]), navigate: true);
 
-        session()->flash('success', __('forms.update_successfull'));
+        session()->flash('success', __('forms.sync_successfull'));
 
         legalEntity()?->setEntityStatus(JobStatus::COMPLETED);
 
