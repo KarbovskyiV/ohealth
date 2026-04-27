@@ -6,13 +6,13 @@
     <div class="form-row-3">
         <div class="form-group group">
             <div class="datepicker-wrapper">
-                <input wire:model="form.encounter.period.date"
+                <input wire:model="form.encounter.periodDate"
                        datepicker-max-date="{{ now()->format('Y-m-d') }}"
                        datepicker-autoselect-today
                        type="text"
                        name="date"
                        id="date"
-                       class="datepicker-input with-leading-icon input peer @error('form.encounter.period.date') input-error @enderror"
+                       class="datepicker-input with-leading-icon input peer @error('form.encounter.periodDate') input-error @enderror"
                        placeholder=" "
                        required
                        autocomplete="off"
@@ -22,7 +22,7 @@
                 </label>
             </div>
 
-            @error('form.encounter.period.date')
+            @error('form.encounter.periodDate')
             <p class="text-error">
                 {{ $message }}
             </p>
@@ -32,12 +32,12 @@
         <div class="form-row-modal">
             <div class="form-group group" onclick="document.getElementById('periodStart').showPicker()">
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
-                <input wire:model="form.encounter.period.start"
+                <input wire:model="form.encounter.periodStart"
                        @input="$event.target.blur()"
                        type="time"
                        name="periodStart"
                        id="periodStart"
-                       class="input peer !pl-10 @error('form.encounter.period.start') input-error @enderror"
+                       class="input peer !pl-10 @error('form.encounter.periodStart') input-error @enderror"
                        placeholder=" "
                        required
                 />
@@ -45,7 +45,7 @@
                     {{ __('patients.period_start') }}
                 </label>
 
-                @error('form.encounter.period.start')
+                @error('form.encounter.periodStart')
                 <p class="text-error">
                     {{ $message }}
                 </p>
@@ -54,20 +54,20 @@
 
             <div class="form-group group" onclick="document.getElementById('periodEnd').showPicker()">
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
-                <input wire:model="form.encounter.period.end"
+                <input wire:model="form.encounter.periodEnd"
                        @input="$event.target.blur()"
                        type="time"
                        name="periodEnd"
                        id="periodEnd"
-                       class="input peer !pl-10 @error('form.encounter.period.end') input-error @enderror"
+                       class="input peer !pl-10 @error('form.encounter.periodEnd') input-error @enderror"
                        placeholder=" "
                        required
                 />
-                <label for="periodStart" class="label">
+                <label for="periodEnd" class="label">
                     {{ __('patients.period_end') }}
                 </label>
 
-                @error('form.encounter.period.end')
+                @error('form.encounter.periodEnd')
                 <p class="text-error">
                     {{ $message }}
                 </p>
@@ -78,9 +78,9 @@
 
     <div class="form-row-3">
         <div class="form-group group">
-            <select wire:model="form.encounter.division.identifier.value"
+            <select wire:model="form.encounter.divisionId"
                     id="divisionNames"
-                    class="input-select peer @error('form.encounter.division.identifier.value') input-error @enderror"
+                    class="input-select peer @error('form.encounter.divisionId') input-error @enderror"
             >
                 <option selected value="">
                     {{ __('forms.select') }} {{ mb_strtolower(__('forms.division_name')) }}
@@ -90,7 +90,7 @@
                 @endforeach
             </select>
 
-            @error('form.encounter.division.identifier.value')
+            @error('form.encounter.divisionId')
             <p class="text-error">
                 {{ $message }}
             </p>
@@ -100,9 +100,9 @@
 
     <div class="form-row-3">
         <div class="form-group group">
-            <select wire:model="form.encounter.priority.coding.0.code"
+            <select wire:model="form.encounter.priorityCode"
                     id="priority"
-                    class="input-select peer @error('form.encounter.priority.coding.code') input-error @enderror"
+                    class="input-select peer @error('form.encounter.priorityCode') input-error @enderror"
                     required
             >
                 <option selected>{{ __('forms.select') }} {{ mb_strtolower(__('patients.priority')) }}</option>
@@ -111,7 +111,7 @@
                 @endforeach
             </select>
 
-            @error('form.encounter.priority.coding.code')
+            @error('form.encounter.priorityCode')
             <p class="text-error">
                 {{ $message }}
             </p>

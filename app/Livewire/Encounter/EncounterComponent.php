@@ -13,7 +13,6 @@ use App\Enums\User\Role;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Livewire\Encounter\Forms\Api\EncounterRequestApi;
-use App\Models\Division;
 use App\Models\Employee\Employee;
 use App\Models\Person\Person;
 use App\Traits\FormTrait;
@@ -350,7 +349,7 @@ class EncounterComponent extends Component
         $this->personId = $personId;
         $this->legalEntityType = legalEntity()->type->name;
         $this->role = $authUser->roles->first()->name;
-        $this->divisions = legalEntity()->divisions->toArray();
+        $this->divisions = legalEntity()->divisions()->whereStatus('ACTIVE')->get()->toArray();
 
         $this->employeeFullName = $authUser->getEncounterWriterEmployee()->fullName;
 
@@ -379,10 +378,12 @@ class EncounterComponent extends Component
         }
 
         try {
-            $this->evidenceDetails = EHealth::condition()->getBySearchParams(
-                $this->patientUuid,
-                ['managing_organization_id' => legalEntity()->uuid]
-            )->getData();
+            $this->evidenceDetails = collect(
+                EHealth::condition()->getBySearchParams(
+                    $this->patientUuid,
+                    ['managing_organization_id' => legalEntity()->uuid]
+                )->getData()
+            )->map(static fn (array $item) => array_merge($item, ['type' => 'condition']))->all();
         } catch (ConnectionException|EHealthValidationException|EHealthResponseException $exception) {
             $this->handleEHealthExceptions($exception, 'Error while getting evidence details');
 
@@ -480,7 +481,7 @@ class EncounterComponent extends Component
      */
     public function searchComplicationDetails(): void
     {
-        $episodeId = $this->form->encounter['episode']['identifier']['value'] ?? null;
+        $episodeId = $this->form->episode['id'] ?: null;
 
         // If the episode is not selected, don't perform a search.
         if (!isset($episodeId)) {
@@ -623,7 +624,7 @@ class EncounterComponent extends Component
 
         // set default encounter class, if there is only one
         if (count($this->dictionaries['eHealth/encounter_classes']) === 1) {
-            $this->form->encounter['class']['code'] = array_key_first($this->dictionaries['eHealth/encounter_classes']);
+            $this->form->encounter['classCode'] = array_key_first($this->dictionaries['eHealth/encounter_classes']);
         }
     }
 

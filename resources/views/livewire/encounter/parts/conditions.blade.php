@@ -9,6 +9,7 @@
                   showPrimaryWarning: false,
                   showDuplicateCodeWarning: false,
                   modalCondition: new Condition(),
+                  modalDiagnosis: new Diagnosis(),
                   newCondition: false,
                   item: 0,
                   conditionCodesDictionary: $wire.dictionaries['eHealth/ICPC2/condition_codes'],
@@ -36,10 +37,10 @@
         <template x-for="(condition, index) in conditions" :key="index">
             <tr>
                 <td class="td-input"
-                    x-text="`${ condition.code.coding[0]['code'] } - ${ conditionCodesDictionary[condition.code.coding[0]['code']] }`"
+                    x-text="`${ condition.codeCode } - ${ conditionCodesDictionary[condition.codeCode] }`"
                 ></td>
                 <td class="td-input"
-                    x-text="diagnosisRolesDictionary[diagnoses[index].role.coding[0].code]"
+                    x-text="diagnosisRolesDictionary[diagnoses[index]?.roleCode]"
                 ></td>
                 <td class="td-input"
                     x-text="conditionClinicalStatusesRolesDictionary[condition.clinicalStatus]"
@@ -47,32 +48,30 @@
                 <td class="td-input"
                     x-text="conditionVerificationStatusesDictionary[condition.verificationStatus]"
                 ></td>
-                <td class="td-input"
-                    x-text="condition.asserter?.type?.[0]?.text"
-                ></td>
+                <td class="td-input" x-text="condition.asserterText"></td>
                 <td class="td-input">
                     {{-- That all that is needed for the dropdown --}}
                     <div x-data="{
-                                 openDropdown: false,
-                                 toggle() {
-                                     if (this.openDropdown) {
-                                         return this.close()
-                                     }
-
-                                     this.$refs.button.focus()
-
-                                     this.openDropdown = true
-                                 },
-                                 close(focusAfter) {
-                                     if (!this.openDropdown) return
-
-                                     this.openDropdown = false
-
-                                     focusAfter && focusAfter.focus()
+                             openDropdown: false,
+                             toggle() {
+                                 if (this.openDropdown) {
+                                     return this.close()
                                  }
-                             }"
+
+                                 this.$refs.button.focus()
+
+                                 this.openDropdown = true
+                             },
+                             close(focusAfter) {
+                                 if (!this.openDropdown) return
+
+                                 this.openDropdown = false
+
+                                 focusAfter && focusAfter.focus()
+                             }
+                         }"
                          @keydown.escape.prevent.stop="close($refs.button)"
-                         @focusin.window="! $refs.panel.contains($event.target) && close()"
+                         @focusin.window="!$refs.panel.contains($event.target) && close()"
                          x-id="['dropdown-button']"
                          class="relative"
                     >
@@ -110,8 +109,8 @@
                                 <button @click.prevent="
                                             openModal = true; {{-- Open the modal --}}
                                             item = index; {{-- Identify the item we are corrently editing --}}
-                                            {{-- Replace the previous condition with the current, don't assign object directly (modalCondition = condition) to avoid reactiveness --}}
                                             modalCondition = new Condition(condition);
+                                            modalDiagnosis = new Diagnosis(diagnoses[index]);
                                             newCondition = false; {{-- This condition is already created --}}
                                         "
                                         class="dropdown-button"
@@ -119,7 +118,11 @@
                                     {{ __('forms.edit') }}
                                 </button>
 
-                                <button @click.prevent="conditions.splice(index, 1); close($refs.button)"
+                                <button @click.prevent="
+                                            conditions.splice(index, 1);
+                                            diagnoses.splice(index, 1);
+                                            close($refs.button);
+                                        "
                                         class="dropdown-button dropdown-delete"
                                 >
                                     {{ __('forms.delete') }}
@@ -139,6 +142,7 @@
                         openModal = true; {{-- Open the Modal --}}
                         newCondition = true; {{-- We are adding a new condition --}}
                         modalCondition = new Condition(); {{-- Replace the data of the previous condition with a new one--}}
+                        modalDiagnosis = new Diagnosis();
                     "
                 class="item-add my-5"
         >
@@ -180,11 +184,8 @@
                                     <label for="codingSystem" class="label-modal">
                                         {{ __('patients.coding_system') }}
                                     </label>
-                                    <select x-model="modalCondition.conditions.code.coding[0].system"
-                                            @change="
-                                                modalCondition.conditions.code.coding[0].code = '';
-                                                modalCondition.conditions.code.coding = [modalCondition.conditions.code.coding[0]];
-                                            "
+                                    <select x-model="modalCondition.codeSystem"
+                                            @change="modalCondition.codeCode = ''"
                                             id="codingSystem"
                                             class="input-modal"
                                             required
@@ -194,30 +195,30 @@
                                         <option value="eHealth/ICD10_AM/condition_codes">ICD-10 AM</option>
                                     </select>
                                     <p class="text-error text-xs"
-                                       x-show="!modalCondition.conditions.code.coding[0].system"
+                                       x-show="!modalCondition.codeSystem"
                                     >
                                         {{ __('forms.field_empty') }}
                                     </p>
                                 </div>
 
                                 <!-- ICPC2 Code Selection -->
-                                <div x-show="modalCondition.conditions.code.coding[0].system === 'eHealth/ICPC2/condition_codes'">
+                                <div x-show="modalCondition.codeSystem === 'eHealth/ICPC2/condition_codes'">
                                     <label for="conditionReasonCode" class="label-modal">
                                         {{ __('patients.icpc-2_status_code') }}
                                     </label>
-                                    <x-select2 modelPath="modalCondition.conditions.code.coding[0].code"
+                                    <x-select2 modelPath="modalCondition.codeCode"
                                                dictionaryName="eHealth/ICPC2/condition_codes"
                                                id="conditionReasonCode"
                                     />
                                     <p class="text-error text-xs"
-                                       x-show="modalCondition.conditions.code.coding[0].system === 'eHealth/ICPC2/condition_codes' && !modalCondition.conditions.code.coding[0].code"
+                                       x-show="modalCondition.codeSystem === 'eHealth/ICPC2/condition_codes' && !modalCondition.codeCode"
                                     >
                                         {{ __('forms.field_empty') }}
                                     </p>
                                 </div>
 
                                 <!-- ICD10 Code Search -->
-                                <div x-show="modalCondition.conditions.code.coding[0].system === 'eHealth/ICD10_AM/condition_codes'"
+                                <div x-show="modalCondition.codeSystem === 'eHealth/ICD10_AM/condition_codes'"
                                      x-data="{
                                         selected: null,
                                         results: $wire.entangle('results'),
@@ -238,9 +239,9 @@
                                                    showResults = true;
                                                }
                                            "
-                                           @focus="if ((modalCondition.conditions.code.coding[0].code?.length ?? 0) >= 1) showResults = true"
+                                           @focus="if ((modalCondition.codeCode?.length ?? 0) >= 1) showResults = true"
                                            @click.away="showResults = false"
-                                           x-model="modalCondition.conditions.code.coding[0].code"
+                                           x-model="modalCondition.codeCode"
                                            id="icd10Code"
                                            class="input-modal"
                                            placeholder="{{ __('forms.select') }}"
@@ -255,7 +256,7 @@
                                                 <li class="group flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 transition-colors dark:bg-gray-800 dark:text-white"
                                                     @click="
                                                         selected = result;
-                                                        modalCondition.conditions.code.coding[0].code = result.code;
+                                                        modalCondition.codeCode = result.code;
                                                         showResults = false;
                                                     "
                                                 >
@@ -270,7 +271,7 @@
                                     </p>
 
                                     <p class="text-error text-xs"
-                                       x-show="modalCondition.conditions.code.coding[0].system === 'eHealth/ICD10_AM/condition_codes' && !modalCondition.conditions.code.coding[0].code"
+                                       x-show="modalCondition.codeSystem === 'eHealth/ICD10_AM/condition_codes' && !modalCondition.codeCode"
                                     >
                                         {{ __('forms.field_empty') }}
                                     </p>
@@ -282,7 +283,7 @@
                                     <label for="diagnoseCode" class="label-modal">
                                         {{ __('forms.type') }}
                                     </label>
-                                    <select x-model="modalCondition.conditions.diagnoses.role.coding[0].code"
+                                    <select x-model="modalDiagnosis.roleCode"
                                             id="diagnoseCode"
                                             class="input-modal"
                                             type="text"
@@ -295,7 +296,7 @@
                                     </select>
 
                                     <p class="text-error text-xs"
-                                       x-show="!Object.keys(diagnosisRolesDictionary).includes(modalCondition.conditions.diagnoses.role.coding[0].code)"
+                                       x-show="!Object.keys(diagnosisRolesDictionary).includes(modalDiagnosis.roleCode)"
                                     >
                                         {{ __('forms.field_empty') }}
                                     </p>
@@ -305,7 +306,7 @@
                                     <label for="rank" class="label-modal">
                                         {{ __('patients.priority') }}
                                     </label>
-                                    <select x-model.number="modalCondition.conditions.diagnoses.rank"
+                                    <select x-model.number="modalDiagnosis.rank"
                                             id="rank"
                                             class="input-modal"
                                             type="text"
@@ -322,20 +323,20 @@
                                     <label for="clinicalStatus" class="label-modal">
                                         {{ __('patients.clinical_status') }}
                                     </label>
-                                    <select x-model="modalCondition.conditions.clinicalStatus"
+                                    <select x-model="modalCondition.clinicalStatus"
                                             id="clinicalStatus"
                                             class="input-modal"
                                             type="text"
                                             required
                                     >
-                                        <option selected>{{ __('forms.select') }}</option>
+                                        <option value="" selected>{{ __('forms.select') }}</option>
                                         @foreach($this->dictionaries['eHealth/condition_clinical_statuses'] as $key => $clinicalStatus)
                                             <option value="{{ $key }}">{{ $clinicalStatus }}</option>
                                         @endforeach
                                     </select>
 
                                     <p class="text-error text-xs"
-                                       x-show="!Object.keys(conditionClinicalStatusesRolesDictionary).includes(modalCondition.conditions.clinicalStatus)"
+                                       x-show="!Object.keys(conditionClinicalStatusesRolesDictionary).includes(modalCondition.clinicalStatus)"
                                     >
                                         {{ __('forms.field_empty') }}
                                     </p>
@@ -345,20 +346,20 @@
                                     <label for="verificationStatus" class="label-modal">
                                         {{ __('patients.verification_status') }}
                                     </label>
-                                    <select x-model="modalCondition.conditions.verificationStatus"
+                                    <select x-model="modalCondition.verificationStatus"
                                             id="verificationStatus"
                                             class="input-modal"
                                             type="text"
                                             required
                                     >
-                                        <option selected>{{ __('forms.select') }}</option>
+                                        <option value="" selected>{{ __('forms.select') }}</option>
                                         @foreach($this->dictionaries['eHealth/condition_verification_statuses'] as $key => $verificationStatus)
                                             <option value="{{ $key }}">{{ $verificationStatus }}</option>
                                         @endforeach
                                     </select>
 
                                     <p class="text-error text-xs"
-                                       x-show="!Object.keys(conditionVerificationStatusesDictionary).includes(modalCondition.conditions.verificationStatus)"
+                                       x-show="!Object.keys(conditionVerificationStatusesDictionary).includes(modalCondition.verificationStatus)"
                                     >
                                         {{ __('forms.field_empty') }}
                                     </p>
@@ -369,7 +370,7 @@
                                     <label for="onsetDate" class="label-modal">
                                         {{ __('forms.start_date') }}
                                     </label>
-                                    <input x-model="modalCondition.conditions.onsetDate"
+                                    <input x-model="modalCondition.onsetDate"
                                            datepicker-max-date="{{ now()->format('Y-m-d') }}"
                                            type="text"
                                            name="onsetDate"
@@ -380,7 +381,7 @@
                                     >
 
                                     <p class="text-error text-xs"
-                                       x-show="modalCondition.conditions.onsetDate.trim() === ''"
+                                       x-show="modalCondition.onsetDate.trim() === ''"
                                     >
                                         {{ __('forms.field_empty') }}
                                     </p>
@@ -391,7 +392,7 @@
                                     <label for="onsetTime" class="label-modal">
                                         {{ __('forms.start_time') }}
                                     </label>
-                                    <input x-model="modalCondition.conditions.onsetTime"
+                                    <input x-model="modalCondition.onsetTime"
                                            @input="$event.target.blur()"
                                            datepicker-max-date="{{ now()->format('Y-m-d') }}"
                                            type="time"
@@ -403,7 +404,7 @@
                                     >
 
                                     <p class="text-error text-xs"
-                                       x-show="modalCondition.conditions.onsetTime.trim() === ''"
+                                       x-show="modalCondition.onsetTime.trim() === ''"
                                     >
                                         {{ __('forms.field_empty') }}
                                     </p>
@@ -414,7 +415,7 @@
                                     <label for="assertedDate" class="label-modal">
                                         {{ __('patients.entry_date') }}
                                     </label>
-                                    <input x-model="modalCondition.conditions.assertedDate"
+                                    <input x-model="modalCondition.assertedDate"
                                            datepicker-max-date="{{ now()->format('Y-m-d') }}"
                                            type="text"
                                            name="assertedDate"
@@ -430,7 +431,7 @@
                                     <label for="assertedTime" class="label-modal">
                                         {{ __('patients.entry_time') }}
                                     </label>
-                                    <input x-model="modalCondition.conditions.assertedTime"
+                                    <input x-model="modalCondition.assertedTime"
                                            @input="$event.target.blur()"
                                            datepicker-max-date="{{ now()->format('Y-m-d') }}"
                                            type="time"
@@ -446,7 +447,7 @@
                                     <label for="severityCondition" class="label-modal">
                                         {{ __('patients.severity_of_the_condition') }}
                                     </label>
-                                    <select x-model="modalCondition.conditions.severity.coding[0].code"
+                                    <select x-model="modalCondition.severityCode"
                                             id="severityCondition"
                                             class="input-modal"
                                             type="text"
@@ -464,14 +465,14 @@
                                 <div class="flex gap-20 md:mb-5 mb-4">
                                     <h2 class="default-p">{{ __('patients.primary_source') }}</h2>
                                     <div class="flex items-center">
-                                        <input @change="modalCondition.conditions.primarySource = true"
-                                               x-model.boolean="modalCondition.conditions.primarySource"
+                                        <input @change="modalCondition.primarySource = true"
+                                               x-model.boolean="modalCondition.primarySource"
                                                id="performer"
                                                type="radio"
                                                value="true"
                                                name="primarySource"
                                                class="default-radio"
-                                               :checked="modalCondition.conditions.primarySource === true"
+                                               :checked="modalCondition.primarySource === true"
                                         >
                                         <label for="performer"
                                                class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300"
@@ -481,14 +482,14 @@
                                     </div>
 
                                     <div class="flex items-center">
-                                        <input @change="modalCondition.conditions.primarySource = false"
-                                               x-model.boolean="modalCondition.conditions.primarySource"
+                                        <input @change="modalCondition.primarySource = false"
+                                               x-model.boolean="modalCondition.primarySource"
                                                id="otherSource"
                                                type="radio"
                                                value="false"
                                                name="primarySource"
                                                class="default-radio"
-                                               :checked="modalCondition.conditions.primarySource === false"
+                                               :checked="modalCondition.primarySource === false"
                                         >
                                         <label for="otherSource"
                                                class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300"
@@ -498,11 +499,11 @@
                                     </div>
                                 </div>
 
-                                <div x-show="modalCondition.conditions.primarySource === true">
+                                <div x-show="modalCondition.primarySource === true">
                                     <div class="form-row-modal">
                                         <div class="form-group group">
                                             <textarea rows="4"
-                                                      x-model="modalCondition.conditions.asserter.identifier.type.text"
+                                                      x-model="modalCondition.asserterText"
                                                       id="doctorComment"
                                                       name="doctorComment"
                                                       class="textarea"
@@ -512,13 +513,13 @@
                                     </div>
                                 </div>
 
-                                <div x-show="modalCondition.conditions.primarySource === false">
+                                <div x-show="modalCondition.primarySource === false">
                                     <div class="form-row-modal !mb-12">
                                         <div>
                                             <label for="reportOrigin" class="label-modal">
                                                 {{ __('patients.information_source') }}
                                             </label>
-                                            <select x-model="modalCondition.conditions.reportOrigin.coding[0].code"
+                                            <select x-model="modalCondition.reportOriginCode"
                                                     id="reportOrigin"
                                                     class="input-modal"
                                                     type="text"
@@ -531,7 +532,7 @@
                                             </select>
 
                                             <p class="text-error text-xs"
-                                               x-show="!Object.keys($wire.dictionaries['eHealth/report_origins']).includes(modalCondition.conditions.reportOrigin.coding[0].code)"
+                                               x-show="!Object.keys($wire.dictionaries['eHealth/report_origins']).includes(modalCondition.reportOriginCode)"
                                             >
                                                 {{ __('forms.field_empty') }}
                                             </p>
@@ -556,22 +557,22 @@
                                 </button>
 
                                 <button @click.prevent="
-                                            const matchingPrimaryCount = diagnoses.filter((diagnose, index) => {
-                                                // If editing — ignore the current index
+                                            if (modalDiagnosis.roleCode === 'primary') {
+                                                const matchingPrimaryCount = diagnoses.filter((diagnose, index) => {
                                                 if (newCondition === false && index === item) return false;
-                                                return diagnose.role.coding[0]?.code === 'primary'
+                                                return diagnose.roleCode === 'primary';
                                             }).length;
 
-                                            if (matchingPrimaryCount >= 1) {
-                                                showPrimaryWarning = true;
-                                                return;
+                                                if (matchingPrimaryCount >= 1) {
+                                                    showPrimaryWarning = true;
+                                                    return;
+                                                }
                                             }
 
-                                            const newConditionCode = modalCondition.conditions.code.coding[0]?.code;
-                                            const matchingCodesCount = conditions.filter((condition, index) => {
-                                                // If editing — ignore the current index
+                                            const newConditionCode = modalCondition.codeCode;
+                                            const matchingCodesCount = conditions.filter((c, index) => {
                                                 if (newCondition === false && index === item) return false;
-                                                return condition.code.coding[0]?.code === newConditionCode;
+                                                return c.codeCode === newConditionCode;
                                             }).length;
 
                                             if (matchingCodesCount >= 1) {
@@ -579,12 +580,15 @@
                                                 return;
                                             }
 
-                                            if (newCondition !== false) {
-                                                diagnoses.push(modalCondition.conditions.diagnoses);
-                                                conditions.push(modalCondition.conditions);
+                                            const condition = JSON.parse(JSON.stringify(modalCondition));
+                                            const diagnosis = JSON.parse(JSON.stringify(modalDiagnosis));
+
+                                            if (newCondition) {
+                                                conditions.push(condition);
+                                                diagnoses.push(diagnosis);
                                             } else {
-                                                diagnoses[item] = modalCondition.conditions.diagnoses;
-                                                conditions[item] = modalCondition.conditions;
+                                                conditions[item] = condition;
+                                                diagnoses[item] = diagnosis;
                                             }
 
                                             openModal = false;
@@ -593,10 +597,10 @@
                                         "
                                         class="button-primary justify-end"
                                         :disabled="!(
-                                            modalCondition.conditions.clinicalStatus.trim() &&
-                                            modalCondition.conditions.verificationStatus.trim() &&
-                                            modalCondition.conditions.code.coding[0].code.trim() &&
-                                            modalCondition.conditions.diagnoses.role.coding[0].code
+                                            modalCondition.clinicalStatus.trim() &&
+                                            modalCondition.verificationStatus.trim() &&
+                                            modalCondition.codeCode.trim() &&
+                                            modalDiagnosis.roleCode
                                         )"
                                 >
                                     {{ __('forms.save') }}
@@ -625,79 +629,38 @@
      * Representation of the user's personal conditions
      */
     class Condition {
-        conditions = {
-            primarySource: true,
-            asserter: {
-                identifier: {
-                    type: {
-                        coding: [{ system: 'eHealth/resources', code: 'employee' }],
-                        text: ''
-                    }
-                }
-            },
-            reportOrigin: {
-                coding: [{ system: 'eHealth/report_origins', code: '' }]
-            },
-            code: {
-                coding: [
-                    { system: '', code: '' }
-                ]
-            },
-            clinicalStatus: '',
-            verificationStatus: '',
-            onsetDate: new Date().toISOString().split('T')[0],
-            onsetTime: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false }),
-            assertedDate: new Date().toISOString().split('T')[0],
-            assertedTime: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false }),
-            severity: {
-                coding: [{ system: 'eHealth/condition_severities', code: '' }]
-            },
-            diagnoses: {
-                condition: {
-                    identifier: {
-                        type: {
-                            coding: [{ system: 'eHealth/resources', code: 'condition' }]
-                        }
-                    }
-                },
-                role: {
-                    coding: [{ system: 'eHealth/diagnosis_roles', code: '' }]
-                },
-                rank: ''
-            },
-            evidences: [
-                {
-                    codes: [],
-                    details: []
-                }
-            ]
-        };
-        query = '';
+        constructor(obj = null) {
+            const now = new Date();
+
+            this.primarySource = true;
+            this.codeSystem = '';
+            this.codeCode = '';
+            this.clinicalStatus = '';
+            this.verificationStatus = '';
+            this.onsetDate = now.toISOString().split('T')[0];
+            this.onsetTime = now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false });
+            this.assertedDate = now.toISOString().split('T')[0];
+            this.assertedTime = now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false });
+            this.severityCode = '';
+            this.asserterText = '';
+            this.reportOriginCode = '';
+            this.evidenceCodes = [];
+            this.evidenceDetails = [];
+
+            if (obj) {
+                Object.assign(this, JSON.parse(JSON.stringify(obj)));
+            }
+        }
+    }
+
+    class Diagnosis {
+        roleCode = '';
+        rank = '';
 
         constructor(obj = null) {
             if (obj) {
-                this.conditions = {
-                    ...this.conditions,
-                    ...obj.conditions ?? obj,
-
-                    asserter: {
-                        ...this.conditions.asserter,
-                        ...((obj.conditions ?? obj).asserter ?? {})
-                    },
-                    reportOrigin: {
-                        coding: [...((obj.conditions ?? obj).reportOrigin?.coding ?? this.conditions.reportOrigin.coding)]
-                    },
-                    code: {
-                        coding: [...((obj.conditions ?? obj).code?.coding ?? this.conditions.code.coding)]
-                    },
-                    severity: {
-                        coding: [...((obj.conditions ?? obj).severity?.coding ?? this.conditions.severity.coding)]
-                    },
-                    diagnoses: {
-                        ...this.conditions.diagnoses,
-                        ...((obj.conditions ?? obj).diagnoses ?? {})
-                    }
-                };
+                this.roleCode = obj.roleCode || '';
+                this.rank = obj.rank || '';
             }
         }
     }

@@ -26,14 +26,10 @@
             </tr>
             </thead>
             <tbody>
-            <template x-for="(action, index) in actions">
+            <template x-for="(action, index) in actions" :key="index">
                 <tr>
-                    <td class="td-input"
-                        x-text="`${ action.coding[0].code } - ${ dictionary[action.coding[0].code] }`"
-                    ></td>
-                    <td class="td-input"
-                        x-text="`${ action.text }`"
-                    ></td>
+                    <td class="td-input" x-text="`${ action.code } - ${ dictionary[action.code] }`"></td>
+                    <td class="td-input" x-text="`${ action.text }`"></td>
                     <td class="td-input">
                         {{-- That all that is needed for the dropdown --}}
                         <div x-data="{
@@ -164,13 +160,13 @@
                                         <label for="actionCode" class="label-modal">
                                             {{ __('patients.icpc-2_status_code') }}
                                         </label>
-                                        <x-select2 modelPath="modalAction.coding[0].code"
+                                        <x-select2 modelPath="modalAction.code"
                                                    dictionaryName="eHealth/ICPC2/actions"
                                                    id="actionCode"
                                         />
 
                                         <p class="text-error text-xs"
-                                           x-show="!Object.keys(dictionary).includes(modalAction.coding[0].code)"
+                                           x-show="!Object.keys(dictionary).includes(modalAction.code)"
                                         >
                                             {{ __('forms.field_empty') }}
                                         </p>
@@ -196,11 +192,10 @@
                                     </button>
 
                                     <button @click.prevent="
-                                                const newActionCode = modalAction.coding[0]?.code;
-                                                const matchingActionCodesCount = actions.filter((code, index) => {
-                                                    // If editing — ignore the current index
+                                                const newActionCode = modalAction.code;
+                                                const matchingActionCodesCount = actions.filter((action, index) => {
                                                     if (newAction === false && index === item) return false;
-                                                    return code.coding[0]?.code === newActionCode;
+                                                    return action.code === newActionCode;
                                                 }).length;
 
                                                 if (matchingActionCodesCount >= 1) {
@@ -216,7 +211,7 @@
                                                 openModal = false;
                                             "
                                             class="button-primary"
-                                            :disabled="!modalAction.coding[0].code.trim()"
+                                            :disabled="!modalAction.code.trim()"
                                     >
                                         {{ __('forms.save') }}
                                     </button>
@@ -240,15 +235,13 @@
      * Representation of the user's personal action
      */
     class Action {
-        coding = [{ system: 'eHealth/ICPC2/actions', code: '' }];
+        code = '';
         text = '';
 
         constructor(obj = null) {
             if (obj) {
+                this.code = obj.code || '';
                 this.text = obj.text || '';
-                this.coding = Array.isArray(obj.coding)
-                    ? obj.coding.map(c => ({ ...c }))
-                    : this.coding;
             }
         }
     }

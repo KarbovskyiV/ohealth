@@ -21,9 +21,9 @@ class ConditionRepository extends BaseRepository
      * @return void
      * @throws Throwable
      */
-    public function store(array $data, int $encounterId): void
+    public function store(array $data, int $encounterId, int $personId): void
     {
-        DB::transaction(function () use ($data, $encounterId) {
+        DB::transaction(function () use ($data, $encounterId, $personId) {
             try {
                 foreach ($data as $datum) {
                     $reportOrigin = null;
@@ -51,7 +51,7 @@ class ConditionRepository extends BaseRepository
                     /** @var Condition $condition */
                     $condition = $this->model::create([
                         'uuid' => $datum['id'],
-                        'encounter_id' => $encounterId,
+                        'person_id' => $personId,
                         'primary_source' => $datum['primarySource'],
                         'asserter_id' => $asserter?->id,
                         'report_origin_id' => $reportOrigin?->id,

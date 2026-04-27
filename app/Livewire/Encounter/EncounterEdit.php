@@ -9,7 +9,12 @@ use App\Classes\eHealth\Exceptions\ApiException;
 use App\Core\Arr;
 use App\Models\LegalEntity;
 use App\Repositories\MedicalEvents\Repository;
+use App\Services\MedicalEvents\Mappers\ConditionMapper;
+use App\Services\MedicalEvents\Mappers\EncounterMapper;
+use App\Services\MedicalEvents\Mappers\EpisodeMapper;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Throwable;
@@ -30,15 +35,26 @@ class EncounterEdit extends EncounterComponent
             abort(404);
         }
 
-        $this->form->encounter = $encounter;
+        $this->form->encounter = app(EncounterMapper::class)->fromFhir($encounter);
+
+        $episodeUuid = data_get($encounter, 'episode.identifier.value', '');
+        $this->form->episode['id'] = $episodeUuid;
 
         $this->form->episode = $this->getEpisode();
+        $this->form->episode['id'] = $episodeUuid;
+
+        $this->form->episode = app(EpisodeMapper::class)->fromFhir($this->form->episode);
 
         $this->form->conditions = Repository::condition()->get($this->encounterId);
         $this->form->conditions = Repository::condition()->formatForView(
             $this->form->conditions,
             $this->form->encounter['diagnoses']
         );
+
+        $mapper = app(ConditionMapper::class);
+        $this->form->conditions = collect($this->form->conditions)
+            ->map(fn (array $fhir) => $mapper->fromFhir($fhir))
+            ->toArray();
 
         $this->form->immunizations = Repository::immunization()->get($this->encounterId);
         $this->form->immunizations = Repository::immunization()->formatForView($this->form->immunizations);
@@ -65,11 +81,8 @@ class EncounterEdit extends EncounterComponent
      */
     public function save(): void
     {
-        $formattedEncounter = Repository::encounter()->formatPeriod($this->form->encounter);
-
-        // Validate formatted data
         try {
-            $this->form->validateForm('encounter', $formattedEncounter);
+            $this->form->validateForm('encounter', $this->form->encounter);
             $this->form->validateForm('episode', $this->form->episode);
             $this->form->validateForm('conditions', $this->form->conditions);
             $this->form->validateForm('immunizations', $this->form->immunizations);
@@ -79,11 +92,26 @@ class EncounterEdit extends EncounterComponent
             return;
         }
 
-        $createdEncounterId = Repository::encounter()->store(
-            $formattedEncounter,
-            $this->personId
+        $uuids = [
+            'encounter' => $this->form->encounter['uuid'] ?? (string) Str::uuid(),
+            'visit' => data_get($this->form->encounter, 'visit.identifier.value', (string) Str::uuid()),
+            'employee' => Auth::user()->getEncounterWriterEmployee()->uuid,
+            'episode' => $this->form->episode['id'] ?? '',
+        ];
+
+        $mapper = app(ConditionMapper::class);
+        $fhirConditions = collect($this->form->conditions)
+            ->map(fn (array $c) => $mapper->toFhir($c, $uuids))
+            ->toArray();
+
+        $formattedEncounter = app(EncounterMapper::class)->toFhir(
+            $this->form->encounter,
+            $fhirConditions,
+            $uuids
         );
-        Repository::condition()->store($this->form->conditions, $createdEncounterId);
+
+        $createdEncounterId = $encounterRepository->store($formattedEncounter, $this->personId);
+        Repository::condition()->store($fhirConditions, $createdEncounterId);
     }
 
     /**
@@ -102,7 +130,7 @@ class EncounterEdit extends EncounterComponent
         try {
             $episodeData = PatientApi::getEpisodeById(
                 $this->patientUuid,
-                $this->form->encounter['episode']['identifier']['value']
+                $this->form->episode['id']
             );
 
             Repository::episode()->store(Arr::toCamelCase($episodeData), $this->personId, $this->encounterId);

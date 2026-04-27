@@ -23,10 +23,10 @@
             </tr>
             </thead>
             <tbody>
-            <template x-for="(evidence, index) in modalCondition.conditions.evidences[0].codes">
+            <template x-for="(evidence, index) in modalCondition.evidenceCodes">
                 <tr>
                     <td class="td-input"
-                        x-text="`${ evidence.coding[0].code } - ${ dictionary[evidence.coding[0].code] }`"
+                        x-text="`${ evidence.code } - ${ dictionary[evidence.code] }`"
                     ></td>
                     <td class="td-input">
                         {{-- That all that is needed for the dropdown --}}
@@ -83,22 +83,17 @@
                                 >
 
                                     <button @click.prevent="
-                                            openModal = true; {{-- Open the modal --}}
-                                            item = index; {{-- Identify the item we are corrently editing --}}
-                                            {{-- Replace the previous evidence with the current, don't assign object directly (modalEvidenceCode = evidence) to avoid reactiveness --}}
-                                            modalEvidenceCode = new EvidenceCode({
-                                                codes: [{
-                                                    coding: evidence.coding
-                                                }]
-                                            });
-                                            newEvidenceCode = false; {{-- This evidence is already created --}}
+                                            openModal = true;
+                                            item = index;
+                                            modalEvidenceCode = new EvidenceCode({ code: evidence.code, system: evidence.system });
+                                            newEvidenceCode = false;
                                         "
                                             class="dropdown-button"
                                     >
                                         {{ __('forms.edit') }}
                                     </button>
 
-                                    <button @click.prevent="evidences.splice(index, 1); close($refs.button)"
+                                    <button @click.prevent="modalCondition.evidenceCodes.splice(index, 1); close($refs.button)"
                                             class="dropdown-button dropdown-delete"
                                     >
                                         {{ __('forms.delete') }}
@@ -115,9 +110,9 @@
         <div>
             {{-- Button to trigger the modal --}}
             <button @click.prevent="
-                        openModal = true; {{-- Open the Modal --}}
-                        newEvidenceCode = true; {{-- We are adding a new evidence --}}
-                        modalEvidenceCode = new EvidenceCode(); {{-- Replace the data of the previous evidence with a new one--}}
+                        openModal = true;
+                        newEvidenceCode = true;
+                        modalEvidenceCode = new EvidenceCode();
                     "
                     class="item-add my-5"
             >
@@ -159,13 +154,13 @@
                                         <label for="evidenceCode" class="label-modal">
                                             {{ __('patients.icpc-2_status_code') }}
                                         </label>
-                                        <x-select2 modelPath="modalEvidenceCode.codes[0].coding[0].code"
+                                        <x-select2 modelPath="modalEvidenceCode.code"
                                                    dictionaryName="eHealth/ICPC2/condition_codes"
                                                    id="evidenceCode"
                                         />
 
                                         <p class="text-error text-xs"
-                                           x-show="!Object.keys(dictionary).includes(modalEvidenceCode.codes[0].coding[0].code)"
+                                           x-show="!Object.keys(dictionary).includes(modalEvidenceCode.code)"
                                         >
                                             {{ __('forms.field_empty') }}
                                         </p>
@@ -182,14 +177,16 @@
                                     </button>
 
                                     <button @click.prevent="
-                                                newEvidenceCode !== false
-                                                    ? modalCondition.conditions.evidences[0].codes.push(modalEvidenceCode.codes[0])
-                                                    : modalCondition.conditions.evidences[item] = modalEvidenceCode;
+                                                if (newEvidenceCode !== false) {
+                                                    modalCondition.evidenceCodes.push({ code: modalEvidenceCode.code, system: modalEvidenceCode.system });
+                                                } else {
+                                                    modalCondition.evidenceCodes[item] = { code: modalEvidenceCode.code, system: modalEvidenceCode.system };
+                                                }
 
                                                 openModal = false;
                                             "
                                             class="button-primary"
-                                            :disabled="!modalEvidenceCode.codes[0].coding[0].code.trim()"
+                                            :disabled="!modalEvidenceCode.code.trim()"
                                     >
                                         {{ __('forms.save') }}
                                     </button>
@@ -208,13 +205,10 @@
      * Representation of the user's personal evidenceCode
      */
     class EvidenceCode {
-        codes = [
-            {
-                coding: [{ system: 'eHealth/ICPC2/reasons', code: '' }]
-            }
-        ];
-
         constructor(obj = null) {
+            this.code = '';
+            this.system = 'eHealth/ICPC2/reasons';
+
             if (obj) {
                 Object.assign(this, JSON.parse(JSON.stringify(obj)));
             }

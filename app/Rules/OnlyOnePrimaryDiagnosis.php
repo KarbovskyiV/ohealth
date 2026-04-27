@@ -20,10 +20,9 @@ class OnlyOnePrimaryDiagnosis implements ValidationRule
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $primaryCount = collect($value)->filter(function (array $diagnosis) {
-            return collect($diagnosis['role']['coding'] ?? [])
-                ->contains('code', 'primary');
-        })->count();
+        $primaryCount = collect($value)
+            ->filter(fn (array $diagnosis) => $diagnosis['roleCode'] === 'primary')
+            ->count();
 
         if ($primaryCount !== 1) {
             $fail(__('Тільки один основний діагноз може бути.'));

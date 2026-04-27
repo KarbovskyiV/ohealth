@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\MedicalEvents;
+
+use App\Services\MedicalEvents\Mappers\ConditionMapper;
+use App\Services\MedicalEvents\Mappers\EncounterMapper;
+use App\Services\MedicalEvents\Mappers\EpisodeMapper;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+
+readonly class EncounterPackageBuilder
+{
+    public function __construct(
+        private EncounterMapper $encounterMapper,
+        private EpisodeMapper $episodeMapper,
+        private ConditionMapper $conditionMapper
+    ) {
+    }
+
+    public function build(array $data, string $episodeType): array
+    {
+        $uuids = [
+            'encounter' => Str::uuid()->toString(),
+            'visit' => Str::uuid()->toString(),
+            'employee' => Auth::user()->getEncounterWriterEmployee()->uuid,
+            'episode' => $data['episode']['id'] ?: Str::uuid()->toString()
+        ];
+
+        $fhirConditions = collect($data['conditions'])
+            ->map(fn (array $condition) => $this->conditionMapper->toFhir($condition, $uuids))
+            ->toArray();
+
+        $fhirEncounter = $this->encounterMapper->toFhir($data['encounter'], $fhirConditions, $uuids);
+
+        $fhirEpisode = [];
+        if ($episodeType === 'new') {
+            $fhirEpisode = $this->episodeMapper->toFhir(
+                $data['episode'],
+                $uuids,
+                $data['encounter']['periodDate'],
+                $data['encounter']['periodStart']
+            );
+        }
+
+        return array_filter([
+            'encounter' => $fhirEncounter,
+            'episode' => $fhirEpisode,
+            'conditions' => $fhirConditions
+        ]);
+    }
+}

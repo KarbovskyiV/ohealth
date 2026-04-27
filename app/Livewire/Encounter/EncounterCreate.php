@@ -17,12 +17,12 @@ use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\Procedure;
 use App\Repositories\MedicalEvents\Repository;
+use App\Services\MedicalEvents\EncounterPackageBuilder;
 use App\Traits\HandlesReasonReferences;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use JsonException;
@@ -32,14 +32,17 @@ class EncounterCreate extends EncounterComponent
 {
     use HandlesReasonReferences;
 
+    private EncounterPackageBuilder $packageBuilder;
+
+    public function boot(): void
+    {
+        parent::boot();
+        $this->packageBuilder = app(EncounterPackageBuilder::class);
+    }
+
     public function mount(LegalEntity $legalEntity, int $personId): void
     {
         $this->initializeComponent($personId);
-
-        $uuid = Auth::user()->party->employees()->whereStatus('APPROVED')->first()->uuid;
-
-        $this->form->encounter['performer']['identifier']['value'] = $uuid;
-        $this->form->episode['careManager']['identifier']['value'] = $uuid;
 
         $this->setDefaultDate();
     }
@@ -59,7 +62,7 @@ class EncounterCreate extends EncounterComponent
         }
 
         try {
-            $this->form->validate();
+            $validated = $this->form->validate();
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
@@ -68,9 +71,13 @@ class EncounterCreate extends EncounterComponent
         }
 
         // Prepare and format data after validation
-        $formattedData = $this->prepareFormattedData();
+        $formattedData = $this->prepareFormattedData($validated);
 
-        $this->storeValidatedData($formattedData);
+        $encounterId = $this->storeValidatedData($formattedData);
+
+        if ($encounterId) {
+            $this->redirectRoute('encounter.edit', [legalEntity(), $this->personId, $encounterId], navigate: true);
+        }
     }
 
     /**
@@ -89,7 +96,7 @@ class EncounterCreate extends EncounterComponent
 
         // First validate the encounter data
         try {
-            $this->form->validate();
+            $validatedData = $this->form->validate();
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
@@ -107,7 +114,7 @@ class EncounterCreate extends EncounterComponent
             return;
         }
 
-        $formattedData = $this->prepareFormattedData();
+        $formattedData = $this->prepareFormattedData($validatedData);
         $formattedData = Arr::toSnakeCase($formattedData);
 
         $this->storeValidatedData($formattedData);
@@ -138,12 +145,14 @@ class EncounterCreate extends EncounterComponent
         try {
             $resp = EHealth::encounter()->submit($this->patientUuid, $signedSubmitEncounter);
 
-            dd($resp->getData());
+            logger()->debug('Job ID to further debug', $resp->getData());
         } catch (ConnectionException|EHealthValidationException|EHealthResponseException $exception) {
             $this->handleEHealthExceptions($exception, 'Error while submitting encounter');
 
             return;
         }
+
+        $this->redirectRoute('persons.index', [legalEntity()], navigate: true);
     }
 
     /**
@@ -155,73 +164,68 @@ class EncounterCreate extends EncounterComponent
     {
         $now = CarbonImmutable::now();
 
-        $this->form->encounter['period'] = [
-            'start' => $now->format('H:i'),
-            'end' => $now->addMinutes(15)->format('H:i')
-        ];
+        $this->form->encounter['periodDate'] = $now->format('Y-m-d');
+        $this->form->encounter['periodStart'] = $now->format('H:i');
+        $this->form->encounter['periodEnd'] = $now->addMinutes(15)->format('H:i');
     }
 
     /**
      * Prepare formatted data.
      *
+     * @param  array  $validated
      * @return array
      */
-    protected function prepareFormattedData(): array
+    protected function prepareFormattedData(array $validated): array
     {
+        $package = $this->packageBuilder->build($validated, $this->episodeType);
+
         $encounterRepository = Repository::encounter();
 
-        $data = [
-            'encounter' => $encounterRepository->formatEncounterRequest(
-                $this->form->encounter,
-                $this->form->conditions,
-                $this->episodeType === 'new'
-            ),
-            'episode' => $this->episodeType === 'new'
-                ? $encounterRepository->formatEpisodeRequest($this->form->episode, $this->form->encounter['period'])
-                : [],
-            'conditions' => $encounterRepository->formatConditionsRequest($this->form->conditions),
-            'immunizations' => !empty($this->form->immunizations)
-                ? $encounterRepository->formatImmunizationsRequest($this->form->immunizations)
-                : [],
-            'diagnosticReports' => !empty($this->form->diagnosticReports)
-                ? $encounterRepository->formatDiagnosticReportsRequest(
-                    $this->form->diagnosticReports,
-                    $this->form->encounter['division']['identifier']['value'] ?? null
-                )
-                : [],
-            'observations' => !empty($this->form->observations)
-                ? $encounterRepository->formatObservationsRequest($this->form->observations)
-                : [],
-            'procedures' => !empty($this->form->procedures)
-                ? $encounterRepository->formatProceduresRequest($this->form->procedures)
-                : [],
-            'clinicalImpressions' => !empty($this->form->clinicalImpressions)
-                ? $encounterRepository->formatClinicalImpressionsRequest($this->form->clinicalImpressions)
-                : []
-        ];
+        if (!empty($this->form->immunizations)) {
+            $package['immunizations'] = $encounterRepository->formatImmunizationsRequest($this->form->immunizations);
+        }
 
-        // Remove empty
-        return array_filter($data);
+        if (!empty($this->form->diagnosticReports)) {
+            $package['diagnosticReports'] = $encounterRepository->formatDiagnosticReportsRequest(
+                $this->form->diagnosticReports,
+                $validated['encounter']['divisionId'] ?? null
+            );
+        }
+
+        if (!empty($this->form->observations)) {
+            $package['observations'] = $encounterRepository->formatObservationsRequest($this->form->observations);
+        }
+
+        if (!empty($this->form->procedures)) {
+            $package['procedures'] = $encounterRepository->formatProceduresRequest($this->form->procedures);
+        }
+
+        if (!empty($this->form->clinicalImpressions)) {
+            $package['clinicalImpressions'] = $encounterRepository->formatClinicalImpressionsRequest(
+                $this->form->clinicalImpressions
+            );
+        }
+
+        return $package;
     }
 
     /**
      * Store validated formatted data into DB.
      *
      * @param  array  $formattedData
-     * @return void
-     * @throws Throwable
+     * @return int|null
      */
-    protected function storeValidatedData(array $formattedData): void
+    protected function storeValidatedData(array $formattedData): ?int
     {
         try {
-            DB::transaction(function () use ($formattedData) {
+            return DB::transaction(function () use ($formattedData) {
                 $createdEncounterId = Repository::encounter()->store($formattedData['encounter'], $this->personId);
 
                 if (isset($formattedData['episode'])) {
                     Repository::episode()->store($formattedData['episode'], $this->personId, $createdEncounterId);
                 }
 
-                Repository::condition()->store($formattedData['conditions'], $createdEncounterId);
+                Repository::condition()->store($formattedData['conditions'], $createdEncounterId, $this->personId);
 
                 if (isset($formattedData['immunizations'])) {
                     Repository::immunization()->store(
@@ -265,16 +269,14 @@ class EncounterCreate extends EncounterComponent
                         $this->processSupportingInfo($clinicalImpression);
                     }
                 }
+
+                return $createdEncounterId;
             });
-        } catch (Throwable $e) {
-            Log::channel('db_errors')->error('Failed to store validated data', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
+        } catch (Throwable $exception) {
+            $this->logDatabaseErrors($exception, 'Failed to store validated data');
             Session::flash('error', __('messages.database_error'));
 
-            return;
+            return null;
         }
     }
 

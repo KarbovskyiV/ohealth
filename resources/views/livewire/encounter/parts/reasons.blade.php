@@ -26,12 +26,10 @@
             </tr>
             </thead>
             <tbody>
-            <template x-for="(reason, index) in reasons">
+            <template x-for="(reason, index) in reasons" :key="index">
                 <tr>
-                    <td class="td-input"
-                        x-text="`${ reason.coding[0].code } - ${ dictionary[reason.coding[0].code] }`"
-                    ></td>
-                    <td class="td-input" x-text="`${ reason.text }`"></td>
+                    <td class="td-input" x-text="`${ reason.code } - ${ dictionary[reason.code] }`"></td>
+                    <td class="td-input" x-text="reason.text"></td>
                     <td class="td-input">
                         {{-- That all that is needed for the dropdown --}}
                         <div x-data="{
@@ -162,13 +160,13 @@
                                         <label for="reasonCode" class="label-modal">
                                             {{ __('patients.icpc-2_status_code') }}
                                         </label>
-                                        <x-select2 modelPath="modalReason.coding[0].code"
+                                        <x-select2 modelPath="modalReason.code"
                                                    dictionaryName="eHealth/ICPC2/reasons"
                                                    id="reasonCode"
                                         />
 
                                         <p class="text-error text-xs"
-                                           x-show="!Object.keys(dictionary).includes(modalReason.coding[0].code)"
+                                           x-show="!Object.keys(dictionary).includes(modalReason.code)"
                                         >
                                             {{ __('forms.field_empty') }}
                                         </p>
@@ -194,11 +192,11 @@
                                     </button>
 
                                     <button @click.prevent="
-                                                const newReasonCode = modalReason.coding[0]?.code;
-                                                const matchingReasonCodesCount = reasons.filter((code, index) => {
+                                                const newReasonCode = modalReason.code;
+                                                const matchingReasonCodesCount = reasons.filter((reason, index) => {
                                                     // If editing — ignore the current index
                                                     if (newReason === false && index === item) return false;
-                                                    return code.coding[0]?.code === newReasonCode;
+                                                    return reason.code === newReasonCode;
                                                 }).length;
 
                                                 if (matchingReasonCodesCount >= 1) {
@@ -214,7 +212,7 @@
                                                 openModal = false;
                                             "
                                             class="button-primary"
-                                            :disabled="!modalReason.coding[0].code.trim()"
+                                            :disabled="!modalReason.code.trim()"
                                     >
                                         {{ __('forms.save') }}
                                     </button>
@@ -238,15 +236,13 @@
      * Representation of the user's personal reason
      */
     class Reason {
-        coding = [{ system: 'eHealth/ICPC2/reasons', code: '' }];
+        code = '';
         text = '';
 
         constructor(obj = null) {
             if (obj) {
+                this.code = obj.code || '';
                 this.text = obj.text || '';
-                this.coding = Array.isArray(obj.coding)
-                    ? obj.coding.map(c => ({ ...c }))
-                    : this.coding;
             }
         }
     }

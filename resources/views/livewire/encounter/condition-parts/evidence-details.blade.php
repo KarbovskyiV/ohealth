@@ -26,16 +26,16 @@
             </tr>
             </thead>
             <tbody>
-            <template x-for="(detail, index) in modalCondition.conditions.evidences[0].details">
+            <template x-for="(detail, index) in modalCondition.evidenceDetails">
                 <tr>
                     <td class="td-input"
-                        x-text="new Date(detail.inserted_at).toLocaleDateString('uk-UA')"
+                        x-text="detail.insertedAt ? new Date(detail.insertedAt).toLocaleDateString('uk-UA') : ''"
                     ></td>
                     <td class="td-input"
-                        x-text="`${ detail.code.coding[0].code } - ${
-                            $wire.dictionaries['eHealth/LOINC/observation_codes'][detail.code.coding[0].code] ||
-                            $wire.dictionaries['eHealth/ICF/classifiers'][detail.code.coding[0].code] ||
-                            $wire.dictionaries['eHealth/ICPC2/condition_codes'][detail.code.coding[0].code]
+                        x-text="`${ detail.codeCode } - ${
+                            $wire.dictionaries['eHealth/LOINC/observation_codes'][detail.codeCode] ||
+                            $wire.dictionaries['eHealth/ICF/classifiers'][detail.codeCode] ||
+                            $wire.dictionaries['eHealth/ICPC2/condition_codes'][detail.codeCode]
                         }`"
                     ></td>
                     <td class="td-input">
@@ -93,12 +93,11 @@
                                 >
 
                                     <button @click="
-                                                openModal = true; {{-- Open the modal --}}
-                                                item = index; {{-- Identify the item we are corrently editing --}}
-                                                {{-- Replace the previous detail with the current, don't assign object directly (modalEvidenceDetail = detail) to avoid reactiveness --}}
+                                                openModal = true;
+                                                item = index;
                                                 modalEvidenceDetail = new EvidenceDetail(detail);
-                                                newEvidenceDetail = false; {{-- This detail is already created --}}
-                                                searchResults = modalCondition.conditions.evidences[0].details;
+                                                newEvidenceDetail = false;
+                                                searchResults = modalCondition.evidenceDetails;
                                             "
                                             @click.prevent
                                             class="dropdown-button"
@@ -106,7 +105,7 @@
                                         {{ __('forms.edit') }}
                                     </button>
 
-                                    <button @click.prevent="modalCondition.conditions.evidences[0].details.splice(index, 1); close($refs.button);"
+                                    <button @click.prevent="modalCondition.evidenceDetails.splice(index, 1); close($refs.button);"
                                             class="dropdown-button dropdown-delete"
                                     >
                                         {{ __('forms.delete') }}
@@ -123,11 +122,11 @@
         <div>
             {{-- Button to trigger the modal --}}
             <button @click.prevent="
-                        openModal = true; {{-- Open the Modal --}}
-                        newEvidenceDetail = true; {{-- We are adding a new evidence detail --}}
-                        modalEvidenceDetail = new EvidenceDetail(); {{-- Replace the data of the previous evidence detail with a new one--}}
-                        searchResults = [];  {{-- Clear the search results --}}
-                        selectedEvidenceDetailIds = []; {{-- Clear the selected evidence detail IDs --}}
+                        openModal = true;
+                        newEvidenceDetail = true;
+                        modalEvidenceDetail = new EvidenceDetail();
+                        searchResults = [];
+                        selectedEvidenceDetailIds = [];
                     "
                     class="item-add my-5"
             >
@@ -221,10 +220,10 @@
                                                             ></div>
                                                         </th>
                                                         <td class="td-input"
-                                                            x-text="`${ condition.code.coding[0].code } - ${
-                                                                $wire.dictionaries['eHealth/LOINC/observation_codes'][condition.code.coding[0].code] ||
-                                                                $wire.dictionaries['eHealth/ICF/classifiers'][condition.code.coding[0].code] ||
-                                                                $wire.dictionaries['eHealth/ICPC2/condition_codes'][condition.code.coding[0].code]
+                                                            x-text="`${ condition.code?.coding?.[0]?.code } - ${
+                                                                $wire.dictionaries['eHealth/LOINC/observation_codes'][condition.code?.coding?.[0]?.code] ||
+                                                                $wire.dictionaries['eHealth/ICF/classifiers'][condition.code?.coding?.[0]?.code] ||
+                                                                $wire.dictionaries['eHealth/ICPC2/condition_codes'][condition.code?.coding?.[0]?.code]
                                                             }`"
                                                         ></td>
                                                         <td class="td-input">
@@ -235,7 +234,7 @@
                                                                         if (index === -1) {
                                                                             selectedEvidenceDetailIds.push(id);
                                                                         } else {
-                                                                            selectedEvidenceDetailIds.splice(index, 1); // toggle off
+                                                                            selectedEvidenceDetailIds.splice(index, 1);
                                                                         }
                                                                     "
                                                                     class="button-primary w-28"
@@ -269,21 +268,19 @@
 
                                     <button @click.prevent
                                             @click="
-                                                const existingIds = modalCondition.conditions.evidences[0].details.map(detail => detail.id);
+                                                const existingIds = modalCondition.evidenceDetails.map(detail => detail.id);
 
-                                                {{-- Get only the new fidnings that are not already in the array --}}
-                                                const newEvidenceDetails = searchResults
+                                                const newDetails = searchResults
                                                     .filter(detail => selectedEvidenceDetailIds.includes(detail.id) && !existingIds.includes(detail.id))
                                                     .map(detail => ({
                                                         id: detail.id,
-                                                        inserted_at: detail.inserted_at,
-                                                        code: detail.code,
+                                                        insertedAt: detail.inserted_at,
+                                                        codeCode: detail.code?.coding?.[0]?.code ?? '',
                                                         type: detail.type,
                                                         selectedEpisodeId: modalEvidenceDetail.selectedEpisodeId
                                                     }));
 
-                                                {{-- Add them to the array --}}
-                                                modalCondition.conditions.evidences[0].details = modalCondition.conditions.evidences[0].details.concat(newEvidenceDetails);
+                                                modalCondition.evidenceDetails = modalCondition.evidenceDetails.concat(newDetails);
 
                                                 openModal = false;
                                                 searchResults = [];
@@ -307,9 +304,9 @@
      * Representation of the user's personal EvidenceDetail
      */
     class EvidenceDetail {
-        selectedEpisodeId = '';
-
         constructor(obj = null) {
+            this.selectedEpisodeId = '';
+
             if (obj) {
                 Object.assign(this, JSON.parse(JSON.stringify(obj)));
             }

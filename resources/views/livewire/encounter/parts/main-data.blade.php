@@ -52,19 +52,19 @@
 
     <div class="form-row-3">
         <div class="form-group group">
-            <select wire:model="form.encounter.class.code"
+            <select wire:model="form.encounter.classCode"
                     id="interactionClass"
-                    class="input-select peer @error('form.encounter.class.code') input-error @enderror"
+                    class="input-select peer @error('form.encounter.classCode') input-error @enderror"
                     required
             >
-                <option selected>{{ __('forms.select') }} {{ mb_strtolower(__('patients.interaction_class')) }}*
+                <option value="" selected>{{ __('forms.select') }} {{ mb_strtolower(__('patients.interaction_class')) }}*
                 </option>
                 @foreach($this->dictionaries['eHealth/encounter_classes'] as $key => $encounterClass)
                     <option value="{{ $key }}">{{ $encounterClass }}</option>
                 @endforeach
             </select>
 
-            @error('form.encounter.class.code')
+            @error('form.encounter.classCode')
             <p class="text-error">
                 {{ $message }}
             </p>
@@ -72,19 +72,19 @@
         </div>
 
         <div class="form-group group">
-            <select wire:model="form.encounter.type.coding.0.code"
+            <select wire:model="form.encounter.typeCode"
                     id="interactionType"
-                    class="input-select peer @error('form.encounter.type.coding.code') input-error @enderror"
+                    class="input-select peer @error('form.encounter.typeCode') input-error @enderror"
                     required
             >
-                <option selected>{{ __('forms.select') }} {{ mb_strtolower(__('patients.interaction_type')) }}*
+                <option value="" selected>{{ __('forms.select') }} {{ mb_strtolower(__('patients.interaction_type')) }}*
                 </option>
                 @foreach($this->dictionaries['eHealth/encounter_types'] as $key => $encounterType)
                     <option value="{{ $key }}">{{ $encounterType }}</option>
                 @endforeach
             </select>
 
-            @error('form.encounter.type.coding.code')
+            @error('form.encounter.typeCode')
             <p class="text-error">
                 {{ $message }}
             </p>
@@ -93,7 +93,7 @@
     </div>
 
     {{-- Select episode type --}}
-    <div x-data="{ episodeType: $wire.entangle('episodeType') }" class="mt-8">
+    <div x-data="{ episodeType: $wire.entangle('episodeType'), episodeId: $wire.entangle('form.episode.id') }" class="mt-8">
         <div class="form-row-3">
             <div class="flex items-center">
                 <input @change="episodeType = 'existing'"
@@ -109,7 +109,7 @@
                 </label>
             </div>
             <div class="flex items-center">
-                <input @change="episodeType = 'new'"
+                <input @change="episodeType = 'new'; episodeId = ''"
                        id="newEpisode"
                        type="radio"
                        value="new"
@@ -147,19 +147,19 @@
                 </div>
 
                 <div class="form-group group">
-                    <select wire:model="form.episode.type.code"
+                    <select wire:model="form.episode.typeCode"
                             id="episodeType"
-                            class="input-select peer @error('form.episode.type.code') input-error @enderror"
+                            class="input-select peer @error('form.episode.typeCode') input-error @enderror"
                             required
                     >
-                        <option selected>{{ __('forms.select') }} {{ mb_strtolower(__('patients.episode_type')) }}*
+                        <option value="" selected>{{ __('forms.select') }} {{ mb_strtolower(__('patients.episode_type')) }}*
                         </option>
                         @foreach($this->dictionaries['eHealth/episode_types'] as $key => $episodeType)
                             <option value="{{ $key }}">{{ $episodeType }}</option>
                         @endforeach
                     </select>
 
-                    @error('form.episode.type.code')
+                    @error('form.episode.typeCode')
                     <p class="text-error">
                         {{ $message }}
                     </p>
@@ -172,9 +172,9 @@
         <template x-if="episodeType === 'existing'">
             <div class="form-row-3" x-transition>
                 <div class="form-group group">
-                    <select wire:model="form.encounter.episode.identifier.value"
+                    <select wire:model="form.episode.id"
                             id="existingEpisodeId"
-                            class="input-select peer @error('form.encounter.episode.identifier.value') input-error @enderror"
+                            class="input-select peer @error('form.episode.id') input-error @enderror"
                     >
                         <option value="" selected>{{ __('forms.select') }}</option>
                         @foreach($episodes as $key => $episode)
@@ -182,7 +182,7 @@
                         @endforeach
                     </select>
 
-                    @error('form.encounter.episode.identifier.value')
+                    @error('form.episode.id')
                     <p class="text-error">
                         {{ $message }}
                     </p>

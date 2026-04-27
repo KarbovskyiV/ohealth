@@ -16,25 +16,25 @@
                     @include('livewire.encounter.parts.conditions')
                 </div>
 
-                <div id="immunizations" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">
-                    @include('livewire.encounter.parts.immunizations')
-                </div>
+{{--                <div id="immunizations" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">--}}
+{{--                    @include('livewire.encounter.parts.immunizations')--}}
+{{--                </div>--}}
 
-                <div id="diagnostic-reports" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">
-                    @include('livewire.encounter.parts.diagnostic-reports')
-                </div>
+{{--                <div id="diagnostic-reports" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">--}}
+{{--                    @include('livewire.encounter.parts.diagnostic-reports')--}}
+{{--                </div>--}}
 
-                <div id="observations" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">
-                    @include('livewire.encounter.parts.observations')
-                </div>
+{{--                <div id="observations" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">--}}
+{{--                    @include('livewire.encounter.parts.observations')--}}
+{{--                </div>--}}
 
-                <div id="procedures" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">
-                    @include('livewire.encounter.parts.procedures')
-                </div>
+{{--                <div id="procedures" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">--}}
+{{--                    @include('livewire.encounter.parts.procedures')--}}
+{{--                </div>--}}
 
-                <div id="clinical-impressions" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">
-                    @include('livewire.encounter.parts.clinical-impressions')
-                </div>
+{{--                <div id="clinical-impressions" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">--}}
+{{--                    @include('livewire.encounter.parts.clinical-impressions')--}}
+{{--                </div>--}}
 
                 @include('livewire.encounter.parts.actions')
                 @include('livewire.encounter.parts.additional-data')
@@ -61,7 +61,7 @@
                         ['id' => 'main-data', 'label' => __('patients.main_data'), 'icon' => 'pie-chart'],
                         ['id' => 'reasons', 'label' => __('patients.reasons_for_visit'), 'icon' => 'person'],
                         ['id' => 'conditions', 'label' => __('patients.diagnoses'), 'icon' => 'file'],
-                        ['id' => 'immunizations', 'label' => __('patients.vaccinations'), 'icon' => 'shield'],
+                        ['id' => 'immunizations', 'label' => __('patients.immunizations'), 'icon' => 'shield'],
                         ['id' => 'diagnostic-reports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity'],
                         ['id' => 'observations', 'label' => __('patients.observation'), 'icon' => 'heart'],
                         ['id' => 'procedures', 'label' => __('patients.procedures'), 'icon' => 'settings'],
@@ -89,4 +89,6 @@
     </div>
 
     <x-signature-modal method="sign" />
+    <livewire:components.x-message :key="time()" />
+    <x-forms.loading />
 </div>
