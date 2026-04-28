@@ -213,26 +213,28 @@
                                             </div>
 
                                             {{-- Phone Number Input --}}
-                                            <div class="form-group phone-wrapper">
-                                                <input required
-                                                    type="tel"
-                                                    placeholder=" "
-                                                    class="peer input pl-10 with-leading-icon text-gray-500 "
-                                                    x-model="phones[index].number"
-                                                    x-mask="+380999999999"
-                                                    :id="$id('phone', '_number' + index)"
-                                                    :class="{ 'input-error border-red-500': errors[`divisionForm.division.phones.${index}.number`] }"
-                                                    :disabled="isDisabled"
-                                                />
+                                            <div class="form-group">
+                                                <div class="phone-wrapper relative">
+                                                    <input required
+                                                        type="tel"
+                                                        placeholder=" "
+                                                        class="peer input pl-10 with-leading-icon text-gray-500 "
+                                                        x-model="phones[index].number"
+                                                        x-mask="+380999999999"
+                                                        :id="$id('phone', '_number' + index)"
+                                                        :class="{ 'input-error border-red-500': errors[`divisionForm.division.phones.${index}.number`] }"
+                                                        :disabled="isDisabled"
+                                                    />
+
+                                                    <label :for="$id('phone', '_number' + index)" class="wrapped-label">
+                                                        {{ __('forms.phone') }}
+                                                    </label>
+                                                </div>
 
                                                 <template x-if="errors[`divisionForm.division.phones.${index}.number`]">
                                                     <p class="text-error"
                                                     x-text="errors[`divisionForm.division.phones.${index}.number`]"></p>
                                                 </template>
-
-                                                <label :for="$id('phone', '_number' + index)" class="wrapped-label">
-                                                    {{ __('forms.phone') }}
-                                                </label>
                                             </div>
 
                                             <!-- Action Phone Buttons -->
@@ -407,7 +409,12 @@
                                 x-data="{
                                     working: false,
                                     workingHours: $wire.entangle('divisionForm.division.workingHours'),
-                                    isStoreMode: {{ $action === 'store' ? 'true' : 'false' }}
+                                    isStoreMode: {{ $action === 'store' ? 'true' : 'false' }},
+                                    init() {
+                                        this.working = Object.values(this.workingHours).some(day => 
+                                            day.some(shift => (shift[0] && shift[0] !== '') || (shift[1] && shift[1] !== ''))
+                                        );
+                                    }
                                 }"
                         >
                             <legend class="legend">
@@ -455,19 +462,19 @@
                                                     :key="'{{ $key }}'"
                                                     x-data="{
                                                     shift: workingHours['{{ $key }}'].length > 1,
-                                                    show_work: workingHours['{{ $key }}'][0][0] !== '00:00' ||
-                                                    workingHours['{{ $key }}'][0][1] !== '00:00' ||
+                                                    show_work: workingHours['{{ $key }}'][0][0] !== '' && workingHours['{{ $key }}'][0][0] !== null ||
+                                                    workingHours['{{ $key }}'][0][1] !== '' && workingHours['{{ $key }}'][0][1] !== null ||
                                                     '{{ $action }}' === 'store',
                                                     switchWorking(day) {
                                                     this.show_work = !this.show_work;
-                                                    this.workingHours[day] = [['00:00', '00:00']];
+                                                    this.workingHours[day] = [['', '']];
                                                     if (! this.show_work) {
                                                     this.shift = false;
                                                     }
                                                     },
                                                     addAvailableShift(day) {
                                                     if (this.workingHours[day].length < 4) {
-                                                    this.workingHours[day].push(['00:00', '00:00']);
+                                                    this.workingHours[day].push(['', '']);
                                                     }
                                                     },
                                                     deleteShift(day, index) {
@@ -568,8 +575,8 @@
                                                                                             type="text"
                                                                                             :id="'opened_by-' + '{{ $key }}' + '-' + shiftIndex"
                                                                                             class="input timepicker-uk text-gray-900 dark:text-white border-t-0 border-r-0 border-l-0 border-b border-gray-300 focus:ring-0 px-0 ps-8"
-                                                                                            placeholder="00:00"
-                                                                                            x-model="workingHours['{{ $key }}'][shiftIndex][0]"
+                                                                                            placeholder="--:--"
+                                                                                            x-model.lazy="workingHours['{{ $key }}'][shiftIndex][0]"
                                                                                             x-bind:disabled="isDisabled"
                                                                                         />
                                                                                     </div>
@@ -608,8 +615,8 @@
                                                                                             type="text"
                                                                                             :id="'closed_by-' + '{{ $key }}' + '-' + shiftIndex"
                                                                                             class="input timepicker-uk text-gray-900 dark:text-white border-t-0 border-r-0 border-l-0 border-b border-gray-300 focus:ring-0 px-0 ps-8"
-                                                                                            placeholder="00:00"
-                                                                                            x-model="workingHours['{{ $key }}'][shiftIndex][1]"
+                                                                                            placeholder="--:--"
+                                                                                            x-model.lazy="workingHours['{{ $key }}'][shiftIndex][1]"
                                                                                             x-bind:disabled="isDisabled"
                                                                                         />
                                                                                     </div>
@@ -623,7 +630,7 @@
                                                                                     type="button"
                                                                                     x-show="shift && shiftIndex && !isDisabled"
                                                                                     @click="deleteShift('{{ $key }}', shiftIndex)"
-                                                                                    class="h-10 text-gray-800 dark:text-gray-500 hover:text-gray-600 cursor-pointer"
+                                                                                    class="h-10 text-red-600 dark:text-red-500 hover:text-red-700 cursor-pointer"
                                                                                     x-bind:disabled="isDisabled"
                                                                                 >
                                                                                     <svg class="w-5 h-5" aria-hidden="true"
@@ -664,9 +671,9 @@
 
                         <div class="flex gap-2 items-center additional-actions">
                             <a role="button"
-                            class="alternative-button cursor-pointer !mb-0 inline-flex items-center leading-none"
+                            class="button-minor cursor-pointer !mb-0 inline-flex items-center leading-none"
                             href="javascript:history.back()">
-                                {{ __('forms.back') }}
+                                {{ __('forms.cancel') }}
                             </a>
 
                             @yield('additional-buttons')

@@ -12,9 +12,10 @@
 >
     <livewire:components.x-message :key="now()->timestamp"/>
 
-    <x-header-navigation x-data="{ showFilter: false }">
+    <x-header-navigation class="items-start" x-data="{ showFilter: false }">
         <x-slot name="title">{{ __('forms.divisions') }}</x-slot>
-        <div class="ml-auto flex items-center gap-2 mt-2 lg:mt-0 pl-4 sm:pl-0">
+
+        <div class="mt-3 ml-0 flex flex-col sm:flex-row sm:flex-wrap gap-2 self-start">
             @can('create', Division::class)
                 <a href="{{ route('division.create', [legalEntity()]) }}"
                    type="button"
@@ -34,36 +35,39 @@
                 <span>{{ ($syncStatus === JobStatus::PAUSED->value || $syncStatus === JobStatus::FAILED->value) ? __('forms.sync_retry') : __('forms.synchronise_with_eHealth') }}</span>
             </button>
         </div>
-    </x-header-navigation>
 
-    <div class="shift-content flex flex-wrap items-end justify-between gap-4 pl-2.5">
-        <div class="w-96 ml-3.5">
-            <x-forms.form-group>
-                <x-slot name="label">
-                    <label for="divisionSearch"
-                           class="text-sm font-medium text-gray-900 dark:text-white block mb-2 flex items-center gap-1"
-                    >
-                        @icon('search-outline', 'w-4 h-4 text-gray-500 dark:text-gray-400')
-                        <span>{{ __('forms.division_search') }}</span>
-                    </label>
-                </x-slot>
-
-                <x-slot name="input">
-                    <div class="form-group group w-full relative mt-3">
+        <x-slot name="navigation">
+            <div class="form-row-3">
+                <div class="flex items-center gap-4 col-span-1">
+                    <div class="form-group group relative w-full">
+                        @icon('search-outline', 'svg-input')
                         <input wire:model.live.debounce.300ms="divisionForm.search"
                                type="text"
                                id="divisionSearch"
                                placeholder=" "
-                               class="input peer pb-1"
+                               class="input peer"
                                autocomplete="off"
                         />
-
-                        <label for="divisionSearch" class="label">{{ __('forms.name') }}</label>
+                        <label for="divisionSearch" class="label">
+                            {{ __('forms.search_by_name') }}
+                        </label>
+                        <button type="button"
+                                class="absolute inset-y-0 end-0 flex items-center pe-1 text-gray-400 hover:text-gray-600"
+                                x-show="$wire.divisionForm.search"
+                                @click="$wire.set('divisionForm.search', '')"
+                        >
+                            @icon('close', 'w-4 h-4')
+                        </button>
                     </div>
-                </x-slot>
-            </x-forms.form-group>
-        </div>
-    </div>
+                    <button type="button"
+                            class="p-2.5 text-sm font-medium text-white bg-primary-700 rounded-xl hover:bg-primary-800 focus:ring-4 focus:outline-none focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                    >
+                        @icon('search-outline', 'w-6 h-6')
+                    </button>
+                </div>
+            </div>
+        </x-slot>
+    </x-header-navigation>
 
     <div class="flow-root mt-8 shift-content pl-3.5">
         <div class="max-w-screen-xl">
@@ -203,9 +207,9 @@
                                                        actionButtonText = @js(__('forms.activate'));
                                                        open = !open;
                                                     "
-                                                       class="flex items-center gap-2 w-full first-of-type:rounded-t-md last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-gray-600"
+                                                       class="flex items-center gap-2 w-full first-of-type:rounded-t-md last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
                                                     >
-                                                        @icon('check-circle', 'w-5 h-5 text-green-600 dark:text-green-400')
+                                                        @icon('check-circle', 'w-5 h-5 text-gray-600 dark:text-gray-300')
                                                         {{ __('forms.activate') }}
                                                     </a>
                                                 @endcan
@@ -221,9 +225,9 @@
                                                        actionButtonText = @js(__('forms.deactivate'));
                                                        open = !open;
                                                     "
-class="flex items-center gap-2 w-full last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-600"
+class="flex items-center gap-2 w-full last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
                                                     >
-                                                        @icon('delete', 'w-5 h-5 text-red-600 dark:text-red-400')
+                                                        @icon('delete', 'w-5 h-5 text-gray-600 dark:text-gray-300')
                                                             {{ __('forms.deactivate') }}
                                                     </a>
                                                 @endcan
@@ -238,9 +242,9 @@ class="flex items-center gap-2 w-full last-of-type:rounded-b-md px-4 py-2.5 text
                                                        actionButtonText = @js(__('forms.delete'));
                                                        open = !open;
                                                     "
-                                                       class="flex items-center gap-2 w-full last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-600"
+                                                       class="flex items-center gap-2 w-full last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
                                                     >
-                                                        <svg class="w-5 h-5 text-red-600 dark:text-red-400" aria-hidden="true"
+                                                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" aria-hidden="true"
                                                              xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                              fill="none" viewBox="0 0 24 24">
                                                             <path stroke="currentColor" stroke-linecap="round"
