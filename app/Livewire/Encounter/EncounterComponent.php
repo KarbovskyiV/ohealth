@@ -26,7 +26,6 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 use App\Livewire\Encounter\Forms\EncounterForm as Form;
 use Livewire\WithFileUploads;
-use RuntimeException;
 
 class EncounterComponent extends Component
 {
@@ -280,6 +279,13 @@ class EncounterComponent extends Component
                 $value[0] => $this->dictionaries[$value[0]] ?? [],
             ])
             ->toArray();
+
+        $this->legalEntityType = legalEntity()->type->name;
+        $this->role = Auth::user()->roles->first()->name;
+
+        $this->adjustEpisodeTypes();
+        $this->adjustEncounterClasses();
+        $this->adjustEncounterTypes();
     }
 
     /**
@@ -321,10 +327,6 @@ class EncounterComponent extends Component
     {
         $authUser = Auth::user();
 
-        if (!$authUser) {
-            throw new RuntimeException('Authenticated user not found');
-        }
-
         $employees = $authUser->party->employees()
             ->whereEmployeeType(Role::DOCTOR)
             ->select(['uuid', 'position', 'party_id'])
@@ -346,10 +348,6 @@ class EncounterComponent extends Component
 
         $this->employeeFullName = $authUser->getEncounterWriterEmployee()->fullName;
 
-        $this->adjustEpisodeTypes();
-        $this->adjustEncounterClasses();
-        $this->adjustEncounterTypes();
-
         $this->setPatientData();
         $this->getDivisionData();
         $this->getEpisodes();
@@ -365,7 +363,7 @@ class EncounterComponent extends Component
     {
         // Validate that an episode ID is provided
         if (empty($episodeId)) {
-            $this->addError('episode', 'Please select an episode first.');
+            $this->addError('episode', 'Будь ласка, оберіть епізод для пошуку.');
 
             return;
         }

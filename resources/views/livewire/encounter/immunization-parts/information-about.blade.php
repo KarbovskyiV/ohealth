@@ -9,7 +9,7 @@
                 {{ __('patients.code_and_name') }}
             </label>
             <select type="text"
-                    x-model="modalImmunization.vaccineCode.coding[0].code"
+                    x-model="modalImmunization.vaccineCode"
                     id="vaccineCode"
                     class="input-modal"
                     required
@@ -21,7 +21,7 @@
             </select>
 
             <p class="text-error text-xs"
-               x-show="!Object.keys(vaccineCodesDictionary).includes(modalImmunization.vaccineCode.coding[0].code)"
+               x-show="!Object.keys(vaccineCodesDictionary).includes(modalImmunization.vaccineCode)"
             >
                 {{ __('forms.field_empty') }}
             </p>
@@ -112,7 +112,7 @@
                 <label for="amountOfInjected" class="label-modal">
                     {{ __('patients.amount_of_injected') }}
                 </label>
-                <input x-model.number="modalImmunization.doseQuantity.value"
+                <input x-model.number="modalImmunization.doseQuantityValue"
                        type="number"
                        name="amountOfInjected"
                        id="amountOfInjected"
@@ -122,7 +122,7 @@
                 >
 
                 <p class="text-error text-xs"
-                   x-show="(modalImmunization.doseQuantity?.value < 1 && modalImmunization.notGiven === false)"
+                   x-show="(modalImmunization.doseQuantityValue < 1 && modalImmunization.notGiven === false)"
                 >
                     {{ __('forms.field_empty') }}
                 </p>
@@ -133,8 +133,8 @@
                     {{ __('patients.measurement_units') }}
                 </label>
                 <select type="text"
-                        x-model="modalImmunization.doseQuantity.code"
-                        @change="modalImmunization.doseQuantity.unit = modalImmunization.doseQuantity.code"
+                        x-model="modalImmunization.doseQuantityCode"
+                        @change="modalImmunization.doseQuantityUnit = modalImmunization.doseQuantityCode"
                         name="measurementUnits"
                         id="measurementUnits"
                         class="input-modal"
@@ -151,7 +151,7 @@
                    x-show="
                        modalImmunization.notGiven === false &&
                        (modalImmunization.primarySource === true || modalImmunization.primarySource === false) &&
-                       (!modalImmunization.doseQuantity?.unit || modalImmunization.doseQuantity.unit.trim() === '')
+                       (!modalImmunization.doseQuantityUnit || modalImmunization.doseQuantityUnit.trim() === '')
                    "
                 >
                     {{ __('forms.field_empty') }}
@@ -166,7 +166,7 @@
                 {{ __('patients.input_route') }}
             </label>
             <select type="text"
-                    x-model="modalImmunization.route.coding[0].code"
+                    x-model="modalImmunization.routeCode"
                     name="inputRoute"
                     id="inputRoute"
                     class="input-modal"
@@ -181,7 +181,7 @@
 
             <p class="text-error text-xs"
                x-show="(
-                   !Object.keys($wire.dictionaries['eHealth/vaccination_routes']).includes(modalImmunization.route.coding[0].code) &&
+                   !Object.keys($wire.dictionaries['eHealth/vaccination_routes']).includes(modalImmunization.routeCode) &&
                    (modalImmunization.primarySource === true && modalImmunization.notGiven === false)
                )"
             >
@@ -196,7 +196,7 @@
                 {{ __('patients.body_part') }}
             </label>
             <select type="text"
-                    x-model="modalImmunization.site.coding[0].code"
+                    x-model="modalImmunization.siteCode"
                     name="bodyPart"
                     id="bodyPart"
                     class="input-modal"
@@ -211,7 +211,7 @@
 
             <p class="text-error text-xs"
                x-show="(
-                   !Object.keys($wire.dictionaries['eHealth/immunization_body_sites']).includes(modalImmunization.site.coding[0].code) &&
+                   !Object.keys($wire.dictionaries['eHealth/immunization_body_sites']).includes(modalImmunization.siteCode) &&
                    (modalImmunization.primarySource === true && modalImmunization.notGiven === false)
                )"
             >

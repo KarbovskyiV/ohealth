@@ -16,9 +16,9 @@
                     @include('livewire.encounter.parts.conditions')
                 </div>
 
-{{--                <div id="immunizations" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">--}}
-{{--                    @include('livewire.encounter.parts.immunizations')--}}
-{{--                </div>--}}
+                <div id="immunizations" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">
+                    @include('livewire.encounter.parts.immunizations')
+                </div>
 
 {{--                <div id="diagnostic-reports" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm scroll-mt-6">--}}
 {{--                    @include('livewire.encounter.parts.diagnostic-reports')--}}

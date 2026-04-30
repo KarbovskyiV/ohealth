@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * @property Immunization $model
+ */
 class ImmunizationRepository extends BaseRepository
 {
     /**
@@ -20,13 +23,12 @@ class ImmunizationRepository extends BaseRepository
      *
      * @param  array  $data
      * @param  int  $personId
-     * @param  int  $encounterId
      * @return void
      * @throws Throwable
      */
-    public function store(array $data, int $personId, int $encounterId): void
+    public function store(array $data, int $personId): void
     {
-        DB::transaction(function () use ($data, $personId, $encounterId) {
+        DB::transaction(function () use ($data, $personId) {
             try {
                 foreach ($data as $datum) {
                     $vaccineCode = Repository::codeableConcept()->store($datum['vaccineCode']);
@@ -51,11 +53,9 @@ class ImmunizationRepository extends BaseRepository
                         $route = Repository::codeableConcept()->store($datum['route']);
                     }
 
-                    /** @var Immunization $immunization */
-                    $immunization = $this->model::create([
+                    $immunization = $this->model->create([
                         'uuid' => $datum['uuid'] ?? $datum['id'],
                         'person_id' => $personId,
-                        'encounter_id' => $encounterId,
                         'status' => $datum['status'],
                         'not_given' => $datum['notGiven'],
                         'vaccine_code_id' => $vaccineCode->id,
@@ -143,25 +143,15 @@ class ImmunizationRepository extends BaseRepository
     }
 
     /**
-     * Get condition data that is related to the encounter.
+     * Get immunization data that is related to the encounter.
      *
-     * @param  int  $encounterId
+     * @param  string  $encounterUuid
      * @return array|null
      */
-    public function get(int $encounterId): ?array
+    public function get(string $encounterUuid): ?array
     {
-        return $this->model::with([
-            'vaccineCode.coding',
-            'context.type.coding',
-            'performer.type.coding',
-            'reportOrigin.coding',
-            'site.coding',
-            'route.coding',
-            'doseQuantity',
-            'vaccinationProtocols.authority.coding',
-            'vaccinationProtocols.targetDiseases.coding'
-        ])
-            ->where('encounter_id', $encounterId)
+        return $this->model->withAllRelations()
+            ->whereHas('context', fn ($query) => $query->where('value', $encounterUuid))
             ->get()
             ?->toArray();
     }
@@ -214,7 +204,7 @@ class ImmunizationRepository extends BaseRepository
             $apiUuids = collect($validatedData)->pluck('uuid')->toArray();
 
             // Load existing immunizations with relations
-            $existingImmunizations = $this->model::whereIn('uuid', $apiUuids)
+            $existingImmunizations = $this->model->whereIn('uuid', $apiUuids)
                 ->withAllRelations()
                 ->get()
                 ->keyBy('uuid');
@@ -251,14 +241,14 @@ class ImmunizationRepository extends BaseRepository
                     $existing->update($immunizationData);
                     $immunization = $existing;
                 } else {
-                    $immunization = $this->model::create(
+                    $immunization = $this->model->create(
                         array_merge(['uuid' => $data['uuid']], $immunizationData)
                     );
                 }
 
                 $this->syncDoseQuantity($immunization, $data['dose_quantity'] ?? null);
                 $this->syncExplanations($immunization, $existing, $data['explanation'] ?? []);
-                $this->syncReactions($existing, $data['reactions'], $immunization);
+                $this->syncReactions($existing, $data['reactions'] ?? null, $immunization);
                 $this->syncVaccinationProtocols($immunization, $existing, $data['vaccination_protocols'] ?? []);
             }
         });
@@ -366,6 +356,14 @@ class ImmunizationRepository extends BaseRepository
         }
     }
 
+    /**
+     * Sync immunization reactions array.
+     *
+     * @param  Immunization|null  $existing
+     * @param  array|null  $items
+     * @param  Immunization  $parent
+     * @return void
+     */
     private function syncReactions(?Immunization $existing, ?array $items, Immunization $parent): void
     {
         if (empty($items)) {

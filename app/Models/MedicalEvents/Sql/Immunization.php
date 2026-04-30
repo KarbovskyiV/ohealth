@@ -22,7 +22,6 @@ class Immunization extends Model
     protected $fillable = [
         'uuid',
         'person_id',
-        'encounter_id',
         'status',
         'not_given',
         'vaccine_code_id',
@@ -49,7 +48,6 @@ class Immunization extends Model
     protected $hidden = [
         'id',
         'person_id',
-        'encounter_id',
         'vaccine_code_id',
         'context_id',
         'performer_id',
@@ -92,11 +90,6 @@ class Immunization extends Model
             'explanations.reasons.coding',
             'explanations.reasonsNotGiven.coding'
         ]);
-    }
-
-    public function encounter(): BelongsTo
-    {
-        return $this->belongsTo(Encounter::class);
     }
 
     public function context(): BelongsTo

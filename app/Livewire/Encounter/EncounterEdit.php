@@ -4,15 +4,23 @@ declare(strict_types=1);
 
 namespace App\Livewire\Encounter;
 
+use App\Classes\Cipher\Api\CipherRequest;
+use App\Classes\Cipher\Exceptions\CipherApiException;
+use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
+use App\Exceptions\EHealth\EHealthResponseException;
+use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Repositories\MedicalEvents\Repository;
 use App\Services\MedicalEvents\Mappers\ConditionMapper;
 use App\Services\MedicalEvents\Mappers\EncounterMapper;
+use App\Services\MedicalEvents\Mappers\ImmunizationMapper;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
+use JsonException;
 use Livewire\Attributes\Locked;
 use Throwable;
 
@@ -49,9 +57,13 @@ class EncounterEdit extends EncounterComponent
             ->map(fn (array $condition) => app(ConditionMapper::class)->fromFhir($condition, $detailsMap))
             ->toArray();
 
-        //        $this->form->immunizations = Repository::immunization()->get($this->encounterId);
-        //        $this->form->immunizations = Repository::immunization()->formatForView($this->form->immunizations);
-        //
+        $immunizations = Repository::immunization()->get($encounter['uuid']);
+        if ($immunizations) {
+            $this->form->immunizations = collect($immunizations)
+                ->map(fn (array $immunization) => app(ImmunizationMapper::class)->fromFhir($immunization))
+                ->toArray();
+        }
+
         //        $this->form->diagnosticReports = Repository::diagnosticReport()->get($this->encounterId);
         //        $this->form->diagnosticReports = Repository::diagnosticReport()->formatForView($this->form->diagnosticReports);
         //
@@ -67,10 +79,9 @@ class EncounterEdit extends EncounterComponent
     /**
      * Validate and update data.
      *
-     * @return void
-     * @throws Throwable
+     * @return array|null
      */
-    public function save(): void
+    public function save(): ?array
     {
         try {
             $validated = $this->form->validate();
@@ -78,7 +89,7 @@ class EncounterEdit extends EncounterComponent
             Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
 
-            return;
+            return null;
         }
 
         // format to fhir format for local saving(updating)
@@ -93,24 +104,104 @@ class EncounterEdit extends EncounterComponent
             ->map(fn (array $condition) => app(ConditionMapper::class)->toFhir($condition, $uuids))
             ->values()
             ->toArray();
-        $formattedEncounter = app(EncounterMapper::class)->toFhir(
+        $fhirImmunizations = collect($validated['immunizations'] ?? [])
+            ->map(fn (array $immunization) => app(ImmunizationMapper::class)->toFhir($immunization, $uuids))
+            ->values()
+            ->toArray();
+        $fhirEncounter = app(EncounterMapper::class)->toFhir(
             $validated['encounter'],
             $fhirConditions,
             $uuids
         );
 
-        // map id to uuid for using sync method
-        $conditionsSyncData = collect($fhirConditions)->map(
-            fn (array $item) => collect($item)->put('uuid', $item['id'])->forget(['id'])->all()
-        )->toArray();
-        $encounterSyncData = collect($formattedEncounter)
-            ->put('uuid', $formattedEncounter['id'])
-            ->forget(['id'])
-            ->all();
+        try {
+            Repository::encounter()->sync($this->personId, [$this->fhirToSync($fhirEncounter)]);
+            Repository::condition()->sync($this->personId, array_map($this->fhirToSync(...), $fhirConditions));
+            Repository::immunization()->sync($this->personId, array_map($this->fhirToSync(...), $fhirImmunizations));
+        } catch (Throwable $exception) {
+            $this->logDatabaseErrors($exception, 'Failed to sync encounter package data');
+            Session::flash('error', __('messages.database_error'));
 
-        Repository::encounter()->sync($this->personId, [Arr::toSnakeCase($encounterSyncData)]);
-        Repository::condition()->sync($this->personId, Arr::toSnakeCase($conditionsSyncData));
+            return null;
+        }
 
-        Session::flash('success', 'Взаємодія успішно оновлена.');
+        Session::flash('success', __('patients.messages.encounter_updated'));
+
+        return [
+            'encounter' => $fhirEncounter,
+            'conditions' => $fhirConditions,
+            'immunizations' => $fhirImmunizations,
+        ];
+    }
+
+    /**
+     * Rename 'id' to 'uuid' and convert keys to snake_case for sync methods.
+     *
+     * @param  array  $fhirItem
+     * @return array
+     */
+    private function fhirToSync(array $fhirItem): array
+    {
+        return Arr::toSnakeCase(
+            collect($fhirItem)->put('uuid', $fhirItem['id'])->forget(['id'])->all()
+        );
+    }
+
+    /**
+     * Submit encrypted data about person encounter.
+     *
+     * @return void
+     */
+    public function sign(): void
+    {
+        if (Auth::user()->cannot('create', Encounter::class)) {
+            Session::flash('error', __('patients.policy.create_encounter'));
+
+            return;
+        }
+
+        try {
+            $validated = $this->form->validate($this->form->signingRules());
+        } catch (ValidationException $exception) {
+            Session::flash('error', $exception->validator->errors()->first());
+            $this->setErrorBag($exception->validator->getMessageBag());
+
+            return;
+        }
+
+        $formattedData = $this->save();
+        $formattedData = Arr::toSnakeCase($formattedData);
+
+        try {
+            $signedContent = new CipherRequest()->signData(
+                $formattedData,
+                $validated['knedp'],
+                $validated['keyContainerUpload'],
+                $validated['password'],
+                Auth::user()->party->taxId
+            );
+        } catch (ConnectionException|CipherApiException|JsonException $exception) {
+            $this->handleCipherExceptions($exception, 'Error when signing data with Cipher');
+
+            return;
+        }
+
+        try {
+            $resp = EHealth::encounter()->submit($this->patientUuid, [
+                'visit' => [
+                    'id' => data_get($formattedData, 'encounter.visit.identifier.value'),
+                    'period' => data_get($formattedData, 'encounter.period')
+                ],
+                'signed_data' => $signedContent->getBase64Data()
+            ]);
+
+            logger()->debug('Job ID to further debug', $resp->getData());
+        } catch (ConnectionException|EHealthValidationException|EHealthResponseException $exception) {
+            $this->handleEHealthExceptions($exception, 'Error while submitting encounter');
+
+            return;
+        }
+
+        $this->redirectRoute('persons.index', [legalEntity()], navigate: true);
     }
 }

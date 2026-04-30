@@ -31,23 +31,23 @@
             <template x-for="(immunization, index) in immunizations">
                 <tr>
                     <td class="td-input"
-                        x-text="`${ immunization.vaccineCode.coding[0]['code'] } - ${ vaccineCodesDictionary[immunization.vaccineCode.coding[0]['code']] }`"
+                        x-text="`${ immunization.vaccineCode } - ${ vaccineCodesDictionary[immunization.vaccineCode] }`"
                     ></td>
                     <td class="td-input"
                         x-text="
-                            immunization.doseQuantity?.value && immunization.doseQuantity?.unit
-                                ? `${immunization.doseQuantity.value} ${immunization.doseQuantity.unit}`
+                            immunization.doseQuantityValue && immunization.doseQuantityUnit
+                                ? `${immunization.doseQuantityValue} ${immunization.doseQuantityUnit}`
                                 : ''
-                            "
+                        "
                     ></td>
                     <td class="td-input"
                         x-text="immunization.notGiven === false ? 'проведена' : 'не проведена'"
                     ></td>
                     <td class="td-input"
                         x-text="
-                            immunization.explanation.reasons?.[0]?.coding?.[0]?.code
-                                ? reasonExplanationsDictionary[immunization.explanation.reasons[0].coding[0].code]
-                                : reasonNotGivenExplanationsDictionary[immunization.explanation.reasonsNotGiven[0]?.coding?.[0]?.code]
+                            immunization.reasons?.[0]
+                                ? reasonExplanationsDictionary[immunization.reasons[0]]
+                                : reasonNotGivenExplanationsDictionary[immunization.reasonNotGivenCode]
                         "
                     ></td>
                     <td class="td-input" x-text="immunization.date"></td>
@@ -109,12 +109,12 @@
                                 >
 
                                     <button @click.prevent="
-                                                openModal = true; {{-- Open the modal --}}
-                                                item = index; {{-- Identify the item we are corrently editing --}}
-                                                {{-- Replace the previous immunization with the current, don't assign object directly (modalImmunization = immunization) to avoid reactiveness --}}
-                                                modalImmunization = JSON.parse(JSON.stringify(immunizations[index]));
-                                                newImmunization = false; {{-- This immunization is already created --}}
-                                            "
+                                            openModal = true; {{-- Open the modal --}}
+                                            item = index; {{-- Identify the item we are corrently editing --}}
+                                            {{-- Replace the previous immunization with the current, don't assign object directly (modalImmunization = immunization) to avoid reactiveness --}}
+                                            modalImmunization = JSON.parse(JSON.stringify(immunizations[index]));
+                                            newImmunization = false; {{-- This immunization is already created --}}
+                                        "
                                             class="dropdown-button"
                                     >
                                         {{ __('forms.edit') }}
@@ -189,7 +189,7 @@
                                     </button>
 
                                     <button @click.prevent="
-                                                const newImmunizationCode = modalImmunization.vaccineCode.coding[0]?.code;
+                                            const newImmunizationCode = modalImmunization.vaccineCode;
 
                                                 // Check for duplicates, excluding the current item when editing
                                                 let hasDuplicate = false;
@@ -197,18 +197,24 @@
                                                 if (newImmunization) {
                                                     // For new immunization, check all existing ones
                                                     hasDuplicate = immunizations.some(
-                                                        immunization => immunization.vaccineCode.coding[0]?.code === newImmunizationCode
+                                                        immunization => immunization.vaccineCode === newImmunizationCode
                                                     );
                                                 } else {
                                                     // For editing, check all except the current item
                                                     hasDuplicate = immunizations.some(
-                                                        (immunization, index) => index !== item && immunization.vaccineCode.coding[0]?.code === newImmunizationCode
+                                                        (immunization, index) => index !== item && immunization.vaccineCode === newImmunizationCode
                                                     );
                                                 }
 
                                                 if (hasDuplicate) {
                                                     showDuplicateCodeWarning = true;
                                                     return;
+                                                }
+
+                                                if (modalImmunization.notGiven) {
+                                                    modalImmunization.reasons = [];
+                                                } else {
+                                                    modalImmunization.reasonNotGivenCode = '';
                                                 }
 
                                                 newImmunization !== false
@@ -222,7 +228,7 @@
                                             :disabled="!(
                                                 modalImmunization.date.trim() &&
                                                 modalImmunization.time.trim() &&
-                                                (modalImmunization.explanation?.reasons?.[0]?.coding?.[0]?.code?.trim?.() || modalImmunization.explanation?.reasonsNotGiven[0]?.coding?.[0]?.code?.trim?.()))
+                                                (modalImmunization.reasons?.[0]?.trim?.() || modalImmunization.reasonNotGivenCode?.trim?.()))
                                             "
                                     >
                                         {{ __('forms.save') }}
@@ -247,59 +253,30 @@
      * Representation of the user's personal immunization
      */
     class Immunization {
-        date = new Date().toISOString().split('T')[0];
-        time = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false });
-        notGiven = false;
-        vaccineCode = {
-            coding: [{ system: 'eHealth/vaccine_codes', code: '' }]
-        };
-        explanation = {
-            reasons: [
-                {
-                    coding: [{ system: 'eHealth/reason_explanations', code: '' }]
-                }
-            ],
-            reasonsNotGiven: [
-                {
-                    coding: [{ system: 'eHealth/reason_not_given_explanations', code: '' }]
-                }
-            ]
-        };
-        primarySource = true;
-        performer = {
-            identifier: {
-                type: {
-                    coding: [{ system: 'eHealth/resources', code: 'employee' }],
-                    text: ''
-                }
-            }
-        };
-        reportOrigin = {
-            coding: [{ system: 'eHealth/immunization_report_origins', code: '' }],
-            text: ''
-        };
-        manufacturer = null;
-        lotNumber = null;
-        expirationDate = null;
-        site = {
-            coding: [{ system: 'eHealth/immunization_body_sites', code: '' }],
-            text: ''
-        };
-        route = {
-            coding: [{ system: 'eHealth/vaccination_routes', code: '' }],
-            text: ''
-        };
-        doseQuantity = {
-            value: null,
-            unit: null,
-            system: 'eHealth/immunization_dosage_units',
-            code: ''
-        };
-        vaccinationProtocols = [];
-
         constructor(obj = null) {
+            const now = new Date();
+
+            this.date = now.toISOString().split('T')[0];
+            this.time = now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false });
+            this.notGiven = false;
+            this.vaccineCode = '';
+            this.primarySource = true;
+            this.reasons = [''];
+            this.reasonNotGivenCode = '';
+            this.reportOriginCode = '';
+            this.reportOriginText = '';
+            this.manufacturer = null;
+            this.lotNumber = null;
+            this.expirationDate = null;
+            this.siteCode = '';
+            this.routeCode = '';
+            this.doseQuantityValue = null;
+            this.doseQuantityCode = '';
+            this.doseQuantityUnit = '';
+            this.vaccinationProtocols = [];
+
             if (obj) {
-                this.immunizations = JSON.parse(JSON.stringify(obj.immunizations || obj));
+                Object.assign(this, JSON.parse(JSON.stringify(obj)));
             }
         }
     }

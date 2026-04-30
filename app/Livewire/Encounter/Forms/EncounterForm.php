@@ -10,8 +10,6 @@ use App\Rules\InDictionary;
 use App\Rules\OnlyOnePrimaryDiagnosis;
 use App\Rules\PastDateTime;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Fluent;
-use Illuminate\Validation\ConditionalRules;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\RequiredIf;
 
@@ -35,7 +33,7 @@ class EncounterForm extends BaseForm
 
     protected function rules(): array
     {
-        return [
+        $rules = [
             'encounter.periodDate' => ['required', 'date', 'before_or_equal:today'],
             'encounter.periodStart' => ['required', 'date_format:H:i'],
             'encounter.periodEnd' => [
@@ -131,30 +129,81 @@ class EncounterForm extends BaseForm
             'conditions.*.evidenceDetails.*.id' => ['nullable', 'uuid'],
             'conditions.*.evidenceDetails.*.type' => ['nullable', 'string', 'in:observation,condition'],
 
-            //            'immunizations' => ['nullable', 'array'],
-            //            'immunizations.*.primarySource' => ['required_with:immunizations', 'boolean'],
-            //            'immunizations.*.performer' => [
-            //                'required_if:immunizations.*.primarySource,true',
-            //                'prohibited_if:immunizations.*.primarySource,false',
-            //                'array'
-            //            ],
-            //            'immunizations.*.reportOrigin' => [
-            //                'required_if:immunizations.*.primarySource,false',
-            //                'prohibited_if:immunizations.*.primarySource,true',
-            //                'array'
-            //            ],
-            //            'immunizations.*.reportOrigin.coding.*.code' => [
-            //                'string',
-            //                new InDictionary('eHealth/immunization_report_origins')
-            //            ],
-            //            'immunizations.*.notGiven' => ['required_with:immunizations', 'boolean'],
-            //            'immunizations.*.vaccineCode.coding.*.code' => [
-            //                'required_with:immunizations',
-            //                'string',
-            //                new InDictionary('eHealth/vaccine_codes')
-            //            ],
-            //            'immunizations.*.date' => ['required_with:immunizations', 'before:tomorrow', 'date'],
-            //
+            'immunizations' => ['nullable', 'array'],
+            'immunizations.*.uuid' => ['nullable', 'uuid'], // for edit page
+            'immunizations.*.primarySource' => ['required_with:immunizations', 'boolean'],
+            'immunizations.*.notGiven' => ['required_with:immunizations', 'boolean'],
+            'immunizations.*.vaccineCode' => [
+                'required_with:immunizations',
+                'string',
+                new InDictionary('eHealth/vaccine_codes')
+            ],
+            'immunizations.*.date' => ['required_with:immunizations', 'before:tomorrow', 'date'],
+            'immunizations.*.time' => Rule::forEach(fn ($value, $attribute) => [
+                'required_with:immunizations',
+                'date_format:H:i',
+                new PastDateTime($this->immunizations[explode('.', $attribute)[1]]['date']) //test is it works
+            ]),
+            'immunizations.*.reasons' => [
+                'required_if:immunizations.*.notGiven,false',
+                'prohibited_if:immunizations.*.notGiven,true',
+                'array'
+            ],
+            'immunizations.*.reasons.*' => [
+                'required',
+                'string',
+                new InDictionary('eHealth/reason_explanations')
+            ],
+            'immunizations.*.reasonNotGivenCode' => [
+                'required_if:immunizations.*.notGiven,true',
+                'prohibited_if:immunizations.*.notGiven,false',
+                'string',
+                new InDictionary('eHealth/reason_not_given_explanations')
+            ],
+            'immunizations.*.reportOriginCode' => [
+                'required_if:immunizations.*.primarySource,false',
+                'prohibited_if:immunizations.*.primarySource,true',
+                'string',
+                new InDictionary('eHealth/immunization_report_origins')
+            ],
+            'immunizations.*.reportOriginText' => ['nullable', 'string', 'max:255'],
+            'immunizations.*.manufacturer' => ['nullable', 'string', 'max:255'],
+            'immunizations.*.lotNumber' => ['nullable', 'string', 'max:255'],
+            'immunizations.*.expirationDate' => ['nullable', 'date'],
+            'immunizations.*.siteCode' => ['nullable', 'string', new InDictionary('eHealth/immunization_body_sites')],
+            'immunizations.*.routeCode' => ['nullable', 'string', new InDictionary('eHealth/vaccination_routes')],
+            'immunizations.*.doseQuantityValue' => ['nullable', 'numeric', 'min:0'],
+            'immunizations.*.doseQuantityCode' => ['nullable', 'string', new InDictionary('eHealth/immunization_dosage_units')],
+            'immunizations.*.doseQuantityUnit' => ['nullable', 'string'],
+            'immunizations.*.vaccinationProtocols' => Rule::forEach(function ($value, $attribute) {
+                $index = (int) explode('.', $attribute)[1];
+                $immunization = $this->immunizations[$index];
+
+                return [
+                    Rule::when($immunization['primarySource'] && $immunization['notGiven'], 'required'),
+                    'nullable',
+                    'array',
+                ];
+            }),
+            'immunizations.*.vaccinationProtocols.*.authorityCode' => [
+                'required_with:immunizations.*.vaccinationProtocols',
+                'string',
+                new InDictionary('eHealth/vaccination_authorities')
+            ],
+            'immunizations.*.vaccinationProtocols.*.doseSequence' => ['nullable', 'integer', 'min:1', $this->requiredIfHasMoHAuthority()],
+            'immunizations.*.vaccinationProtocols.*.series' => ['nullable', 'string', $this->requiredIfHasMoHAuthority()],
+            'immunizations.*.vaccinationProtocols.*.seriesDoses' => ['nullable', 'integer', 'min:1', $this->requiredIfHasMoHAuthority()],
+            'immunizations.*.vaccinationProtocols.*.description' => ['nullable', 'string'],
+            'immunizations.*.vaccinationProtocols.*.targetDiseaseCodes' => [
+                'required_with:immunizations.*.vaccinationProtocols',
+                'array'
+            ],
+            'immunizations.*.vaccinationProtocols.*.targetDiseaseCodes.*' => [
+                'required',
+                'string',
+                new InDictionary('eHealth/vaccination_target_diseases')
+            ],
+
             //            'observations' => ['nullable', 'array'],
             //            'observations.*.primarySource' => ['required_with:observations', 'boolean'],
             //            'observations.*.performer' => [
@@ -242,6 +291,12 @@ class EncounterForm extends BaseForm
             //                'after:clinicalImpressions.*.effectivePeriod.start'
             //            ]
         ];
+
+        $this->addAllowedEncounterClasses($rules);
+        $this->addAllowedEncounterTypes($rules);
+        $this->addAllowedEpisodeCareManagerEmployeeTypes($rules);
+
+        return $rules;
     }
 
     /**
@@ -252,25 +307,6 @@ class EncounterForm extends BaseForm
         return [
             'encounter.divisionId.prohibited' => __('validation.custom.encounter.divisionId.prohibited')
         ];
-    }
-
-    /**
-     * Add custom rules.
-     *
-     * @param  string  $formName
-     * @param  array  $rules
-     * @return void
-     */
-    protected function customizeRulesForModel(string $formName, array &$rules): void
-    {
-        if ($formName === 'encounter') {
-            $this->addAllowedEncounterClasses($rules);
-            $this->addAllowedEncounterTypes($rules);
-        }
-
-        if ($formName === 'episode') {
-            $this->addAllowedEpisodeCareManagerEmployeeTypes($rules);
-        }
     }
 
     /**
@@ -353,22 +389,6 @@ class EncounterForm extends BaseForm
     }
 
     /**
-     * Add a rule that makes the field required, based on primarySource and notGiven.
-     *
-     * @param  bool  $primarySource
-     * @param  bool  $notGiven
-     * @return ConditionalRules
-     */
-    private function requiredIfPrimarySourceAndNotGiven(bool $primarySource, bool $notGiven): ConditionalRules
-    {
-        return Rule::when(
-            static fn (Fluent $input) => data_get($input, 'immunizations.primarySource') === $primarySource &&
-                data_get($input, 'immunizations.notGiven') === $notGiven,
-            'required'
-        );
-    }
-
-    /**
      * Required if vaccinationProtocols.authority.coding.*.code === MoH
      *
      * @return RequiredIf
@@ -378,8 +398,7 @@ class EncounterForm extends BaseForm
         return Rule::requiredIf(function () {
             return collect($this->immunizations)
                 ->flatMap(static fn (array $immunization) => $immunization['vaccinationProtocols'])
-                ->flatMap(static fn (array $protocol) => $protocol['authority']['coding'])
-                ->contains(static fn (array $coding) => $coding['code'] === 'MoH');
+                ->contains(static fn (array $protocol) => $protocol['authorityCode'] === 'MoH');
         });
     }
 }

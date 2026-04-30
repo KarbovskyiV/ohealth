@@ -7,6 +7,7 @@ namespace App\Services\MedicalEvents;
 use App\Services\MedicalEvents\Mappers\ConditionMapper;
 use App\Services\MedicalEvents\Mappers\EncounterMapper;
 use App\Services\MedicalEvents\Mappers\EpisodeMapper;
+use App\Services\MedicalEvents\Mappers\ImmunizationMapper;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -15,7 +16,8 @@ readonly class EncounterPackageBuilder
     public function __construct(
         private EncounterMapper $encounterMapper,
         private EpisodeMapper $episodeMapper,
-        private ConditionMapper $conditionMapper
+        private ConditionMapper $conditionMapper,
+        private ImmunizationMapper $immunizationMapper
     ) {
     }
 
@@ -30,6 +32,11 @@ readonly class EncounterPackageBuilder
 
         $fhirConditions = collect($data['conditions'])
             ->map(fn (array $condition) => $this->conditionMapper->toFhir($condition, $uuids))
+            ->toArray();
+
+        $fhirImmunizations = collect($data['immunizations'] ?? [])
+            ->map(fn (array $immunization) => $this->immunizationMapper->toFhir($immunization, $uuids))
+            ->values()
             ->toArray();
 
         $fhirEncounter = $this->encounterMapper->toFhir($data['encounter'], $fhirConditions, $uuids);
@@ -47,7 +54,8 @@ readonly class EncounterPackageBuilder
         return array_filter([
             'encounter' => $fhirEncounter,
             'episode' => $fhirEpisode,
-            'conditions' => $fhirConditions
+            'conditions' => $fhirConditions,
+            'immunizations' => $fhirImmunizations,
         ]);
     }
 }

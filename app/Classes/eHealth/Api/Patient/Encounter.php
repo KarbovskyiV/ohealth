@@ -18,8 +18,10 @@ use Illuminate\Validation\Rule;
 class Encounter extends PatientApiBase
 {
     /**
+     * Submit signed data for creating encounter package.
+     *
      * @param  string  $id  Person ID
-     * @param  array  $data
+     * @param  array{visit: array{id: string, period: array{start: string, end: string}}, signed_data: string}  $data
      * @return PromiseInterface|EHealthResponse
      * @throws ConnectionException|EHealthValidationException|EHealthResponseException
      *

@@ -130,25 +130,4 @@ class EncounterRequestApi
             'page_size' => $pageSize
         ];
     }
-
-    /**
-     * Build an array of parameters for submitting encounter package.
-     *
-     * @param  array  $data
-     * @param  string  $signedData
-     * @return array
-     */
-    public static function buildSubmitEncounterPackage(array $data, string $signedData): array
-    {
-        return [
-            'visit' => (object)[
-                'id' => $data['encounter']['visit']['identifier']['value'],
-                'period' => (object)[
-                    'start' => $data['encounter']['period']['start'],
-                    'end' => $data['encounter']['period']['end']
-                ]
-            ],
-            'signed_data' => $signedData
-        ];
-    }
 }

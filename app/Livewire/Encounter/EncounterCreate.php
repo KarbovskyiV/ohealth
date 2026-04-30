@@ -10,7 +10,6 @@ use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
-use App\Livewire\Encounter\Forms\Api\EncounterRequestApi;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\MedicalEvents\Sql\Encounter;
@@ -51,12 +50,11 @@ class EncounterCreate extends EncounterComponent
      * Validate and save data.
      *
      * @return void
-     * @throws Throwable
      */
     public function save(): void
     {
         if (Auth::user()->cannot('create', Encounter::class)) {
-            Session::flash('error', 'У вас немає дозволу на створення взаємодії.');
+            Session::flash('error', __('patients.policy.create_encounter'));
 
             return;
         }
@@ -73,23 +71,28 @@ class EncounterCreate extends EncounterComponent
         // Prepare and format data after validation
         $formattedData = $this->prepareFormattedData($validated);
 
-        $encounterId = $this->storeValidatedData($formattedData);
+        try {
+            $encounterId = $this->storeValidatedData($formattedData);
+        } catch (Throwable $exception) {
+            $this->logDatabaseErrors($exception, 'Failed to store validated data');
+            Session::flash('error', __('messages.database_error'));
 
-        if ($encounterId) {
-            $this->redirectRoute('encounter.edit', [legalEntity(), $this->personId, $encounterId], navigate: true);
+            return;
         }
+
+        Session::flash('success', __('messages.encounter.create_encounter'));
+        $this->redirectRoute('encounter.edit', [legalEntity(), $this->personId, $encounterId], navigate: true);
     }
 
     /**
      * Submit encrypted data about person encounter.
      *
      * @return void
-     * @throws Throwable
      */
     public function sign(): void
     {
         if (Auth::user()->cannot('create', Encounter::class)) {
-            Session::flash('error', 'У вас немає дозволу на створення взаємодії.');
+            Session::flash('error', __('patients.policy.create_encounter'));
 
             return;
         }
@@ -115,9 +118,17 @@ class EncounterCreate extends EncounterComponent
         }
 
         $formattedData = $this->prepareFormattedData($validatedData);
-        $formattedData = Arr::toSnakeCase($formattedData);
 
-        $this->storeValidatedData($formattedData);
+        try {
+            $this->storeValidatedData($formattedData);
+        } catch (Throwable $exception) {
+            $this->logDatabaseErrors($exception, 'Failed to store validated data');
+            Session::flash('error', __('messages.database_error'));
+
+            return;
+        }
+
+        $formattedData = Arr::toSnakeCase($formattedData);
 
         if ($this->episodeType === 'new') {
             $this->createEpisode($formattedData['episode']);
@@ -137,13 +148,14 @@ class EncounterCreate extends EncounterComponent
             return;
         }
 
-        $signedSubmitEncounter = EncounterRequestApi::buildSubmitEncounterPackage(
-            $formattedData,
-            $signedContent->getBase64Data()
-        );
-
         try {
-            $resp = EHealth::encounter()->submit($this->patientUuid, $signedSubmitEncounter);
+            $resp = EHealth::encounter()->submit($this->patientUuid, [
+                'visit' => [
+                    'id' => data_get($formattedData, 'encounter.visit.identifier.value'),
+                    'period' => data_get($formattedData, 'encounter.period')
+                ],
+                'signed_data' => $signedContent->getBase64Data()
+            ]);
 
             logger()->debug('Job ID to further debug', $resp->getData());
         } catch (ConnectionException|EHealthValidationException|EHealthResponseException $exception) {
@@ -181,10 +193,6 @@ class EncounterCreate extends EncounterComponent
 
         $encounterRepository = Repository::encounter();
 
-        if (!empty($this->form->immunizations)) {
-            $package['immunizations'] = $encounterRepository->formatImmunizationsRequest($this->form->immunizations);
-        }
-
         if (!empty($this->form->diagnosticReports)) {
             $package['diagnosticReports'] = $encounterRepository->formatDiagnosticReportsRequest(
                 $this->form->diagnosticReports,
@@ -213,71 +221,61 @@ class EncounterCreate extends EncounterComponent
      * Store validated formatted data into DB.
      *
      * @param  array  $formattedData
-     * @return int|null
+     * @return int
+     * @throws Throwable
      */
-    protected function storeValidatedData(array $formattedData): ?int
+    protected function storeValidatedData(array $formattedData): int
     {
-        try {
-            return DB::transaction(function () use ($formattedData) {
-                $createdEncounterId = Repository::encounter()->store($formattedData['encounter'], $this->personId);
+        return DB::transaction(function () use ($formattedData) {
+            $createdEncounterId = Repository::encounter()->store($formattedData['encounter'], $this->personId);
 
-                if (isset($formattedData['episode'])) {
-                    Repository::episode()->store($formattedData['episode'], $this->personId, $createdEncounterId);
+            if (isset($formattedData['episode'])) {
+                Repository::episode()->store($formattedData['episode'], $this->personId, $createdEncounterId);
+            }
+
+            Repository::condition()->store($formattedData['conditions'], $createdEncounterId, $this->personId);
+
+            if (isset($formattedData['immunizations'])) {
+                Repository::immunization()->store($formattedData['immunizations'], $this->personId);
+            }
+
+            if (isset($formattedData['diagnosticReports'])) {
+                Repository::diagnosticReport()->store($formattedData['diagnosticReports'], $createdEncounterId);
+            }
+
+            if (isset($formattedData['observations'])) {
+                Repository::observation()->store(
+                    $formattedData['observations'],
+                    $this->personId,
+                    $createdEncounterId
+                );
+            }
+
+            if (isset($formattedData['procedures'])) {
+                Repository::procedure()->store($formattedData['procedures'], $createdEncounterId);
+
+                // Save the selected condition and observation locally if they don't exist in our database.
+                foreach ($formattedData['procedures'] as $procedure) {
+                    $this->processReasonReferences($procedure);
+                    $this->processComplicationDetails($procedure);
                 }
+            }
 
-                Repository::condition()->store($formattedData['conditions'], $createdEncounterId, $this->personId);
+            if (isset($formattedData['clinicalImpressions'])) {
+                Repository::clinicalImpression()->store(
+                    $formattedData['clinicalImpressions'],
+                    $this->personId,
+                    $createdEncounterId
+                );
 
-                if (isset($formattedData['immunizations'])) {
-                    Repository::immunization()->store(
-                        $formattedData['immunizations'],
-                        $this->personId,
-                        $createdEncounterId
-                    );
+                // Save the selected episode_of_care, procedure, diagnostic_report, encounter locally if they don't exist in our database.
+                foreach ($formattedData['clinicalImpressions'] as $clinicalImpression) {
+                    $this->processSupportingInfo($clinicalImpression);
                 }
+            }
 
-                if (isset($formattedData['diagnosticReports'])) {
-                    Repository::diagnosticReport()->store($formattedData['diagnosticReports'], $createdEncounterId);
-                }
-
-                if (isset($formattedData['observations'])) {
-                    Repository::observation()->store(
-                        $formattedData['observations'],
-                        $this->personId,
-                        $createdEncounterId
-                    );
-                }
-
-                if (isset($formattedData['procedures'])) {
-                    Repository::procedure()->store($formattedData['procedures'], $createdEncounterId);
-
-                    // Save the selected condition and observation locally if they don't exist in our database.
-                    foreach ($formattedData['procedures'] as $procedure) {
-                        $this->processReasonReferences($procedure);
-                        $this->processComplicationDetails($procedure);
-                    }
-                }
-
-                if (isset($formattedData['clinicalImpressions'])) {
-                    Repository::clinicalImpression()->store(
-                        $formattedData['clinicalImpressions'],
-                        $this->personId,
-                        $createdEncounterId
-                    );
-
-                    // Save the selected episode_of_care, procedure, diagnostic_report, encounter locally if they don't exist in our database.
-                    foreach ($formattedData['clinicalImpressions'] as $clinicalImpression) {
-                        $this->processSupportingInfo($clinicalImpression);
-                    }
-                }
-
-                return $createdEncounterId;
-            });
-        } catch (Throwable $exception) {
-            $this->logDatabaseErrors($exception, 'Failed to store validated data');
-            Session::flash('error', __('messages.database_error'));
-
-            return null;
-        }
+            return $createdEncounterId;
+        });
     }
 
     /**

@@ -89,13 +89,13 @@
 
         <div>
             <div x-show="modalImmunization.notGiven === false" class="form-group group">
-                <template x-for="(reason, index) in modalImmunization.explanation.reasons" :key="index">
+                <template x-for="(reason, index) in modalImmunization.reasons" :key="index">
                     <div class="form-row-modal md:mb-0">
                         <div class="form-group group">
                             <label :for="'reasonExplanation-' + index" class="label-modal">
                                 {{ __('patients.reasons') }}
                             </label>
-                            <select x-model="reason.coding[0].code"
+                            <select x-model="modalImmunization.reasons[index]"
                                     :id="'reasonExplanation-' + index"
                                     class="input-modal"
                                     required
@@ -107,25 +107,25 @@
                             </select>
 
                             <p class="text-error text-xs"
-                               x-show="!Object.keys(reasonExplanationsDictionary).includes(reason.coding[0].code)"
+                               x-show="!Object.keys(reasonExplanationsDictionary).includes(modalImmunization.reasons[index])"
                             >
                                 {{ __('forms.field_empty') }}
                             </p>
                         </div>
 
                         <!-- Remove Button -->
-                        <template x-if="index == modalImmunization.explanation.reasons.length - 1 & index != 0">
+                        <template x-if="index == modalImmunization.reasons.length - 1 & index != 0">
                             <button type="button"
-                                    @click="modalImmunization.explanation.reasons.pop(), index--"
+                                    @click="modalImmunization.reasons.pop(), index--"
                                     class="item-remove"
                             >
                                 {{ __('forms.delete') }}
                             </button>
                         </template>
                         <!-- Add Button -->
-                        <template x-if="index === modalImmunization.explanation.reasons.length - 1">
+                        <template x-if="index === modalImmunization.reasons.length - 1">
                             <button type="button"
-                                    @click="modalImmunization.explanation.reasons.push({ coding: [{ system: 'eHealth/reason_explanations', code: '' }] })"
+                                    @click="modalImmunization.reasons.push('')"
                                     class="item-add lg:justify-self-start"
                                     :class="{ 'lg:justify-self-start': index > 0 }"
                             >
@@ -141,7 +141,7 @@
                     {{ __('patients.reasons') }}
                 </label>
                 <select type="text"
-                        x-model="modalImmunization.explanation.reasonsNotGiven[0].coding[0].code"
+                        x-model="modalImmunization.reasonNotGivenCode"
                         id="reasonsNotGiven"
                         class="input-modal"
                         required
@@ -153,7 +153,7 @@
                 </select>
 
                 <p class="text-error text-xs"
-                   x-show="!Object.keys(reasonNotGivenExplanationsDictionary).includes(modalImmunization.explanation.reasonsNotGiven[0].coding[0].code)"
+                   x-show="!Object.keys(reasonNotGivenExplanationsDictionary).includes(modalImmunization.reasonNotGivenCode)"
                 >
                     {{ __('forms.field_empty') }}
                 </p>
@@ -200,7 +200,7 @@
                         {{ __('patients.source_link') }}
                     </label>
                     <select class="input-modal"
-                            x-model="modalImmunization.reportOrigin.coding[0].code"
+                            x-model="modalImmunization.reportOriginCode"
                             id="reportOrigin"
                             type="text"
                             required
@@ -219,7 +219,7 @@
                         {{ __('forms.additional_info') }}
                     </label>
                     <textarea class="textarea"
-                              x-model="modalImmunization.reportOrigin.text"
+                              x-model="modalImmunization.reportOriginText"
                               id="doctorComment"
                               name="doctorComment"
                               rows="4"

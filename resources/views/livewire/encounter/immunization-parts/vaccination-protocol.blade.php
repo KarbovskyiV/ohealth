@@ -33,7 +33,7 @@
                         x-text="vaccinationProtocol.series"
                     ></td>
                     <td class="td-input"
-                        x-text="vaccinationTargetDiseasesDictionary[vaccinationProtocol.targetDiseases[0].coding[0].code]"
+                        x-text="vaccinationTargetDiseasesDictionary[vaccinationProtocol.targetDiseaseCodes[0]]"
                     ></td>
                     <td class="td-input">
                         {{-- That all that is needed for the dropdown --}}
@@ -158,7 +158,7 @@
 
                             {{-- Content --}}
                             <form>
-                                <template x-for="(targetDisease, index) in modalVaccinationProtocol.targetDiseases"
+                                <template x-for="(targetDiseaseCode, index) in modalVaccinationProtocol.targetDiseaseCodes"
                                           :key="index"
                                 >
                                     <div class="form-row-modal md:mb-0">
@@ -166,7 +166,7 @@
                                             <label :for="'vaccinationTargetDisease-' + index" class="label-modal">
                                                 {{ __('patients.target_diseases') }}
                                             </label>
-                                            <select x-model="targetDisease.coding[0].code"
+                                            <select x-model="modalVaccinationProtocol.targetDiseaseCodes[index]"
                                                     :id="'vaccinationTargetDisease-' + index"
                                                     class="input-modal"
                                                     required
@@ -178,7 +178,7 @@
                                             </select>
 
                                             <p class="text-error text-xs"
-                                               x-show="!Object.keys(vaccinationTargetDiseasesDictionary).includes(targetDisease.coding[0].code)"
+                                               x-show="!Object.keys(vaccinationTargetDiseasesDictionary).includes(modalVaccinationProtocol.targetDiseaseCodes[index])"
                                             >
                                                 {{ __('forms.field_empty') }}
                                             </p>
@@ -186,19 +186,19 @@
 
                                         <!-- Remove Button -->
                                         <template
-                                            x-if="index == modalVaccinationProtocol.targetDiseases.length - 1 & index != 0"
+                                            x-if="index == modalVaccinationProtocol.targetDiseaseCodes.length - 1 & index != 0"
                                         >
                                             <button type="button"
-                                                    @click="modalVaccinationProtocol.targetDiseases.pop(), index--"
+                                                    @click="modalVaccinationProtocol.targetDiseaseCodes.pop(), index--"
                                                     class="item-remove"
                                             >
                                                 {{ __('forms.delete') }}
                                             </button>
                                         </template>
                                         <!-- Add Button -->
-                                        <template x-if="index === modalVaccinationProtocol.targetDiseases.length - 1">
+                                        <template x-if="index === modalVaccinationProtocol.targetDiseaseCodes.length - 1">
                                             <button type="button"
-                                                    @click="modalVaccinationProtocol.targetDiseases.push({ coding: [{ system: 'eHealth/vaccination_target_diseases', code: '' }] })"
+                                                    @click="modalVaccinationProtocol.targetDiseaseCodes.push('')"
                                                     class="item-add lg:justify-self-start"
                                                     :class="{ 'lg:justify-self-start': index > 0 }"
                                             >
@@ -213,7 +213,7 @@
                                         <label for="authority" class="label-modal">
                                             {{ __('patients.protocol_author') }}
                                         </label>
-                                        <select x-model="modalVaccinationProtocol.authority.coding[0].code"
+                                        <select x-model="modalVaccinationProtocol.authorityCode"
                                                 id="authority"
                                                 class="input-modal"
                                                 type="text"
@@ -227,7 +227,7 @@
 
                                         {{-- Check if the picked value is the one from the dictionary --}}
                                         <p class="text-error text-xs"
-                                           x-show="!Object.keys($wire.dictionaries['eHealth/vaccination_authorities']).includes(modalVaccinationProtocol.authority.coding[0].code)"
+                                           x-show="!Object.keys($wire.dictionaries['eHealth/vaccination_authorities']).includes(modalVaccinationProtocol.authorityCode)"
                                         >
                                             {{ __('forms.field_empty') }}
                                         </p>
@@ -249,7 +249,7 @@
                                         >
 
                                         <p class="text-error text-xs"
-                                           x-show="modalVaccinationProtocol.authority.coding[0].code === 'MoH' && !modalVaccinationProtocol.doseSequence"
+                                           x-show="modalVaccinationProtocol.authorityCode === 'MoH' && !modalVaccinationProtocol.doseSequence"
                                         >
                                             {{ __('forms.field_empty') }}
                                         </p>
@@ -271,7 +271,7 @@
                                         >
 
                                         <p class="text-error text-xs"
-                                           x-show="modalVaccinationProtocol.authority.coding[0].code === 'MoH' && !modalVaccinationProtocol.series"
+                                           x-show="modalVaccinationProtocol.authorityCode === 'MoH' && !modalVaccinationProtocol.series"
                                         >
                                             {{ __('forms.field_empty') }}
                                         </p>
@@ -293,7 +293,7 @@
                                         >
 
                                         <p class="text-error text-xs"
-                                           x-show="modalVaccinationProtocol.authority.coding[0].code === 'MoH' && !modalVaccinationProtocol.seriesDoses"
+                                           x-show="modalVaccinationProtocol.authorityCode === 'MoH' && !modalVaccinationProtocol.seriesDoses"
                                         >
                                             {{ __('forms.field_empty') }}
                                         </p>
@@ -333,7 +333,7 @@
                                                 openModal = false;
                                             "
                                             class="button-primary"
-                                            :disabled="!modalVaccinationProtocol.authority.coding[0].code.trim()"
+                                            :disabled="!modalVaccinationProtocol.authorityCode.trim()"
                                     >
                                         {{ __('forms.save') }}
                                     </button>
@@ -352,21 +352,14 @@
      * Representation of the user's personal VaccinationProtocol
      */
     class VaccinationProtocol {
-        doseSequence;
-        description;
-        authority = {
-            coding: [{ system: 'eHealth/vaccination_authorities', code: '' }],
-            text: ''
-        };
-        series;
-        seriesDoses;
-        targetDiseases = [
-            {
-                coding: [{ system: 'eHealth/vaccination_target_diseases', code: '' }]
-            }
-        ];
-
         constructor(obj = null) {
+            this.doseSequence = '';
+            this.description = '';
+            this.authorityCode = '';
+            this.series = '';
+            this.seriesDoses = '';
+            this.targetDiseaseCodes = [''];
+
             if (obj) {
                 Object.assign(this, JSON.parse(JSON.stringify(obj)));
             }
