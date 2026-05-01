@@ -285,6 +285,10 @@ input:-webkit-autofill ~ .label {
     @apply cursor-pointer inline-flex items-center justify-center font-medium rounded-lg text-sm px-5 py-2.5 text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800;
 }
 
+.button-success {
+    @apply cursor-pointer inline-flex items-center justify-center font-medium rounded-lg text-sm px-5 py-2.5 text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800;
+}
+
 .button-sync-disabled {
     @apply cursor-pointer inline-flex items-center justify-center font-medium rounded-lg text-sm px-5 py-2.5 text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800 opacity-30 cursor-default!;
 }
@@ -428,7 +432,7 @@ input:-webkit-autofill ~ .label {
 }
 
 .index-table-td-primary {
-    @apply px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white break-words whitespace-normal align-top;
+    @apply px-6 py-4 font-medium text-gray-900 dark:text-white break-words whitespace-normal align-top;
 }
 
 .index-table-td-actions {
@@ -813,4 +817,19 @@ input:-webkit-autofill {
 
 .file-input-text {
     @apply flex-1 px-5 py-2.5 bg-white text-sm text-gray-500 truncate rounded-r-lg dark:bg-gray-700 dark:text-gray-400;
+}
+
+@utility custom-scrollbar {
+    &::-webkit-scrollbar {
+        width: 5px;
+    }
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+        @apply bg-gray-200 dark:bg-gray-600 rounded-lg;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+        @apply bg-gray-300 dark:bg-gray-500;
+    }
 }

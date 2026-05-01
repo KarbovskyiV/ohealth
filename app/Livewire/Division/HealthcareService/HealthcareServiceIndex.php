@@ -68,6 +68,9 @@ class HealthcareServiceIndex extends Component
     #[Url(as: 'division')]
     public ?int $divisionFilter = null;
 
+    #[Url(as: 'status')]
+    public array $status = [];
+
     public bool $isFiltersApplied = false;
 
     public array $dictionaryNames = ['DIVISION_TYPE', 'SPECIALITY_TYPE', 'PROVIDING_CONDITION'];
@@ -149,6 +152,7 @@ class HealthcareServiceIndex extends Component
         $this->divisionFilter = null;
         $this->typeFilter = null;
         $this->divisionId = null;
+        $this->status = [];
     }
 
     public function activate(HealthcareService $healthcareService): void
@@ -358,18 +362,20 @@ class HealthcareServiceIndex extends Component
         $query = HealthcareService::filterByLegalEntity(legalEntity()->id);
 
         // Filters
-        if ($this->isFiltersApplied) {
-            if ($this->divisionFilter) {
-                $this->divisionId = $this->divisionFilter;
-                $this->divisionUuid = Division::whereId($this->divisionId)->value('uuid');
-                $query->whereDivisionId($this->divisionFilter);
-            } else {
-                $this->divisionUuid = null;
-            }
+        if ($this->divisionFilter) {
+            $this->divisionId = $this->divisionFilter;
+            $this->divisionUuid = Division::whereId($this->divisionId)->value('uuid');
+            $query->whereDivisionId($this->divisionFilter);
+        } else {
+            $this->divisionUuid = null;
+        }
 
-            if (!empty($this->typeFilter)) {
-                $query->whereSpecialityType($this->typeFilter);
-            }
+        if (!empty($this->typeFilter)) {
+            $query->whereSpecialityType($this->typeFilter);
+        }
+
+        if (!empty($this->status)) {
+            $query->whereIn('status', $this->status);
         }
 
         return $query->paginate(config('pagination.per_page'));

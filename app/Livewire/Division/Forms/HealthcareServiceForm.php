@@ -142,7 +142,16 @@ class HealthcareServiceForm extends Form
      */
     protected function validationAttributes(): array
     {
-        return ['divisionId' => __('forms.division_name')];
+        return [
+            'divisionId' => __('forms.division_name'),
+            'availableTime.*.availableStartTime' => mb_strtolower(__('forms.start_time')),
+            'availableTime.*.availableEndTime' => mb_strtolower(__('forms.end')),
+            'notAvailable.*.during.startDate' => mb_strtolower(__('forms.date')),
+            'notAvailable.*.during.startTime' => mb_strtolower(__('healthcare-services.start_non_working_time')),
+            'notAvailable.*.during.endDate' => mb_strtolower(__('forms.date')),
+            'notAvailable.*.during.endTime' => mb_strtolower(__('healthcare-services.end_non_working_time')),
+            'notAvailable.*.description' => mb_strtolower(__('healthcare-services.comment_non_working_hours')),
+        ];
     }
 
     /**

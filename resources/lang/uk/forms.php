@@ -122,7 +122,7 @@ return [
     'rnokpp' => 'РНОКПП',
     'ipn' => 'ІПН',
     'choose_legal_entity' => 'Будь ласка, оберіть медичний заклад зі списку',
-    'synchronise_with_eHealth' => 'Синхронізувати з ЕСОЗ',
+    'synchronise_with_eHealth' => 'Синхронізувати дані з ЕСОЗ',
     'website_hint' => 'Сайт має бути вказаний у форматі "google.com"',
     'legal_entity_updated' => 'Дані медичного закладу було оновлено',
     'details' => 'Деталі',

@@ -14,7 +14,8 @@ return [
     |
     */
 
-    'add' => 'Додати послугу',
+    'add' => 'Нова послуга',
+    'for_division' => 'Для «:name»',
     'available_time' => 'Графік доступності',
     'providing_condition' => 'Умови надання послуги',
     'category' => 'Категорія послуги',

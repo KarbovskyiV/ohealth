@@ -23,22 +23,70 @@
                     <div class="flex items-end gap-4"></div>
 
                     <div class="ml-auto flex items-center gap-6 self-start -mt-22 pl-4 sm:pl-0 translate-x-0 sm:translate-x-10">
-                        {{-- Show the create button if a division is selected in the filter and has an active status --}}
-                        @if(isset($divisionId, $divisionFilter))
-                            @php
-                                $selectedDivision = collect($divisions)->firstWhere('id', $divisionFilter);
-                            @endphp
-                            @if($selectedDivision['status'] === Status::ACTIVE->value)
-                                @can('create', HealthcareService::class)
-                                    <a href="{{ route('healthcare-service.create', [legalEntity(), $divisionId]) }}"
-                                       class="button-primary flex items-center gap-2"
-                                    >
-                                        @icon('plus', 'w-4 h-4')
-                                        {{ __('healthcare-services.add') }}
-                                    </a>
-                                @endcan
-                            @endif
-                        @endif
+                        @can('create', HealthcareService::class)
+                            <div x-data="{ open: false, search: '' }" class="relative">
+                                <button @click="open = !open"
+                                        @click.outside="open = false; search = ''"
+                                        class="button-primary flex items-center gap-2"
+                                >
+                                    @icon('plus', 'w-4 h-4')
+                                    {{ __('healthcare-services.add') }}
+                                </button>
+
+                                <div x-show="open"
+                                     x-cloak
+                                     x-transition:enter="transition ease-out duration-100"
+                                     x-transition:enter-start="transform opacity-0 scale-95"
+                                     x-transition:enter-end="transform opacity-100 scale-100"
+                                     x-transition:leave="transition ease-in duration-75"
+                                     x-transition:leave-start="transform opacity-100 scale-100"
+                                     x-transition:leave-end="transform opacity-0 scale-95"
+                                     class="absolute left-0 mt-2 w-max min-w-[260px] max-w-[400px] max-h-[350px] overflow-hidden flex flex-col rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-lg z-50"
+                                >
+                                    {{-- Search Header --}}
+                                    <div class="p-2 border-b border-gray-100 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/50">
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                                @icon('search', 'w-3.5 h-3.5 text-gray-400')
+                                            </div>
+                                            <input type="text"
+                                                   x-model="search"
+                                                   placeholder="{{ __('forms.search') }}..."
+                                                   class="block w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-gray-200"
+                                                   @click.stop
+                                            >
+                                        </div>
+                                    </div>
+
+                                    {{-- List Container --}}
+                                    <div class="overflow-y-auto custom-scrollbar py-1">
+                                        @foreach($divisions as $division)
+                                            @if($division['status'] === Status::ACTIVE->value)
+                                                <a href="{{ route('healthcare-service.create', [legalEntity(), $division['id']]) }}"
+                                                   x-show="'{{ addslashes($division['name']) }}'.toLowerCase().includes(search.toLowerCase())"
+                                                   class="block px-5 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors whitespace-normal break-words"
+                                                >
+                                                    {{ __('healthcare-services.for_division', ['name' => $division['name']]) }}
+                                                </a>
+                                            @endif
+                                        @endforeach
+
+                                        {{-- No results message --}}
+                                        <div x-show="search !== ''"
+                                             x-init="$watch('search', () => {
+                                                 let items = $el.parentElement.querySelectorAll('a');
+                                                 let visible = Array.from(items).some(i => i.style.display !== 'none');
+                                                 $el.style.display = visible ? 'none' : 'block';
+                                             })"
+                                             class="px-5 py-6 text-xs text-gray-400 text-center"
+                                             style="display: none;"
+                                        >
+                                            {{ __('forms.nothing_found') }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endcan
 
                         @can('sync', HealthcareService::class)
                             <button
@@ -89,6 +137,51 @@
                 </select>
 
                 <label for="divisionName" class="label">{{ __('forms.division_name') }}</label>
+            </div>
+
+            <div class="form-group group" x-data="{ open: false, selectedStatuses: $wire.entangle('status') }">
+                <label for="statusFilter" class="label">{{ __('forms.status.label') }}</label>
+                <div class="relative">
+                    <input type="text"
+                           id="statusFilter"
+                           class="input peer w-full cursor-pointer text-gray-900 dark:text-white pl-1"
+                           placeholder="{{ __('forms.select') }}"
+                           x-on:click="open = !open"
+                           x-on:click.outside="open = false"
+                           :value="selectedStatuses.length ? selectedStatuses.map(s => {
+                               if (s === 'ACTIVE') return '{{ __('forms.active') }}';
+                               if (s === 'INACTIVE') return '{{ __('forms.status.non_active') }}';
+                               if (s === 'DRAFT') return '{{ __('forms.draft') }}';
+                               return s;
+                           }).join(', ') : '{{ __('forms.select') }}'"
+                           readonly
+                    />
+                    <svg class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none"
+                         fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                    <div x-show="open"
+                         x-cloak
+                         x-transition
+                         class="absolute z-10 mt-2 w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg">
+                        <ul class="py-2 px-3 space-y-2 text-sm text-gray-700 dark:text-gray-200">
+                            <li>
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" value="ACTIVE" wire:model.live="status"
+                                           class="rounded-sm text-blue-600 focus:ring-blue-500 border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:checked:bg-blue-600 dark:checked:border-transparent" />
+                                    <span>{{ __('forms.active') }}</span>
+                                </label>
+                            </li>
+                            <li>
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" value="INACTIVE" wire:model.live="status"
+                                           class="rounded-sm text-blue-600 focus:ring-blue-500 border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:checked:bg-blue-600 dark:checked:border-transparent" />
+                                    <span>{{ __('forms.status.non_active') }}</span>
+                                </label>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <div class="mb-9 mt-4 flex gap-2">
@@ -255,9 +348,9 @@
                                                                         actionButtonText = @js(__('forms.activate'));
                                                                         open = !open;
                                                                     "
-                                                                    class="cursor-pointer flex items-center gap-2 w-full first-of-type:rounded-t-md last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-green-600 hover:bg-green-50"
+                                                                    class="cursor-pointer flex items-center gap-2 w-full first-of-type:rounded-t-md last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
                                                             >
-                                                                @icon('check-circle', 'w-5 h-5 text-green-600')
+                                                                @icon('check-circle', 'w-5 h-5 text-gray-600 dark:text-gray-300')
                                                                 {{ __('forms.activate') }}
                                                             </button>
                                                         @endcan

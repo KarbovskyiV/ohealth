@@ -50,7 +50,7 @@
                             type="button"
                             @click.prevent="$wire.$call(actionType, serviceId); serviceId = 0;"
                             wire:loading.attr="disabled"
-                            class="button-danger"
+                            :class="actionType === 'activate' ? 'button-success' : 'button-danger'"
                             x-text="actionButtonText"
                         ></button>
                     </div>
