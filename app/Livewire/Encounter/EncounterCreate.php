@@ -80,7 +80,7 @@ class EncounterCreate extends EncounterComponent
             return;
         }
 
-        Session::flash('success', __('messages.encounter.create_encounter'));
+        Session::flash('success', __('patients.messages.encounter_created'));
         $this->redirectRoute('encounter.edit', [legalEntity(), $this->personId, $encounterId], navigate: true);
     }
 
@@ -193,13 +193,6 @@ class EncounterCreate extends EncounterComponent
 
         $encounterRepository = Repository::encounter();
 
-        if (!empty($this->form->diagnosticReports)) {
-            $package['diagnosticReports'] = $encounterRepository->formatDiagnosticReportsRequest(
-                $this->form->diagnosticReports,
-                $validated['encounter']['divisionId'] ?? null
-            );
-        }
-
         if (!empty($this->form->observations)) {
             $package['observations'] = $encounterRepository->formatObservationsRequest($this->form->observations);
         }
@@ -233,14 +226,16 @@ class EncounterCreate extends EncounterComponent
                 Repository::episode()->store($formattedData['episode'], $this->personId, $createdEncounterId);
             }
 
-            Repository::condition()->store($formattedData['conditions'], $createdEncounterId, $this->personId);
+            if (isset($formattedData['conditions'])) {
+                Repository::condition()->store($formattedData['conditions'], $createdEncounterId, $this->personId);
+            }
 
             if (isset($formattedData['immunizations'])) {
                 Repository::immunization()->store($formattedData['immunizations'], $this->personId);
             }
 
             if (isset($formattedData['diagnosticReports'])) {
-                Repository::diagnosticReport()->store($formattedData['diagnosticReports'], $createdEncounterId);
+                Repository::diagnosticReport()->store($formattedData['diagnosticReports'], $this->personId);
             }
 
             if (isset($formattedData['observations'])) {

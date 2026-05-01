@@ -470,6 +470,7 @@ return [
     ],
 
     'messages' => [
+        'encounter_created' => 'Взаємодія успішно створена.',
         'encounter_updated' => 'Взаємодія успішно оновлена.',
         'person_request_updated' => 'Заявка на створення пацієнта успішно оновлена.',
         'person_request_created' => 'Заявка на створення пацієнта успішно створена.',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\MedicalEvents;
 
 use App\Services\MedicalEvents\Mappers\ConditionMapper;
+use App\Services\MedicalEvents\Mappers\DiagnosticReportMapper;
 use App\Services\MedicalEvents\Mappers\EncounterMapper;
 use App\Services\MedicalEvents\Mappers\EpisodeMapper;
 use App\Services\MedicalEvents\Mappers\ImmunizationMapper;
@@ -17,7 +18,8 @@ readonly class EncounterPackageBuilder
         private EncounterMapper $encounterMapper,
         private EpisodeMapper $episodeMapper,
         private ConditionMapper $conditionMapper,
-        private ImmunizationMapper $immunizationMapper
+        private ImmunizationMapper $immunizationMapper,
+        private DiagnosticReportMapper $diagnosticReportMapper
     ) {
     }
 
@@ -39,6 +41,11 @@ readonly class EncounterPackageBuilder
             ->values()
             ->toArray();
 
+        $fhirDiagnosticReports = collect($data['diagnosticReports'] ?? [])
+            ->map(fn (array $diagnosticReport) => $this->diagnosticReportMapper->toFhir($diagnosticReport, $uuids))
+            ->values()
+            ->toArray();
+
         $fhirEncounter = $this->encounterMapper->toFhir($data['encounter'], $fhirConditions, $uuids);
 
         $fhirEpisode = [];
@@ -56,6 +63,7 @@ readonly class EncounterPackageBuilder
             'episode' => $fhirEpisode,
             'conditions' => $fhirConditions,
             'immunizations' => $fhirImmunizations,
+            'diagnosticReports' => $fhirDiagnosticReports,
         ]);
     }
 }

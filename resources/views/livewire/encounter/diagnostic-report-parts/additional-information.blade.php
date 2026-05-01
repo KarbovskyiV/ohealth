@@ -45,7 +45,7 @@
                     <label for="reportOrigin" class="label-modal">
                         {{ __('patients.source_link') }}
                     </label>
-                    <select x-model="modalDiagnosticReport.reportOrigin.coding[0].code"
+                    <select x-model="modalDiagnosticReport.reportOriginCode"
                             class="input-select peer"
                             id="reportOrigin"
                             type="text"
@@ -58,7 +58,7 @@
                     </select>
 
                     <p class="text-error text-xs"
-                       x-show="!Object.keys($wire.dictionaries['eHealth/report_origins']).includes(modalDiagnosticReport.reportOrigin.coding[0].code)"
+                       x-show="!Object.keys($wire.dictionaries['eHealth/report_origins']).includes(modalDiagnosticReport.reportOriginCode)"
                     >
                         {{ __('forms.field_empty') }}
                     </p>
@@ -70,10 +70,10 @@
     @if($context === 'diagnostic-report')
         <div class="form-row-2">
             <div class="form-group group">
-                <select x-model="modalDiagnosticReport.division.identifier.value"
+                <select x-model="modalDiagnosticReport.divisionId"
                         @if(count($divisions) === 1)
                             {{-- Set division by default if only one exist --}}
-                            x-init="modalDiagnosticReport.division.identifier.value = '{{ $divisions[0]['uuid'] }}';"
+                            x-init="modalDiagnosticReport.divisionId = '{{ $divisions[0]['uuid'] }}';"
                         @endif
                         id="divisionNames"
                         class="input-select peer"
@@ -87,7 +87,7 @@
                     @endforeach
                 </select>
 
-                @error('form.diagnosticReport.division.identifier.value')
+                @error('form.diagnosticReports.*.divisionId')
                 <p class="text-error">{{ $message }}</p>
                 @enderror
             </div>
@@ -97,7 +97,7 @@
     {{-- Result interpreter --}}
     <div class="form-row-2">
         <div class="form-group group">
-            <select x-model="modalDiagnosticReport.resultsInterpreter.reference.identifier.value"
+            <select x-model="modalDiagnosticReport.resultsInterpreterEmployeeId"
                     id="resultsInterpreter"
                     class="input-select peer"
                     type="text"
@@ -112,7 +112,7 @@
                 @endforeach
             </select>
 
-            @error('form.diagnosticReport.resultsInterpreter.reference.identifier.value')
+            @error('form.diagnosticReports.*.resultsInterpreterEmployeeId')
             <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
@@ -155,7 +155,7 @@
                     {{ __('patients.date_time_entered') }}
                 </label>
 
-                @error('form.diagnosticReport.issuedDate')
+                @error('form.diagnosticReports.*.issuedDate')
                 <p class="text-error">{{ $message }}</p>
                 @enderror
             </div>
@@ -176,7 +176,7 @@
                 >
             </div>
 
-            @error('form.diagnosticReport.issuedTime')
+            @error('form.diagnosticReports.*.issuedTime')
             <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
@@ -200,7 +200,7 @@
                     {{ __('patients.reception_start_date_and_time') }}
                 </label>
 
-                @error('form.diagnosticReport.effectivePeriodStartDate')
+                @error('form.diagnosticReports.*.effectivePeriodStartDate')
                 <p class="text-error">{{ $message }}</p>
                 @enderror
             </div>
@@ -221,7 +221,7 @@
                 >
             </div>
 
-            @error('form.diagnosticReport.effectivePeriodStartTime')
+            @error('form.diagnosticReports.*.effectivePeriodStartTime')
             <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
@@ -245,7 +245,7 @@
                     {{ __('patients.reception_end_date_and_time') }}
                 </label>
 
-                @error('form.diagnosticReport.effectivePeriodEndDate')
+                @error('form.diagnosticReports.*.effectivePeriodEndDate')
                 <p class="text-error">{{ $message }}</p>
                 @enderror
             </div>
@@ -266,7 +266,7 @@
                 >
             </div>
 
-            @error('form.diagnosticReport.effectivePeriodEndTime')
+            @error('form.diagnosticReports.*.effectivePeriodEndTime')
             <p class="text-error">{{ $message }}</p>
             @enderror
         </div>

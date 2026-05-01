@@ -18,7 +18,6 @@ return new class extends Migration
             $table->id();
             $table->uuid()->unique();
             $table->foreignId('person_id')->constrained('persons');
-            $table->foreignId('encounter_internal_id')->nullable()->constrained('encounters');
             $table->foreignId('based_on_id')->nullable()->constrained('identifiers');
             $table->enum('status', DiagnosticReportStatus::values());
             $table->foreignId('code_id')->constrained('identifiers');
