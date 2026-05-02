@@ -7,7 +7,7 @@
         {{-- Category --}}
         <div class="form-row-2">
             <div class="form-group group">
-                <select x-model="modalDiagnosticReport.category[0].coding[0].code"
+                <select x-model="modalDiagnosticReport.categoryCode"
                         id="diagnosticCategory"
                         class="input-select peer"
                         type="text"
@@ -21,7 +21,7 @@
                     @endforeach
                 </select>
 
-                @error('form.diagnosticReport.category.*.coding.*.code')
+                @error('form.diagnosticReports.*.categoryCode')
                     <p class="text-error">{{ $message }}</p>
                 @enderror
             </div>
@@ -30,17 +30,17 @@
         {{-- Services --}}
         <div class="form-row-2 relative z-1">
             <div class="form-group group">
-                <x-select2 modelPath="modalDiagnosticReport.code.identifier.value"
+                <x-select2 modelPath="modalDiagnosticReport.codeValue"
                            dictionaryName="custom/services"
-                           id="serviceCode"
-                           name="serviceCode"
+                           id="codeValue"
+                           name="codeValue"
                            class="input peer"
                 />
-                <label for="serviceCode" class="label">
+                <label for="codeValue" class="label">
                     {{ __('forms.select')}} {{ mb_strtolower(__('forms.services')) }} *
                 </label>
 
-                @error('form.diagnosticReport.code.identifier.value')
+                @error('form.diagnosticReports.*.codeValue')
                 <p class="text-error">{{ $message }}</p>
                 @enderror
             </div>
@@ -106,7 +106,7 @@
                         <div>
                             <div class="form-row-2">
                                 <div class="form-group group">
-                                    <input x-model="modalDiagnosticReport.paperReferral.requisition"
+                                    <input x-model="modalDiagnosticReport.paperReferralRequisition"
                                            type="text"
                                            name="requisition"
                                            id="requisition"
@@ -118,13 +118,13 @@
                                         {{ __('forms.number') }}
                                     </label>
 
-                                    @error('form.diagnosticReport.paperReferral.requisition')
+                                    @error('form.diagnosticReports.*.paperReferralRequisition')
                                     <p class="text-error">{{ $message }}</p>
                                     @enderror
                                 </div>
 
                                 <div class="form-group group">
-                                    <input x-model="modalDiagnosticReport.paperReferral.requesterEmployeeName"
+                                    <input x-model="modalDiagnosticReport.paperReferralRequesterEmployeeName"
                                            type="text"
                                            name="requesterEmployeeName"
                                            id="requesterEmployeeName"
@@ -136,7 +136,7 @@
                                         {{ __('patients.author') }}
                                     </label>
 
-                                    @error('form.diagnosticReport.paperReferral.requesterEmployeeName')
+                                    @error('form.diagnosticReports.*.paperReferralRequesterEmployeeName')
                                     <p class="text-error">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -144,7 +144,7 @@
 
                             <div class="form-row-2">
                                 <div class="form-group group">
-                                    <input x-model="modalDiagnosticReport.paperReferral.requesterLegalEntityEdrpou"
+                                    <input x-model="modalDiagnosticReport.paperReferralRequesterLegalEntityEdrpou"
                                            type="text"
                                            name="requesterLegalEntityEdrpou"
                                            id="requesterLegalEntityEdrpou"
@@ -158,13 +158,13 @@
                                         {{ __('patients.edrpou_of_the_issuing_institution') }}
                                     </label>
 
-                                    @error('form.diagnosticReport.paperReferral.requesterLegalEntityEdrpou')
+                                    @error('form.diagnosticReports.*.paperReferralRequesterLegalEntityEdrpou')
                                     <p class="text-error">{{ $message }}</p>
                                     @enderror
                                 </div>
 
                                 <div class="form-group group">
-                                    <input x-model="modalDiagnosticReport.paperReferral.requesterLegalEntityName"
+                                    <input x-model="modalDiagnosticReport.paperReferralRequesterLegalEntityName"
                                            type="text"
                                            name="requesterLegalEntityName"
                                            id="requesterLegalEntityName"
@@ -177,7 +177,7 @@
                                         {{ __('patients.name_of_the_institution_that_issued_it') }}
                                     </label>
 
-                                    @error('form.diagnosticReport.paperReferral.requesterLegalEntityName')
+                                    @error('form.diagnosticReports.*.paperReferralRequesterLegalEntityName')
                                     <p class="text-error">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -186,7 +186,7 @@
                             <div class="form-row-2">
                                 <div class="form-group group">
                                     <div class="datepicker-wrapper">
-                                        <input x-model="modalDiagnosticReport.paperReferral.serviceRequestDate"
+                                        <input x-model="modalDiagnosticReport.paperReferralServiceRequestDate"
                                                type="text"
                                                name="serviceRequestDate"
                                                id="serviceRequestDate"
@@ -199,14 +199,14 @@
                                             {{ __('forms.date') }}
                                         </label>
 
-                                        @error('form.diagnosticReport.paperReferral.serviceRequestDate')
+                                        @error('form.diagnosticReports.*.paperReferralServiceRequestDate')
                                         <p class="text-error">{{ $message }}</p>
                                         @enderror
                                     </div>
                                 </div>
 
                                 <div class="form-group group">
-                                    <input x-model="modalDiagnosticReport.paperReferral.note"
+                                    <input x-model="modalDiagnosticReport.paperReferralNote"
                                            type="text"
                                            name="note"
                                            id="note"
@@ -218,7 +218,7 @@
                                         {{ __('patients.notes') }}
                                     </label>
 
-                                    @error('form.diagnosticReport.paperReferral.note')
+                                    @error('form.diagnosticReports.*.paperReferralNote')
                                     <p class="text-error">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -248,9 +248,9 @@
                                showResults = true;
                            }
                        "
-                       @focus="if ((modalDiagnosticReport.conclusionCode.coding[0].code?.length ?? 0) >= 1) showResults = true"
+                       @focus="if ((modalDiagnosticReport.conclusionCode?.length ?? 0) >= 1) showResults = true"
                        @click.away="showResults = false"
-                       x-model="modalDiagnosticReport.conclusionCode.coding[0].code"
+                       x-model="modalDiagnosticReport.conclusionCode"
                        id="conclusionCode"
                        name="conclusionCode"
                        class="input-select peer"
@@ -261,7 +261,7 @@
                     {{ __('patients.conclusion_code') }}
                 </label>
 
-                @error('form.diagnosticReport.conclusionCode.coding.*.code')
+                @error('form.diagnosticReports.*.conclusionCode')
                 <p class="text-error">{{ $message }}</p>
                 @enderror
 
@@ -273,7 +273,7 @@
                             <li class="group flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 transition-colors dark:bg-gray-800 dark:text-white"
                                 @click="
                                     selected = result;
-                                    modalDiagnosticReport.conclusionCode.coding[0].code = result.code;
+                                    modalDiagnosticReport.conclusionCode = result.code;
                                     showResults = false;
                                 "
                             >
@@ -306,7 +306,7 @@
                           maxlength="1000"
                 ></textarea>
 
-                @error('form.diagnosticReport.conclusion')
+                @error('form.diagnosticReports.*.conclusion')
                 <p class="text-error">{{ $message }}</p>
                 @enderror
             </div>

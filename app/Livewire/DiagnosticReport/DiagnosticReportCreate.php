@@ -136,6 +136,7 @@ class DiagnosticReportCreate extends DiagnosticReportComponent
      */
     protected function prepareFormattedData(array $validatedData): array
     {
+        // todo: use DR Mapper
         $diagnosticReport = Repository::diagnosticReport()->formatEHealthRequest($validatedData['diagnosticReport']);
 
         $observations = [];
@@ -159,7 +160,7 @@ class DiagnosticReportCreate extends DiagnosticReportComponent
     protected function storeValidatedData(array $formattedData): void
     {
         DB::transaction(function () use ($formattedData) {
-            $diagnosticReportId = Repository::diagnosticReport()->store([$formattedData['diagnosticReport']]);
+            $diagnosticReportId = Repository::diagnosticReport()->store([$formattedData['diagnosticReport']], $this->personId);
 
             if (isset($formattedData['observations'])) {
                 Repository::observation()->store($formattedData['observations'], $this->personId, diagnosticReportId: $diagnosticReportId);

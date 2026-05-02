@@ -216,6 +216,8 @@ return [
     'attributes' => [
         'name' => 'ім\'я',
         'phone' => 'телефон',
+        'issued' => 'час внесення',
+        'effective_period_start' => 'час початку прийому',
         'password' => 'пароль',
         'keyContainerUpload' => 'контейнер ключа',
         'knedp' => 'КНЕДП',

@@ -27,7 +27,7 @@
             <template x-for="(diagnosticReport, index) in diagnosticReports">
                 <tr>
                     <td class="td-input"
-                        x-text="Object.values(servicesDictionary).find(service => service.id === diagnosticReport.code.identifier.value).name"
+                        x-text="Object.values(servicesDictionary).find(service => service.id === diagnosticReport.codeValue).name"
                     ></td>
                     <td class="td-input" x-text="diagnosticReport.conclusion"></td>
                     <td class="td-input" x-text="diagnosticReport.issuedDate"></td>
@@ -163,13 +163,6 @@
                         </button>
 
                         <button @click.prevent="
-                                    if (modalDiagnosticReport.referralType === 'electronic' || modalDiagnosticReport.referralType === '') {
-                                        delete modalDiagnosticReport.paperReferral;
-                                    }
-                                    if (modalDiagnosticReport.referralType === 'paper' || modalDiagnosticReport.referralType === '') {
-                                        delete modalDiagnosticReport.basedOn;
-                                    }
-
                                     newDiagnosticReport !== false
                                         ? diagnosticReports.push(modalDiagnosticReport)
                                         : diagnosticReports[item] = modalDiagnosticReport;
@@ -177,8 +170,8 @@
                                 class="button-primary"
                                 data-drawer-hide="diagnostic-report-drawer-right"
                                 :disabled="!(
-                                    modalDiagnosticReport.category[0].coding[0].code.trim() &&
-                                    modalDiagnosticReport.code.identifier.value.trim()
+                                    modalDiagnosticReport.categoryCode.trim() &&
+                                    modalDiagnosticReport.codeValue.trim()
                                 )"
                         >
                             {{ __('forms.save') }}
@@ -195,106 +188,37 @@
      * Representation of the user's personal diagnostic report.
      */
     class DiagnosticReport {
-        category = [
-            {
-                coding: [{ system: 'eHealth/diagnostic_report_categories', code: '' }],
-                text: ''
-            }
-        ];
-        code = {
-            identifier: {
-                type: {
-                    coding: [{ system: 'eHealth/resources', code: 'service' }],
-                    text: ''
-                },
-                value: ''
-            }
-        };
-        isReferralAvailable = false;
-        referralType = '';
-        query = '';
-        basedOn = {
-            identifier: {
-                type: {
-                    coding: [{ system: 'eHealth/resources', code: 'service_request' }],
-                    text: ''
-                }
-            }
-        };
-        paperReferral = {
-            requesterLegalEntityEdrpou: '',
-            requesterLegalEntityName: '',
-            serviceRequestDate: ''
-        };
-        conclusionCode = {
-            coding: [{ system: 'eHealth/ICD10_AM/condition_codes', code: '' }]
-        };
-        primarySource = true;
-        performer = {
-            reference: {
-                identifier: {
-                    type: {
-                        coding: [{ system: 'eHealth/resources', code: 'employee' }],
-                        text: ''
-                    }
-                }
-            }
-        };
-        reportOrigin = {
-            coding: [{ system: 'eHealth/immunization_report_origins', code: '' }],
-            text: ''
-        };
-        recordedBy = {
-            identifier: {
-                type: {
-                    coding: [{ system: 'eHealth/resources', code: 'employee' }],
-                    text: ''
-                }
-            }
-        };
-        division = {
-            identifier: {
-                type: {
-                    coding: [{ system: 'eHealth/resources', code: 'division' }],
-                    text: ''
-                },
-                value: ''
-            }
-        };
-        resultsInterpreter = {
-            reference: {
-                identifier: {
-                    type: {
-                        coding: [{ system: 'eHealth/resources', code: 'employee' }],
-                        text: ''
-                    },
-                    value: ''
-                }
-            }
-        };
-
-        // Create date
-        #now = new Date();
-        #endTime = new Date(this.#now.getTime() + 15 * 60 * 1000); // add 15 minutes
-
-        issuedDate = this.#now.toISOString().split('T')[0];
-        issuedTime = this.#now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false });
-        effectivePeriodStartDate = this.#now.toISOString().split('T')[0];
-        effectivePeriodStartTime = this.#now.toLocaleTimeString('uk-UA', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-        effectivePeriodEndDate = this.#endTime.toISOString().split('T')[0];
-        effectivePeriodEndTime = this.#endTime.toLocaleTimeString('uk-UA', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-
         constructor(obj = null) {
+            const now = new Date();
+            const endTime = new Date(now.getTime() + 15 * 60 * 1000);
+
+            this.categoryCode = '';
+            this.codeValue = '';
+            this.isReferralAvailable = false;
+            this.referralType = '';
+            this.query = '';
+            this.paperReferralRequisition = '';
+            this.paperReferralRequesterEmployeeName = '';
+            this.paperReferralRequesterLegalEntityEdrpou = '';
+            this.paperReferralRequesterLegalEntityName = '';
+            this.paperReferralServiceRequestDate = '';
+            this.paperReferralNote = '';
+            this.conclusionCode = '';
+            this.conclusion = '';
+            this.primarySource = true;
+            this.reportOriginCode = '';
+            this.reportOriginText = '';
+            this.divisionId = '';
+            this.resultsInterpreterEmployeeId = '';
+            this.issuedDate = now.toISOString().split('T')[0];
+            this.issuedTime = now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false });
+            this.effectivePeriodStartDate = now.toISOString().split('T')[0];
+            this.effectivePeriodStartTime = now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false });
+            this.effectivePeriodEndDate = endTime.toISOString().split('T')[0];
+            this.effectivePeriodEndTime = endTime.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false });
+
             if (obj) {
-                this.diagnosticReports = JSON.parse(JSON.stringify(obj.diagnosticReports || obj));
+                Object.assign(this, JSON.parse(JSON.stringify(obj)));
             }
         }
     }

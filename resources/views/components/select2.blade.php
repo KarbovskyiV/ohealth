@@ -104,8 +104,11 @@
                     } else if (dictionaryKey === 'custom/services') {
                         const rootPath = modelPath.split('.')[0];
                         const isModalProcedure = rootPath === 'modalProcedure';
+                        const isModalDiagnosticReport = rootPath === 'modalDiagnosticReport';
                         const categoryPath = isModalProcedure
                             ? `${rootPath}.category.coding[0].code`
+                            : isModalDiagnosticReport
+                            ? `${rootPath}.categoryCode`
                             : `${rootPath}.category[0].coding[0].code`;
 
                         this.$watch(categoryPath, (newCode) => {
