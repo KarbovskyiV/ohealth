@@ -3,6 +3,7 @@
 namespace App\Rules;
 
 use Closure;
+use App\Enums\Status;
 use App\Models\LegalEntity;
 use App\Models\LegalEntityType;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,8 @@ class UniqueEdrpou implements ValidationRule
     protected ?int $legalEntityId;
 
     protected ?int $legalEntityTypeId;
+
+    protected ?string $legalEntityStatus;
 
     protected ?string $legalEntityTypeName;
 
@@ -35,6 +38,10 @@ class UniqueEdrpou implements ValidationRule
             ? legalEntity()->type->name
             : null;
 
+        $this->legalEntityStatus = $user && legalEntity()
+            ? legalEntity()->status
+            : null;
+
         $this->selectedLegalEntityTypeId = LegalEntityType::where('name', $legalEntityType)->first()?->id ?? null;
     }
 
@@ -50,6 +57,7 @@ class UniqueEdrpou implements ValidationRule
         // Check if value already exists in another legal entity, excluding the current entity
         $exists = LegalEntity::where('edrpou', $value)
             ->where('legal_entity_type_id', $this->selectedLegalEntityTypeId)
+            ->whereNot('status', Status::REORGANIZED->value) // Exclude reorganized entities
             ->when($this->legalEntityId !== null, function ($query) {
                 $query->where('id', '<>', $this->legalEntityId); //Exclude the current entity
             })
