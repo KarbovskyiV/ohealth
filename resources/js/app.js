@@ -181,8 +181,53 @@ function initUkTimepickers(root = document) {
         });
         el.setAttribute('data-tp-initialized', 'true');
         el.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/[^\d:]/g, '').slice(0, 5);
-        }, { passive: true });
+            if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
+                e.target.value = e.target.value.replace(/[^\d:]/g, '').slice(0, 5);
+                return;
+            }
+
+            let val = e.target.value.replace(/\D/g, '');
+            if (val.length === 0) {
+                e.target.value = '';
+                return;
+            }
+
+            let h = '';
+            let m = '';
+
+            if (val.length >= 1) {
+                if (parseInt(val[0]) > 2) {
+                    val = '0' + val;
+                }
+            }
+
+            if (val.length >= 2) {
+                h = val.substring(0, 2);
+                if (parseInt(h) > 23) h = '23';
+            } else {
+                h = val;
+            }
+
+            if (val.length >= 3) {
+                m = val.substring(2, 4);
+                if (parseInt(m[0]) > 5) {
+                    m = '0' + m[0];
+                }
+                if (val.length >= 4 && parseInt(m) > 59) {
+                    m = '59';
+                }
+            }
+
+            let res = h;
+            if (val.length >= 2) {
+                res += ':';
+            }
+            if (m.length > 0) {
+                res += m;
+            }
+
+            e.target.value = res;
+        });
     });
 }
 

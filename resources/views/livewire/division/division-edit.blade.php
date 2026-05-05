@@ -17,17 +17,9 @@
 
 @section('additional-buttons')
     <div class="flex items-center gap-2">
-        <button
-            type="button"
-            id="save_button"
-            class="button-primary cursor-pointer inline-flex items-center leading-none mb-0"
-            wire:click="store"
-        >
-            {{ __('forms.save') }}
-        </button>
-
         @can('delete', $division)
             <button
+                type="button"
                 x-on:click.prevent="
                     divisionId={{ $division->id }};
                     textConfirmation=@js(__('divisions.modals.delete.confirmation_text'));
@@ -35,7 +27,7 @@
                     actionTitle=@js(__('divisions.modals.delete.title'));
                     actionButtonText=@js(__('forms.delete'));
                 "
-                class="alternative-button cursor-pointer inline-flex items-center leading-none mb-0"
+                class="button-primary-outline-red cursor-pointer inline-flex items-center leading-none"
             >
                 {{ __('forms.delete') }}
             </button>
@@ -44,10 +36,21 @@
         <button
             type="button"
             id="save_button"
-            class="button-primary cursor-pointer inline-flex items-center leading-none mb-0"
+            class="button-outline-primary cursor-pointer inline-flex items-center gap-2 leading-none"
+            wire:click="store"
+        >
+            @icon('archive', 'w-4 h-4')
+            {{ __('forms.save') }}
+        </button>
+
+        <button
+            type="button"
+            id="save_and_send_button"
+            class="button-primary cursor-pointer inline-flex items-center leading-none"
             wire:click="update"
         >
             {{ __('forms.save_and_send') }}
         </button>
     </div>
 @endsection
+
