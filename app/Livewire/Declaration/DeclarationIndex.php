@@ -359,6 +359,7 @@ class DeclarationIndex extends Component
         if ($user->hasAllowedRole(Role::DOCTOR) && !$user->hasAllowedRole(Role::OWNER)) {
             $query['employee_id'] = Auth::user()->party
                 ->employees()
+                ->whereLegalEntityId($legalEntity->id)
                 ->forParty(Auth::user()->party->id)
                 ->first()->uuid;
         }
