@@ -211,6 +211,16 @@ return [
                 'class_forbidden' => 'Тип взаємодії :value заборонений для вашого класу взаємодії'
             ]
         ],
+        'conditions' => [
+            'codeSystem' => [
+                'class_forbidden' => "Для класу взаємодії 'Амбулаторна медична допомога' та 'Стаціонарна медична допомога' дозволена лише система eHealth/ICD10_AM/condition_codes"
+            ],
+            'max_one_per_dictionary' => 'Дозволено лише один код з одного словника',
+            'psychiatry_evidence_required' => 'Для коду діагнозу :code необхідно вказати стан як доказ',
+            'psychiatry_evidence_code_forbidden' => 'Стан не може бути використаний як доказ для коду діагнозу :code',
+            'employee_type_code_forbidden' => 'Цей код діагнозу недоступний для вашого типу співробітника',
+            'speciality_condition_code_forbidden' => 'Спеціальність встановлювача діагнозу не дозволяє використовувати код :code'
+        ],
     ],
 
     'employee' => [
@@ -556,17 +566,20 @@ return [
             'name' => 'назва епізоду'
         ],
 
-        'conditions' => 'діагнози',
-        'conditions.*.reportOrigin.coding.*.code' => 'джерело інформації',
-        'conditions.*.code.coding.0.code' => 'код стану за ICPC-2',
-        'conditions.*.code.coding.1.code' => 'код стану за МКХ-10',
-        'conditions.*.onsetDate' => 'дата початку',
-        'conditions.*.onsetTime' => 'час початку',
-        'conditions.*.assertedDate' => 'дата внесення',
-        'conditions.*.assertedTime' => 'час внесення',
-        'conditions.*.clinicalStatus' => 'клінічний статус',
-        'conditions.*.verificationStatus' => 'статус верифікації',
-        'conditions.*.severity.coding.*.code' => 'ступінь тяжкості стану',
+        'conditions' => [
+            '*.primarySource' => 'первинне джерело діагнозу',
+            '*.reportOriginCode' => 'джерело інформації діагнозу',
+            '*.codeCode' => 'джерело інформації діагнозу',
+            '*.codeSystem' => 'код стану діагнозу',
+            '*.clinicalStatus' => 'клінічний статус діагнозу',
+            '*.verificationStatus' => 'статус верифікації діагнозу',
+            '*.severityCode' => 'ступінь тяжкості стану діагнозу',
+            '*.onsetDate' => 'дата початку діагнозу',
+            '*.onsetTime' => 'час початку діагнозу',
+            '*.assertedDate' => 'дата внесення діагнозу',
+            '*.assertedTime' => 'час внесення діагнозу',
+            '*.evidenceCodes.*.code' => 'стани доказів діагнозу'
+        ],
 
         'immunizations' => [
             'primarySource' => 'джерело інформації',

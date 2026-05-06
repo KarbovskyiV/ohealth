@@ -227,7 +227,7 @@ class EncounterCreate extends EncounterComponent
             }
 
             if (isset($formattedData['conditions'])) {
-                Repository::condition()->store($formattedData['conditions'], $createdEncounterId, $this->personId);
+                Repository::condition()->store($formattedData['conditions'], $this->personId);
             }
 
             if (isset($formattedData['immunizations'])) {
