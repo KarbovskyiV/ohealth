@@ -335,6 +335,11 @@ return [
     'protocol_author' => 'Автор протоколу',
     'series_of_doses_by_protocol' => 'Кількість доз по протоколу',
     'protocol_description' => 'Опис протоколу',
+    'episode_id' => 'ID епізоду',
+    'date_from' => 'Дата проведення від',
+    'date_to' => 'Дата проведення до',
+    'episodes_not_found' => 'Епізоди не знайдено',
+    'immunizations_not_found' => 'Вакцинації не знайдено',
 
     // Diagnostic reports
     'diagnostic_report' => 'Діагностичний звіт',
