@@ -335,6 +335,8 @@ return [
     'protocol_author' => 'Автор протоколу',
     'series_of_doses_by_protocol' => 'Кількість доз по протоколу',
     'protocol_description' => 'Опис протоколу',
+    'vaccination_protocol_required' => 'Необхідно додати принаймні один протокол вакцинації.',
+    'vaccination_protocol_required_fields' => 'Для цієї вакцинації необхідно заповнити порядковий номер дози, етап імунізації та кількість доз по протоколу.',
 
     // Diagnostic reports
     'diagnostic_report' => 'Діагностичний звіт',
