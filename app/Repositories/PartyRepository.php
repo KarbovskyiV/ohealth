@@ -110,6 +110,11 @@ class PartyRepository
 
             $user->unsetRelation('roles')->unsetRelation('permissions');
 
+            // This only for case when the user has changed email and has the same employee with the same role in the same party, but with different user_id.
+            if($loginedRole === Role::OWNER->value) {
+                $newRoles = array_unique(array_merge($newRoles, [Role::REORGANIZATION_OWNER->value]));
+            }
+
             foreach ($guards as $guard) {
                 Auth::shouldUse($guard);
 

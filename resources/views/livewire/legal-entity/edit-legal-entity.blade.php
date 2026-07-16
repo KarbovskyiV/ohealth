@@ -15,7 +15,7 @@
                 Livewire.hook('commit', ({ succeed }) => {
                     succeed(() => {
                         this.$nextTick(() => {
-                            const firstErrorMessage = document.querySelector('.error-message')
+                            const firstErrorMessage = document.querySelector('.scroll-to-error')
 
                             if (firstErrorMessage !== null) {
                                 firstErrorMessage.scrollIntoView({ block: 'center', inline: 'center' });

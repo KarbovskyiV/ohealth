@@ -75,14 +75,14 @@ class LegalEntitiesForms extends Form
     public function rules(): array
     {
         $rules = [
-            'edrpou' => ['required', "regex:/^(\d{9,10}|[А-ЯЁЇІЄҐ]{2}\\d{6})$/u", new UniqueEdrpou($this->type)],
+            'edrpou' => ['required', "regex:/^([0-9]{8,10}|[А-ЯЁЇІЄҐ]{2}\d{6})$/u", new UniqueEdrpou($this->type)],
             'owner.lastName' => ['required', 'min:3', new Name()],
             'owner.firstName' => ['required', 'min:3', new Name()],
             'owner.secondName' => ['nullable', new Name()],
             'owner.gender' => 'required|string',
             'owner.birthDate' => ['required', new DateFormat(), 'before_or_equal:today', new BirthDate($this->owner['email'] ?? ''), new AgeCheck()],
             'owner.noTaxId' => ['nullable', 'boolean', new TaxId()],
-            'owner.taxId' => ['required_unless:owner.noTaxId,true', 'string', new TaxId()],
+            'owner.taxId' => ['exclude_if:owner.noTaxId,true', 'required', 'string', new TaxId()],
             'owner.documents' => 'required|array',
             'owner.documents.*.type' => [
                 'required','string',
@@ -175,7 +175,7 @@ class LegalEntitiesForms extends Form
             ],
             'archive' => 'nullable|array',
             'archive.*.date'  => ['required_if:archivationShow,true', new DateFormat(), 'before_or_equal:today'],
-            'archive.*.place' => 'required_if:archivationShow,true|string',
+            'archive.*.place' => 'required_if:archivationShow,true|string'
         ];
 
         if (($this->accreditation['category'] ?? null) !== 'NO_ACCREDITATION' && $this->accreditationShow) {
@@ -244,7 +244,7 @@ class LegalEntitiesForms extends Form
             'beneficiary' => __('validation.attributes.errors.wrongFieldFormat') . '('. __('validation.attributes.errors.onlyCyrillic') . ')',
             'archive.*.date.required_if' => __('validation.attributes.errors.requiredField'),
             'archive.*.date.before_or_equal' => __('validation.attributes.errors.expiryDateGreat'),
-            'archive.*.place.required_if' => __('validation.attributes.errors.requiredField'),
+            'archive.*.place.required_if' => __('validation.attributes.errors.requiredField')
         ];
     }
 

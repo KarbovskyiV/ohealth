@@ -1,6 +1,4 @@
 @php
-    $hasPublicOfferKnedpError = $errors->has('knedp');
-    $hasPublicOfferPasswordError = $errors->has('password');
     $hasPublicOfferFileError = $errors->has('keyContainerUpload');
 @endphp
 
@@ -23,8 +21,8 @@
                 required
                 id="publicOfferKnedp"
                 wire:model="knedp"
-                aria-describedby="{{ $hasPublicOfferKnedpError ? 'publicOfferKnedpErrorHelp' : '' }}"
-                class="input-select {{ $hasPublicOfferKnedpError ? 'input-error border-red-500 focus:border-red-500' : ''}} peer"
+                aria-describedby="@error('knedp') publicOfferKnedpErrorHelp @enderror"
+                class="input-select @error('knedp') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             >
                 <option value="_placeholder_" selected hidden>-- {{ __('forms.select') }} --</option>
 
@@ -33,32 +31,33 @@
                 @endforeach
             </select>
 
-            @if($hasPublicOfferKnedpError)
+            @error('knedp')
                 <p id="publicOfferKnedpErrorHelp" class="text-error">
-                    {{ $errors->first('knedp') }}
+                    {{ $message }}
                 </p>
-            @endif
+            @enderror
 
             <label for="publicOfferKnedp" class="label z-10">
                 {{ __('forms.knedp') }}
             </label>
         </div>
 
-        <div wire:igonre class="form-group group py-4">
+        <div wire:ignore.self class="form-group group py-4">
             <x-forms.file
+                required
                 wire:model="keyContainerUpload"
                 file="{{ $keyContainerUpload?->getClientOriginalName() }}"
                 aria-describedby="{{ $hasPublicOfferFileError ? 'publicOfferFileErrorHelp' : '' }}"
-                :id="'keyContainerUpload'"
+                :id="'keyContainerFileUpload'"
             />
 
-            @if($hasPublicOfferFileError)
+            @error('keyContainerUpload')
                 <p id="publicOfferFileErrorHelp" class="text-error">
-                    {{ $errors->first('keyContainerUpload') }}
+                    {{ $message }}
                 </p>
-            @endif
+            @enderror
 
-            <label for="keyContainerUpload" class="label z-10">
+            <label for="keyContainerFileUpload" class="label z-10 @error('keyContainerUpload') scroll-to-error @enderror">
                 {{ __('forms.key_container_upload') }} *
             </label>
         </div>
@@ -70,15 +69,15 @@
                 placeholder=" "
                 id="publicOfferPassword"
                 wire:model="password"
-                aria-describedby="{{ $hasPublicOfferPasswordError ? 'publicOfferPasswordErrorHelp' : '' }}"
-                class="input {{ $hasPublicOfferPasswordError ? 'input-error border-red-500 focus:border-red-500' : ''}} peer"
+                aria-describedby="@error('password') publicOfferPasswordErrorHelp @enderror"
+                class="input @error('password') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             />
 
-            @if($hasPublicOfferPasswordError)
+            @error('password')
                 <p id="publicOfferPasswordErrorHelp" class="text-error">
-                    {{ $errors->first('password') }}
+                    {{ $message }}
                 </p>
-            @endif
+            @enderror
 
             <label for="publicOfferPassword" class="label z-10">
                 {{ __('forms.password') }}

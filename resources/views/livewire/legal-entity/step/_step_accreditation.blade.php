@@ -1,11 +1,3 @@
-@php
-    $hasAccreditationCategoryError = $errors->has('legalEntityForm.accreditation.category');
-    $hasAccreditationOrderNumberError = $errors->has('legalEntityForm.accreditation.orderNo');
-    $hasAccreditationOrderDateError = $errors->has('legalEntityForm.accreditation.orderDate');
-    $hasAccreditationExpiryDateError = $errors->has('legalEntityForm.accreditation.expiryDate');
-    $hasAccreditationissuedDateError = $errors->has('legalEntityForm.accreditation.issuedDate');
-@endphp
-
 <fieldset
     class="p-4 sm:p-8 sm:pb-10 mb-16 mt-6 border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 max-w-[1280px]"
     xmlns="http://www.w3.org/1999/html"
@@ -58,8 +50,8 @@
                     required
                     id="accreditationСategory"
                     x-model="category"
-                    aria-describedby="{{ $hasAccreditationCategoryError ? 'accreditationCategoryErrorHelp' : '' }}"
-                    class="input-select {{ $hasAccreditationCategoryError ? 'input-error border-red-500 focus:border-red-500' : ''}} peer"
+                    aria-describedby="@error('legalEntityForm.accreditation.category') accreditationCategoryErrorHelp @enderror"
+                    class="input-select @error('legalEntityForm.accreditation.category') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 >
                     <option value="_placeholder_" selected hidden>-- {{ __('forms.select') }} --</option>
 
@@ -69,14 +61,14 @@
                                     {{ $category }}
                                 </option>
                             @endforeach
-                        @endif
+                        @endisset
                 </select>
 
-                @if($hasAccreditationCategoryError)
+                @error('legalEntityForm.accreditation.category')
                     <p id="accreditationCategoryErrorHelp" class="text-error">
-                        {{ $errors->first('legalEntityForm.accreditation.category') }}
+                        {{ $message }}
                     </p>
-                @endif
+                @enderror
 
                 <label for="accreditationСategory" class="label z-10">
                     {{ __('forms.accreditation_category') }}
@@ -91,15 +83,15 @@
                     placeholder=" "
                     id="accreditationOrderNumber"
                     wire:model="legalEntityForm.accreditation.orderNo"
-                    aria-describedby="{{ $hasAccreditationOrderNumberError ? 'accreditationOrderNumberErrorHelp' : '' }}"
-                    class="input {{ $hasAccreditationOrderNumberError ? 'input-error border-red-500 focus:border-red-500' : ''}} peer"
+                    aria-describedby="@error('legalEntityForm.accreditation.orderNo') accreditationOrderNumberErrorHelp @enderror"
+                    class="input @error('legalEntityForm.accreditation.orderNo') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 />
 
-                @if($hasAccreditationOrderNumberError)
+                @error('legalEntityForm.accreditation.orderNo')
                     <p id="accreditationOrderNumberErrorHelp" class="text-error">
-                        {{ $errors->first('legalEntityForm.accreditation.orderNo') }}
+                        {{ $message }}
                     </p>
-                @endif
+                @enderror
 
                 <label for="accreditationOrderNumber" class="label z-10">
                     {{ __('forms.accreditation_order_no') }}
@@ -118,15 +110,15 @@
                     datepicker-format="{{ frontendDateFormat() }}"
                     id="accreditationIssuedDate"
                     x-model="acdIssuedDate"
-                    aria-describedby="{{ $hasAccreditationissuedDateError ? 'accreditationIssuedDateErrorHelp' : '' }}"
-                    class="input datepicker-input {{ $hasAccreditationissuedDateError ? 'input-error border-red-500 focus:border-red-500' : ''}} peer"
+                    aria-describedby="@error('legalEntityForm.accreditation.issuedDate') accreditationIssuedDateErrorHelp @enderror"
+                    class="input @error('legalEntityForm.accreditation.issuedDate') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 />
 
-                @if($hasAccreditationissuedDateError)
+                @error('legalEntityForm.accreditation.issuedDate')
                     <p id="accreditationIssuedDateErrorHelp" class="text-error">
-                        {{ $errors->first('legalEntityForm.accreditation.issuedDate') }}
+                        {{ $message }}
                     </p>
-                @endif
+                @enderror
 
                 <label for="accreditationIssuedDate" class="label z-10">
                     {{ __('forms.accreditationIssuedDate') }}
@@ -145,15 +137,15 @@
                     datepicker-format="{{ frontendDateFormat() }}"
                     id="accreditationExpiryDate"
                     x-model="acdExpiryDate"
-                    class="input datepicker-input peer"
-                    aria-describedby="{{ $hasAccreditationExpiryDateError ? 'accreditationExpiryDateErrorHelp' : '' }}"
+                    aria-describedby="@error('legalEntityForm.accreditation.expiryDate') accreditationExpiryDateErrorHelp @enderror"
+                    class="input datepicker-input @error('legalEntityForm.accreditation.expiryDate') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 />
 
-                @if($hasAccreditationExpiryDateError)
+                @error('legalEntityForm.accreditation.expiryDate')
                     <p id="accreditationExpiryDateErrorHelp" class="text-error">
-                        {{ $errors->first('legalEntityForm.accreditation.expiryDate') }}
+                        {{ $message }}
                     </p>
-                @endif
+                @enderror
 
                 <label for="accreditationExpiryDate" class="label z-10">
                     {{ __('forms.end_date') }}
@@ -173,15 +165,15 @@
                     datepicker-format="{{ frontendDateFormat() }}"
                     id="accreditationOrderDate"
                     x-model="acdOrderDate"
-                    aria-describedby="{{ $hasAccreditationOrderDateError ? 'accreditationOrderDateErrorHelp' : '' }}"
-                    class="input datepicker-input {{ $hasAccreditationOrderDateError ? 'input-error border-red-500 focus:border-red-500' : ''}} peer"
+                    aria-describedby="@error('legalEntityForm.accreditation.orderDate') accreditationOrderDateErrorHelp @enderror"
+                    class="input datepicker-input @error('legalEntityForm.accreditation.orderDate') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 />
 
-                @if($hasAccreditationOrderDateError)
+                @error('legalEntityForm.accreditation.orderDate')
                     <p id="accreditationOrderDateErrorHelp" class="text-error">
-                        {{ $errors->first('legalEntityForm.accreditation.orderDate') }}
+                        {{ $message }}
                     </p>
-                @endif
+                @enderror
 
                 <label for="accreditationOrderDate" class="label z-10">
                     {{ __('forms.accreditation_order_date') }}

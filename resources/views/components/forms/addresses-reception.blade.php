@@ -230,7 +230,7 @@
     </div>
 
     {{-- SETTLEMENT --}}
-    <div class="form-group group !z-[15]"
+    <div class="form-group group !z-[15] self-start"
          {{-- @mouseleave="timeout = setTimeout(() => { showTo = false }, 800)" --}}
          x-data="{
             showTo: false,
@@ -268,63 +268,65 @@
         }"
          x-init="init()"
     >
-        <input
-            x-model.debounce.400ms="address.settlement"
-            @keydown.escape="showTo = false"
-            @change="showTo = false; settlements = []"
-            @blur="selecting = false"
-            required
-            type="text"
-            placeholder=" "
-            id="addressRSettlement"
-            autocomplete="off"
-            aria-describedby="@error('receptionAddress.settlement') addressRSettlementErrorHelp @enderror"
-            class="input @error('receptionAddress.settlement') input-error border-red-500 focus:border-red-500 @enderror peer"
-            :disabled="!address.settlementType || address.area === 'М.КИЇВ' || readonly"
-        />
+        <div class="relative">
+            <input
+                x-model.debounce.400ms="address.settlement"
+                @keydown.escape="showTo = false"
+                @change="showTo = false; settlements = []"
+                @blur="selecting = false"
+                required
+                type="text"
+                placeholder=" "
+                id="addressRSettlement"
+                autocomplete="off"
+                aria-describedby="@error('receptionAddress.settlement') addressRSettlementErrorHelp @enderror"
+                class="input @error('receptionAddress.settlement') input-error border-red-500 focus:border-red-500 @enderror peer"
+                :disabled="!address.settlementType || address.area === 'М.КИЇВ' || readonly"
+            />
 
-        <div x-show="showTo && address.area !== 'М.КИЇВ'" x-cloak>
-            <div
-                x-on:click.away="showTo = false"
-                x-transition
-                class="absolute left-0 right-0 top-full bg-white border border-gray-300 rounded-bl-md rounded-br-md shadow-lg dark:bg-gray-800 dark:border-gray-500"
-            >
-                <ul class="py-2 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownHoverButton">
-                    <template x-for="settlement in settlements" :key="settlement.id">
-                        <li
-                            x-on:mousedown.stop="
-                                selecting = true;
-                                showTo = false;
+            <div x-show="showTo && address.area !== 'М.КИЇВ'" x-cloak>
+                <div
+                    x-on:click.away="showTo = false"
+                    x-transition
+                    class="absolute left-0 right-0 top-full origin-top bg-white border border-gray-300 rounded-bl-md rounded-br-md shadow-lg dark:bg-gray-800 dark:border-gray-500 !z-[25]"
+                >
+                    <ul class="py-2 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownHoverButton">
+                        <template x-for="settlement in settlements" :key="settlement.id">
+                            <li
+                                x-on:mousedown.stop="
+                                    selecting = true;
+                                    showTo = false;
 
-                                address.settlement = settlement.name.replace(/'/g, '\'');
-                                address.settlementId = settlement.id;
-                            "
-                            class="cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-blue-800"
-                        >
-                            <span x-text="settlement.name"></span>
-                        </li>
-                    </template>
+                                    address.settlement = settlement.name.replace(/'/g, '\'');
+                                    address.settlementId = settlement.id;
+                                "
+                                class="cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-blue-800"
+                            >
+                                <span x-text="settlement.name"></span>
+                            </li>
+                        </template>
 
-                    <div x-show="!settlements || (Array.isArray(settlements) && settlements.length === 0)" x-cloak>
-                        <li class="cursor-default px-4 py-2">
-                            {{ __('forms.nothing_found') }}
-                        </li>
-                    </div>
-                </ul>
+                        <div x-show="!settlements || (Array.isArray(settlements) && settlements.length === 0)" x-cloak>
+                            <li class="cursor-default px-4 py-2">
+                                {{ __('forms.nothing_found') }}
+                            </li>
+                        </div>
+                    </ul>
+                </div>
             </div>
+
+            @error('receptionAddress.settlement')
+                <p id="addressRSettlementErrorHelp" class="text-error">
+                    {{ $message }}
+                </p>
+            @enderror
+
+            <label for="addressRSettlement" class="label z-10">
+                {{ __('forms.settlement') }}
+            </label>
         </div>
 
-        @error('receptionAddress.settlement')
-            <p id="addressRSettlementErrorHelp" class="text-error">
-                {{ $message }}
-            </p>
-        @enderror
-
-        <label for="addressRSettlement" class="label z-10">
-            {{ __('forms.settlement') }}
-        </label>
-
-        <div class="form-group group">
+        <div class="mt-2 flex items-center gap-2">
             <input
                 type="checkbox"
                 id="exactSettlementSearch"
@@ -373,7 +375,7 @@
     </div>
 
     {{-- STREET --}}
-    <div class="form-group group !z-[13]"
+    <div class="form-group group !z-[13] self-start"
          {{-- @mouseleave="timeout = setTimeout(() => { showTo = false }, 800)" --}}
          x-data="{
             showTo: false,
@@ -428,11 +430,11 @@
         />
 
         <div x-cloak x-show="showTo"
-             @click.away="showTo = false"
+            @click.away="showTo = false"
 
-             x-transition
+            x-transition
 
-             class="absolute left-0 right-0 top-full bg-white border border-gray-300 rounded-bl-md rounded-br-md shadow-lg dark:bg-gray-800 dark:border-gray-500"
+            class="absolute left-0 right-0 top-full origin-top bg-white border border-gray-300 rounded-bl-md rounded-br-md shadow-lg dark:bg-gray-800 dark:border-gray-500"
         >
             <ul class="py-2 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownHoverButton">
                 <template x-for="street in streets" :key="street.id">

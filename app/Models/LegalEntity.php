@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Status;
 use App\Enums\User\Role;
 use App\Enums\JobStatus;
 use App\Models\Relations\Phone;
@@ -212,7 +213,10 @@ class LegalEntity extends Model
      */
     public function getOwner(): ?object
     {
-        return $this->employees()->whereEmployeeType(Role::OWNER)->first();
+        return $this->employees()
+            ->whereEmployeeType(Role::OWNER)
+            ->whereStatus(Status::APPROVED)
+            ->first();
     }
 
     public function healthcareServices(): HasMany
