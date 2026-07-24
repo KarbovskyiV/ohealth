@@ -47,7 +47,14 @@ class LegalEntityPolicy
             return Response::denyWithStatus(404);
         }
 
-        return Response::allow();
+        if (
+            $user->hasAllowedRole([Role::REORGANIZATION_OWNER, Role::OWNER, Role::ADMIN, Role::HR])
+            && Auth::guard('ehealth')->check()
+        ) {
+            return Response::allow();
+        }
+
+        return Response::denyWithStatus(404);
     }
 
     /**

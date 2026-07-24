@@ -12,7 +12,7 @@
     <div class="overflow-y-auto py-5 px-3 h-full bg-white dark:bg-gray-800">
         <ul class="space-y-2">
 
-            @if(legalEntity() || Auth::user()->can('create', LegalEntity::class) || Auth::user()->can('limitedAction', LegalEntity::class))
+            @if(Auth::user()->can('viewAny', LegalEntity::class) || Auth::user()->can('limitedAction', LegalEntity::class))
                 <li x-data="{ open: false }" class="space-y-2">
                     <button @click="open = !open"
                             type="button"
