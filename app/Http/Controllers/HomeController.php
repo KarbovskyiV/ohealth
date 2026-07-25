@@ -22,12 +22,15 @@ class HomeController extends Controller
         // If user can create person requests (e.g., register patients) -> redirect to patient list.
         'person_request:write' => 'persons.index',
 
-
         // 2. Priority: HR
         // If user can create/write employee requests -> redirect to employee list.
         'employee_request:write' => 'employee.index',
 
-        // 3. Priority: Owner / Top Management
+        // 3. Priority: LABORANT|MED_ADMIN|MED_COORDINATOR
+        // If user can read employee data -> redirect to employee list.
+        'employee:read' => 'employee.index',
+
+        // 4. Priority: Owner / Top Management
         // If user has access to view/read legal entity data -> redirect to details.
         'legal_entity:read' => 'legal-entity.details',
     ];

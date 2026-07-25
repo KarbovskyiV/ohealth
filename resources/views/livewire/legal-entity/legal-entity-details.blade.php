@@ -6,28 +6,9 @@
     $isEdit = $isDetails = true;
 
     $parentLegalEntity = legalEntity()->parentLegalEntity()->first();
-
-    $leStatusMap = [
-        'ACTIVE' => [__('forms.status.active'), 'status-alert-green'],
-        'SUSPENDED' => [__('forms.status.suspended'), 'status-alert-red'],
-        'CLOSED' => [__('forms.status.inactive'), 'status-alert-red'],
-        'REORGANIZED' => [__('forms.status.reorganized'), 'status-alert-red'],
-    ];
-
-    $edrStatus = (string)$le->edr['state'];
-    $edrStatusStyleMap = [
-        '-1' => 'status-alert-red',
-        '1' =>  'status-alert-green',
-        '2' => 'status-alert-yellow',
-        '3' => 'status-alert-red',
-        '4' => 'status-alert-red',
-        '5' => 'status-alert-red',
-        '6' => 'status-alert-red',
-    ];
 @endphp
 
 <div x-data="{ isDisabled: true, isEdit: @json($isEdit), activeStep: 0}">
-
     <livewire:components.x-message :key="now()->timestamp"/>
 
     <x-header-navigation class="items-start" x-data="{ showFilter: false }">
@@ -53,6 +34,15 @@
     </x-header-navigation>
 
     <div class="shift-content pl-3.5">
+        <fieldset class="p-4 sm:p-8 sm:pb-10 mb-16 mt-6 border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 max-w-[1280px]">
+            <legend class="legend">{{ __('forms.status_in_the_system') }}</legend>
+            <div class="{{ $this->statusStyle }} status-alert-full mb-6">
+                    <span class="flex-shrink-0">
+                        @icon('check-circle', 'w-5 h-5 text-green-700 mr-3')
+                    </span>
+                        <span class="ms-1">{{ $this->statusLabel }}</span>
+                </div>
+        </fieldset>
 
         <fieldset class="p-4 sm:p-8 sm:pb-10 mb-16 mt-6 border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 max-w-[1280px]">
             <legend class="legend">{{ __('forms.verification_NSZU') }}</legend>
@@ -61,8 +51,8 @@
                     <table class="table-input w-full table-fixed min-w-[600px] text-sm">
                         <thead class="thead-input">
                         <tr>
-                            <th scope="col" class="px-3 py-3 th-input w-[15%]">{{__('forms.status.label')}}</th>
-                            <th scope="col" class="px-3 py-3 th-input w-[35%]">{{__('forms.reviewed_NHS')}}</th>
+                            <th scope="col" class="px-3 py-3 th-input w-[25%]">{{__('forms.verified_NHS')}}</th>
+                            <th scope="col" class="px-3 py-3 th-input w-[25%]">{{__('forms.reviewed_NHS')}}</th>
                             <th scope="col" class="px-3 py-3 th-input w-[50%]">{{__('forms.comment_NSZU')}}</th>
                         </tr>
                         </thead>
@@ -70,7 +60,7 @@
                         <tr>
                             <td class="td-input break-words whitespace-nowrap align-top">
                                 @if($le->nhs_verified)
-                                    <span class="badge-green">{{__('forms.status.active')}}</span>
+                                    <span class="badge-green">{{__('forms.verified_NHS')}}</span>
                                 @else
                                     <span class="badge-red">{{__('forms.not_verified')}}</span>
                                 @endif
@@ -92,25 +82,15 @@
             </div>
         </fieldset>
 
-        <fieldset class="p-4 sm:p-8 sm:pb-10 mb-16 mt-6 border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 max-w-[1280px]">
-            <legend class="legend">{{ __('forms.status_in_the_system') }}</legend>
-            <div class="{{ $leStatusMap[$le->status][1] ?? 'status-alert-red' }} status-alert-full mb-6">
-                    <span class="flex-shrink-0">
-                        @icon('check-circle', 'w-5 h-5 text-green-700 mr-3')
-                    </span>
-                    <span class="ms-1">{{ $leStatusMap[$le->status][0] ?? __('forms.status.unknown') }}</span>
-                </div>
-        </fieldset>
-
         {{-- E D R --}}
         <fieldset class="p-4 sm:p-8 sm:pb-10 mb-16 mt-6 border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 max-w-[1280px]">
             <legend class="legend">{{ __('forms.state_of_the_NMP') }}</legend>
 
-            <div class="{{ $edrStatusStyleMap[$edrStatus] ?? 'status-alert-red' }} status-alert-full mb-6">
+            <div class="{{ $this->edrStatusStyle }} status-alert-full mb-6">
                 <span class="flex-shrink-0">
                     @icon('check-circle', 'w-5 h-5 text-green-700 mr-3')
                 </span>
-                <span class="ms-1">{{ $edrStatuses[$edrStatus] ?? __('forms.status.unknown') }}</span>
+                <span class="ms-1">{{ $this->edrStatusLabel }}</span>
             </div>
 
             <div class="flex flex-col lg:flex-row lg:gap-x-8">
@@ -123,8 +103,8 @@
                             placeholder=" "
                             name="nameLegalEntity"
                             class="peer input"
-                            value="{{ __($le->edr['name'] ?? '') }}"
-                            x-bind:disabled="isDisabled"
+                            value="{{ __($le->edr['name'] ?? '-') }}"
+                            reaodonly
                         />
 
                         <label
@@ -132,6 +112,26 @@
                             class="label"
                         >
                             {{ __('forms.full_name_division') }}
+                        </label>
+                    </div>
+
+                    {{-- EDR UUID --}}
+                    <div class="form-group">
+                        <input
+                            id="edrUuid"
+                            type="text"
+                            placeholder=" "
+                            name="edrUuid"
+                            class="peer input"
+                            value="{{ __($le->edr['uuid'] ?? '-') }}"
+                            readonly
+                        />
+
+                        <label
+                            for="edrUuid"
+                            class="label"
+                        >
+                            {{ __('forms.edr.uuid') }}
                         </label>
                     </div>
 
@@ -143,8 +143,8 @@
                             placeholder=" "
                             class="peer input"
                             name="publicName"
-                            value="{{ __($le->edr['public_name'] ?? '') }}"
-                            x-bind:disabled="isDisabled"
+                            value="{{ __($le->edr['public_name'] ?? '-') }}"
+                            readonly
                         />
 
                         <label
@@ -163,8 +163,8 @@
                             placeholder=" "
                             class="peer input"
                             name="shortName"
-                            value="{{ __($le->edr['short_name'] ?? '') }}"
-                            x-bind:disabled="isDisabled"
+                            value="{{ __($le->edr['short_name'] ?? '-') }}"
+                            readonly
                         />
 
                         <label
@@ -183,8 +183,8 @@
                             placeholder=" "
                             class="peer input"
                             name="legalForm"
-                            value="{{ __($edrLegalForms[$le->edr['legal_form']] ?? '') }}"
-                            x-bind:disabled="isDisabled"
+                            value="{{ __($edrLegalForms[$le->edr['legal_form']] ?? '-') }}"
+                            readonly
                         />
 
                         <label
@@ -196,6 +196,42 @@
                     </div>
 
                     {{-- ADDRESS REGISTRATION NMP --}}
+                    <h3 class="mt-2 mb-4">{{ __('forms.address_registration_NMP') }}</h3>
+
+                    {{-- COUNTRY --}}
+                    <div class="form-group group">
+                        <input
+                            value="{{ __($le->edr['registration_address']['country'] ?? '-') }}"
+                            type="text"
+                            placeholder=" "
+                            id="addressCountry"
+                            class="input peer"
+                            readonly
+                        />
+
+                        <label for="addressCountry" class="label z-10">
+                            {{ __('forms.country') }}
+                        </label>
+                    </div>
+
+                    {{-- ZIP --}}
+                    <div class="form-group group">
+                        <input
+                            value="{{ __($le->edr['registration_address']['zip'] ?? '-') }}"
+                            type="text"
+                            x-mask="99999"
+                            placeholder=" "
+                            id="addressZip"
+                            class="input peer"
+                            readonly
+                        />
+
+                        <label for="addressZip" class="label z-10">
+                            {{ __('forms.zip_code') }}
+                        </label>
+                    </div>
+
+                    {{-- FULL ADDRESS --}}
                     <div class="form-group">
                         <input
                             id="addressRegistrationNMP"
@@ -203,29 +239,179 @@
                             placeholder=" "
                             class="peer input"
                             name="addressRegistrationNMP"
-                            value="{{ __($le->edr['registration_address']['address'] ?? '') }}"
-                            x-bind:disabled="isDisabled"
+                            value="{{ __($le->edr['registration_address']['address'] ?? '-') }}"
+                            readonly
                         />
 
                         <label
                             for="addressRegistrationNMP"
                             class="label"
                         >
-                            {{ __('forms.address_registration_NMP') }}
+                            {{ __('forms.address') }}
                         </label>
+                    </div>
+
+                    <div
+                        x-data="{ open: false }"
+                        class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm"
+                    >
+                        <h2>
+                            <button
+                                type="button"
+                                class="flex items-center justify-between w-full px-6 py-4 text-left group cursor-pointer"
+                                @click="open = !open"
+                                :aria-expanded="open"
+                            >
+                                    <span class="text-base font-semibold text-gray-900 dark:text-white">
+                                        {{ __('Детальні дані про адресу реєстрації') }}
+                                    </span>
+                                @icon('chevron-down', 'w-5 h-5 text-gray-400 transition-transform group-aria-expanded:rotate-180 shrink-0')
+                            </button>
+                        </h2>
+
+                        <div
+                            x-cloak
+                            x-show="open"
+                            wire:ignore.self
+                        >
+                            <div class="px-6 pb-6 border-t border-gray-100 dark:border-gray-700 pt-6">
+                                <div class="form-row-2">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ __(Arr::get($le->edr, 'registration_address.parts.atu', '-') ?? '-') }}"
+                                        />
+
+                                        <label class="label">{{ __('forms.atu') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ __(Arr::get($le->edr, 'registration_address.parts.atu_code', '-') ?? '-') }}"
+                                        />
+                                        <label class="label">{{ __('forms.atu_code') }}</label>
+                                    </div>
+                                </div>
+
+                                {{-- Building MAIN --}}
+                                <h6 class="-mt-6 mb-4 text-sm text-blue-700">{{ __('forms.building_main') }}</h6>
+
+                                <div class="form-row-3">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            id='edrAddressStreet'
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ __(Arr::get($le->edr, 'registration_address.parts.street', '-') ?? '-') }}"
+                                        />
+                                        <label for="edrAddressStreet" class="label">{{ __('forms.street') }}</label>
+                                    </div>
+
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            id='edrAddressHouseType'
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ __(Arr::get($le->edr, 'registration_address.parts.house_type', '-') ?? '-') }}"
+                                        />
+                                        <label for="edrAddressHouseType" class="label">{{ __('forms.type') }}</label>
+                                    </div>
+
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            id='edrAddressHouse'
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ __(Arr::get($le->edr, 'registration_address.parts.house', '-') ?? '-') }}"
+                                        />
+                                        <label for="edrAddressHouse" class="label">{{ __('forms.number') }}</label>
+                                    </div>
+                                </div>
+
+                                {{-- Building parts --}}
+                                <h6 class="-mt-6 mb-4 text-sm text-blue-700">{{ __('forms.building_parts') }}</h6>
+
+                                <div class="form-row-2">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            id='edrAddressBuildingType'
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ __(Arr::get($le->edr, 'registration_address.parts.building_type', '-') ?? '-') }}"
+                                        />
+                                        <label for="edrAddressBuildingType" class="label">{{ __('forms.subtype') }}</label>
+                                    </div>
+
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            id='edrAddressBuilding'
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ __(Arr::get($le->edr, 'registration_address.parts.building', '-') ?? '-') }}"
+                                        />
+                                        <label for="edrAddressBuilding" class="label">{{ __('forms.number') }}</label>
+                                    </div>
+                                </div>
+
+                                {{-- Building apartment --}}
+                                <h6 class="-mt-6 mb-4 text-sm text-blue-700">{{ __('forms.lodgement') }}</h6>
+
+                                <div class="form-row-2">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            id='edrAddressLodgementType'
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ __(Arr::get($le->edr, 'registration_address.parts.num_type', '-') ?? '-') }}"
+                                        />
+                                        <label for="edrAddressLodgementType" class="label">{{ __('forms.type') }}</label>
+                                    </div>
+
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            id='edrAddressLodgementNumber'
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ __(Arr::get($le->edr, 'registration_address.parts.num', '-') ?? '-') }}"
+                                        />
+                                        <label for="edrAddressLodgementNumber" class="label">{{ __('forms.number') }}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="lg:mt-0 lg:min-w-[280px] lg:flex-shrink-0 space-y-4">
-                <p class="text-base font-semibold text-gray-900 dark:text-gray-200 mb-4">{{ __('Список КВЕДів:') }}</p>
+                <p class="text-base font-semibold text-gray-900 dark:text-gray-200 mb-4">{{ __('forms.edr.kved') . ':' }}</p>
 
                     <div class="text-sm text-gray-900 dark:text-gray-200 space-y-4">
                         <div>
-                            <p class="mb-2 font-semibold text-gray-600 dark:text-gray-400">{{ __('Основний КВЕД:') }}</p>
+                            <p class="mb-2 font-semibold text-gray-600 dark:text-gray-400">{{ __('forms.edr.main_kved') }}</p>
                             <p class="ms-2">{{ __($mainKVED['code'] . ' ' . $mainKVED['name'] ?? '') }}</p>
                         </div>
                         <div>
-                            <p class="mb-2 font-semibold text-gray-600 dark:text-gray-400">{{ __('Додаткові КВЕДи:') }}</p>
+                            <p class="mb-2 font-semibold text-gray-600 dark:text-gray-400">{{ __('forms.edr.additional_kveds') }}</p>
 
                             @foreach ($additionalKVEDs as $kved)
                                 <p class="ms-2">{{ __($kved['code'] . ' ' . $kved['name'] ?? '') }}</p>
@@ -233,7 +419,6 @@
                         </div>
                     </div>
                 </div>
-
             </div>
         </fieldset>
 

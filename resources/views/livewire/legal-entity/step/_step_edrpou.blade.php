@@ -2,6 +2,9 @@
     use App\Models\LegalEntity;
 
     $hasEdrpouError = $errors->has('legalEntityForm.edrpou');
+    $isDetails ??= false;
+
+    $legalEntityUuid = legalEntity()?->uuid ?? '';
 
     if(!empty($isNew)) {
         $legalEntityForm->type = collect($legalEntityTypes)->keys()->first(fn ($k) => $k !== LegalEntity::TYPE_MSP_LIMITED && $k !== legalEntity()?->type->name);
@@ -52,9 +55,7 @@
                 {{__('forms.edrpou_rnokpp')}}
             </label>
         </div>
-    </div>
 
-    <div class='form-row-2'>
         <div class="form-group group">
             <select
                 required
@@ -85,5 +86,27 @@
                 {{ __('forms.legal_entity_type') }}
             </label>
         </div>
+
+        {{-- Legal Entity UUID --}}
+        @if($isDetails)
+            <div class="form-group">
+                <input
+                    id="legalEntityUuid"
+                    type="text"
+                    placeholder=" "
+                    name="legalEntityUuid"
+                    class="peer input"
+                    value="{{ $legalEntityUuid }}"
+                    x-bind:disabled="isDisabled"
+                />
+
+                <label
+                    for="legalEntityUuid"
+                    class="label"
+                >
+                    {{ __('legal-entity.uuid') }}
+                </label>
+            </div>
+        @endif
     </div>
 </fieldset>
