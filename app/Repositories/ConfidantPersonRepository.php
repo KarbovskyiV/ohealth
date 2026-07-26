@@ -213,7 +213,7 @@ class ConfidantPersonRepository
 
             // Create a separate confidant person relationship for each relationship
             $confidantPersonRelation = ConfidantPerson::create([
-                'uuid' => $relationshipData['id'],
+                'uuid' => $relationshipData['id'] ?? null,
                 'person_id' => $confidantPerson->id,
                 'subject_person_id' => $subjectPerson->id,
                 'active_to' => $relationshipData['active_to'] ?? null,

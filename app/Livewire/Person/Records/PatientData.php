@@ -127,7 +127,8 @@ class PatientData extends BasePatientComponent
         'GENDER',
         'LANGUAGE',
         'PHONE_TYPE',
-        'SETTLEMENT_TYPE'
+        'SETTLEMENT_TYPE',
+        'STREET_TYPE'
     ];
 
     public bool $showConfirmationUpdateModal = false;
@@ -164,12 +165,12 @@ class PatientData extends BasePatientComponent
         $this->refreshAuthenticationMethods($patient);
 
         if (($this->isSyncing = $patient->isSyncing)) {
-            $existingApproval = Approval::getByModel($this->personId, Person::class)
+            $existingApproval = Approval::getByModel($patient)
                 ->whereStatus(Status::APPROVED->value)
                 ->whereNotNull('uuid')
                 ->first();
 
-            if ($existingApproval && !$existingApproval->isAlive()->exists()) {
+            if ($existingApproval && !$existingApproval->isAlive($patient)->exists()) {
                 $existingApproval->update(['status' => Status::EXPIRED->value]);
 
                 $patient->isSyncing = false;
@@ -287,34 +288,38 @@ class PatientData extends BasePatientComponent
      */
     public function syncPersonDataFromEHealth(): void
     {
+        $person = Person::find($this->personId);
+
         // Check if an Approval already exists for the current person and is in the APPROVED state
-        $existingApproval = Approval::getByModel($this->personId, Person::class)
+        $existingApprovals = Approval::getByModel($person)
             ->whereStatus(Status::APPROVED->value)
             ->whereNotNull('uuid')
-            ->first();
+            ->get();
 
         // If syncing is already in progress, one needs to check the status of the existing approval.
-        if ($this->isSyncing && $existingApproval) {
-            // If approval exists, one needs to check if it's still alive
-            if (!$existingApproval->isAlive()->exists()) {
-                $existingApproval->update(['status' => Status::EXPIRED->value]);
+        if ($existingApprovals->isNotEmpty()) {
+            // Person could have multiple approvals, but we only care about the alive and verified ones.
+            foreach ($existingApprovals as $existingApproval) {
+                // If approval exists, one needs to check if it's still alive
+                if (!$existingApproval->isAlive($person)->exists()) {
+                    $existingApproval->update(['status' => Status::EXPIRED->value]);
+                    // If it is alive but not verified, one needs to resend the SMS code or/and show the confirmation modal.
+                } elseif (!$existingApproval->isVerified()->exists()) {
+                    // Check if the approval sms code still active (14 min from last Approvals's updated_at)
+                    if (!MERepository::approval()->isSmsCodeAlive($existingApproval)) {
+                        $this->resendApprovalSms($existingApproval);
+                    }
 
-                Session::flash('error', __('patients.errors.approval_expired'));
+                    $this->showConfirmationUpdateModal = true;
 
-                // If it is alive but not verified, one needs to resend the SMS code or/and show the confirmation modal.
-            } elseif (!$existingApproval->isVerified()->exists()) {
-                // Check if the approval sms code still active (14 min from last Approvals's updated_at)
-                if (!MERepository::approval()->isSmsCodeAlive($existingApproval)) {
-                    $this->resendApprovalSms($existingApproval);
+                    return;
+                } else {
+                    // At least if the approval is alive and verified, one can proceed to sync the person data from eHealth.
+                    $this->syncPersonDataAfterGetApproval();
+
+                    return;
                 }
-
-                $this->showConfirmationUpdateModal = true;
-            } else {
-                // At least if the approval is alive and verified, one can proceed to sync the person data from eHealth.
-                $this->syncPersonDataAfterGetApproval();
             }
-
-            return;
         }
 
         $authorizeWith = collect($this->authenticationMethods)->firstWhere('type', AuthenticationMethod::OTP->value) ??
@@ -322,7 +327,6 @@ class PatientData extends BasePatientComponent
             collect($this->authenticationMethods)->firstWhere('type', AuthenticationMethod::OFFLINE->value) ?? null;
 
         $employee = Auth::user()->activeDoctorEmployee();
-        $person = Person::find($this->personId);
 
         $payloadData = [
             'granted_to' => ['value' => $employee->uuid, 'type' => ['coding' => [['code' => 'employee']]]],
@@ -398,7 +402,7 @@ class PatientData extends BasePatientComponent
         if ($this->verifyApproval($person, $validated['verificationCode'])) {
             $this->syncPersonDataAfterGetApproval();
         } else {
-            Session::flash('error', __('patients.errors.approval_verification_failed'));
+            Session::flash('error', __('patients.errors.approval_verification_failed').'.1');
         }
     }
 
@@ -434,19 +438,25 @@ class PatientData extends BasePatientComponent
             return;
         }
 
-        $confidantPersonData = Arr::pull($validated, 'confidant_person', []);
+        try {
+            $confidantResponse = EHealth::person()->getConfidantPersonRelationships($this->uuid);
 
-        $personalData = Arr::except($validated, ['preferred_way_communication']);
+            $confidantValidated = $confidantResponse->validate();
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle(__('Error occurred while trying to get person data: ' . $this->uuid));
+
+            return;
+        }
+
+        $personalData = Arr::except($validated, ['preferred_way_communication', 'confidant_person']);
 
         try {
-            DB::transaction(function () use ($personalData) {
-                // Repository::declarationRequest()->syncPersonData($personalData);
+            DB::transaction(function () use ($personalData, $confidantValidated) {
                 Repository::person()->sync($personalData, $this->uuid);
 
-                // TODO: check how the confdiant person relationships are synced with eHealth
-                // if (!empty($personalData['confidant_person'])) {
-                //     Repository::confidantPerson()->sync($confidantPersonData, $this->uuid);
-                // }
+                if (!empty($confidantValidated)) {
+                    Repository::confidantPerson()->sync($confidantValidated, $this->uuid);
+                }
             });
         } catch (Exception $exception) {
             $this->handleDatabaseErrors($exception, __('Error occurred while trying to sync person data'));

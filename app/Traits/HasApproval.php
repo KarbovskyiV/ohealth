@@ -62,7 +62,7 @@ trait HasApproval
         if (Auth::user()->cannot('create', Approval::class)) {
             Session::flash('error', __('patients.policy.approval'));
 
-            throw new Exception('Approval creation failed');
+            throw new Exception('Approval creation failed: policy violation');
         }
 
         $authorizeWith = $payloadData['authorize_with'] ?? null;
@@ -70,18 +70,18 @@ trait HasApproval
         if (!$authorizeWith) {
             Session::flash('error', __('patients.errors.authMethod.not_found'));
 
-            throw new Exception('Approval creation failed');
+            throw new Exception('Approval creation failed: missing authorize_with');
         } else if ($authorizeWith['type'] === 'OFFLINE') {
             Session::flash('error', __('patients.errors.authMethod.wrong_type'));
 
-            throw new Exception('Approval creation failed');
+            throw new Exception('Approval creation failed: wrong authorize_with type');
         }
 
         $payloadData['authorize_with'] = $authorizeWith['uuid'];
 
         $requestData = Repository::approval()->formatEHealthRequest($payloadData);
 
-        $approval = Approval::getByModel($model->id, get_class($model))
+        $approval = Approval::getByModel($model)
             ->whereStatus(Status::NEW->value)
             ->first() ?? Repository::approval()->create($requestData, $model);
 
@@ -104,7 +104,7 @@ trait HasApproval
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle(__('Error throughout creating approval for getting a data for: ' . $model->uuid));
 
-            throw new Exception('Approval creation failed');
+            throw new Exception('Approval creation failed: eHealth request error');
         }
 
         // If $responseData['is_verified'] is not empty, it means that response contains all approval's data so we don't need to create eHealth job in the database.
@@ -134,7 +134,7 @@ trait HasApproval
             } catch (Exception $exception) {
                 $this->handleDatabaseErrors($exception, __('Error creating eHealth job request after response'));
 
-                throw new Exception('Approval creation failed');
+                throw new Exception('Approval creation failed: error creating eHealth job');
             }
 
             DB::transaction(function () use ($approval, $links, $job) {
@@ -174,7 +174,7 @@ trait HasApproval
         } else {
             Session::flash('error', __('patients.errors.error_creating_approval'));
 
-            throw new Exception('Approval creation failed');
+            throw new Exception('Approval creation failed: unknown error');
         }
     }
 
@@ -199,7 +199,7 @@ trait HasApproval
 
         $approval = is_a($model, Approval::class)
             ? $model
-            : Approval::getByModel($model->id, get_class($model))
+            : Approval::getByModel($model)
                 ->whereStatus(Status::APPROVED->value)
                 ->whereNotNull('uuid')
                 ->first();
@@ -244,7 +244,7 @@ trait HasApproval
             return false;
         }
 
-        $approval = Approval::getByModel($approvable?->id, get_class($approvable))
+        $approval = Approval::getByModel($approvable)
             ->whereStatus(Status::APPROVED->value)
             ->first();
 
