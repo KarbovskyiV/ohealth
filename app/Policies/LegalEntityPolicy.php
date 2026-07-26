@@ -123,10 +123,7 @@ class LegalEntityPolicy
             return Response::denyWithStatus(404);
         }
 
-        if (
-            $user->hasAllowedRole([Role::REORGANIZATION_OWNER, Role::OWNER, Role::ADMIN, Role::HR])
-            && Auth::guard('ehealth')->check()
-        ) {
+        if ($user->can('legal_entity:read') && $user->can('related_legal_entities:read')) {
             return Response::allow();
         }
 
