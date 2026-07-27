@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Person\Records;
+namespace App\Livewire\Episode;
 
+use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\Employee\Employee;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
@@ -15,7 +16,7 @@ use App\Models\Person\Person;
 use App\Models\Preperson;
 use Illuminate\Contracts\View\View;
 
-class PatientEpisodeView extends BasePatientComponent
+class EpisodeView extends BasePatientComponent
 {
     /**
      * Episode being displayed.
@@ -135,7 +136,7 @@ class PatientEpisodeView extends BasePatientComponent
 
     public function render(): View
     {
-        return view('livewire.person.records.episode-view')->with([
+        return view('livewire.episode.episode-view')->with([
             'episode' => $this->episode,
             'currentMainDiagnosis' => $this->currentMainDiagnosis
         ]);

@@ -143,15 +143,17 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <a href="{{ $prepersonId
-                        ? route('prepersons.episodes.create', [legalEntity(), 'preperson' => $prepersonId])
-                        : route('persons.episodes.create', [legalEntity(), 'person' => $personId]) }}"
-                       wire:navigate
-                       class="cursor-pointer text-blue-600 hover:text-blue-800 flex items-center gap-1.5 font-medium text-sm"
-                    >
-                        @icon('plus', 'w-4 h-4')
-                        <span>{{ __('episodes.create') ?? 'Створити епізод' }}</span>
-                    </a>
+                    @can('create', Episode::class)
+                        <a href="{{ $prepersonId
+                            ? route('prepersons.episodes.create', [legalEntity(), 'preperson' => $prepersonId])
+                            : route('persons.episodes.create', [legalEntity(), 'person' => $personId]) }}"
+                           wire:navigate
+                           class="cursor-pointer text-blue-600 hover:text-blue-800 flex items-center gap-1.5 font-medium text-sm"
+                        >
+                            @icon('plus', 'w-4 h-4')
+                            <span>{{ __('episodes.create') ?? 'Створити епізод' }}</span>
+                        </a>
+                    @endcan
 
                     <div class="relative" x-data="{ openGroupActions: false }"
                          @click.outside="openGroupActions = false">

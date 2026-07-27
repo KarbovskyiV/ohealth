@@ -9,7 +9,7 @@
     :prepersonId="$prepersonId"
     :patientFullName="$patientFullName"
     :hideNavigation="true"
-    :title="$episodeId ? __('episodes.edit_title', ['name' => $name]) : __('episodes.create_title')"
+    :title="__('episodes.edit_title', ['name' => $name])"
 >
     <x-slot name="headerActions"></x-slot>
 
@@ -145,54 +145,24 @@
                 </div>
             </div>
 
-            @if($episodeId)
-                <div class="form-row-3 pt-8">
-                    <div class="flex gap-4 col-span-1">
-                        <button type="button"
-                                wire:click="cancel"
-                                class="button-primary-outline-red flex-1 text-center py-2.5 text-sm rounded-lg"
-                        >
-                            {{ __('episodes.cancel_changes') }}
-                        </button>
+            <div class="form-row-3 pt-8">
+                <div class="flex gap-4 col-span-1">
+                    <button type="button"
+                            wire:click="cancel"
+                            class="button-primary-outline-red flex-1 text-center py-2.5 text-sm rounded-lg"
+                    >
+                        {{ __('episodes.cancel_changes') }}
+                    </button>
 
-                        <button type="submit"
-                                wire:loading.attr="disabled"
-                                wire:loading.class="opacity-50 cursor-not-allowed"
-                                class="button-primary flex-1 text-center py-2.5 text-sm rounded-lg"
-                        >
-                            {{ __('episodes.save_changes') }}
-                        </button>
-                    </div>
+                    <button type="submit"
+                            wire:loading.attr="disabled"
+                            wire:loading.class="opacity-50 cursor-not-allowed"
+                            class="button-primary flex-1 text-center py-2.5 text-sm rounded-lg"
+                    >
+                        {{ __('episodes.save_changes') }}
+                    </button>
                 </div>
-            @else
-                <div class="form-row-3 pt-8">
-                    <div class="flex gap-3 col-span-1">
-                        <button type="button"
-                                wire:click="cancel"
-                                class="button-primary-outline-red flex-1 text-center py-2.5 text-sm rounded-lg"
-                        >
-                            {{ __('forms.delete') }}
-                        </button>
-
-                        <button type="submit"
-                                wire:loading.attr="disabled"
-                                wire:loading.class="opacity-50 cursor-not-allowed"
-                                class="button-primary-outline flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm rounded-lg"
-                        >
-                            @icon('file-text', 'w-4 h-4')
-                            {{ __('forms.save') }}
-                        </button>
-
-                        <button type="submit"
-                                wire:loading.attr="disabled"
-                                wire:loading.class="opacity-50 cursor-not-allowed"
-                                class="button-primary flex-1 text-center py-2.5 text-sm rounded-lg"
-                        >
-                            {{ __('forms.create') }}
-                        </button>
-                    </div>
-                </div>
-            @endif
+            </div>
         </form>
     </div>
 </x-layouts.patient>

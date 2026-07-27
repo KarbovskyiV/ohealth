@@ -720,15 +720,16 @@ class EncounterComponent extends Component
     }
 
     /**
-     * Adjust episode types according to legal entity type and employee type.
+     * Adjust episode types to the ones allowed for the legal entity type and for the employee type at once,
+     * the same way EncounterForm validates the chosen type.
      *
      * @return void
      */
     protected function adjustEpisodeTypes(): void
     {
-        $keys = $this->getFilteredKeysFromConfig(
-            "legal_entity_episode_types.$this->legalEntityType",
-            "employee_episode_types.$this->role"
+        $keys = array_intersect(
+            config("ehealth.legal_entity_episode_types.$this->legalEntityType", []),
+            config("ehealth.employee_episode_types.$this->role", [])
         );
 
         $this->adjustDictionary('eHealth/episode_types', $keys);
