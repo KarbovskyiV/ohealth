@@ -29,10 +29,16 @@ return new class extends Migration
         // person columns into foreign keys (merge_person_id becomes NOT NULL).
         DB::table('merge_requests')->truncate();
 
-        Schema::table('merge_requests', static function (Blueprint $table): void {
-            if (Schema::hasColumn('merge_requests', 'preperson_id')) {
-                $table->dropConstrainedForeignId('preperson_id');
+        // Databases that carry the column without its foreign key would fail on a blind drop, so look the key up.
+        $prepersonForeignKey = collect(Schema::getForeignKeys('merge_requests'))
+            ->first(static fn (array $foreignKey): bool => in_array('preperson_id', $foreignKey['columns'], true));
+
+        Schema::table('merge_requests', static function (Blueprint $table) use ($prepersonForeignKey): void {
+            if ($prepersonForeignKey !== null) {
+                $table->dropForeign($prepersonForeignKey['name']);
             }
+
+            $table->dropColumn('preperson_id');
 
             if (Schema::hasColumn('merge_requests', 'master_person_id')) {
                 $table->dropColumn('master_person_id');
