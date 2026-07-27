@@ -396,13 +396,15 @@ return [
         '8302-2', '46098-0', '29463-7', 'stature', 'eye_colour', 'hair_color', 'hair_length', 'beard', 'mustache',
         'clothes', 'peculiarity'
     ],
-    // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583402009/Medical+Events+Dictionaries+and+configurations#legal_entity_%3CLEGAL_ENTITY_TYPE%3E_episode_types
+
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20213956636/DRAFT+Config+params+Legal+Entity+ENT-035
     'legal_entity_episode_types' => [
         'OUTPATIENT' => ['TREATMENT', 'PREVENTION', 'PALLIATIVE_CARE', 'DG', 'REHAB', 'CONDITIONING'],
         'PRIMARY_CARE' => ['TREATMENT', 'PREVENTION', 'PALLIATIVE_CARE', 'PHC'],
         'MSP' => ['TREATMENT', 'PHC', 'PREVENTION', 'PALLIATIVE_CARE'],
-        'MSP_PHARMACY' => ['TREATMENT', 'PREVENTION', 'PALLIATIVE_CARE']
+        'MSP_PHARMACY' => ['TREATMENT', 'PHC', 'PREVENTION', 'PALLIATIVE_CARE']
     ],
+
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583402009/Medical+Events+Dictionaries+and+configurations#episode_type_%3CeHealth%2Fepisode_types%3E_encounter_classes--dynamic-configuration-for-episode-types
     'episode_type_encounter_classes' => [
         'TREATMENT' => ['AMD', 'PHC', 'INPATIENT'],
@@ -413,13 +415,16 @@ return [
         'PHC' => ['PHC'],
         'CONDITIONING' => ['INPATIENT']
     ],
-    // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583402009/Medical+Events+Dictionaries+and+configurations#employee_%3CEMPLOYEE_TYPE%3E_episode_types
+
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20217659393/DRAFT+Config+params+Episode+of+Care+ENT-027
     'employee_episode_types' => [
         'SPECIALIST' => ['TREATMENT', 'PREVENTION', 'PALLIATIVE_CARE', 'DG', 'REHAB', 'CONDITIONING'],
         'DOCTOR' => ['TREATMENT', 'PREVENTION', 'PALLIATIVE_CARE', 'PHC'],
-        'ASSISTANT' => ['TREATMENT'],
+        'ASSISTANT' => ['PREVENTION'],
         'MED_COORDINATOR' => ['TREATMENT', 'DG']
     ],
+    'allowed_episode_care_manager_employee_types' => ['DOCTOR', 'SPECIALIST', 'ASSISTANT', 'MED_COORDINATOR'],
+
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/17999298851/RC_+CSI-1323+_Create+Update+person+request+v2#Validate-person-documents
     'expiration_date_exists' => [
         'NATIONAL_ID', 'COMPLEMENTARY_PROTECTION_CERTIFICATE', 'PERMANENT_RESIDENCE_PERMIT', 'REFUGEE_CERTIFICATE',

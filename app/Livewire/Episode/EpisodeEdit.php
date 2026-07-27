@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Person\Records;
+namespace App\Livewire\Episode;
 
+use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\Person\Person;
@@ -11,15 +12,15 @@ use App\Models\Preperson;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 
-class PatientEpisodeEdit extends BasePatientComponent
+class EpisodeEdit extends BasePatientComponent
 {
     /**
-     * Local episode ID; `null` when creating a new episode.
+     * Local episode ID.
      *
-     * @var int|null
+     * @var int
      */
     #[Locked]
-    public ?int $episodeId = null;
+    public int $episodeId;
 
     public string $name = '';
 
@@ -40,7 +41,7 @@ class PatientEpisodeEdit extends BasePatientComponent
     public array $episodeStatuses = [];
 
     /**
-     * Bind the route models; the episode is absent on the create route.
+     * Bind the route models and the episode being edited.
      *
      * @param  LegalEntity  $legalEntity
      * @param  Person|null  $person
@@ -56,7 +57,7 @@ class PatientEpisodeEdit extends BasePatientComponent
     ): void {
         parent::mount($legalEntity, $person, $preperson);
 
-        $this->episodeId = $episode?->id;
+        $this->episodeId = $episode->id;
     }
 
     public function save(): void
@@ -69,6 +70,6 @@ class PatientEpisodeEdit extends BasePatientComponent
 
     public function render(): View
     {
-        return view('livewire.person.records.episode-edit');
+        return view('livewire.episode.episode-edit');
     }
 }

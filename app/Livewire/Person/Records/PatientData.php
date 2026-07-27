@@ -48,6 +48,13 @@ class PatientData extends BasePatientComponent
 
     public string $lastName;
 
+    /**
+     * Patient verification status.
+     *
+     * @var string
+     */
+    public string $verificationStatus;
+
     public array $phones = [];
 
     public array $confidantPersonRelationships = [];
@@ -157,6 +164,7 @@ class PatientData extends BasePatientComponent
 
         $this->firstName = $patient->primaryName?->firstName ?? '';
         $this->lastName = $patient->primaryName?->lastName ?? '';
+        $this->verificationStatus = $patient->verificationStatus;
         $this->phones = $patient->phones->toArray();
         $this->form->person = Arr::toCamelCase($patient->toArray());
         $this->confidantPersonRelationshipRequests = $this->loadConfidantPersonRelationshipRequests($patient);

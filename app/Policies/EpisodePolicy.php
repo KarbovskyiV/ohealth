@@ -20,4 +20,16 @@ class EpisodePolicy
 
         return Response::allow();
     }
+
+    /**
+     * Determine whether the user can create an episode.
+     */
+    public function create(User $user): Response
+    {
+        if ($user->cannot('episode:write')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
 }

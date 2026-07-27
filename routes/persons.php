@@ -10,6 +10,10 @@ use App\Livewire\DiagnosticReport\DiagnosticReportCreate;
 use App\Livewire\DiagnosticReport\DiagnosticReportEdit;
 use App\Livewire\Encounter\EncounterCreate;
 use App\Livewire\Encounter\EncounterEdit;
+use App\Livewire\Episode\EpisodeCreate;
+use App\Livewire\Episode\EpisodeEdit;
+use App\Livewire\Episode\EpisodeView;
+use App\Livewire\Episode\EpisodeIndex;
 use App\Livewire\Person\PersonCreate;
 use App\Livewire\Person\PersonIndex;
 use App\Livewire\Person\PersonRequestEdit;
@@ -20,13 +24,10 @@ use App\Livewire\Person\Records\PatientConditions;
 use App\Livewire\Person\Records\PatientData;
 use App\Livewire\Person\Records\PatientDiagnoses;
 use App\Livewire\Person\Records\PatientDiagnosticReports;
-use App\Livewire\Person\Records\PatientProcedures;
 use App\Livewire\Person\Records\PatientEncounters;
-use App\Livewire\Person\Records\PatientEpisodes;
-use App\Livewire\Person\Records\PatientEpisodeEdit;
-use App\Livewire\Person\Records\PatientEpisodeView;
 use App\Livewire\Person\Records\PatientImmunizations;
 use App\Livewire\Person\Records\PatientObservations;
+use App\Livewire\Person\Records\PatientProcedures;
 use App\Livewire\Person\Records\PatientSummary;
 use App\Livewire\Preperson\PrepersonData;
 use App\Livewire\Preperson\PrepersonEdit;
@@ -66,13 +67,15 @@ Route::prefix('persons')->group(static function () {
         Route::middleware('can:view,' . Person::class)->group(function () {
             Route::get('/{person}/patient-data', PatientData::class)->name('patient-data');
             Route::get('/{person}/summary', PatientSummary::class)->can('view', Person::class)->name('summary');
-            Route::get('/{person}/episodes', PatientEpisodes::class)->can('view', Episode::class)->name('episodes');
-            Route::get('/{person}/episodes/create', PatientEpisodeEdit::class)->name('episodes.create');
-            Route::get('/{person}/episodes/{episode:id}', PatientEpisodeView::class)
+            Route::get('/{person}/episodes', EpisodeIndex::class)->can('view', Episode::class)->name('episodes');
+            Route::get('/{person}/episodes/create', EpisodeCreate::class)
+                ->can('create', Episode::class)
+                ->name('episodes.create');
+            Route::get('/{person}/episodes/{episode:id}', EpisodeView::class)
                 ->can('view', Episode::class)
                 ->whereNumber('episode')
                 ->name('episodes.view');
-            Route::get('/{person}/episodes/{episode:id}/edit', PatientEpisodeEdit::class)
+            Route::get('/{person}/episodes/{episode:id}/edit', EpisodeEdit::class)
                 ->whereNumber('episode')
                 ->name('episodes.edit');
             Route::get('/{person}/care-plans', PatientCarePlans::class)->name('care-plans');
@@ -141,15 +144,16 @@ Route::prefix('prepersons')
 
         Route::get('/{preperson}/patient-data', PrepersonData::class)->can('view', 'preperson')->name('patient-data');
         Route::get('/{preperson}/summary', PatientSummary::class)->can('view', 'preperson')->name('summary');
-        Route::get('/{preperson}/episodes', PatientEpisodes::class)->can('view', 'preperson')->name('episodes');
-        Route::get('/{preperson}/episodes/create', PatientEpisodeEdit::class)
+        Route::get('/{preperson}/episodes', EpisodeIndex::class)->can('view', 'preperson')->name('episodes');
+        Route::get('/{preperson}/episodes/create', EpisodeCreate::class)
             ->can('view', 'preperson')
+            ->can('create', Episode::class)
             ->name('episodes.create');
-        Route::get('/{preperson}/episodes/{episode:id}', PatientEpisodeView::class)
+        Route::get('/{preperson}/episodes/{episode:id}', EpisodeView::class)
             ->can('view', 'preperson')
             ->whereNumber('episode')
             ->name('episodes.view');
-        Route::get('/{preperson}/episodes/{episode:id}/edit', PatientEpisodeEdit::class)
+        Route::get('/{preperson}/episodes/{episode:id}/edit', EpisodeEdit::class)
             ->can('view', 'preperson')
             ->whereNumber('episode')
             ->name('episodes.edit');

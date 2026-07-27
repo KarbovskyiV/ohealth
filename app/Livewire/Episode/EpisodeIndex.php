@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Person\Records;
+namespace App\Livewire\Episode;
 
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
@@ -11,6 +11,7 @@ use App\Enums\JobStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\EpisodeFullSync;
+use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Episode;
@@ -26,7 +27,7 @@ use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
 use Throwable;
 
-class PatientEpisodes extends BasePatientComponent
+class EpisodeIndex extends BasePatientComponent
 {
     use BatchLegalEntityQueries;
     use HandlesSyncBatch;
@@ -262,6 +263,6 @@ class PatientEpisodes extends BasePatientComponent
 
     public function render(): View
     {
-        return view('livewire.person.records.episodes');
+        return view('livewire.episode.episode-index');
     }
 }

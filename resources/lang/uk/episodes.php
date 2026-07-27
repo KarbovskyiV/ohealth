@@ -59,6 +59,20 @@ return [
     'diagnosis_date' => 'Дата створення діагнозу',
 
     'messages' => [
-        'synced_successfully' => 'Епізоди успішно синхронізовані'
+        'synced_successfully' => 'Епізоди успішно синхронізовані',
+        'created' => 'Епізод успішно створено',
+        'draft_created' => 'Чернетку епізоду збережено'
+    ],
+
+    'policy' => [
+        'create' => 'У вас немає прав на створення епізоду'
+    ],
+
+    'validation' => [
+        'id_exists' => 'Такий епізод вже існує',
+        'type_forbidden_for_legal_entity' => 'Тип епізоду :type недоступний для вашого типу закладу',
+        'type_forbidden_for_employee' => 'Тип епізоду :type недоступний для вашого типу працівника',
+        'care_manager_type_not_allowed' => 'Обраний працівник не може бути лікуючим лікарем епізоду',
+        'care_manager_not_active' => 'Обраний лікар не є активним працівником закладу'
     ]
 ];

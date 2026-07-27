@@ -313,14 +313,14 @@
                                                         </a>
                                                     @endcan
 
-                                                    @can('view', Episode::class)
+                                                    @can('create', Episode::class)
                                                         <a
                                                             wire:click="redirectTo('{{ $patient['id'] }}', 'persons.episodes.create')"
                                                             class="dropdown-button !flex items-center gap-2 px-4 py-2.5 text-sm w-full hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer text-left text-gray-700 dark:text-gray-200"
                                                             @click="openInteractionDropdown = false"
                                                         >
                                                             @icon('book', 'w-4 h-4 text-gray-400')
-                                                            {{ __('patients.create_episode') }}
+                                                            {{ __('episodes.create') }}
                                                         </a>
                                                     @endcan
                                                 </div>
