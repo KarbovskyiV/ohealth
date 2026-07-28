@@ -38,6 +38,7 @@ return [
     'source_link' => 'Посилання на джерело',
     'body_part' => 'Частина тіла',
     'diagnostic_reports' => 'Діагностичні звіти',
+    'select_division_to_create_diagnostic_report' => 'Оберіть місце надання послуг, щоб створити діагностичний звіт',
     'notes' => 'Нотатки',
     'author' => 'Автор',
     'conclusion' => 'Заключення',
@@ -379,6 +380,7 @@ return [
     'effective_period' => 'Період проведення діагностики',
     'effective_period_start' => 'Дата та час початку діагностики',
     'effective_period_end' => 'Дата та час завершення діагностики',
+    'division_filled_from_encounter' => 'Поле автоматично заповниться відповідно до МНП, обраного у взаємодії.',
 
     // Observations
     'value' => 'Значення',

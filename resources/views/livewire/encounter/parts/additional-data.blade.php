@@ -190,6 +190,9 @@
 
     <div class="form-group group">
         <select wire:model="form.encounter.divisionId"
+                x-on:change="$dispatch('encounter-division-changed', {
+                    divisionId: $event.target.value
+                })"
                 id="divisionNames"
                 class="input-select peer @error('form.encounter.divisionId') input-error @enderror"
         >

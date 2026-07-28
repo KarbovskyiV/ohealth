@@ -761,10 +761,22 @@ class EncounterComponent extends Component
      */
     protected function adjustEncounterTypes(): void
     {
-        $selectedClass = key($this->dictionaries['eHealth/encounter_classes']);
-        $keys = $this->getFilteredKeysFromConfig("encounter_class_encounter_types.$selectedClass");
+        $selectedClass = $this->form->encounter['classCode'] ?: key($this->dictionaries['eHealth/encounter_classes']);
+        $classEncounterTypes = config("ehealth.encounter_class_encounter_types.$selectedClass", []);
+
+        $roleEncounterTypes = Auth::user()->allowedRoles
+            ->flatMap(static fn (string $role): array => config("ehealth.performer_employee_encounter_types.$role", []))
+            ->unique()
+            ->values()
+            ->all();
+
+        $keys = array_values(array_intersect($classEncounterTypes, $roleEncounterTypes));
 
         $this->adjustDictionary('eHealth/encounter_types', $keys);
+
+        if (count($this->dictionaries['eHealth/encounter_types']) === 1) {
+            $this->form->encounter['typeCode'] = array_key_first($this->dictionaries['eHealth/encounter_types']);
+        }
     }
 
     /**

@@ -49,52 +49,73 @@
                              x-id="['dropdown-button']"
                              class="relative"
                         >
-                            {{-- Dropdown Button --}}
-                            <button x-ref="button"
-                                    @click="toggle()"
-                                    :aria-expanded="openDropdown"
-                                    :aria-controls="$id('dropdown-button')"
-                                    type="button"
-                                    class="record-inner-action-btn cursor-pointer"
-                            >
-                                <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
-                                     xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-                                     viewBox="0 0 24 24"
-                                >
-                                    <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
-                                          stroke-width="2"
-                                          d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
-                                    />
-                                </svg>
-                            </button>
-
-                            {{-- Dropdown Panel --}}
-                            <div class="absolute right-0 z-50">
-                                <div x-ref="panel"
-                                     x-show="openDropdown"
-                                     x-transition.origin.top.left
-                                     @click.outside="close($refs.button)"
-                                     :id="$id('dropdown-button')"
-                                     x-cloak
-                                     class="dropdown-panel relative"
-                                >
-                                    <button @click.prevent="
+                            @if($isReadonly)
+                                <a
+                                    href="#"
+                                    @click.prevent="
                                         item = index;
-                                        modalClinicalImpression = JSON.parse(JSON.stringify(clinicalImpressions[index]));
+                                        modalClinicalImpression = JSON.parse(
+                                            JSON.stringify(clinicalImpressions[index])
+                                        );
                                         newClinicalImpression = false;
                                         openClinicalImpressionDrawer = true;
-                                        close($refs.button);
                                     "
+                                    class="record-inner-action-btn cursor-pointer"
+                                    title="{{ __('forms.view') }}"
+                                >
+                                    @icon('eye', 'w-6 h-6')
+                                    <span class="sr-only">
+                                        {{ __('forms.view') }}
+                                    </span>
+                                </a>
+                            @else
+                                {{-- Dropdown Button --}}
+                                <button x-ref="button"
+                                        @click="toggle()"
+                                        :aria-expanded="openDropdown"
+                                        :aria-controls="$id('dropdown-button')"
+                                        type="button"
+                                        class="record-inner-action-btn cursor-pointer"
+                                >
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                                        viewBox="0 0 24 24"
                                     >
-                                        {{ __('forms.edit') }}
-                                    </button>
+                                        <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
+                                        />
+                                    </svg>
+                                </button>
 
-                                    <button class="dropdown-delete"
-                                            @click.prevent="clinicalImpressions.splice(index, 1); close($refs.button)">
-                                        {{ __('forms.delete') }}
-                                    </button>
+                                {{-- Dropdown Panel --}}
+                                <div class="absolute right-0 z-50">
+                                    <div x-ref="panel"
+                                        x-show="openDropdown"
+                                        x-transition.origin.top.left
+                                        @click.outside="close($refs.button)"
+                                        :id="$id('dropdown-button')"
+                                        x-cloak
+                                        class="dropdown-panel relative"
+                                    >
+                                        <button @click.prevent="
+                                            item = index;
+                                            modalClinicalImpression = JSON.parse(JSON.stringify(clinicalImpressions[index]));
+                                            newClinicalImpression = false;
+                                            openClinicalImpressionDrawer = true;
+                                            close($refs.button);
+                                        "
+                                        >
+                                            {{ __('forms.edit') }}
+                                        </button>
+
+                                        <button class="dropdown-delete"
+                                                @click.prevent="clinicalImpressions.splice(index, 1); close($refs.button)">
+                                            {{ __('forms.delete') }}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -143,32 +164,41 @@
             </x-slot>
 
             <form>
-                @include('livewire.encounter.clinical-impression-parts.main-information')
-                @include('livewire.encounter.clinical-impression-parts.problems')
-                @include('livewire.encounter.clinical-impression-parts.findings')
-                @include('livewire.encounter.clinical-impression-parts.supporting-info')
-                @include('livewire.encounter.clinical-impression-parts.additional-information')
+                <fieldset
+                    @disabled($isReadonly)
+                    @class([
+                        'pointer-event-none' => $isReadonly
+                    ])
+                >
+                    @include('livewire.encounter.clinical-impression-parts.main-information')
+                    @include('livewire.encounter.clinical-impression-parts.problems')
+                    @include('livewire.encounter.clinical-impression-parts.findings')
+                    @include('livewire.encounter.clinical-impression-parts.supporting-info')
+                    @include('livewire.encounter.clinical-impression-parts.additional-information')
 
-                <div class="mt-6 flex justify-between space-x-2">
-                    <button type="button"
-                            @click="openClinicalImpressionDrawer = false"
-                            class="button-minor"
-                    >
-                        {{ __('forms.cancel') }}
-                    </button>
+                    <div class="mt-6 flex justify-between space-x-2">
+                        <button type="button"
+                                @click="openClinicalImpressionDrawer = false"
+                                class="button-minor"
+                        >
+                            {{ $isReadonly ? __('forms.close') : __('forms.cancel') }}
+                        </button>
 
-                    <button @click.prevent="
-                                newClinicalImpression !== false
-                                    ? clinicalImpressions.push(modalClinicalImpression)
-                                    : clinicalImpressions[item] = modalClinicalImpression;
-                                openClinicalImpressionDrawer = false;
-                            "
-                            class="button-primary"
-                            :disabled="!modalClinicalImpression.codeCode.trim()"
-                    >
-                        {{ __('forms.save') }}
-                    </button>
-                </div>
+                        @unless($isReadonly)
+                            <button @click.prevent="
+                                        newClinicalImpression !== false
+                                            ? clinicalImpressions.push(modalClinicalImpression)
+                                            : clinicalImpressions[item] = modalClinicalImpression;
+                                        openClinicalImpressionDrawer = false;
+                                    "
+                                    class="button-primary"
+                                    :disabled="!modalClinicalImpression.codeCode.trim()"
+                            >
+                                {{ __('forms.save') }}
+                            </button>
+                        @endunless
+                    </div>
+                </fieldset>
             </form>
         </x-dialog-drawer>
     </div>

@@ -103,9 +103,11 @@ class DiagnosticReportMapper implements FhirMapperContract
 
         if ($data['primarySource']) {
             $result['performer'] = [
-                'reference' => FhirResource::make()
-                    ->coding('eHealth/resources', 'employee')
-                    ->toIdentifier($data['performerEmployeeId']),
+                [
+                    'reference' => FhirResource::make()
+                        ->coding('eHealth/resources', 'employee')
+                        ->toIdentifier($data['performerEmployeeId']),
+                ],
             ];
         } else {
             $result['reportOrigin'] = FhirResource::make()
@@ -122,7 +124,7 @@ class DiagnosticReportMapper implements FhirMapperContract
             $result['resultsInterpreter'] = [
                 'reference' => FhirResource::make()
                     ->coding('eHealth/resources', 'employee')
-                    ->toIdentifier($data['resultsInterpreterEmployeeId'])
+                    ->toIdentifier($data['resultsInterpreterEmployeeId']),
             ];
         }
 
@@ -152,7 +154,7 @@ class DiagnosticReportMapper implements FhirMapperContract
             'conclusionCode' => data_get($data, 'conclusionCode.coding.0.code', ''),
             'conclusion' => data_get($data, 'conclusion', ''),
             'divisionId' => data_get($data, 'division.identifier.value', ''),
-            'performerEmployeeId' => data_get($data, 'performer.reference.identifier.value', ''),
+            'performerEmployeeId' => data_get($data, 'performer.0.reference.identifier.value', data_get($data, 'performer.reference.identifier.value', '')),
             'usedReferences' => collect(data_get($data, 'usedReferences', []))
                 ->map(static fn (array $usedReference) => [
                     'id' => data_get($usedReference, 'identifier.value', ''),

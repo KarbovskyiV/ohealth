@@ -59,9 +59,10 @@ class ProcedureRepository extends BaseRepository
                 Repository::codeableConcept()->attach($recordedBy, $datum['recordedBy']);
 
                 $performer = null;
-                if (isset($datum['performer'])) {
-                    $performer = Repository::identifier()->store($datum['performer']['identifier']['value']);
-                    Repository::codeableConcept()->attach($performer, $datum['performer']);
+                $performerData = data_get($datum, 'performer.0') ?? data_get($datum, 'performer');
+                if (!empty($performerData)) {
+                    $performer = Repository::identifier()->store($performerData['identifier']['value']);
+                    Repository::codeableConcept()->attach($performer, $performerData);
                 }
 
                 $division = null;
@@ -311,7 +312,8 @@ class ProcedureRepository extends BaseRepository
                 $encounter = $this->syncIdentifier($existing, $data['encounter'] ?? null, 'encounter');
                 $originEpisode = $this->syncIdentifier($existing, $data['origin_episode'] ?? null, 'originEpisode');
                 $recordedBy = $this->syncIdentifier($existing, $data['recorded_by'], 'recordedBy');
-                $performer = $this->syncIdentifier($existing, $data['performer'] ?? null, 'performer');
+                $performerData = data_get($data, 'performer.0') ?? ($data['performer'] ?? null);
+                $performer = $this->syncIdentifier($existing, $performerData, 'performer');
                 $reportOrigin = $this->syncCodeableConcept($existing, $data['report_origin'] ?? null, 'reportOrigin');
                 $division = $this->syncIdentifier($existing, $data['division'] ?? null, 'division');
                 $managingOrganization = $this->syncIdentifier($existing, $data['managing_organization'], 'managingOrganization');

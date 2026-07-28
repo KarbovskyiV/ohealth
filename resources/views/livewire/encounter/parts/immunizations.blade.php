@@ -72,52 +72,73 @@
                              x-id="['dropdown-button']"
                              class="relative"
                         >
-                            {{-- Dropdown Button --}}
-                            <button x-ref="button"
-                                    @click="toggle()"
-                                    :aria-expanded="openDropdown"
-                                    :aria-controls="$id('dropdown-button')"
-                                    type="button"
+                            @if($isReadonly)
+                                <a
+                                    href="#"
+                                    @click.prevent="
+                                        openModal = true;
+                                        item = index;
+                                        modalImmunization = JSON.parse(
+                                            JSON.stringify(immunizations[index])
+                                        );
+                                        newImmunization = false;
+                                    "
                                     class="record-inner-action-btn cursor-pointer"
-                            >
-                                <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
-                                     xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-                                     viewBox="0 0 24 24"
+                                    title="{{ __('forms.view') }}"
                                 >
-                                    <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
-                                          stroke-width="2"
-                                          d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
-                                    />
-                                </svg>
-                            </button>
-
-                            {{-- Dropdown Panel --}}
-                            <div class="absolute right-0 z-50">
-                                <div x-ref="panel"
-                                     x-show="openDropdown"
-                                     x-transition.origin.top.left
-                                     @click.outside="close($refs.button)"
-                                     :id="$id('dropdown-button')"
-                                     x-cloak
-                                     class="dropdown-panel relative"
+                                    @icon('eye', 'w-6 h-6')
+                                    <span class="sr-only">
+                                        {{ __('forms.view') }}
+                                    </span>
+                                </a>
+                            @else
+                                {{-- Dropdown Button --}}
+                                <button x-ref="button"
+                                        @click="toggle()"
+                                        :aria-expanded="openDropdown"
+                                        :aria-controls="$id('dropdown-button')"
+                                        type="button"
+                                        class="record-inner-action-btn cursor-pointer"
                                 >
-                                    <button @click.prevent="
-                                                openModal = true;
-                                                item = index;
-                                                modalImmunization = JSON.parse(JSON.stringify(immunizations[index]));
-                                                newImmunization = false;
-                                                close($refs.button);
-                                            "
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                                        viewBox="0 0 24 24"
                                     >
-                                        {{ __('forms.edit') }}
-                                    </button>
+                                        <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
+                                        />
+                                    </svg>
+                                </button>
 
-                                    <button class="dropdown-delete"
-                                            @click.prevent="immunizations.splice(index, 1); close($refs.button)">
-                                        {{ __('forms.delete') }}
-                                    </button>
+                                {{-- Dropdown Panel --}}
+                                <div class="absolute right-0 z-50">
+                                    <div x-ref="panel"
+                                        x-show="openDropdown"
+                                        x-transition.origin.top.left
+                                        @click.outside="close($refs.button)"
+                                        :id="$id('dropdown-button')"
+                                        x-cloak
+                                        class="dropdown-panel relative"
+                                    >
+                                        <button @click.prevent="
+                                                    openModal = true;
+                                                    item = index;
+                                                    modalImmunization = JSON.parse(JSON.stringify(immunizations[index]));
+                                                    newImmunization = false;
+                                                    close($refs.button);
+                                                "
+                                        >
+                                            {{ __('forms.edit') }}
+                                        </button>
+
+                                        <button class="dropdown-delete"
+                                                @click.prevent="immunizations.splice(index, 1); close($refs.button)">
+                                            {{ __('forms.delete') }}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -303,72 +324,81 @@
 
                         {{-- Content --}}
                         <form>
-                            @include('livewire.encounter.immunization-parts.data')
-                            @include('livewire.encounter.immunization-parts.information-about')
-                            @include('livewire.encounter.immunization-parts.vaccination-protocol')
+                            <fieldset
+                                @disabled($isReadonly)
+                                @class([
+                                    'pointer-events-none' => $isReadonly
+                                ])
+                            >
+                                @include('livewire.encounter.immunization-parts.data')
+                                @include('livewire.encounter.immunization-parts.information-about')
+                                @include('livewire.encounter.immunization-parts.vaccination-protocol')
 
-                            <div class="mt-6 flex justify-between space-x-2">
-                                <button type="button"
-                                        @click="openModal = false"
-                                        class="button-minor"
-                                >
-                                    {{ __('forms.cancel') }}
-                                </button>
+                                <div class="mt-6 flex justify-between space-x-2">
+                                    <button type="button"
+                                            @click="openModal = false"
+                                            class="button-minor"
+                                    >
+                                        {{ $isReadonly ? __('forms.close') : __('forms.cancel') }}
+                                    </button>
 
-                                <button @click.prevent="
-                                            const newImmunizationCode = modalImmunization.vaccineCode;
+                                    @unless($isReadonly)
+                                        <button @click.prevent="
+                                                    const newImmunizationCode = modalImmunization.vaccineCode;
 
-                                            // Check for duplicates, excluding the current item when editing
-                                            let hasDuplicate = false;
+                                                    // Check for duplicates, excluding the current item when editing
+                                                    let hasDuplicate = false;
 
-                                            if (newImmunization) {
-                                                // For new immunization, check all existing ones
-                                                hasDuplicate = immunizations.some(
-                                                    immunization => immunization.vaccineCode === newImmunizationCode
-                                                );
-                                            } else {
-                                                // For editing, check all except the current item
-                                                hasDuplicate = immunizations.some(
-                                                    (immunization, index) => index !== item && immunization.vaccineCode === newImmunizationCode
-                                                );
-                                            }
+                                                    if (newImmunization) {
+                                                        // For new immunization, check all existing ones
+                                                        hasDuplicate = immunizations.some(
+                                                            immunization => immunization.vaccineCode === newImmunizationCode
+                                                        );
+                                                    } else {
+                                                        // For editing, check all except the current item
+                                                        hasDuplicate = immunizations.some(
+                                                            (immunization, index) => index !== item && immunization.vaccineCode === newImmunizationCode
+                                                        );
+                                                    }
 
-                                            if (hasDuplicate) {
-                                                showDuplicateCodeWarning = true;
-                                                return;
-                                            }
+                                                    if (hasDuplicate) {
+                                                        showDuplicateCodeWarning = true;
+                                                        return;
+                                                    }
 
-                                            if (modalImmunization.notGiven) {
-                                                modalImmunization.reasons = [];
-                                            } else {
-                                                modalImmunization.reasonNotGivenCode = '';
-                                            }
+                                                    if (modalImmunization.notGiven) {
+                                                        modalImmunization.reasons = [];
+                                                    } else {
+                                                        modalImmunization.reasonNotGivenCode = '';
+                                                    }
 
-                                            newImmunization !== false
-                                                ? immunizations.push(modalImmunization)
-                                                : immunizations[item] = modalImmunization;
+                                                    newImmunization !== false
+                                                        ? immunizations.push(modalImmunization)
+                                                        : immunizations[item] = modalImmunization;
 
-                                            showDuplicateCodeWarning = false;
-                                            openModal = false;
-                                        "
-                                        class="button-primary"
-                                        :disabled="!(
-                                            modalImmunization.date.trim() &&
-                                            modalImmunization.time.trim() &&
-                                            (modalImmunization.reasons?.[0]?.code?.trim?.() || modalImmunization.reasonNotGivenCode?.trim?.()) &&
-                                            (modalImmunization.vaccinationProtocols.length > 0 &&
-                                             (!modalImmunization.primarySource ||
-                                              modalImmunization.vaccinationProtocols.every(protocol => protocol.doseSequence && protocol.series && protocol.seriesDoses)))
-                                        )"
-                                >
-                                    {{ __('forms.save') }}
-                                </button>
-                            </div>
-                            <template x-if="showDuplicateCodeWarning">
-                                <p class="text-error text-right">
-                                    {!! __('patients.duplicate_code_warning') !!}
-                                </p>
-                            </template>
+                                                    showDuplicateCodeWarning = false;
+                                                    openModal = false;
+                                                "
+                                                class="button-primary"
+                                                :disabled="!(
+                                                    modalImmunization.date.trim() &&
+                                                    modalImmunization.time.trim() &&
+                                                    (modalImmunization.reasons?.[0]?.code?.trim?.() || modalImmunization.reasonNotGivenCode?.trim?.()) &&
+                                                    (modalImmunization.vaccinationProtocols.length > 0 &&
+                                                    (!modalImmunization.primarySource ||
+                                                    modalImmunization.vaccinationProtocols.every(protocol => protocol.doseSequence && protocol.series && protocol.seriesDoses)))
+                                                )"
+                                        >
+                                            {{ __('forms.save') }}
+                                        </button>
+                                    @endunless
+                                </div>
+                                <template x-if="showDuplicateCodeWarning">
+                                    <p class="text-error text-right">
+                                        {!! __('patients.duplicate_code_warning') !!}
+                                    </p>
+                                </template>
+                            </fieldset>
                         </form>
                     </div>
                 </div>

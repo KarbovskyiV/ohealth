@@ -125,6 +125,12 @@
                 @error($diagnosticReportErrorPath . '.divisionId')
                 <p class="text-error">{{ $message }}</p>
                 @enderror
+
+                @if($isEncounterContext ?? false)
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {{ __('patients.division_filled_from_encounter') }}
+                    </p>
+                @endif
             </div>
         </div>
     @endif
@@ -381,6 +387,7 @@
         </div>
     </div>
 
+    @unless($isEncounterContext ?? false)
     {{-- Effective period --}}
     <div
         x-show="
@@ -557,6 +564,7 @@
             </div>
         </div>
     </div>
+    @endunless
 
     {{-- Used references / Equipment --}}
     @if($context === 'diagnostic-report')

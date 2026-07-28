@@ -1,6 +1,9 @@
 <div
     class="p-4 sm:p-8"
     id="diagnostic-reports-section"
+    x-on:encounter-division-changed.window="
+        divisionId = $event.detail.divisionId
+    "
     x-data="{
          diagnosticReports: $wire.entangle('form.diagnosticReports'),
          modalDiagnosticReport: new DiagnosticReport(),
@@ -11,6 +14,7 @@
          servicesDictionary: $wire.dictionaries['custom/services'],
          equipmentOptions: @js($equipmentOptions),
          diagnosticReportEmployees: @js($diagnosticReportEmployees),
+         divisionId: @js(data_get($this->form->encounter, 'divisionId', '')),
 
         addUsedReference() {
             this.modalDiagnosticReport.usedReferences.push({
@@ -144,57 +148,78 @@
                             x-id="['dropdown-button']"
                             class="relative"
                         >
-                            {{-- Dropdown Button --}}
-                            <button
-                                x-ref="button"
-                                @click="toggle()"
-                                :aria-expanded="openDropdown"
-                                :aria-controls="$id('dropdown-button')"
-                                type="button"
-                                class="record-inner-action-btn cursor-pointer"
-                            >
-                                <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
-                                     xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-                                     viewBox="0 0 24 24"
+                            @if($isReadonly)
+                                <a
+                                    href="#"
+                                    @click.prevent="
+                                        item = index;
+                                        modalDiagnosticReport = JSON.parse(
+                                            JSON.stringify(diagnosticReports[index])
+                                        );
+                                        newDiagnosticReport = false;
+                                        openDiagnosticReportDrawer = true;
+                                    "
+                                    class="record-inner-action-btn cursor-pointer"
+                                    title="{{ __('forms.view') }}"
                                 >
-                                    <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
-                                          stroke-width="2"
-                                          d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
-                                    />
-                                </svg>
-                            </button>
-
-                            {{-- Dropdown Panel --}}
-                            <div class="absolute right-0 z-50">
-                                <div
-                                    x-ref="panel"
-                                    x-show="openDropdown"
-                                    x-transition.origin.top.left
-                                    @click.outside="close($refs.button)"
-                                    :id="$id('dropdown-button')"
-                                    x-cloak
-                                    class="dropdown-panel relative"
+                                    @icon('eye', 'w-6 h-6')
+                                    <span class="sr-only">
+                                        {{ __('forms.view') }}
+                                    </span>
+                                </a>
+                            @else
+                                {{-- Dropdown Button --}}
+                                <button
+                                    x-ref="button"
+                                    @click="toggle()"
+                                    :aria-expanded="openDropdown"
+                                    :aria-controls="$id('dropdown-button')"
+                                    type="button"
+                                    class="record-inner-action-btn cursor-pointer"
                                 >
-                                    <button
-                                        @click.prevent="
-                                            item = index;
-                                            modalDiagnosticReport = JSON.parse(JSON.stringify(diagnosticReports[index]));
-                                            newDiagnosticReport = false;
-                                            openDiagnosticReportDrawer = true;
-                                            close($refs.button);
-                                        "
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                                        viewBox="0 0 24 24"
                                     >
-                                        {{ __('forms.edit') }}
-                                    </button>
+                                        <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
+                                        />
+                                    </svg>
+                                </button>
 
-                                    <button
-                                        class="dropdown-delete"
-                                        @click.prevent="diagnosticReports.splice(index, 1); close($refs.button)"
+                                {{-- Dropdown Panel --}}
+                                <div class="absolute right-0 z-50">
+                                    <div
+                                        x-ref="panel"
+                                        x-show="openDropdown"
+                                        x-transition.origin.top.left
+                                        @click.outside="close($refs.button)"
+                                        :id="$id('dropdown-button')"
+                                        x-cloak
+                                        class="dropdown-panel relative"
                                     >
-                                        {{ __('forms.delete') }}
-                                    </button>
+                                        <button
+                                            @click.prevent="
+                                                item = index;
+                                                modalDiagnosticReport = JSON.parse(JSON.stringify(diagnosticReports[index]));
+                                                newDiagnosticReport = false;
+                                                openDiagnosticReportDrawer = true;
+                                                close($refs.button);
+                                            "
+                                        >
+                                            {{ __('forms.edit') }}
+                                        </button>
+
+                                        <button
+                                            class="dropdown-delete"
+                                            @click.prevent="diagnosticReports.splice(index, 1); close($refs.button)"
+                                        >
+                                            {{ __('forms.delete') }}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -227,8 +252,24 @@
         </template>
     </div>
 
+    <div
+        x-show="!divisionId"
+        x-cloak
+        class="flex items-center gap-3 p-5 my-5 bg-[#e8f1fc] dark:bg-blue-950/40 border border-[#d2e4f9] dark:border-blue-900 rounded-xl"
+    >
+        <span class="shrink-0 text-[#2563eb] dark:text-[#60a5fa]">
+            @icon('info-circle', 'w-5 h-5')
+        </span>
+
+        <p class="text-sm font-semibold text-[#2563eb] dark:text-[#60a5fa]">
+            {{ __('patients.select_division_to_create_diagnostic_report') }}
+        </p>
+    </div>
+
     {{-- Button to trigger the drawer --}}
     <button
+        x-show="divisionId"
+        x-cloak
         @click.prevent="
             newDiagnosticReport = true;
             modalDiagnosticReport = new DiagnosticReport();
@@ -245,34 +286,43 @@
         </x-slot>
 
         <form>
-            @include('livewire.encounter.diagnostic-report-parts.main-information')
-            @include('livewire.encounter.diagnostic-report-parts.additional-information', ['context' => 'diagnostic-report', 'isEncounterContext' => true])
+            <fieldset
+                @disabled($isReadonly)
+                @class([
+                    'pointer-event-none' => $isReadonly
+                ])
+            >
+                @include('livewire.encounter.diagnostic-report-parts.main-information')
+                @include('livewire.encounter.diagnostic-report-parts.additional-information', ['context' => 'diagnostic-report', 'isEncounterContext' => true])
 
-            <div class="mt-6 flex justify-between space-x-2">
-                <button type="button" @click="openDiagnosticReportDrawer = false" class="button-minor">
-                    {{ __('forms.cancel') }}
-                </button>
+                <div class="mt-6 flex justify-between space-x-2">
+                    <button type="button" @click="openDiagnosticReportDrawer = false" class="button-minor">
+                        {{ $isReadonly ? __('forms.close') : __('forms.cancel') }}
+                    </button>
 
-                <button
-                    @click.prevent="
-                        newDiagnosticReport !== false
-                            ? diagnosticReports.push(modalDiagnosticReport)
-                            : diagnosticReports[item] = modalDiagnosticReport;
-                        openDiagnosticReportDrawer = false;
-                    "
-                    class="button-primary"
-                    :disabled="!(
-                        modalDiagnosticReport.categoryCode.trim()
-                        && modalDiagnosticReport.codeValue.trim()
-                        && (
-                            modalDiagnosticReport.primarySource === false
-                            || modalDiagnosticReport.performerEmployeeId.trim()
-                        )
-                    )"
-                >
-                    {{ __('forms.save') }}
-                </button>
-            </div>
+                    @unless($isReadonly)
+                        <button
+                            @click.prevent="
+                                newDiagnosticReport !== false
+                                    ? diagnosticReports.push(modalDiagnosticReport)
+                                    : diagnosticReports[item] = modalDiagnosticReport;
+                                openDiagnosticReportDrawer = false;
+                            "
+                            class="button-primary"
+                            :disabled="!(
+                                modalDiagnosticReport.categoryCode.trim()
+                                && modalDiagnosticReport.codeValue.trim()
+                                && (
+                                    modalDiagnosticReport.primarySource === false
+                                    || modalDiagnosticReport.performerEmployeeId.trim()
+                                )
+                            )"
+                        >
+                            {{ __('forms.save') }}
+                        </button>
+                    @endunless
+                </div>
+            </fieldset>
         </form>
     </x-dialog-drawer>
 </div>
