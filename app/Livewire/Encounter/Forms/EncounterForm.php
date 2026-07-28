@@ -1175,12 +1175,11 @@ class EncounterForm extends BaseForm
                     return;
                 }
 
-                $employeeType = Auth::user()
-                    ->getEncounterWriterEmployee($classCode)
-                    ?->employeeType;
+                $roleEncounterTypes = Auth::user()->allowedRoles
+                    ->flatMap(static fn (string $role): array => config("ehealth.performer_employee_encounter_types.$role", []))
+                    ->unique();
 
-                if ($employeeType === Role::ASSISTANT->value && !in_array( $value, config('ehealth.performer_employee_encounter_types.ASSISTANT', []), true)) 
-                {
+                if (!$roleEncounterTypes->contains($value)) {
                     $fail(__('validation.custom.encounter.typeCode.employee_forbidden', ['value' => $value]));
                 }
             };
