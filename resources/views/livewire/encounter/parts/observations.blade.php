@@ -65,57 +65,78 @@
                             x-id="['dropdown-button']"
                             class="relative"
                         >
-                            {{-- Dropdown Button --}}
-                            <button
-                                x-ref="button"
-                                @click="toggle()"
-                                :aria-expanded="openDropdown"
-                                :aria-controls="$id('dropdown-button')"
-                                type="button"
-                                class="record-inner-action-btn cursor-pointer"
-                            >
-                                <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
-                                     xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-                                     viewBox="0 0 24 24"
+                            @if($isReadonly)
+                                <a
+                                    href="#"
+                                    @click.prevent="
+                                        openModal = true;
+                                        item = index;
+                                        modalObservation = JSON.parse(
+                                            JSON.stringify(observations[index])
+                                        );
+                                        newObservation = false;
+                                    "
+                                    class="record-inner-action-btn cursor-pointer"
+                                    title="{{ __('forms.view') }}"
                                 >
-                                    <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
-                                          stroke-width="2"
-                                          d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
-                                    />
-                                </svg>
-                            </button>
-
-                            {{-- Dropdown Panel --}}
-                            <div class="absolute right-0 z-50">
-                                <div
-                                    x-ref="panel"
-                                    x-show="openDropdown"
-                                    x-transition.origin.top.left
-                                    @click.outside="close($refs.button)"
-                                    :id="$id('dropdown-button')"
-                                    x-cloak
-                                    class="dropdown-panel relative"
+                                    @icon('eye', 'w-6 h-6')
+                                    <span class="sr-only">
+                                        {{ __('forms.view') }}
+                                    </span>
+                                </a>
+                            @else
+                                {{-- Dropdown Button --}}
+                                <button
+                                    x-ref="button"
+                                    @click="toggle()"
+                                    :aria-expanded="openDropdown"
+                                    :aria-controls="$id('dropdown-button')"
+                                    type="button"
+                                    class="record-inner-action-btn cursor-pointer"
                                 >
-                                    <button
-                                        @click.prevent="
-                                            openModal = true;
-                                            item = index;
-                                            modalObservation = JSON.parse(JSON.stringify(observations[index]));
-                                            newObservation = false;
-                                            close($refs.button);
-                                        "
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                                        viewBox="0 0 24 24"
                                     >
-                                        {{ __('forms.edit') }}
-                                    </button>
+                                        <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
+                                        />
+                                    </svg>
+                                </button>
 
-                                    <button
-                                        class="dropdown-delete"
-                                        @click.prevent="observations.splice(index, 1); close($refs.button)"
+                                {{-- Dropdown Panel --}}
+                                <div class="absolute right-0 z-50">
+                                    <div
+                                        x-ref="panel"
+                                        x-show="openDropdown"
+                                        x-transition.origin.top.left
+                                        @click.outside="close($refs.button)"
+                                        :id="$id('dropdown-button')"
+                                        x-cloak
+                                        class="dropdown-panel relative"
                                     >
-                                        {{ __('forms.delete') }}
-                                    </button>
+                                        <button
+                                            @click.prevent="
+                                                openModal = true;
+                                                item = index;
+                                                modalObservation = JSON.parse(JSON.stringify(observations[index]));
+                                                newObservation = false;
+                                                close($refs.button);
+                                            "
+                                        >
+                                            {{ __('forms.edit') }}
+                                        </button>
+
+                                        <button
+                                            class="dropdown-delete"
+                                            @click.prevent="observations.splice(index, 1); close($refs.button)"
+                                        >
+                                            {{ __('forms.delete') }}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -209,68 +230,77 @@
 
                         {{-- Content --}}
                         <form>
-                            @include('livewire.encounter.observation-parts.coding-system')
-                            @include('livewire.encounter.observation-parts.main-information')
-                            @include('livewire.encounter.observation-parts.additional-information')
+                            <fieldset
+                                @disabled($isReadonly)
+                                @class([
+                                    'pointer-event-none' => $isReadonly
+                                ])
+                            >
+                                @include('livewire.encounter.observation-parts.coding-system')
+                                @include('livewire.encounter.observation-parts.main-information')
+                                @include('livewire.encounter.observation-parts.additional-information')
 
-                            <div class="mt-6 flex justify-between space-x-2">
-                                <button type="button" @click="openModal = false" class="button-minor">
-                                    {{ __('forms.cancel') }}
-                                </button>
+                                <div class="mt-6 flex justify-between space-x-2">
+                                    <button type="button" @click="openModal = false" class="button-minor">
+                                        {{ $isReadonly ? __('forms.close') : __('forms.cancel') }}
+                                    </button>
 
-                                <button @click.prevent="
-                                            const selectedValueType = valueMap[modalObservation.codeCode]?.[1];
+                                    @unless($isReadonly)
+                                        <button @click.prevent="
+                                                    const selectedValueType = valueMap[modalObservation.codeCode]?.[1];
 
-                                            const fieldsToDelete = [
-                                                'valueQuantity',
-                                                'valueCodeableConcept',
-                                                'valueString',
-                                                'valueBoolean',
-                                                'valueDateTime'
-                                            ];
+                                                    const fieldsToDelete = [
+                                                        'valueQuantity',
+                                                        'valueCodeableConcept',
+                                                        'valueString',
+                                                        'valueBoolean',
+                                                        'valueDateTime'
+                                                    ];
 
-                                            fieldsToDelete.forEach(field => {
-                                                if (field !== selectedValueType) {
-                                                    if (field === 'valueQuantity') {
-                                                        modalObservation.valueQuantityValue = '';
-                                                        modalObservation.valueQuantityComparator = '';
-                                                        modalObservation.valueQuantityUnit = '';
-                                                        modalObservation.valueQuantitySystem = '';
-                                                        modalObservation.valueQuantityCode = '';
-                                                    } else if (field === 'valueDateTime') {
-                                                        delete modalObservation.valueDate;
-                                                        delete modalObservation.valueTime;
-                                                    } else {
-                                                        delete modalObservation[field];
-                                                    }
-                                                }
-                                            });
+                                                    fieldsToDelete.forEach(field => {
+                                                        if (field !== selectedValueType) {
+                                                            if (field === 'valueQuantity') {
+                                                                modalObservation.valueQuantityValue = '';
+                                                                modalObservation.valueQuantityComparator = '';
+                                                                modalObservation.valueQuantityUnit = '';
+                                                                modalObservation.valueQuantitySystem = '';
+                                                                modalObservation.valueQuantityCode = '';
+                                                            } else if (field === 'valueDateTime') {
+                                                                delete modalObservation.valueDate;
+                                                                delete modalObservation.valueTime;
+                                                            } else {
+                                                                delete modalObservation[field];
+                                                            }
+                                                        }
+                                                    });
 
-                                            modalObservation.dictionaryName = $wire.observationValueMap[modalObservation.codeCode]?.[0];
+                                                    modalObservation.dictionaryName = $wire.observationValueMap[modalObservation.codeCode]?.[0];
 
-                                            newObservation !== false
-                                                ? observations.push(modalObservation)
-                                                : observations[item] = modalObservation;
+                                                    newObservation !== false
+                                                        ? observations.push(modalObservation)
+                                                        : observations[item] = modalObservation;
 
-                                            showDuplicateCodeWarning = false;
-                                            openModal = false;
-                                        "
-                                        class="button-primary"
-                                        :disabled="!(
-                                            modalObservation.issuedDate.trim() &&
-                                            modalObservation.issuedTime.trim() &&
-                                            modalObservation.categoryCode.trim() &&
-                                            modalObservation.codeCode.trim()
-                                        )"
-                                >
-                                    {{ __('forms.save') }}
-                                </button>
-                            </div>
-                            <template x-if="showDuplicateCodeWarning">
-                                <p class="text-error text-right">
-                                    {!! __('patients.duplicate_code_warning') !!}
-                                </p>
-                            </template>
+                                                    showDuplicateCodeWarning = false;
+                                                    openModal = false;
+                                                "
+                                                class="button-primary"
+                                                :disabled="!(
+                                                    modalObservation.issuedDate.trim() &&
+                                                    modalObservation.issuedTime.trim() &&
+                                                    modalObservation.categoryCode.trim() &&
+                                                    modalObservation.codeCode.trim()
+                                                )"
+                                        >
+                                            {{ __('forms.save') }}
+                                        </button>
+                                    @endunless
+                                </div>
+                                <template x-if="showDuplicateCodeWarning">
+                                    <p class="text-error text-right">
+                                        {!! __('patients.duplicate_code_warning') !!}
+                                    </p>
+                                </template>
+                            </fieldset>
                         </form>
                     </div>
                 </div>

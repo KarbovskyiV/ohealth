@@ -3,6 +3,7 @@
 
     $patientName = $patientFullName ?? __('forms.patient');
     $title = __('patients.encounter') . ' - ' . $patientName;
+    $isReadonly = $this instanceof EncounterEdit && $this->isReadonly;
 
     $mainGroups = [
         ['id' => 'referral', 'label' => __('patients.referrals'), 'icon' => 'arrow-right', 'view' => 'livewire.encounter.parts.referral'],
@@ -10,12 +11,12 @@
         ['id' => 'conditions', 'label' => __('patients.diagnoses'), 'icon' => 'file', 'view' => 'livewire.encounter.parts.conditions'],
         ['id' => 'reasons', 'label' => __('patients.reasons_for_visit'), 'icon' => 'person', 'view' => 'livewire.encounter.parts.reasons'],
         ['id' => 'actions', 'label' => __('forms.actions'), 'icon' => 'check-box', 'view' => 'livewire.encounter.parts.actions'],
+        ['id' => 'additional-data', 'label' => __('patients.additional_data'), 'icon' => 'Edit3', 'view' => 'livewire.encounter.parts.additional-data'],
         ['id' => 'observations', 'label' => __('patients.observation'), 'icon' => 'heart', 'view' => 'livewire.encounter.parts.observations'],
         ['id' => 'immunizations', 'label' => __('patients.immunizations'), 'icon' => 'shield', 'view' => 'livewire.encounter.parts.immunizations'],
         ['id' => 'procedures', 'label' => __('patients.procedures'), 'icon' => 'settings', 'view' => 'livewire.encounter.parts.procedures'],
         ['id' => 'diagnostic-reports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity', 'view' => 'livewire.encounter.parts.diagnostic-reports'],
         ['id' => 'clinical-impressions', 'label' => __('patients.clinical_impressions'), 'icon' => 'check', 'view' => 'livewire.encounter.parts.clinical-impressions'],
-        ['id' => 'additional-data', 'label' => __('patients.additional_data'), 'icon' => 'Edit3', 'view' => 'livewire.encounter.parts.additional-data'],
     ];
 
     $footerItems = [];
@@ -98,9 +99,14 @@
                                 </div>
                             </button>
 
-                            <div x-show="activeSections.includes('{{ $item['id'] }}')" style="display: none;"
-                                 class="px-5 pb-5">
-                                @include($item['view'])
+                            <div
+                                x-show="activeSections.includes('{{ $item['id'] }}')"
+                                style="display: none;"
+                                class="px-5 pb-5"
+                            >
+                                <fieldset @disabled($isReadonly)>
+                                    @include($item['view'])
+                                </fieldset>
                             </div>
                         </div>
                     @endif
@@ -125,18 +131,23 @@
                                     </label>
                                 </div>
 
-                                <div class="mb-1">
-                                    <button type="button" class="button-primary px-8">
-                                        {{ __('forms.update') }}
-                                    </button>
-                                </div>
+                                @unless($isReadonly)
+                                    <div class="mb-1">
+                                        <button
+                                            type="button"
+                                            class="button-primary px-8"
+                                        >
+                                            {{ __('forms.update') }}
+                                        </button>
+                                    </div>
+                                @endunless
                             </div>
                         </fieldset>
                     </div>
                 @endif
 
                 <!-- Additional Actions -->
-                @if(isset($encounterId))
+                @if(isset($encounterId) && !$isReadonly)
                     <div class="pt-10 mt-10 border-t border-gray-100 dark:border-gray-700">
                         <h3 class="text-[17px] font-bold text-gray-900 dark:text-gray-100 mb-6">
                             {{ __('patients.additional_actions') }}
@@ -189,16 +200,32 @@
                 <!-- Actions -->
                 <div class="pt-8">
                     <div class="flex flex-wrap gap-4">
-                        <button type="button" class="button-primary-outline-red">
-                            {{ __('patients.encounter_entered_in_error') }}
-                        </button>
-                        <button wire:click.prevent="save" type="submit" class="button-primary">
-                            {{ __('forms.save') }}
-                        </button>
+                        @if($this instanceof EncounterEdit)
+                            <button
+                                type="button"
+                                class="button-primary-outline-red"
+                            >
+                                {{ __('patients.encounter_entered_in_error') }}
+                            </button>
+                        @endif
 
-                        <button type="submit" @click="$wire.showSignatureModal = true" class="button-primary">
-                            {{ __('forms.save_and_send') }}
-                        </button>
+                        @unless($isReadonly)
+                            <button
+                                wire:click.prevent="save"
+                                type="submit"
+                                class="button-primary"
+                            >
+                                {{ __('forms.save') }}
+                            </button>
+
+                            <button
+                                type="submit"
+                                @click="$wire.showSignatureModal = true"
+                                class="button-primary"
+                            >
+                                {{ __('forms.save_and_send') }}
+                            </button>
+                        @endunless
                     </div>
                 </div>
             </div>
@@ -226,7 +253,9 @@
         </div>
     </div>
 
-    <x-signature-modal method="sign" />
+    @unless($isReadonly)
+        <x-signature-modal method="sign" />
+    @endunless
     <livewire:components.x-message :key="time()" />
     <x-forms.loading />
 </x-layouts.patient>

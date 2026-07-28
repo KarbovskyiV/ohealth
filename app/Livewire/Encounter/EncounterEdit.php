@@ -7,6 +7,7 @@ namespace App\Livewire\Encounter;
 use App\Classes\Cipher\Api\CipherRequest;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
+use App\Enums\Person\EncounterStatus;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\Person\Person;
@@ -28,6 +29,9 @@ class EncounterEdit extends EncounterComponent
     #[Locked]
     public int $encounterId;
 
+    #[Locked]
+    public bool $isReadonly;
+
     public function mount(LegalEntity $legalEntity, int $encounterId, ?Person $person = null, ?Preperson $preperson = null): void
     {
         if ($preperson !== null) {
@@ -40,6 +44,7 @@ class EncounterEdit extends EncounterComponent
         $this->encounterId = $encounterId;
 
         $encounter = Encounter::withRelationships()->whereId($encounterId)->firstOrFail()->toArray();
+        $this->isReadonly = $encounter['status'] !== EncounterStatus::DRAFT->value;
         $supportingInfoDetails = $this->getEncounterSupportingInfoDetailsMap($encounter);
 
         $this->form->encounter = Fhir::encounter()->fromFhir($encounter, $supportingInfoDetails);
@@ -61,6 +66,10 @@ class EncounterEdit extends EncounterComponent
      */
     public function save(): ?array
     {
+        if ($this->isReadonly) {
+            return null;
+        }
+        
         try {
             $validated = $this->form->validate();
         } catch (ValidationException $exception) {
@@ -70,16 +79,17 @@ class EncounterEdit extends EncounterComponent
             return null;
         }
 
-        $encounter = Encounter::withRelationships()->whereId($this->encounterId)->firstOrFail();
+        $encounter = Encounter::withRelationships()->whereId($this->encounterId)->firstOrFail()->toArray();
         $uuids = [
-            'encounter' => $encounter->uuid,
-            'visit' => data_get($encounter->toArray(), 'visit.identifier.value'),
+            'encounter' => $encounter['uuid'],
+            'visit' => data_get($encounter, 'visit.identifier.value'),
             'employee' => Auth::user()->getEncounterWriterEmployee($validated['encounter']['classCode'])->uuid,
             'episode' => $validated['episode']['id']
         ];
 
         $fhir = Fhir::encounterPackage()->toFhir($validated, $uuids);
         $fhirEncounter = $fhir['encounter'];
+        $fhirEncounter['status'] = EncounterStatus::DRAFT->value;
         $fhirConditions = $fhir['conditions'];
         $fhirImmunizations = $fhir['immunizations'];
         $fhirDiagnosticReports = $fhir['diagnosticReports'];
@@ -131,6 +141,10 @@ class EncounterEdit extends EncounterComponent
      */
     public function sign(): void
     {
+        if ($this->isReadonly) {
+            return;
+        }
+    
         if (Auth::user()->cannot('create', Encounter::class)) {
             Session::flash('error', __('patients.policy.create_encounter'));
 
@@ -151,6 +165,7 @@ class EncounterEdit extends EncounterComponent
             return;
         }
 
+        $formattedData['encounter']['status'] = EncounterStatus::FINISHED->value;
         $formattedData = Arr::toSnakeCase($formattedData);
 
         try {
@@ -182,6 +197,12 @@ class EncounterEdit extends EncounterComponent
 
             return;
         }
+        
+        Encounter::query()
+            ->whereId($this->encounterId)
+            ->update([
+                'status' => EncounterStatus::FINISHED->value
+            ]);
 
         $this->redirectRoute('persons.index', [legalEntity()], navigate: true);
     }

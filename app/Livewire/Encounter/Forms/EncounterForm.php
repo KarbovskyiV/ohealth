@@ -15,7 +15,6 @@ use App\Rules\InDictionary;
 use App\Rules\OnlyOnePrimaryDiagnosis;
 use App\Rules\PastDateTime;
 use App\Models\Equipment;
-use Carbon\Carbon;
 use Closure;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -619,179 +618,10 @@ class EncounterForm extends BaseForm
                     }
                 ),
 
-            'diagnosticReports.*.effectivePeriodStartDate'
-                => Rule::forEach(
-                    function (
-                        mixed $value,
-                        string $attribute
-                    ): array {
-                        $index = (int) explode('.', $attribute)[1];
-
-                        $report = $this->diagnosticReports[$index] ?? [];
-
-                        $isPeriod =
-                            ($report['effectiveType'] ?? null)
-                            === 'period';
-
-                        return [
-                            Rule::requiredIf($isPeriod),
-                            Rule::prohibitedIf(!$isPeriod),
-                            'nullable',
-                            'date_format:' . config('app.date_format'),
-                            'before_or_equal:today',
-                        ];
-                    }
-                ),
-
-            'diagnosticReports.*.effectivePeriodStartTime'
-                => Rule::forEach(
-                    function (
-                        mixed $value,
-                        string $attribute
-                    ): array {
-                        $index = (int) explode('.', $attribute)[1];
-
-                        $report = $this->diagnosticReports[$index] ?? [];
-
-                        $isPeriod =
-                            ($report['effectiveType'] ?? null)
-                            === 'period';
-
-                        return [
-                            Rule::requiredIf($isPeriod),
-                            Rule::prohibitedIf(!$isPeriod),
-                            'nullable',
-                            'date_format:H:i',
-                            new PastDateTime(
-                                $report[
-                                    'effectivePeriodStartDate'
-                                ] ?? ''
-                            ),
-                        ];
-                    }
-                ),
-
-            'diagnosticReports.*.effectivePeriodEndDate'
-                => Rule::forEach(
-                    function (
-                        mixed $value,
-                        string $attribute
-                    ): array {
-                        $index = (int) explode('.', $attribute)[1];
-
-                        $report = $this->diagnosticReports[$index] ?? [];
-
-                        $isPeriod =
-                            ($report['effectiveType'] ?? null)
-                            === 'period';
-
-                        return [
-                            Rule::prohibitedIf(!$isPeriod),
-                            Rule::requiredIf(
-                                $isPeriod
-                                && !empty(
-                                    $report[
-                                        'effectivePeriodEndTime'
-                                    ]
-                                )
-                            ),
-                            'nullable',
-                            'date_format:' . config('app.date_format'),
-                            'before_or_equal:today',
-                        ];
-                    }
-                ),
-
-            'diagnosticReports.*.effectivePeriodEndTime'
-                => Rule::forEach(
-                    function (
-                        mixed $value,
-                        string $attribute
-                    ): array {
-                        $index = (int) explode('.', $attribute)[1];
-
-                        $report = $this->diagnosticReports[$index] ?? [];
-
-                        $isPeriod =
-                            ($report['effectiveType'] ?? null)
-                            === 'period';
-
-                        return [
-                            Rule::prohibitedIf(!$isPeriod),
-                            Rule::requiredIf(
-                                $isPeriod
-                                && !empty(
-                                    $report[
-                                        'effectivePeriodEndDate'
-                                    ]
-                                )
-                            ),
-                            'nullable',
-                            'date_format:H:i',
-                            new PastDateTime(
-                                $report[
-                                    'effectivePeriodEndDate'
-                                ] ?? ''
-                            ),
-                            new AfterOrEqualDateTime(
-                                $report[
-                                    'effectivePeriodEndDate'
-                                ] ?? '',
-                                $report[
-                                    'effectivePeriodStartDate'
-                                ] ?? '',
-                                $report[
-                                    'effectivePeriodStartTime'
-                                ] ?? ''
-                            ),
-                            function (
-                                string $attribute,
-                                mixed $value,
-                                Closure $fail
-                            ) use ($report): void {
-                                if (
-                                    empty($report['issuedDate'])
-                                    || empty($report['issuedTime'])
-                                    || empty(
-                                        $report[
-                                            'effectivePeriodEndDate'
-                                        ]
-                                    )
-                                    || empty($value)
-                                ) {
-                                    return;
-                                }
-
-                                $end = Carbon::createFromFormat(
-                                    config('app.date_format') . ' H:i',
-                                    $report[
-                                        'effectivePeriodEndDate'
-                                    ] . ' ' . $value
-                                );
-
-                                $issued = Carbon::createFromFormat(
-                                    config('app.date_format') . ' H:i',
-                                    $report['issuedDate']
-                                        . ' '
-                                        . $report['issuedTime']
-                                );
-
-                                if ($end->isAfter($issued)) {
-                                    $fail(
-                                        __(
-                                            'validation.before_or_equal',
-                                            [
-                                                'date' => __(
-                                                    'validation.attributes.issued'
-                                                ),
-                                            ]
-                                        )
-                                    );
-                                }
-                            },
-                        ];
-                    }
-                ),
+            'diagnosticReports.*.effectivePeriodStartDate' => ['nullable'],
+            'diagnosticReports.*.effectivePeriodStartTime' => ['nullable'],
+            'diagnosticReports.*.effectivePeriodEndDate' => ['nullable'],
+            'diagnosticReports.*.effectivePeriodEndTime' => ['nullable'],
 
             'observations' => ['nullable', 'array'],
             // for edit page
@@ -1007,81 +837,11 @@ class EncounterForm extends BaseForm
                 }
             ),
 
-            'procedures.*.performedPeriodStartDate' => Rule::forEach(
-                function (mixed $value, string $attribute): array {
-                    $index = (int) explode('.', $attribute)[1];
-                    $procedure = $this->procedures[$index] ?? [];
-
-                    $isPeriod = ($procedure['status'] ?? null) === ProcedureStatus::COMPLETED->value && ($procedure['performedType'] ?? null) === 'period';
-
-                    return [
-                        Rule::requiredIf($isPeriod),
-                        Rule::prohibitedIf(!$isPeriod),
-                        'nullable',
-                        'date_format:' . config('app.date_format'),
-                        'before_or_equal:today',
-                    ];
-                }
-            ),
-
-            'procedures.*.performedPeriodStartTime' => Rule::forEach(
-                function (mixed $value, string $attribute): array {
-                    $index = (int) explode('.', $attribute)[1];
-                    $procedure = $this->procedures[$index] ?? [];
-
-                    $isPeriod = ($procedure['status'] ?? null) === ProcedureStatus::COMPLETED->value && ($procedure['performedType'] ?? null) === 'period';
-
-                    return [
-                        Rule::requiredIf($isPeriod),
-                        Rule::prohibitedIf(!$isPeriod),
-                        'nullable',
-                        'date_format:H:i',
-                        new PastDateTime(
-                            $procedure['performedPeriodStartDate'] ?? ''
-                        ),
-                    ];
-                }
-            ),
-
-            'procedures.*.performedPeriodEndDate' => Rule::forEach(
-                function (mixed $value, string $attribute): array {
-                    $index = (int) explode('.', $attribute)[1];
-                    $procedure = $this->procedures[$index] ?? [];
-
-                    $isPeriod = ($procedure['status'] ?? null)  === ProcedureStatus::COMPLETED->value && ($procedure['performedType'] ?? null) === 'period';
-
-                    return [
-                        Rule::requiredIf($isPeriod),
-                        Rule::prohibitedIf(!$isPeriod),
-                        'nullable',
-                        'date_format:' . config('app.date_format'),
-                        'before_or_equal:today',
-                        'after_or_equal:procedures.*.performedPeriodStartDate',
-                    ];
-                }
-            ),
-
-            'procedures.*.performedPeriodEndTime' => Rule::forEach(
-                function (mixed $value, string $attribute): array {
-                    $index = (int) explode('.', $attribute)[1];
-                    $procedure = $this->procedures[$index] ?? [];
-
-                    $isPeriod = ($procedure['status'] ?? null)  === ProcedureStatus::COMPLETED->value && ($procedure['performedType'] ?? null) === 'period';
-
-                    return [
-                        Rule::requiredIf($isPeriod),
-                        Rule::prohibitedIf(!$isPeriod),
-                        'nullable',
-                        'date_format:H:i',
-                        new AfterOrEqualDateTime(
-                            $procedure['performedPeriodEndDate'] ?? '',
-                            $procedure['performedPeriodStartDate'] ?? '',
-                            $procedure['performedPeriodStartTime'] ?? '',
-                            'performed_period_start'
-                        ),
-                    ];
-                }
-            ),
+            'procedures.*.performedPeriodStartDate' => ['nullable'],
+            'procedures.*.performedPeriodStartTime' => ['nullable'],
+            'procedures.*.performedPeriodEndDate' => ['nullable'],
+            'procedures.*.performedPeriodEndTime'=> ['nullable'],
+            
             'procedures.*.note' => ['nullable', 'string'],
             ...$this->paperReferralRules('procedures.*'),
 
@@ -1399,18 +1159,31 @@ class EncounterForm extends BaseForm
      * @param  array  $rules
      * @return void
      */
-    private function addAllowedEncounterTypes(array &$rules): void
+    private function addAllowedEncounterTypes(array &$rules): void 
     {
         $rules['encounter.typeCode'][] = function (string $attribute, mixed $value, Closure $fail): void {
-            $classCode = $this->encounter['classCode'] ?? null;
-            if (empty($classCode)) {
-                return;
-            }
-            $allowed = config("ehealth.encounter_class_encounter_types.$classCode", []);
-            if (!in_array($value, $allowed, true)) {
-                $fail(__('validation.custom.encounter.typeCode.class_forbidden', ['value' => $value]));
-            }
-        };
+                $classCode = $this->encounter['classCode'] ?? null;
+
+                if (empty($classCode)) {
+                    return;
+                }
+
+                $classTypes = config("ehealth.encounter_class_encounter_types.$classCode", []);
+
+                if (!in_array($value, $classTypes, true)) {
+                    $fail(__('validation.custom.encounter.typeCode.class_forbidden', ['value' => $value]));
+                    return;
+                }
+
+                $employeeType = Auth::user()
+                    ->getEncounterWriterEmployee($classCode)
+                    ?->employeeType;
+
+                if ($employeeType === Role::ASSISTANT->value && !in_array( $value, config('ehealth.performer_employee_encounter_types.ASSISTANT', []), true)) 
+                {
+                    $fail(__('validation.custom.encounter.typeCode.employee_forbidden', ['value' => $value]));
+                }
+            };
     }
 
     /**

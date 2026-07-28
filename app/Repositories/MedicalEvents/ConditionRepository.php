@@ -34,9 +34,11 @@ class ConditionRepository extends BaseRepository
                 $asserter = null;
                 $severity = null;
 
-                if (isset($datum['asserter'])) {
-                    $asserter = Repository::identifier()->store($datum['asserter']['identifier']['value']);
-                    Repository::codeableConcept()->attach($asserter, $datum['asserter']);
+                $asserterData = data_get($datum, 'asserter.0') ?? data_get($datum, 'asserter');
+
+                if (!empty($asserterData)) {
+                    $asserter = Repository::identifier()->store($asserterData['identifier']['value']);
+                    Repository::codeableConcept()->attach($asserter, $asserterData);
                 }
 
                 $context = Repository::identifier()->store($datum['context']['identifier']['value']);
@@ -212,7 +214,9 @@ class ConditionRepository extends BaseRepository
             foreach ($validatedData as $data) {
                 $existing = $existingConditions->get($data['uuid']);
 
-                $asserter = $this->syncIdentifier($existing, $data['asserter'] ?? null, 'asserter');
+                $asserterData = data_get($data, 'asserter.0') ?? ($data['asserter'] ?? null);
+
+                $asserter = $this->syncIdentifier($existing, $asserterData, 'asserter');
                 $reportOrigin = $this->syncCodeableConcept($existing, $data['report_origin'] ?? null, 'reportOrigin');
                 $context = $this->syncIdentifier($existing, $data['context'], 'context');
                 $code = $this->syncCodeableConcept($existing, $data['code'], 'code');

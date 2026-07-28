@@ -123,13 +123,11 @@ class ProcedureMapper implements FhirMapperContract
         // todo: focal_device
 
         if ($data['primarySource']) {
-            $result['performer'] = FhirResource::make()
-                ->coding('eHealth/resources', 'employee')
-                ->toIdentifier(
-                    $data['performerEmployeeId']
-                    ?? $uuids['procedureEmployee']
-                    ?? $uuids['employee']
-                );
+            $result['performer'] = [
+                FhirResource::make()
+                    ->coding('eHealth/resources', 'employee')
+                    ->toIdentifier($data['performerEmployeeId']),
+            ];
         } else {
             $result['reportOrigin'] = FhirResource::make()
                 ->coding('eHealth/report_origins', $data['reportOriginCode'])
@@ -205,7 +203,7 @@ class ProcedureMapper implements FhirMapperContract
             'codeValue' => data_get($data, 'code.identifier.value', ''),
             'encounterId' => data_get($data, 'encounter.identifier.value', ''),
             'primarySource' => data_get($data, 'primarySource'),
-            'performerEmployeeId' => data_get($data, 'performer.identifier.value', ''),
+            'performerEmployeeId' => data_get($data, 'performer.0.identifier.value', data_get($data, 'performer.identifier.value', '')),
             'reportOriginCode' => data_get($data, 'reportOrigin.coding.0.code', ''),
             'reportOriginText' => data_get($data, 'reportOrigin.text', ''),
             'divisionId' => data_get($data, 'division.identifier.value', ''),

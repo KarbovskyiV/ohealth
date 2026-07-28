@@ -160,27 +160,29 @@ class DiagnosticReportRepository extends BaseRepository
                     ]);
                 }
 
-                if (isset($datum['performer'])) {
+                $performerData = data_get($datum, 'performer.0') ?? data_get($datum, 'performer');
+
+                if (!empty($performerData)) {
                     $reference = null;
-                    if (isset($datum['performer']['reference'])) {
-                        $performerValue = $datum['performer']['reference']['identifier']['value'];
-                        $reference = Repository::identifier()->store(
-                            $performerValue,
-                            $this->getEmployeeDisplayValue($performerValue)
-                        );
-                        Repository::codeableConcept()->attach($reference, $datum['performer']['reference']);
+
+                    if (isset($performerData['reference'])) {
+                        $performerValue = data_get($performerData, 'reference.identifier.value');
+                        $reference = Repository::identifier()->store($performerValue, $this->getEmployeeDisplayValue($performerValue));
+
+                        Repository::codeableConcept()->attach($reference, $performerData['reference']);
                     }
 
                     $diagnosticReport->performer()->create([
                         'reference_id' => $reference?->id,
-                        'text' => $datum['performer']['text'] ?? null
+                        'text' => $performerData['text'] ?? null,
                     ]);
                 }
 
                 if (isset($datum['resultsInterpreter'])) {
                     $reference = null;
                     if (isset($datum['resultsInterpreter']['reference'])) {
-                        $resultsInterpreterValue = $datum['resultsInterpreter']['reference']['identifier']['value'];
+                        $resultsInterpreterValue = data_get($datum, 'resultsInterpreter.reference.identifier.value');
+
                         $reference = Repository::identifier()->store(
                             $resultsInterpreterValue,
                             $this->getEmployeeDisplayValue($resultsInterpreterValue)
@@ -191,10 +193,12 @@ class DiagnosticReportRepository extends BaseRepository
                         );
                     }
 
-                    $diagnosticReport->resultsInterpreter()->create([
-                        'reference_id' => $reference?->id,
-                        'text' => $datum['resultsInterpreter']['text'] ?? null
-                    ]);
+                    $diagnosticReport
+                        ->resultsInterpreter()
+                        ->create([
+                            'reference_id' => $reference?->id,
+                            'text' => $datum['resultsInterpreter']['text'] ?? null,
+                        ]);
                 }
 
                 if (!empty($datum['usedReferences'])) {
@@ -466,7 +470,8 @@ class DiagnosticReportRepository extends BaseRepository
 
                 Repository::period()->sync($diagnosticReport, $data['effective_period'] ?? [], 'effectivePeriod');
 
-                $this->syncHasOneReference($diagnosticReport, 'performer', $data['performer'] ?? []);
+                $performerData = data_get($data, 'performer.0') ?? ($data['performer'] ?? []);
+                $this->syncHasOneReference($diagnosticReport, 'performer', $performerData);
                 $this->syncHasOneReference($diagnosticReport, 'resultsInterpreter', $data['results_interpreter'] ?? []);
 
                 $this->syncPivot(

@@ -134,52 +134,73 @@
                              x-id="['dropdown-button']"
                              class="relative"
                         >
-                            {{-- Dropdown Button --}}
-                            <button x-ref="button"
-                                    @click="toggle()"
-                                    :aria-expanded="openDropdown"
-                                    :aria-controls="$id('dropdown-button')"
-                                    type="button"
-                                    class="record-inner-action-btn cursor-pointer"
-                            >
-                                <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
-                                     xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-                                     viewBox="0 0 24 24"
-                                >
-                                    <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
-                                          stroke-width="2"
-                                          d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
-                                    />
-                                </svg>
-                            </button>
-
-                            {{-- Dropdown Panel --}}
-                            <div class="absolute right-0 z-50">
-                                <div x-ref="panel"
-                                     x-show="openDropdown"
-                                     x-transition.origin.top.left
-                                     @click.outside="close($refs.button)"
-                                     :id="$id('dropdown-button')"
-                                     x-cloak
-                                     class="dropdown-panel relative"
-                                >
-                                    <button @click.prevent="
+                            @if($isReadonly)
+                                <a
+                                    href="#"
+                                    @click.prevent="
                                         item = index;
-                                        modalProcedure = JSON.parse(JSON.stringify(procedures[index]));
+                                        modalProcedure = JSON.parse(
+                                            JSON.stringify(procedures[index])
+                                        );
                                         newProcedure = false;
                                         openProcedureDrawer = true;
-                                        close($refs.button);
                                     "
+                                    class="record-inner-action-btn cursor-pointer"
+                                    title="{{ __('forms.view') }}"
+                                >
+                                    @icon('eye', 'w-6 h-6')
+                                    <span class="sr-only">
+                                        {{ __('forms.view') }}
+                                    </span>
+                                </a>
+                            @else
+                                {{-- Dropdown Button --}}
+                                <button x-ref="button"
+                                        @click="toggle()"
+                                        :aria-expanded="openDropdown"
+                                        :aria-controls="$id('dropdown-button')"
+                                        type="button"
+                                        class="record-inner-action-btn cursor-pointer"
+                                >
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                                        viewBox="0 0 24 24"
                                     >
-                                        {{ __('forms.edit') }}
-                                    </button>
+                                        <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
+                                        />
+                                    </svg>
+                                </button>
 
-                                    <button class="dropdown-delete"
-                                            @click.prevent="procedures.splice(index, 1); close($refs.button)">
-                                        {{ __('forms.delete') }}
-                                    </button>
+                                {{-- Dropdown Panel --}}
+                                <div class="absolute right-0 z-50">
+                                    <div x-ref="panel"
+                                        x-show="openDropdown"
+                                        x-transition.origin.top.left
+                                        @click.outside="close($refs.button)"
+                                        :id="$id('dropdown-button')"
+                                        x-cloak
+                                        class="dropdown-panel relative"
+                                    >
+                                        <button @click.prevent="
+                                            item = index;
+                                            modalProcedure = JSON.parse(JSON.stringify(procedures[index]));
+                                            newProcedure = false;
+                                            openProcedureDrawer = true;
+                                            close($refs.button);
+                                        "
+                                        >
+                                            {{ __('forms.edit') }}
+                                        </button>
+
+                                        <button class="dropdown-delete"
+                                                @click.prevent="procedures.splice(index, 1); close($refs.button)">
+                                            {{ __('forms.delete') }}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -252,36 +273,45 @@
 
             {{-- Content --}}
             <form>
-                @include('livewire.encounter.procedure-parts.main-information', ['context' => 'encounter'])
-                @include('livewire.encounter.procedure-parts.additional-information', ['context' => 'encounter'])
-                @include('livewire.encounter.procedure-parts.reason-references')
-                @include('livewire.encounter.procedure-parts.used-codes')
-                @include('livewire.encounter.procedure-parts.complication-details')
+                <fieldset
+                    @disabled($isReadonly)
+                    @class([
+                        'pointer-event-none' => $isReadonly
+                    ])
+                >
+                    @include('livewire.encounter.procedure-parts.main-information', ['context' => 'encounter'])
+                    @include('livewire.encounter.procedure-parts.additional-information', ['context' => 'encounter'])
+                    @include('livewire.encounter.procedure-parts.reason-references')
+                    @include('livewire.encounter.procedure-parts.used-codes')
+                    @include('livewire.encounter.procedure-parts.complication-details')
 
-                <div class="mt-6 flex justify-between space-x-2">
-                    <button type="button"
-                            @click="openProcedureDrawer = false"
-                            class="button-minor"
-                    >
-                        {{ __('forms.cancel') }}
-                    </button>
+                    <div class="mt-6 flex justify-between space-x-2">
+                        <button type="button"
+                                @click="openProcedureDrawer = false"
+                                class="button-minor"
+                        >
+                            {{ $isReadonly ? __('forms.close') : __('forms.cancel') }}
+                        </button>
 
-                    <button @click.prevent="
-                                clearWrongComplicationDetails();
-                                newProcedure !== false
-                                    ? procedures.push(modalProcedure)
-                                    : procedures[item] = modalProcedure;
-                                openProcedureDrawer = false;
-                            "
-                            class="button-primary"
-                            :disabled="!(
-                                modalProcedure.categoryCode.trim() &&
-                                modalProcedure.codeValue.trim()
-                            )"
-                    >
-                        {{ __('forms.save') }}
-                    </button>
-                </div>
+                        @unless($isReadonly)
+                            <button @click.prevent="
+                                        clearWrongComplicationDetails();
+                                        newProcedure !== false
+                                            ? procedures.push(modalProcedure)
+                                            : procedures[item] = modalProcedure;
+                                        openProcedureDrawer = false;
+                                    "
+                                    class="button-primary"
+                                    :disabled="!(
+                                        modalProcedure.categoryCode.trim() &&
+                                        modalProcedure.codeValue.trim()
+                                    )"
+                            >
+                                {{ __('forms.save') }}
+                            </button>
+                        @endunless
+                    </div>
+                </fieldset>
             </form>
         </x-dialog-drawer>
     </div>

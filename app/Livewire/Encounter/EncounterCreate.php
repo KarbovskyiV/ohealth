@@ -16,6 +16,7 @@ use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\Person\Person;
 use App\Models\Preperson;
+use App\Enums\Person\EncounterStatus;
 use App\Repositories\MedicalEvents\Repository;
 use App\Services\MedicalEvents\EncounterPackageBuilder;
 use App\Traits\EnsuresEntityExists;
@@ -74,6 +75,7 @@ class EncounterCreate extends EncounterComponent
         }
 
         $formattedData = $this->packageBuilder->build($validated, $this->episodeType, Status::DRAFT);
+        $formattedData['encounter']['status'] = EncounterStatus::DRAFT->value;
 
         try {
             $encounterId = $this->storeValidatedData($formattedData);
