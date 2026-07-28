@@ -128,11 +128,11 @@ class EncounterComponent extends Component
     protected string $legalEntityType;
 
     /**
-     * Role of auth user.
+     * Employee type of the employee the auth user writes the encounter as.
      *
-     * @var string
+     * @var string|null
      */
-    protected string $role;
+    protected ?string $employeeType = null;
 
     /**
      * Found the ICD-10 code and description.
@@ -327,7 +327,7 @@ class EncounterComponent extends Component
             ->toArray();
 
         $this->legalEntityType = legalEntity()->type->name;
-        $this->role = Auth::user()->roles->first()->name;
+        $this->employeeType = Auth::user()->getEncounterWriterEmployee()?->employeeType;
 
         $this->adjustEpisodeTypes();
         $this->adjustEncounterClasses();
@@ -454,7 +454,6 @@ class EncounterComponent extends Component
             ->toArray();
 
         $this->legalEntityType = legalEntity()->type->name;
-        $this->role = $authUser->roles->first()->name;
         $this->divisions = legalEntity()->divisions()->whereStatus(Status::ACTIVE)->get()->toArray();
 
         $encounterWriterEmployee = $authUser->getEncounterWriterEmployee();
@@ -729,7 +728,7 @@ class EncounterComponent extends Component
     {
         $keys = array_intersect(
             config("ehealth.legal_entity_episode_types.$this->legalEntityType", []),
-            config("ehealth.employee_episode_types.$this->role", [])
+            config("ehealth.employee_episode_types.$this->employeeType", [])
         );
 
         $this->adjustDictionary('eHealth/episode_types', $keys);
@@ -744,7 +743,7 @@ class EncounterComponent extends Component
     {
         $keys = $this->getFilteredKeysFromConfig(
             "legal_entity_encounter_classes.$this->legalEntityType",
-            "performer_employee_encounter_classes.$this->role"
+            "performer_employee_encounter_classes.$this->employeeType"
         );
 
         $this->adjustDictionary('eHealth/encounter_classes', $keys);
