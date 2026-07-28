@@ -11,17 +11,17 @@
         <form
             class="space-y-6"
             x-data="{
-                careManagerUuid: $wire.form.careManagerUuid,
+                careManagerId: $wire.form.careManagerId,
                 employeeEpisodeTypes: {{ json_encode($employeeEpisodeTypes) }},
                 isTypeAllowed(code) {
-                    if (this.careManagerUuid === '') {
+                    if (this.careManagerId === '') {
                         return true;
                     }
 
-                    return (this.employeeEpisodeTypes[this.careManagerUuid] ?? []).includes(code);
+                    return (this.employeeEpisodeTypes[this.careManagerId] ?? []).includes(code);
                 },
                 onCareManagerChange(uuid) {
-                    this.careManagerUuid = uuid;
+                    this.careManagerId = uuid;
 
                     if (!this.isTypeAllowed($wire.form.typeCode)) {
                         this.$refs.typeCode.value = '';
@@ -134,11 +134,11 @@
             <div class="form-row-2">
                 <div class="form-group group">
                     <select
-                        class="input-select peer @error('form.careManagerUuid') input-error @enderror"
-                        wire:model="form.careManagerUuid"
+                        class="input-select peer @error('form.careManagerId') input-error @enderror"
+                        wire:model="form.careManagerId"
                         x-on:change="onCareManagerChange($event.target.value)"
-                        name="careManagerUuid"
-                        id="careManagerUuid"
+                        name="careManagerId"
+                        id="careManagerId"
                         required
                     >
                         <option value="" selected>{{ __('forms.select') }}</option>
@@ -148,11 +148,9 @@
                             </option>
                         @endforeach
                     </select>
-                    <label for="careManagerUuid" class="label">
-                        {{ __('episodes.attending_doctor') }}
-                    </label>
+                    <label for="careManagerId" class="label">{{ __('episodes.attending_doctor') }}</label>
 
-                    @error('form.careManagerUuid')
+                    @error('form.careManagerId')
                     <p class="text-error mt-1 text-xs">{{ $message }}</p>
                     @enderror
                 </div>

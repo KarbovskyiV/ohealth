@@ -44,7 +44,10 @@ class EncounterEdit extends EncounterComponent
 
         $this->form->encounter = Fhir::encounter()->fromFhir($encounter, $supportingInfoDetails);
         $this->episodeType = 'existing';
-        $this->form->episode = array_merge($this->form->episode, Fhir::episode()->fromFhir($encounter));
+        $this->form->episode = array_merge(
+            $this->form->episode,
+            ['id' => data_get($encounter, 'episode.identifier.value', '')]
+        );
 
         $this->loadConditions($encounter);
         $this->loadImmunizations($encounter['uuid']);

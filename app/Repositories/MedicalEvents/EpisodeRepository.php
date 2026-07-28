@@ -9,6 +9,7 @@ use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\EpisodeCurrentDiagnosis;
 use App\Models\MedicalEvents\Sql\EpisodeDiagnosesHistory;
 use App\Models\MedicalEvents\Sql\EpisodeDiagnosesHistoryItem;
+use App\Models\MedicalEvents\Sql\Identifier;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +56,88 @@ class EpisodeRepository extends BaseRepository
 
             $episode->period()->create(['start' => $data['period']['start']]);
         });
+    }
+
+    /**
+     * Update the episode fields that eHealth allows to change.
+     *
+     * @param  Episode  $episode
+     * @param  array  $data
+     * @return void
+     * @throws Throwable
+     */
+    public function update(Episode $episode, array $data): void
+    {
+        DB::transaction(function () use ($episode, $data) {
+            $this->updateIdentifier($episode->careManager, $data['careManager']);
+
+            $episode->update(['name' => $data['name']]);
+        });
+    }
+
+    /**
+     * Update a draft episode, which is stored locally only and therefore editable as a whole.
+     *
+     * @param  Episode  $episode
+     * @param  array  $data
+     * @return void
+     * @throws Throwable
+     */
+    public function updateDraft(Episode $episode, array $data): void
+    {
+        DB::transaction(function () use ($episode, $data) {
+            $this->updateIdentifier($episode->careManager, $data['careManager']);
+
+            $episode->type->update([
+                'system' => $data['type']['system'],
+                'code' => $data['type']['code']
+            ]);
+            $episode->period->update(['start' => $data['period']['start']]);
+
+            $episode->update([
+                'name' => $data['name'],
+                'status' => $data['status']
+            ]);
+        });
+    }
+
+    /**
+     * Delete a draft episode together with the records that belong to it.
+     *
+     * @param  Episode  $episode
+     * @return void
+     * @throws Throwable
+     */
+    public function deleteDraft(Episode $episode): void
+    {
+        DB::transaction(function () use ($episode) {
+            $type = $episode->type;
+            $careManager = $episode->careManager;
+            $managingOrganization = $episode->managingOrganization;
+
+            $episode->period?->delete();
+            $episode->delete();
+
+            $type->delete();
+            $this->deleteIdentifier($careManager);
+            $this->deleteIdentifier($managingOrganization);
+        });
+    }
+
+    /**
+     * Delete an identifier with the codeable concepts and codings attached to it.
+     *
+     * @param  Identifier  $identifier
+     * @return void
+     */
+    private function deleteIdentifier(Identifier $identifier): void
+    {
+        foreach ($identifier->type as $codeableConcept) {
+            $codeableConcept->coding()->delete();
+            $codeableConcept->delete();
+        }
+
+        $identifier->delete();
     }
 
     /**
