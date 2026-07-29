@@ -342,6 +342,8 @@ return [
         'reasonContext.policeReportDate' => 'дата подання заяви в поліцію',
         'reasonContext.childBirthTime' => 'час народження дитини',
         'reasonContext.otherReason' => 'причини та обставини звернення пацієнта',
+        'cancellationReason' => 'підстава помилкового внесення медичної документації',
+        'explanatoryLetter' => 'обґрунтування підстав визначення помилкового внесення медичної документації',
         'issued' => 'час внесення',
         'effective_period_start' => 'час початку прийому',
         'performed_period_start' => 'час початку процедури',

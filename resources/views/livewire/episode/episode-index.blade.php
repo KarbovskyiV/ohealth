@@ -207,7 +207,10 @@
 
             <div class="space-y-4">
                 @if(count($this->paginatedEpisodes->items()) > 0)
-                    @include('livewire.person.records.parts.episodes', ['episodes' => $this->paginatedEpisodes->items()])
+                    @include('livewire.person.records.parts.episodes', [
+                        'episodes' => $this->paginatedEpisodes->items(),
+                        'showStatusActions' => true
+                    ])
                 @else
                     <x-nothing-found :description="null" />
                 @endif

@@ -317,7 +317,6 @@ return [
     'evidence' => 'Докази',
     'evidence_observations' => 'Спостереження',
     'severity' => 'Ступінь тяжкості',
-    'loading' => 'Завантаження...',
     'new_diagnose_state' => 'Новий діагноз/стан',
     'edit_diagnose_state' => 'Редагувати діагноз/стан',
     'choose_coding_system' => 'Оберіть систему кодування',

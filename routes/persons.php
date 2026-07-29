@@ -76,6 +76,7 @@ Route::prefix('persons')->group(static function () {
                 ->whereNumber('episode')
                 ->name('episodes.view');
             Route::get('/{person}/episodes/{episode:id}/edit', EpisodeEdit::class)
+                ->can('update', 'episode')
                 ->whereNumber('episode')
                 ->name('episodes.edit');
             Route::get('/{person}/care-plans', PatientCarePlans::class)->name('care-plans');
@@ -155,6 +156,7 @@ Route::prefix('prepersons')
             ->name('episodes.view');
         Route::get('/{preperson}/episodes/{episode:id}/edit', EpisodeEdit::class)
             ->can('view', 'preperson')
+            ->can('update', 'episode')
             ->whereNumber('episode')
             ->name('episodes.edit');
         Route::get('/{preperson}/observations', PatientObservations::class)

@@ -267,7 +267,8 @@ class ObservationRepository extends BaseRepository
     }
 
     /**
-     * Sync observation data and related data by deleting and creating.
+     * Sync observation data and related data.
+     * When an encounter is given, its observations that are no longer part of the package are removed.
      *
      * @param  Person|Preperson  $patient
      * @param  array  $validatedData
@@ -284,7 +285,7 @@ class ObservationRepository extends BaseRepository
 
             if ($encounterUuid !== null) {
                 $this->model->whereNotIn('uuid', $apiUuids)
-                    ->whereHas('context', fn (Builder $query) => $query->where('value', $encounterUuid))
+                    ->whereHas('context', static fn (Builder $query): Builder => $query->where('value', $encounterUuid))
                     ->with(['components.value', 'value'])
                     ->get()
                     ->each(function (Observation $observation): void {

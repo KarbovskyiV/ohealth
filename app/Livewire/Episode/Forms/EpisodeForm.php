@@ -23,20 +23,33 @@ class EpisodeForm extends Form
     #[Locked]
     public string $id = '';
 
+    /**
+     * Local ID of the episode being edited, kept out of the UUID uniqueness check.
+     *
+     * @var int|null
+     */
+    #[Locked]
+    public ?int $episodeId = null;
+
     public string $name = '';
 
     public string $typeCode = '';
 
-    public string $careManagerUuid = '';
+    public string $careManagerId = '';
 
     public string $startDate = '';
 
     public string $startTime = '';
 
+    /**
+     * Rules for an episode that is not known to eHealth yet, so every field is still editable.
+     *
+     * @return array
+     */
     public function rulesForCreate(): array
     {
         return [
-            'id' => ['required', 'uuid', Rule::unique('episodes', 'uuid')],
+            'id' => ['required', 'uuid', Rule::unique('episodes', 'uuid')->ignore($this->episodeId)],
             'typeCode' => [
                 'required',
                 'string',
@@ -45,9 +58,27 @@ class EpisodeForm extends Form
                 $this->validateTypeForEmployeeType(...)
             ],
             'name' => ['required', 'string', 'max:255'],
-            'careManagerUuid' => ['required', 'uuid', $this->validateCareManager(...)],
+            'careManagerId' => ['required', 'uuid', $this->validateCareManager(...)],
             'startDate' => ['required', 'date', 'before_or_equal:today'],
             'startTime' => ['required', 'date_format:H:i', new PastDateTime($this->startDate)]
+        ];
+    }
+
+    /**
+     * Rules for the fields eHealth allows to change on an existing episode.
+     *
+     * @return array
+     */
+    public function rulesForUpdate(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'careManagerId' => [
+                'required',
+                'uuid',
+                $this->validateCareManager(...),
+                $this->validateTypeForEmployeeType(...)
+            ]
         ];
     }
 
@@ -72,6 +103,7 @@ class EpisodeForm extends Form
 
     /**
      * Ensure the episode type is allowed for the employee type of the selected care manager.
+     * Reads the type off the form so the rule can be attached either to the type or to the care manager.
      *
      * @param  string  $attribute
      * @param  mixed  $value
@@ -85,8 +117,10 @@ class EpisodeForm extends Form
             []
         );
 
-        if (!in_array($value, $allowedTypes, true)) {
-            $fail(__('episodes.validation.type_forbidden_for_employee', ['type' => $this->episodeTypeLabel($value)]));
+        if (!in_array($this->typeCode, $allowedTypes, true)) {
+            $fail(__('episodes.validation.type_forbidden_for_employee', [
+                'type' => $this->episodeTypeLabel($this->typeCode)
+            ]));
         }
     }
 
@@ -103,7 +137,13 @@ class EpisodeForm extends Form
         $careManager = $this->careManagerEmployee();
         $allowedTypes = config('ehealth.allowed_episode_care_manager_employee_types', []);
 
-        if (!in_array($careManager?->employeeType, $allowedTypes, true)) {
+        if ($careManager === null) {
+            $fail(__('episodes.validation.care_manager_not_in_legal_entity'));
+
+            return;
+        }
+
+        if (!in_array($careManager->employeeType, $allowedTypes, true)) {
             $fail(__('episodes.validation.care_manager_type_not_allowed'));
 
             return;
@@ -132,11 +172,11 @@ class EpisodeForm extends Form
      */
     protected function careManagerEmployee(): ?Employee
     {
-        if ($this->careManagerUuid === '') {
+        if ($this->careManagerId === '') {
             return null;
         }
 
-        return Employee::whereUuid($this->careManagerUuid)
+        return Employee::whereUuid($this->careManagerId)
             ->whereLegalEntityId(legalEntity()->id)
             ->first(['id', 'employee_type', 'status', 'is_active']);
     }
@@ -151,7 +191,7 @@ class EpisodeForm extends Form
         return [
             'name' => __('episodes.name'),
             'typeCode' => __('episodes.type'),
-            'careManagerUuid' => __('episodes.attending_doctor'),
+            'careManagerId' => __('episodes.attending_doctor'),
             'startDate' => __('forms.start_date'),
             'startTime' => __('forms.start_time')
         ];
