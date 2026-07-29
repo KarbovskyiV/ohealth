@@ -65,6 +65,22 @@ class Episode extends PatientApiBase
     }
 
     /**
+     * Close the episode with the reason and the summary behind it.
+     *
+     * @param  string  $patientId
+     * @param  string  $episodeId
+     * @param  array  $data
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/episode-of-care/close-episode
+     */
+    public function close(string $patientId, string $episodeId, array $data): PromiseInterface|EHealthResponse
+    {
+        return $this->patch(self::URL . "/$patientId/episodes/$episodeId/actions/close", $data);
+    }
+
+    /**
      * Get episode by ID.
      *
      * @param  string  $patientId

@@ -106,22 +106,39 @@ class EpisodeRepository extends BaseRepository
      * Mark the episode as entered in error, keeping the reason and the explanation behind it.
      *
      * @param  Episode  $episode
-     * @param  array  $statusReason
-     * @param  string|null  $explanatoryLetter
+     * @param  array  $data
      * @return void
      * @throws Throwable
      */
-    public function markAsEnteredInError(
-        Episode $episode,
-        array $statusReason,
-        ?string $explanatoryLetter = null
-    ): void {
-        DB::transaction(function () use ($episode, $statusReason, $explanatoryLetter): void {
+    public function markAsEnteredInError(Episode $episode, array $data): void
+    {
+        DB::transaction(function () use ($episode, $data): void {
             $episode->update([
                 'status' => Status::ENTERED_IN_ERROR->value,
-                'status_reason_id' => $this->syncCodeableConcept($episode, $statusReason, 'statusReason')->id,
-                'explanatory_letter' => $explanatoryLetter
+                'status_reason_id' => $this->syncCodeableConcept($episode, $data['statusReason'], 'statusReason')->id,
+                'explanatory_letter' => $data['explanatoryLetter']
             ]);
+        });
+    }
+
+    /**
+     * Close the episode, keeping the reason, the summary and the moment it was closed at.
+     *
+     * @param  Episode  $episode
+     * @param  array  $data
+     * @return void
+     * @throws Throwable
+     */
+    public function markAsClosed(Episode $episode, array $data): void
+    {
+        DB::transaction(function () use ($episode, $data): void {
+            $episode->update([
+                'status' => Status::CLOSED->value,
+                'status_reason_id' => $this->syncCodeableConcept($episode, $data['statusReason'], 'statusReason')->id,
+                'closing_summary' => $data['closingSummary']
+            ]);
+
+            $episode->period()->update(['end' => $data['period']['end']]);
         });
     }
 

@@ -54,6 +54,25 @@ class EpisodePolicy
     }
 
     /**
+     * Determine whether the user can close the episode. A closed or cancelled episode cannot be closed again,
+     * and a draft never reached eHealth, so an active episode is the only one left to close.
+     * An episode without a managing organization came from the short sync and is treated as our own.
+     */
+    public function close(User $user, Episode $episode): Response
+    {
+        $managingOrganization = $episode->managingOrganization?->value;
+
+        if ($user->cannot('episode:write')
+            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)) {
+            return Response::denyWithStatus(404);
+        }
+
+        return $episode->status === Status::ACTIVE
+            ? Response::allow()
+            : Response::denyWithStatus(404);
+    }
+
+    /**
      * Determine whether the user can mark the episode as entered in error.
      * An episode already marked as such cannot be cancelled again, and a draft is deleted instead.
      * An episode without a managing organization came from the short sync and is treated as our own.

@@ -193,7 +193,7 @@
                                    type="text"
                                    name="filterPeriodDateRange"
                                    id="filterPeriodDateRange"
-                                   class="daterangepicker-uk with-leading-icon input peer w-full"
+                                   class="daterangepicker-uk with-leading-icon input peer w-full @error('filterPeriodDateRange') input-error @enderror"
                                    placeholder=" "
                                    autocomplete="off"
                             />
@@ -201,6 +201,10 @@
                                 {{ __('patients.filter_created_at_range') }}
                             </label>
                         </div>
+
+                        @error('filterPeriodDateRange')
+                        <p class="text-error mt-1 text-xs">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -223,7 +227,7 @@
     </div>
 
     @include('livewire.person.records.parts.episode-cancellation-modal')
-    @include('livewire.person.records.parts.episode-closure-modal')
+    @include('livewire.person.records.parts.episode-closing-modal')
 
     <x-forms.loading />
 </x-layouts.patient>
