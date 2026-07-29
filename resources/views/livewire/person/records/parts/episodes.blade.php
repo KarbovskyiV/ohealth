@@ -4,11 +4,15 @@
     $episodes = $episodes ?? $this->episodes;
     $limit = $limit ?? null;
     $hasLimit = $limit && count($episodes) > $limit;
+
+    // Closing and cancelling an episode is driven by the host component, only the episode list has those actions
+    $showStatusActions = $showStatusActions ?? false;
 @endphp
 
 <div @if($hasLimit) x-data="{ limit: {{ $limit }} }" @endif>
     @foreach($episodes as $index => $episode)
         @php($status = Status::from(data_get($episode, 'status')))
+        @php($managingOrganization = data_get($episode, 'managingOrganization.value'))
 
         <div class="record-inner-card" @if($hasLimit) x-show="limit > {{ $index }}" @endif>
             <div class="record-inner-header">
@@ -83,7 +87,7 @@
                                 </a>
 
                                 @if(in_array($status, [Status::DRAFT, Status::ACTIVE], true)
-                                    && data_get($episode, 'managingOrganization.identifier.value') === legalEntity()->uuid)
+                                    && ($managingOrganization === null || $managingOrganization === legalEntity()->uuid))
                                     <a href="{{ route($prepersonId !== null ? 'prepersons.episodes.edit' : 'persons.episodes.edit', [legalEntity(), $prepersonId !== null ? 'preperson' : 'person' => $prepersonId ?? $personId, 'episode' => data_get($episode, 'id')]) }}"
                                        wire:navigate
                                        @click="close($refs.button)"
@@ -94,18 +98,21 @@
                                     </a>
                                 @endif
 
-                                @if($status === Status::ACTIVE)
+                                @if($showStatusActions && $status === Status::ACTIVE)
                                     <button type="button"
                                             @click="$dispatch('open-episode-closure', { uuid: '{{ data_get($episode, 'uuid') }}' }); close($refs.button)"
-                                            class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                            class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                                     >
                                         @icon('close', 'w-5 h-5 text-gray-600 dark:text-gray-300')
                                         {{ __('forms.close') }}
                                     </button>
+                                @endif
 
+                                @if($showStatusActions && in_array($status, [Status::ACTIVE, Status::CLOSED], true))
                                     <button type="button"
-                                            @click="$dispatch('open-episode-cancellation', { uuid: '{{ data_get($episode, 'uuid') }}' }); close($refs.button)"
-                                            class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                            wire:click="openEpisodeCancellation('{{ data_get($episode, 'uuid') }}')"
+                                            @click="close($refs.button)"
+                                            class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                                     >
                                         @icon('alert-circle', 'w-5 h-5 text-gray-600 dark:text-gray-300')
                                         {{ __('patients.status.entered_in_error') }}

@@ -77,7 +77,7 @@
                          class="text-center py-8 text-gray-500 dark:text-gray-400"
                          x-cloak
                     >
-                        {{ __('patients.loading') }}
+                        {{ __('general.loading') }}
                     </div>
 
                     <div x-show="!medicalRecordsLoading && hasSearchedMedicalRecords" x-cloak>

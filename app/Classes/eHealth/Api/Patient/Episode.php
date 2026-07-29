@@ -49,6 +49,22 @@ class Episode extends PatientApiBase
     }
 
     /**
+     * Mark the episode as entered in error.
+     *
+     * @param  string  $patientId
+     * @param  string  $episodeId
+     * @param  array  $data
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/episode-of-care/cancel-episode
+     */
+    public function cancel(string $patientId, string $episodeId, array $data): PromiseInterface|EHealthResponse
+    {
+        return $this->patch(self::URL . "/$patientId/episodes/$episodeId/actions/cancel", $data);
+    }
+
+    /**
      * Get episode by ID.
      *
      * @param  string  $patientId

@@ -17,13 +17,16 @@ use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Repositories\MedicalEvents\Repository;
 use App\Rules\InDictionary;
+use App\Services\MedicalEvents\Fhir;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesSyncBatch;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
 use Throwable;
 
@@ -44,7 +47,15 @@ class EpisodeIndex extends BasePatientComponent
     public bool $showAdditionalParams = false;
 
     public bool $showCancellationModal = false;
-    public ?string $cancellingEpisodeUuid = null;
+
+    /**
+     * eHealth ID of the episode being marked as entered in error.
+     *
+     * @var string|null
+     */
+    #[Locked]
+    public ?string $cancellingId = null;
+
     public string $cancellationReason = '';
     public string $explanatoryLetter = '';
 
@@ -54,7 +65,7 @@ class EpisodeIndex extends BasePatientComponent
     public string $closingReason = '';
     public string $closingSummary = '';
 
-    protected array $dictionaryNames = ['eHealth/ICPC2/condition_codes'];
+    protected array $dictionaryNames = ['eHealth/ICPC2/condition_codes', 'eHealth/cancellation_reasons'];
 
     /**
      * ICD-10 dictionary matches (code and description) for the search autocomplete.
@@ -192,6 +203,7 @@ class EpisodeIndex extends BasePatientComponent
     protected function paginateLocalEpisodes(): LengthAwarePaginator
     {
         $paginator = Episode::forPatient($this->patient())
+            ->forLegalEntity()
             ->withRelationships()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));
@@ -237,16 +249,101 @@ class EpisodeIndex extends BasePatientComponent
         ]);
     }
 
-    public function openEpisodeCancellation(string $uuid): void
+    /**
+     * Ask for the reason the episode is being marked as entered in error.
+     *
+     * @param  string  $id
+     * @return void
+     */
+    public function openEpisodeCancellation(string $id): void
     {
+        $this->cancellingId = $id;
+        $this->cancellationReason = '';
+        $this->explanatoryLetter = '';
+        $this->resetValidation();
+        $this->showCancellationModal = true;
     }
 
+    /**
+     * Leave the cancellation modal without marking the episode.
+     *
+     * @return void
+     */
     public function closeEpisodeCancellationModal(): void
     {
+        $this->cancellingId = null;
+        $this->showCancellationModal = false;
     }
 
+    /**
+     * Mark the selected episode as entered in error in eHealth and store the outcome locally.
+     *
+     * @return void
+     */
     public function cancelSelectedEpisode(): void
     {
+        // Episodes shown from a search are not stored locally until the patient is synchronised
+        $episode = Episode::forPatient($this->patient())
+            ->forLegalEntity()
+            ->whereUuid($this->cancellingId)
+            ->first();
+
+        if ($episode === null) {
+            Session::flash('error', __('episodes.messages.not_synced'));
+
+            return;
+        }
+
+        if (Auth::user()->cannot('cancel', $episode)) {
+            Session::flash('error', __('episodes.policy.cancel'));
+
+            return;
+        }
+
+        $formattedData = Fhir::episode()->toCancelFhir($this->validate($this->cancellationRules()));
+
+        try {
+            EHealth::episode()->cancel(
+                $this->uuid,
+                $episode->uuid,
+                removeEmptyKeys(Arr::toSnakeCase($formattedData))
+            );
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error while cancelling episode');
+
+            return;
+        }
+
+        // eHealth accepted the cancellation; only now persist it locally
+        try {
+            Repository::episode()->markAsEnteredInError(
+                $episode,
+                $formattedData['statusReason'],
+                $formattedData['explanatoryLetter']
+            );
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Failed to store cancelled episode');
+
+            return;
+        }
+
+        $this->closeEpisodeCancellationModal();
+        unset($this->paginatedEpisodes);
+
+        Session::flash('success', __('episodes.messages.cancelled'));
+    }
+
+    /**
+     * Rules for marking an episode as entered in error.
+     *
+     * @return array
+     */
+    protected function cancellationRules(): array
+    {
+        return [
+            'cancellationReason' => ['required', 'string', new InDictionary('eHealth/cancellation_reasons')],
+            'explanatoryLetter' => ['nullable', 'string', 'max:255']
+        ];
     }
 
     public function openEpisodeClosure(string $uuid): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\MedicalEvents;
 
 use App\Core\Arr;
+use App\Enums\Episode\Status;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\EpisodeCurrentDiagnosis;
 use App\Models\MedicalEvents\Sql\EpisodeDiagnosesHistory;
@@ -97,6 +98,29 @@ class EpisodeRepository extends BaseRepository
             $episode->update([
                 'name' => $data['name'],
                 'status' => $data['status']
+            ]);
+        });
+    }
+
+    /**
+     * Mark the episode as entered in error, keeping the reason and the explanation behind it.
+     *
+     * @param  Episode  $episode
+     * @param  array  $statusReason
+     * @param  string|null  $explanatoryLetter
+     * @return void
+     * @throws Throwable
+     */
+    public function markAsEnteredInError(
+        Episode $episode,
+        array $statusReason,
+        ?string $explanatoryLetter = null
+    ): void {
+        DB::transaction(function () use ($episode, $statusReason, $explanatoryLetter): void {
+            $episode->update([
+                'status' => Status::ENTERED_IN_ERROR->value,
+                'status_reason_id' => $this->syncCodeableConcept($episode, $statusReason, 'statusReason')->id,
+                'explanatory_letter' => $explanatoryLetter
             ]);
         });
     }
