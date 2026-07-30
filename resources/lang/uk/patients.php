@@ -55,6 +55,8 @@ return [
     'revoke_access' => 'Відкликати доступ до записів',
     'filter_created_at_range' => 'Створено від - до',
     'filter_date_range' => 'Дата від - до',
+    'filter_period_start_range' => 'Дата початку від - до',
+    'filter_period_end_range' => 'Дата завершення від - до',
 
     // Summary sections fields
     'status_clinical' => 'Статус клінічний',

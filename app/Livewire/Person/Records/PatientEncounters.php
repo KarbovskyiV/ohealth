@@ -170,11 +170,33 @@ class PatientEncounters extends BasePatientComponent
     protected function filterValidationRules(): array
     {
         return [
-            'filterStartDateRange' => ['nullable', 'string', 'max:255'],
-            'filterEndDateRange' => ['nullable', 'string', 'max:255'],
+            'filterStartDateRange' => [
+                'nullable',
+                'string',
+                'regex:/^\d{2}\.\d{2}\.\d{4}( — \d{2}\.\d{2}\.\d{4})?$/u'
+            ],
+            'filterEndDateRange' => [
+                'nullable',
+                'string',
+                'regex:/^\d{2}\.\d{2}\.\d{4}( — \d{2}\.\d{2}\.\d{4})?$/u'
+            ],
             'filterEpisodeId' => ['nullable', 'uuid'],
             'filterIncomingReferralId' => ['nullable', 'uuid'],
             'filterOriginEpisodeId' => ['nullable', 'uuid']
+        ];
+    }
+
+    /**
+     * Redefine filter names for error messages.
+     *
+     * @return array
+     */
+    public function validationAttributes(): array
+    {
+        return [
+            'filterStartDateRange' => __('patients.filter_period_start_range'),
+            'filterEndDateRange' => __('patients.filter_period_end_range'),
+            'filterEpisodeId' => __('episodes.label')
         ];
     }
 
@@ -248,12 +270,20 @@ class PatientEncounters extends BasePatientComponent
         $perPage = config('pagination.per_page');
         $page = $this->getPage();
 
-        // todo: add period params after change in frontend
+        // todo: cancel encounter package
+        // The pickers keep both bounds in one field, the API takes them as separate params
+        $periodStart = array_map('trim', explode('—', $this->filterStartDateRange));
+        $periodEnd = array_map('trim', explode('—', $this->filterEndDateRange));
+
         $params = array_filter([
             'managing_organization_id' => legalEntity()->uuid,
             'episode_id' => $this->filterEpisodeId ?: null,
             'incoming_referral_id' => $this->filterIncomingReferralId ?: null,
             'origin_episode_id' => $this->filterOriginEpisodeId ?: null,
+            'period_start_from' => convertToYmd($periodStart[0] ?? ''),
+            'period_start_to' => convertToYmd($periodStart[1] ?? ''),
+            'period_end_from' => convertToYmd($periodEnd[0] ?? ''),
+            'period_end_to' => convertToYmd($periodEnd[1] ?? ''),
             'page' => $page,
             'page_size' => $perPage
         ]);

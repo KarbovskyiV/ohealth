@@ -275,7 +275,9 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'episodes',
-            Episode::with(['period', 'managingOrganization'])->forPatient($this->patient())->forLegalEntity(),
+            Episode::with(['period', 'managingOrganization.type.coding', 'careManager.type.coding'])
+                ->forPatient($this->patient())
+                ->forLegalEntity(),
             'episodes',
             visible: ['id']
         );

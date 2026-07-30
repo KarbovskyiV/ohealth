@@ -424,6 +424,7 @@ return [
         'MED_COORDINATOR' => ['TREATMENT', 'DG']
     ],
     'allowed_episode_care_manager_employee_types' => ['DOCTOR', 'SPECIALIST', 'ASSISTANT', 'MED_COORDINATOR'],
+    'allow_other_le_employees_to_manage_episode' => env('EHEALTH_ALLOW_OTHER_LE_EMPLOYEES_TO_MANAGE_EPISODE', false),
 
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/17999298851/RC_+CSI-1323+_Create+Update+person+request+v2#Validate-person-documents
     'expiration_date_exists' => [

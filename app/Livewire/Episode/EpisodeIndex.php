@@ -218,7 +218,7 @@ class EpisodeIndex extends BasePatientComponent
     {
         $paginator = Episode::forPatient($this->patient())
             ->forLegalEntity()
-            ->withRelationships()
+            ->with(['period', 'managingOrganization.type.coding', 'careManager.type.coding'])
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));
 

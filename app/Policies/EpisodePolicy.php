@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\Episode\Status;
+use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -44,7 +45,8 @@ class EpisodePolicy
         $managingOrganization = $episode->managingOrganization?->value;
 
         if ($user->cannot('episode:write')
-            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)) {
+            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)
+            || !Employee::managedByUser($user, $episode->careManager?->value)) {
             return Response::denyWithStatus(404);
         }
 
@@ -63,7 +65,8 @@ class EpisodePolicy
         $managingOrganization = $episode->managingOrganization?->value;
 
         if ($user->cannot('episode:write')
-            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)) {
+            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)
+            || !Employee::managedByUser($user, $episode->careManager?->value)) {
             return Response::denyWithStatus(404);
         }
 
@@ -82,7 +85,8 @@ class EpisodePolicy
         $managingOrganization = $episode->managingOrganization?->value;
 
         if ($user->cannot('episode:write')
-            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)) {
+            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)
+            || !Employee::managedByUser($user, $episode->careManager?->value)) {
             return Response::denyWithStatus(404);
         }
 
