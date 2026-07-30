@@ -66,7 +66,7 @@
             x-transition:leave-end="transform opacity-0 scale-95"
             class="absolute z-30 mt-2 w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"
         >
-            <ul class="py-2 px-3 space-y-2 text-sm text-gray-700 dark:text-gray-200">
+            <ul class="space-y-2 !bg-white px-3 py-2 text-sm text-gray-700 dark:!bg-gray-800 dark:text-gray-200">
                 <template x-for="(optLabel, optValue) in options" :key="optValue">
                     <li>
                         <label class="flex items-center space-x-2 cursor-pointer p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-600">
