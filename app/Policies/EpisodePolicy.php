@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\Episode\Status;
+use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -44,11 +45,32 @@ class EpisodePolicy
         $managingOrganization = $episode->managingOrganization?->value;
 
         if ($user->cannot('episode:write')
-            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)) {
+            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)
+            || !Employee::managedByUser($user, $episode->careManager?->value)) {
             return Response::denyWithStatus(404);
         }
 
         return in_array($episode->status, [Status::DRAFT, Status::ACTIVE], true)
+            ? Response::allow()
+            : Response::denyWithStatus(404);
+    }
+
+    /**
+     * Determine whether the user can close the episode. A closed or cancelled episode cannot be closed again,
+     * and a draft never reached eHealth, so an active episode is the only one left to close.
+     * An episode without a managing organization came from the short sync and is treated as our own.
+     */
+    public function close(User $user, Episode $episode): Response
+    {
+        $managingOrganization = $episode->managingOrganization?->value;
+
+        if ($user->cannot('episode:write')
+            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)
+            || !Employee::managedByUser($user, $episode->careManager?->value)) {
+            return Response::denyWithStatus(404);
+        }
+
+        return $episode->status === Status::ACTIVE
             ? Response::allow()
             : Response::denyWithStatus(404);
     }
@@ -63,7 +85,8 @@ class EpisodePolicy
         $managingOrganization = $episode->managingOrganization?->value;
 
         if ($user->cannot('episode:write')
-            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)) {
+            || ($managingOrganization !== null && $managingOrganization !== legalEntity()->uuid)
+            || !Employee::managedByUser($user, $episode->careManager?->value)) {
             return Response::denyWithStatus(404);
         }
 

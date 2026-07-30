@@ -1,4 +1,6 @@
 @use('App\Enums\Episode\Status')
+@use('App\Models\Employee\Employee')
+@use('Illuminate\Support\Facades\Auth')
 
 @php
     $episodes = $episodes ?? $this->episodes;
@@ -7,12 +9,25 @@
 
     // Closing and cancelling an episode is driven by the host component, only the episode list has those actions
     $showStatusActions = $showStatusActions ?? false;
+
+    $careManagerIds = collect($episodes)
+        ->map(static fn (array $episode): ?string => data_get($episode, 'careManager.identifier.value'))
+        ->filter()
+        ->unique();
+
+    // The care managers the user may act through, resolved for the whole list at once
+    $manageableCareManagers = Employee::manageableBy(Auth::user())
+        ->whereIn('uuid', $careManagerIds)
+        ->pluck('uuid')
+        ->all();
 @endphp
 
 <div @if($hasLimit) x-data="{ limit: {{ $limit }} }" @endif>
     @foreach($episodes as $index => $episode)
         @php($status = Status::from(data_get($episode, 'status')))
-        @php($managingOrganization = data_get($episode, 'managingOrganization.value'))
+        @php($managingOrganization = data_get($episode, 'managingOrganization.identifier.value'))
+        @php($careManagerId = data_get($episode, 'careManager.identifier.value'))
+        @php($managesCareManager = ($careManagerId === null || in_array($careManagerId, $manageableCareManagers, true)))
 
         <div class="record-inner-card" @if($hasLimit) x-show="limit > {{ $index }}" @endif>
             <div class="record-inner-header">
@@ -77,42 +92,70 @@
                                 :id="$id('dropdown-button')"
                                 class="absolute right-0 mt-2 w-56 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-md z-50 py-1"
                             >
-                                <a href="{{ route($prepersonId !== null ? 'prepersons.episodes.view' : 'persons.episodes.view', [legalEntity(), $prepersonId !== null ? 'preperson' : 'person' => $prepersonId ?? $personId, 'episode' => data_get($episode, 'id')]) }}"
-                                   wire:navigate
-                                   @click="close($refs.button)"
-                                   class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                                >
-                                    @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300')
-                                    {{ __('patients.view_details') }}
-                                </a>
-
-                                @if(in_array($status, [Status::DRAFT, Status::ACTIVE], true)
-                                    && ($managingOrganization === null || $managingOrganization === legalEntity()->uuid))
-                                    <a href="{{ route($prepersonId !== null ? 'prepersons.episodes.edit' : 'persons.episodes.edit', [legalEntity(), $prepersonId !== null ? 'preperson' : 'person' => $prepersonId ?? $personId, 'episode' => data_get($episode, 'id')]) }}"
+                                @if(data_get($episode, 'id'))
+                                    <a href="{{ route($prepersonId !== null ? 'prepersons.episodes.view' : 'persons.episodes.view', [legalEntity(), $prepersonId !== null ? 'preperson' : 'person' => $prepersonId ?? $personId, 'episode' => data_get($episode, 'id')]) }}"
                                        wire:navigate
                                        @click="close($refs.button)"
                                        class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
                                     >
-                                        @icon('edit', 'w-5 h-5 text-gray-600 dark:text-gray-300')
-                                        {{ __('forms.edit') }}
+                                        @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                        {{ __('patients.view_details') }}
                                     </a>
+                                @else
+                                    <button type="button"
+                                            wire:click="openEpisode('{{ data_get($episode, 'uuid') }}')"
+                                            @click="close($refs.button)"
+                                            class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                                    >
+                                        @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                        {{ __('patients.view_details') }}
+                                    </button>
                                 @endif
 
-                                @if($showStatusActions && $status === Status::ACTIVE)
-                                    <button type="button"
-                                            @click="$dispatch('open-episode-closure', { uuid: '{{ data_get($episode, 'uuid') }}' }); close($refs.button)"
-                                            class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                                @if(in_array($status, [Status::DRAFT, Status::ACTIVE], true)
+                                    && ($managingOrganization === null || $managingOrganization === legalEntity()->uuid)
+                                    && $managesCareManager)
+                                    @if(data_get($episode, 'id'))
+                                        <a href="{{ route($prepersonId !== null ? 'prepersons.episodes.edit' : 'persons.episodes.edit', [legalEntity(), $prepersonId !== null ? 'preperson' : 'person' => $prepersonId ?? $personId, 'episode' => data_get($episode, 'id')]) }}"
+                                           wire:navigate
+                                           @click="close($refs.button)"
+                                           class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                        >
+                                            @icon('edit', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                            {{ __('forms.edit') }}
+                                        </a>
+                                    @else
+                                        <button type="button"
+                                                wire:click="openEpisode('{{ data_get($episode, 'uuid') }}', true)"
+                                                @click="close($refs.button)"
+                                                class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                                        >
+                                            @icon('edit', 'w-5 h-5 text-gray-600 dark:text-gray-300')
+                                            {{ __('forms.edit') }}
+                                        </button>
+                                    @endif
+                                @endif
+
+                                @if($showStatusActions && $status === Status::ACTIVE && $managesCareManager)
+                                    <button
+                                        type="button"
+                                        wire:click="openEpisodeClosing('{{ data_get($episode, 'uuid') }}')"
+                                        @click="close($refs.button)"
+                                        class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                                     >
                                         @icon('close', 'w-5 h-5 text-gray-600 dark:text-gray-300')
                                         {{ __('forms.close') }}
                                     </button>
                                 @endif
 
-                                @if($showStatusActions && in_array($status, [Status::ACTIVE, Status::CLOSED], true))
-                                    <button type="button"
-                                            wire:click="openEpisodeCancellation('{{ data_get($episode, 'uuid') }}')"
-                                            @click="close($refs.button)"
-                                            class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                                @if($showStatusActions
+                                    && in_array($status, [Status::ACTIVE, Status::CLOSED], true)
+                                    && $managesCareManager)
+                                    <button
+                                        type="button"
+                                        wire:click="openEpisodeCancellation('{{ data_get($episode, 'uuid') }}')"
+                                        @click="close($refs.button)"
+                                        class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                                     >
                                         @icon('alert-circle', 'w-5 h-5 text-gray-600 dark:text-gray-300')
                                         {{ __('patients.status.entered_in_error') }}

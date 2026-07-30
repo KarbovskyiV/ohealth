@@ -181,6 +181,22 @@ class Encounter extends Model
     }
 
     /**
+     * Filter encounters belonging to the given episode, which is stored as an identifier holding its eHealth ID.
+     *
+     * @param  Builder  $query
+     * @param  string  $episodeId
+     * @return Builder
+     */
+    #[Scope]
+    protected function forEpisode(Builder $query, string $episodeId): Builder
+    {
+        return $query->whereHas(
+            'episode',
+            static fn (Builder $identifier): Builder => $identifier->whereValue($episodeId)
+        );
+    }
+
+    /**
      * Order by most recently updated in eHealth first, keeping records without a timestamp last.
      *
      * @param  Builder  $query

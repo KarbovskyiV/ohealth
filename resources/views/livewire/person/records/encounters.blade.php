@@ -50,14 +50,18 @@
                                type="text"
                                name="filterStartDateRange"
                                id="filterStartDateRange"
-                               class="daterangepicker-uk with-leading-icon input peer w-full"
+                               class="daterangepicker-uk with-leading-icon input peer w-full @error('filterStartDateRange') input-error @enderror"
                                placeholder=" "
                                autocomplete="off"
                         />
                         <label for="filterStartDateRange" class="wrapped-label">
-                            Дата початку від - до
+                            {{ __('patients.filter_period_start_range') }}
                         </label>
                     </div>
+
+                    @error('filterStartDateRange')
+                    <p class="text-error mt-1 text-xs">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="form-group group">
@@ -66,14 +70,18 @@
                                type="text"
                                name="filterEndDateRange"
                                id="filterEndDateRange"
-                               class="daterangepicker-uk with-leading-icon input peer w-full"
+                               class="daterangepicker-uk with-leading-icon input peer w-full @error('filterEndDateRange') input-error @enderror"
                                placeholder=" "
                                autocomplete="off"
                         />
                         <label for="filterEndDateRange" class="wrapped-label">
-                            Дата завершення від - до
+                            {{ __('patients.filter_period_end_range') }}
                         </label>
                     </div>
+
+                    @error('filterEndDateRange')
+                    <p class="text-error mt-1 text-xs">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <x-forms.combobox :options="$episodes"

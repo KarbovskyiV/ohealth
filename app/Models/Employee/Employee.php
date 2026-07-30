@@ -87,15 +87,15 @@ class Employee extends BaseEmployee
             Declaration::class,
             'reorganization_employee_declarations'
         )
-        ->using(ReorganizationEmployeeDeclaration::class)
-        ->withPivot([
-            'legal_entity_uuid',
-            'employee_uuid',
-            'declaration_uuid',
-            'person_uuid',
-            'declaration_number',
-            'authorize_with'
-        ]);
+            ->using(ReorganizationEmployeeDeclaration::class)
+            ->withPivot([
+                'legal_entity_uuid',
+                'employee_uuid',
+                'declaration_uuid',
+                'person_uuid',
+                'declaration_number',
+                'authorize_with'
+            ]);
     }
 
     #[Scope]
@@ -124,13 +124,12 @@ class Employee extends BaseEmployee
     /**
      * Scope to find employees matching the given types, status, user, legal entity, and optionally a party.
      *
-     * @param  Builder    $query
-     * @param  array      $employeeTypes
-     * @param  string     $status
-     * @param  int        $userId
-     * @param  int        $legalEntityId
-     * @param  int|null   $partyId
-     *
+     * @param  Builder  $query
+     * @param  array  $employeeTypes
+     * @param  string  $status
+     * @param  int  $userId
+     * @param  int  $legalEntityId
+     * @param  int|null  $partyId
      * @return void
      */
     public function scopeIdentifyEmployee(Builder $query, array $employeeTypes, string $status, int $userId, int $legalEntityId, ?int $partyId): void
@@ -145,9 +144,8 @@ class Employee extends BaseEmployee
     /**
      * Scope to filter employees by a list of UUIDs.
      *
-     * @param  Builder $query
-     * @param  array   $uuids
-     *
+     * @param  Builder  $query
+     * @param  array  $uuids
      * @return Builder
      */
     public function scopeFilterByUuids(Builder $query, array $uuids): Builder
@@ -213,11 +211,10 @@ class Employee extends BaseEmployee
      *
      * Falls back to the current legal entity and party if not provided.
      *
-     * @param  Builder $query
-     * @param  int|null $legalEntityId
-     * @param  int|null $partyId
-     * @param  Status $status
-     *
+     * @param  Builder  $query
+     * @param  int|null  $legalEntityId
+     * @param  int|null  $partyId
+     * @param  Status  $status
      * @return Builder
      */
     public function scopeGetEmployeesForParty(Builder $query, ?int $legalEntityId = null, ?int $partyId = null, Status $status = Status::APPROVED): Builder
@@ -235,9 +232,8 @@ class Employee extends BaseEmployee
      *
      * Falls back to the current legal entity if not provided.
      *
-     * @param  Builder $query
-     * @param  int|null $legalEntityId
-     *
+     * @param  Builder  $query
+     * @param  int|null  $legalEntityId
      * @return Builder
      */
     public function scopeGetEmployeesViaPivot(Builder $query, ?int $legalEntityId = null): Builder
@@ -254,15 +250,15 @@ class Employee extends BaseEmployee
      *
      * Used to check whether a duplicate employee record already exists before creating a new one.
      *
-     * @param  Builder $query
+     * @param  Builder  $query
      * @param  string  $legalEntityUuid
      * @param  string  $employeeType
      * @param  string  $position
-     * @param  int     $partyId
-     *
+     * @param  int  $partyId
      * @return Builder
      */
-    public function scopeMatchingEmployee(Builder $query, string $legalEntityUuid, string $employeeType, string $position, int $partyId): Builder {
+    public function scopeMatchingEmployee(Builder $query, string $legalEntityUuid, string $employeeType, string $position, int $partyId): Builder
+    {
         return $query
             ->where('legal_entity_uuid', $legalEntityUuid)
             ->where('employee_type', $employeeType)
@@ -275,12 +271,42 @@ class Employee extends BaseEmployee
      *
      * Used to determine employees that should be available to a user based on their effective creation time.
      *
-     * @param string $time The reference time to compare against
-     *
+     * @param  string  $time  The reference time to compare against
      * @return bool
      */
     public function isCreatedAtOrAfter(string $time): bool
     {
         return Carbon::parse($this->insertedAt)->greaterThanOrEqualTo(Carbon::parse($time));
+    }
+
+    /**
+     * Scope the employees the user may manage records through.
+     * By default, those are the employees of the user themselves; when other employees of the legal entity
+     * are allowed to manage episodes, those are all of its employees.
+     *
+     * @param  Builder  $query
+     * @param  User  $user
+     * @return Builder
+     */
+    #[Scope]
+    protected function manageableBy(Builder $query, User $user): Builder
+    {
+        return config('ehealth.allow_other_le_employees_to_manage_episode')
+            ? $query->whereLegalEntityId(legalEntity()->id)
+            : $query->wherePartyId($user->partyId);
+    }
+
+    /**
+     * Determine whether the user may manage a record through the care manager with the given UUID.
+     * A record without a care manager came from the short sync and is treated as our own.
+     *
+     * @param  User  $user
+     * @param  string|null  $careManagerId
+     * @return bool
+     */
+    public static function managedByUser(User $user, ?string $careManagerId): bool
+    {
+        return $careManagerId === null
+            || self::query()->manageableBy($user)->whereUuid($careManagerId)->exists();
     }
 }

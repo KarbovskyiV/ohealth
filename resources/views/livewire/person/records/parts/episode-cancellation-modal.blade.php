@@ -6,11 +6,11 @@
             role="dialog"
             aria-modal="true"
             class="modal"
-            x-on:keydown.escape.prevent.stop="$wire.closeEpisodeCancellationModal()"
+            x-on:keydown.escape.prevent.stop="showCancellationModal = false"
         >
             <div x-transition.opacity
                  class="fixed inset-0 bg-black/30"
-                 x-on:click="$wire.closeEpisodeCancellationModal()"
+                 x-on:click="showCancellationModal = false"
             ></div>
 
             <div class="modal-wrapper">
@@ -36,7 +36,7 @@
 
                             <select
                                 class="input-modal"
-                                wire:model="cancellationReason"
+                                wire:model="cancellationForm.cancellationReason"
                                 name="cancellationReason"
                                 id="cancellationReason"
                             >
@@ -55,7 +55,7 @@
                                 @endforeach
                             </select>
 
-                            @error('cancellationReason')
+                            @error('cancellationForm.cancellationReason')
                             <p class="text-error mt-1 text-xs">{{ $message }}</p>
                             @enderror
                         </div>
@@ -66,7 +66,7 @@
                             </label>
 
                             <textarea
-                                wire:model="explanatoryLetter"
+                                wire:model="cancellationForm.explanatoryLetter"
                                 id="explanatoryLetter"
                                 name="explanatoryLetter"
                                 maxlength="255"
@@ -74,7 +74,7 @@
                                 placeholder="{{ __('forms.write_comment_here') }}"
                             ></textarea>
 
-                            @error('explanatoryLetter')
+                            @error('cancellationForm.explanatoryLetter')
                             <p class="text-error mt-1 text-xs">{{ $message }}</p>
                             @enderror
                         </div>
@@ -83,7 +83,7 @@
                             class="flex gap-4 justify-start items-center pt-4 border-t border-gray-200 dark:border-gray-700">
                             <button
                                 type="button"
-                                wire:click="closeEpisodeCancellationModal"
+                                x-on:click="showCancellationModal = false"
                                 class="button-minor"
                             >
                                 {{ __('forms.cancel') }}
