@@ -17,7 +17,7 @@ trait ProcessesPartyVerificationResponses
      * Intentionally kept as the eHealth list-response surface alongside Party::getMany().
      * Current app call sites (login job, index sync button) use getDetails +
      * processPartyVerificationDetail() with party_verification:details — they do not call this.
-     * Wire this back only if product returns to list+:read sync.
+     * Wire this back only if product returns to the list verification sync.
      *
      * @param  EHealthResponse  $response  The API response object.
      * @param  LegalEntity  $legalEntity  The legal entity context.
