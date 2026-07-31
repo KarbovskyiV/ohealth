@@ -5,9 +5,10 @@ declare(strict_types=1);
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Drop unused party verification list scope from Spatie tables.
+ * Ensure unused party verification list scope is absent from Spatie tables.
  * App ACL uses party_verification:details / :write only.
  */
 return new class extends Migration
@@ -41,6 +42,8 @@ return new class extends Migration
         }
 
         DB::table('permissions')->whereIn('id', $permissionIds)->delete();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     public function down(): void
