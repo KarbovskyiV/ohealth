@@ -194,7 +194,9 @@ class EditLegalEntity extends LegalEntity
          * and does NOT rehydrate protected typed properties.
          * Code below allows to ensure that property is set before use.
          */
-        $this->legalEntity ??= $this->getLegalEntity();
+        if (!isset($this->legalEntity)) {
+            $this->legalEntity = $this->getLegalEntity();
+        }
 
         if (Auth::user()->cannot('edit', $this->legalEntity)) {
             $this->dispatchErrorMessage(__('legal-entity.policy.deny.edit'));

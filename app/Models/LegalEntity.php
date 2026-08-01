@@ -108,6 +108,13 @@ class LegalEntity extends Model
         'name',
     ];
 
+    /**
+     * Caches resolved route bindings for the lifetime of the current request.
+     *
+     * @var array<string, Model|null>
+     */
+    protected array $routeBindingCache = [];
+
     public null|object $owner;
 
     public function employees(): HasMany
@@ -311,17 +318,19 @@ class LegalEntity extends Model
     }
 
     /**
-     * Memoize route-binding resolution per request to avoid duplicate queries
+     * Memoize (or something like this) route-binding resolution per request to avoid duplicate queries
      * when Livewire's persistent middleware re-runs SubstituteBindings.
      */
     #[Override]
     public function resolveRouteBinding($value, $field = null): ?Model
     {
-        return cache()->memo()->remember(
-            "legal_entity_route:$value:" . ($field ?? $this->getRouteKeyName()),
-            now()->addMinute(),
-            fn () => parent::resolveRouteBinding($value, $field)
-        );
+        $key = $value.'|'.($field ?? $this->getRouteKeyName());
+
+        if (!array_key_exists($key, $this->routeBindingCache)) {
+            $this->routeBindingCache[$key] = parent::resolveRouteBinding($value, $field);
+        }
+
+        return $this->routeBindingCache[$key];
     }
 
     /**
