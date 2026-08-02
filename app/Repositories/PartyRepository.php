@@ -56,6 +56,10 @@ class PartyRepository
 
         // Get the right data structure to perform sync
         foreach ($partyUsers as $user) {
+            if ($user->insertedAt === null) {
+                continue;
+            }
+
             $employeesFiltered = $employeesWithUser->filter(fn(Employee $employee) => $employee->isCreatedAtOrAfter($user->insertedAt));
 
             $employeesCandidatesToSync = array_merge($employeesCandidatesToSync, $employeesFiltered->map(fn(Employee $employee) => ['employee_id' => $employee->id, 'user_id' => $user->id])->all());

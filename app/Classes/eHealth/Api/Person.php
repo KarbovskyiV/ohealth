@@ -507,7 +507,7 @@ class Person extends Request
 
         $validator = Validator::make($data, [
             '*.birth_country' => ['required', 'string', 'max:255'],
-            '*.birth_date' => ['required', 'date'],
+            '*.birth_date' => ['nullable', 'date'],
             '*.birth_settlement' => ['required', 'string', 'max:255'],
             '*.names' => ['required', 'array', 'min:1'],
             '*.names.*.language' => ['required', 'string', 'max:255'],
