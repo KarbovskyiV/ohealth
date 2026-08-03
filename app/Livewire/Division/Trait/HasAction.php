@@ -43,9 +43,7 @@ trait HasAction
 
             session()->flash('success', __('divisions.request.activated'));
         } catch (EHealthResponseException $err) {
-            Log::channel('e_health_errors')->error(static::class . ':activateDivision:', ['message' => $err->getMessage()]);
-
-            session()->flash('error', __('divisions.errors.activate'));
+            $err->handle(static::class . ':activateDivision:', __('divisions.errors.activate'));
 
             return;
         }
@@ -98,9 +96,7 @@ trait HasAction
 
             session()->flash('success', __('divisions.request.deactivated'));
         } catch (EHealthResponseException $err) {
-            Log::channel('e_health_errors')->error(static::class . ':deactivateDivision:', ['message' => $err->getMessage()]);
-
-            session()->flash('error', __('divisions.errors.deactivate'));
+            $err->handle(static::class . ':deactivateDivision:', __('divisions.errors.deactivate'));
 
             return;
         }

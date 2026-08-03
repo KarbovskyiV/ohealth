@@ -360,6 +360,13 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
         $errorCode = $e->getCode();
         $errorMessage = $e->getMessage();
 
+        if ($e->isPartyNotVerified()) {
+            $this->flashError(__('errors.ehealth.messages.party_not_verified'));
+            Log::error('EHealth Error Handled: ' . $errorMessage);
+
+            return;
+        }
+
         $translatedMessage = match (true) {
             str_contains($errorMessage, 'Forbidden to create OWNER')
             => __('errors.ehealth.messages.forbidden_create_owner'),
