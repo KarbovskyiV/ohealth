@@ -74,6 +74,7 @@ class EncounterEdit extends EncounterComponent
         }
         
         try {
+            $this->syncEncounterParticipants();
             $validated = $this->form->validate();
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());

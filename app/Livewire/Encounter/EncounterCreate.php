@@ -66,6 +66,7 @@ class EncounterCreate extends EncounterComponent
         }
 
         try {
+            $this->syncEncounterParticipants();
             $validated = $this->form->validate();
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
@@ -112,6 +113,8 @@ class EncounterCreate extends EncounterComponent
 
             return;
         }
+        
+        $this->syncEncounterParticipants();
 
         // First validate the encounter data
         try {

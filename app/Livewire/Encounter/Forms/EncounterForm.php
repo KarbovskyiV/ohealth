@@ -19,6 +19,7 @@ use Closure;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\RequiredIf;
+use Carbon\CarbonImmutable;
 
 class EncounterForm extends BaseForm
 {
@@ -558,11 +559,50 @@ class EncounterForm extends BaseForm
                 'date_format:' . config('app.date_format'),
                 'before_or_equal:today'
             ],
-            'diagnosticReports.*.issuedTime' => Rule::forEach(fn (mixed $value, string $attribute) => [
-                'required_with:diagnosticReports',
-                'date_format:H:i',
-                new PastDateTime($this->diagnosticReports[(int)explode('.', $attribute)[1]]['issuedDate'])
-            ]),
+            'diagnosticReports.*.issuedTime' => Rule::forEach(
+                function (mixed $value, string $attribute): array {
+                    $index = (int) explode('.', $attribute)[1];
+                    $issuedDate = $this->diagnosticReports[$index]['issuedDate'] ?? '';
+
+                    return [
+                        'required_with:diagnosticReports',
+                        'date_format:H:i',
+                        new PastDateTime($issuedDate),
+                        function (string $attribute, mixed $value, Closure $fail) use ($issuedDate): void {
+                            $periodDate = $this->encounter['periodDate'] ?? '';
+                            $periodStart = $this->encounter['periodStart'] ?? '';
+                            $periodEnd = $this->encounter['periodEnd'] ?? '';
+
+                            if (!$issuedDate || !$value || !$periodDate || !$periodStart || !$periodEnd) {
+                                return;
+                            }
+
+                            try {
+                                $issued = CarbonImmutable::createFromFormat(
+                                    config('app.date_format') . ' H:i',
+                                    $issuedDate . ' ' . $value
+                                );
+
+                                $encounterStart = CarbonImmutable::createFromFormat(
+                                    config('app.date_format') . ' H:i',
+                                    $periodDate . ' ' . $periodStart
+                                );
+
+                                $encounterEnd = CarbonImmutable::createFromFormat(
+                                    config('app.date_format') . ' H:i',
+                                    $periodDate . ' ' . $periodEnd
+                                );
+                            } catch (\Throwable) {
+                                return;
+                            }
+
+                            if ($issued->lessThan($encounterStart) || $issued->greaterThan($encounterEnd)) {
+                                $fail(__('patients.diagnostic_report_issued_outside_encounter_period'));
+                            }
+                        },
+                    ];
+                }
+            ),
             'diagnosticReports.*.effectiveType' => [
                 'nullable',
                 Rule::in(['date_time', 'period']),
@@ -1213,14 +1253,6 @@ class EncounterForm extends BaseForm
 
                 return;
             }
-
-            if (
-                !$hasActionReferences
-                && empty($this->diagnosticReports)
-                && empty($this->procedures)
-            ) {
-                $fail(__('validation.custom.encounter.actionReferences.required_activity'));
-            }
         };
     }
 
@@ -1342,6 +1374,73 @@ class EncounterForm extends BaseForm
                 $fail(__('validation.custom.conditions.psychiatry_evidence_code_forbidden', ['code' => $codeCode]));
             }
         };
+    }
+
+    public function syncParticipants(): void
+    {
+        $hasPrimarySourceCondition = collect($this->conditions ?? [])
+            ->contains(static fn (array $condition): bool => ($condition['primarySource'] ?? false) === true);
+
+        $encounterWriterEmployeeUuid = $hasPrimarySourceCondition ? Auth::user()
+                ->getEncounterWriterEmployee($this->encounter['classCode'] ?? null)
+                ?->uuid : null;
+
+        $requiredParticipantUuids = collect($this->procedures ?? [])
+            ->concat($this->diagnosticReports ?? [])
+            ->filter(static fn (array $record): bool => ($record['primarySource'] ?? false) === true && !empty($record['performerEmployeeId']))
+            ->pluck('performerEmployeeId')
+            ->when(
+                $encounterWriterEmployeeUuid !== null,
+                static fn ($participants) => $participants->push($encounterWriterEmployeeUuid)
+            )
+            ->filter()
+            ->unique()
+            ->values();
+
+        $currentParticipants = collect($this->encounter['participant'] ?? []);
+
+        $manualParticipants = $currentParticipants
+            ->filter(
+                static fn (array $participant): bool =>
+                    !empty($participant['uuid'])
+                    && ($participant['locked'] ?? false) !== true
+                    && !$requiredParticipantUuids->contains($participant['uuid'])
+            )
+            ->map(
+                static fn (array $participant): array => [
+                    'uuid' => $participant['uuid'],
+                    'locked' => false,
+                ]
+            );
+
+        $emptyManualParticipant = $currentParticipants
+            ->first(
+                static fn (array $participant): bool =>
+                    empty($participant['uuid'])
+                    && ($participant['locked'] ?? false) !== true
+            );
+
+        $automaticParticipants = $requiredParticipantUuids
+            ->map(
+                static fn (string $uuid): array => [
+                    'uuid' => $uuid,
+                    'locked' => true,
+                ]
+            );
+
+        $participants = $manualParticipants
+            ->merge($automaticParticipants)
+            ->unique('uuid')
+            ->values();
+
+        if ($emptyManualParticipant !== null) {
+            $participants->push([
+                'uuid' => '',
+                'locked' => false,
+            ]);
+        }
+
+        $this->encounter['participant'] = $participants->toArray();
     }
 
     /**

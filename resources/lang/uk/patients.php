@@ -334,6 +334,9 @@ return [
     'add_coauthor' => 'Додати співавтора',
     'find_doctor' => 'Знайти лікаря',
     'coauthor' => 'Співавтор',
+    'diagnosis_performer' => 'виконавець діагнозу',
+    'procedure_performer' => 'виконавець процедури',
+    'diagnostic_report_performer' => 'виконавець діагностичного звіту',
     'write_assignments_here' => 'Напишіть призначення тут',
     'add_body_part' => ' Додати частину тіла',
 
@@ -382,6 +385,7 @@ return [
     'effective_period_start' => 'Дата та час початку діагностики',
     'effective_period_end' => 'Дата та час завершення діагностики',
     'division_filled_from_encounter' => 'Поле автоматично заповниться відповідно до МНП, обраного у взаємодії.',
+    'diagnostic_report_issued_outside_encounter_period' => 'Дата та час внесення діагностичного звіту мають бути в межах періоду взаємодії.',
 
     // Observations
     'value' => 'Значення',

@@ -16,6 +16,66 @@
          diagnosticReportEmployees: @js($diagnosticReportEmployees),
          divisionId: @js(data_get($this->form->encounter, 'divisionId', '')),
 
+        encounterPeriodDate: $wire.entangle('form.encounter.periodDate'),
+        encounterPeriodStart: $wire.entangle('form.encounter.periodStart'),
+        encounterPeriodEnd: $wire.entangle('form.encounter.periodEnd'),
+        issuedDateTimeInvalid: false,
+
+        parseDateTime(date, time) {
+            if (!date || !time) {
+                return null;
+            }
+
+            const [day, month, year] = date.split('.').map(Number);
+            const [hours, minutes] = time.split(':').map(Number);
+
+            if (![day, month, year, hours, minutes].every(Number.isFinite)) {
+                return null;
+            }
+
+            return new Date(year, month - 1, day, hours, minutes);
+        },
+
+        validateIssuedDateTime() {
+            const issued = this.parseDateTime(
+                this.modalDiagnosticReport.issuedDate,
+                this.modalDiagnosticReport.issuedTime
+            );
+
+            const encounterStart = this.parseDateTime(
+                this.encounterPeriodDate,
+                this.encounterPeriodStart
+            );
+
+            const encounterEnd = this.parseDateTime(
+                this.encounterPeriodDate,
+                this.encounterPeriodEnd
+            );
+
+            this.issuedDateTimeInvalid = !issued
+                || !encounterStart
+                || !encounterEnd
+                || issued < encounterStart
+                || issued > encounterEnd;
+
+            return !this.issuedDateTimeInvalid;
+        },
+
+        syncDiagnosticReportParticipants() {
+            const performers = this.diagnosticReports
+                .filter(diagnosticReport => diagnosticReport.primarySource === true && diagnosticReport.performerEmployeeId)
+                .map(diagnosticReport => {
+                    const employee = this.diagnosticReportEmployees.find(employee => String(employee.uuid) === String(diagnosticReport.performerEmployeeId));
+
+                    return {
+                        uuid: diagnosticReport.performerEmployeeId,
+                        name: employee?.name || diagnosticReport.performerEmployeeId,
+                    };
+                });
+
+            this.syncLocalEncounterParticipants('diagnosticReport', performers);
+        },
+
         addUsedReference() {
             this.modalDiagnosticReport.usedReferences.push({
                 id: ''
@@ -213,7 +273,11 @@
 
                                         <button
                                             class="dropdown-delete"
-                                            @click.prevent="diagnosticReports.splice(index, 1); close($refs.button)"
+                                            @click.prevent="
+                                                diagnosticReports.splice(index, 1);
+                                                syncDiagnosticReportParticipants();
+                                                close($refs.button);
+                                            "
                                         >
                                             {{ __('forms.delete') }}
                                         </button>
@@ -273,6 +337,7 @@
         @click.prevent="
             newDiagnosticReport = true;
             modalDiagnosticReport = new DiagnosticReport();
+            issuedDateTimeInvalid = false;
             openDiagnosticReportDrawer = true;
         "
         class="item-add my-5"
@@ -303,9 +368,14 @@
                     @unless($isReadonly)
                         <button
                             @click.prevent="
+                                if (!validateIssuedDateTime()) {
+                                    return;
+                                }
+
                                 newDiagnosticReport !== false
                                     ? diagnosticReports.push(modalDiagnosticReport)
                                     : diagnosticReports[item] = modalDiagnosticReport;
+                                syncDiagnosticReportParticipants();
                                 openDiagnosticReportDrawer = false;
                             "
                             class="button-primary"
