@@ -211,7 +211,9 @@ class DivisionEdit extends DivisionComponent
 
             return;
         } catch (EHealthResponseException $err) {
-            Log::channel('e_health_errors')->error(self::class . ':divisionUpdate', ['error' => $err->getMessage()]);
+            $err->handle(self::class . ':divisionUpdate', __('errors.ehealth.messages.request_error'));
+
+            return;
         } catch (EHealthValidationException $err) {
             Log::channel('e_health_errors')->error(self::class . ':divisionUpdate', ['error' => $err->getDetails()]);
         } catch (Throwable $err) {

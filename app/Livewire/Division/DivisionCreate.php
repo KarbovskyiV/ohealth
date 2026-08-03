@@ -173,7 +173,9 @@ class DivisionCreate extends DivisionComponent
 
             return;
         } catch (EHealthResponseException $err) {
-            Log::channel('e_health_errors')->error(self::class . ':divisionCreate', ['error' => $err->getMessage()]);
+            $err->handle(self::class . ':divisionCreate', __('errors.ehealth.messages.request_error'));
+
+            return;
         } catch (EHealthValidationException $err) {
             Log::channel('e_health_errors')->error(self::class . ':divisionCreate', ['error' => $err->getDetails()]);
         } catch (Throwable $err) {

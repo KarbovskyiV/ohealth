@@ -110,6 +110,8 @@ class EHealthResponseExceptionPartyNotVerifiedTest extends TestCase
         $this->assertStringContainsString('Працівника не верифіковано', $message);
         $this->assertStringContainsString('ДПС або ДРАЦСГ', $message);
         $this->assertStringContainsString('відділу кадрів', $message);
+        $this->assertStringNotContainsString('\\n', $message);
+        $this->assertStringContainsString("\n\n", $message);
     }
 
     // -------------------------------------------------------------------------
