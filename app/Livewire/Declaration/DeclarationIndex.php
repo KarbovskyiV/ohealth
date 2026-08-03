@@ -26,6 +26,7 @@ use App\Enums\Declaration\Status;
 use App\Enums\Declaration\RequestStatus;
 use App\Models\Employee\Employee;
 use Livewire\Attributes\Computed;
+use App\Jobs\ConfidantPersonSync;
 use App\Models\DeclarationRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
@@ -571,7 +572,12 @@ class DeclarationIndex extends Component
         $failedBatches = $this->findFailedBatchesByLegalEntity(legalEntity()->id, 'ASC');
 
         foreach ($failedBatches as $batch) {
-            if ($batch->name === self::BATCH_NAME || $batch->name === self::SUB_BATCH_NAME || $batch->name === self::DEPENDENT_BATCH_NAME) {
+            if (
+                $batch->name === self::BATCH_NAME ||
+                $batch->name === self::SUB_BATCH_NAME ||
+                $batch->name === self::DEPENDENT_BATCH_NAME ||
+                $batch->name === ConfidantPersonSync::BATCH_NAME
+            ) {
                 Log::info('Resuming Declaration sync batch: ' . $batch->name . ' id: ' . $batch->id);
 
                 legalEntity()?->setEntityStatus(JobStatus::PROCESSING, LegalEntity::ENTITY_DECLARATION);
