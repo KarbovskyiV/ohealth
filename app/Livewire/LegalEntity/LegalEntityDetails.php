@@ -360,7 +360,9 @@ class LegalEntityDetails extends LegalEntityComponent
          * and does NOT rehydrate protected typed properties.
          * Code below allows to ensure that property is set before use.
          */
-        $this->legalEntity ??= $this->getLegalEntity();
+        if (!isset($this->legalEntity)) {
+            $this->legalEntity = $this->getLegalEntity();
+        }
 
         if (Auth::user()->cannot('sync', $this->legalEntity)) {
             session()->flash('error', __('legal-entity.policy.deny.sync'));
@@ -382,7 +384,7 @@ class LegalEntityDetails extends LegalEntityComponent
 
             $this->resumeSynchronization($user, $token);
 
-            Session::flash('success', __('forms.success.sync_resumed'));
+            Session::flash('success', __('forms.success.sync_resumed_in_background'));
 
             $user->notify(new SyncNotification('legal_entity', 'resumed'));
 
@@ -400,7 +402,7 @@ class LegalEntityDetails extends LegalEntityComponent
 
             $legalEntityData = $this->normalizeDate(['data' => $response->validate()]);
 
-            // Set accreditation and archive to null concerns on the storda data in the DB table
+            // Set accreditation and archive to null concerns on the stored data in the DB table
             $legalEntityData = $this->filterUnprovidedFields($legalEntityData, $this->legalEntityForm->toArray());
 
             $this->modifyLegalEntity($legalEntityData);
@@ -478,8 +480,6 @@ class LegalEntityDetails extends LegalEntityComponent
         }
 
         $legalEntity?->setEntityStatus(JobStatus::COMPLETED);
-
-        $this->legalEntity = $this->legalEntity->fresh();
 
         session()->flash('success', implode(PHP_EOL, $messages));
 
