@@ -86,7 +86,11 @@
         <fieldset class="p-4 sm:p-8 sm:pb-10 mb-16 mt-6 border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 max-w-[1280px]">
             <legend class="legend">{{ __('forms.state_of_the_NMP') }}</legend>
 
-            <div class="{{ $this->edrStatusStyle }} status-alert-full mb-6">
+            <span class="text-xs text-gray-500 dark:text-gray-400 mb-2 block">
+                {{ __('forms.edr.edrStatus') }}
+            </span>
+            <div id="edrStatus" class="{{ $this->edrStatusStyle }} status-alert-full mb-6">
+
                 <span class="flex-shrink-0">
                     @icon('check-circle', 'w-5 h-5 text-green-700 mr-3')
                 </span>
@@ -95,6 +99,26 @@
 
             <div class="flex flex-col lg:flex-row lg:gap-x-8">
                 <div class="flex-grow lg:max-w-[60%] lg:min-w-0">
+                    {{-- EDR EDRPOU --}}
+                    <div class="form-group">
+                        <input
+                            id="edrEdrpou"
+                            type="text"
+                            placeholder=" "
+                            name="edrEdrpou"
+                            class="peer input"
+                            value="{{ __($le->edr['edrpou'] ?? '-') }}"
+                            readonly
+                        />
+
+                        <label
+                            for="edrEdrpou"
+                            class="label"
+                        >
+                            {{ __('forms.edr.edrpou') }}
+                        </label>
+                    </div>
+
                     {{-- NAME --}}
                     <div class="form-group">
                         <input

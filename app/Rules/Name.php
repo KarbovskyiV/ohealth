@@ -26,7 +26,7 @@ class Name implements ValidationRule
     }
 
     /**
-     * Get Validation Fiselds Map (per method for differ case)
+     * Get Validation Fields Map (per method for differ case)
      *
      * @return array
      */
