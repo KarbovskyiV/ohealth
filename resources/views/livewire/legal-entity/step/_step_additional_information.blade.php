@@ -1,13 +1,8 @@
-@php
-    $hasAdditionalInformationReceiverFundsCodeError = $errors->has('legalEntityForm.receiverFundsCode');
-    $hasAdditionalInformationBeneficiaryError = $errors->has('legalEntityForm.beneficiary');
-@endphp
-
 <fieldset
     class="p-4 sm:p-8 sm:pb-10 mb-16 mt-6 border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 max-w-[1280px]"
     xmlns="http://www.w3.org/1999/html"
     x-data="{
-        title: '{{ __('forms.information') }}',
+        title: '{{ __('forms.additional_information') }}',
         index: 7,
     }"
     x-init="typeof addHeader !== 'undefined' && addHeader(title, index)"
@@ -23,19 +18,19 @@
 
         <div class="form-group group">
             <input
-            type="text"
-            placeholder=" "
-            id="additionalInformationReceiverFundsCode"
-            wire:model="legalEntityForm.receiverFundsCode"
-            aria-describedby="{{ $hasAdditionalInformationReceiverFundsCodeError ? 'additionalInformationReceiverFundsCodeErrorHelp' : '' }}"
-            class="input peer"
-        />
+                type="text"
+                placeholder=" "
+                id="additionalInformationReceiverFundsCode"
+                wire:model="legalEntityForm.receiverFundsCode"
+                aria-describedby="@error('legalEntityForm.receiverFundsCode') additionalInformationReceiverFundsCodeErrorHelp @enderror"
+                class="input @error('legalEntityForm.receiverFundsCode') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
+            />
 
-            @if($hasAdditionalInformationReceiverFundsCodeError)
+            @error('legalEntityForm.receiverFundsCode')
                 <p id="additionalInformationReceiverFundsCodeErrorHelp" class="text-error">
-                    {{ $errors->first('legalEntityForm.receiverFundsCode') }}
+                    {{ $message }}
                 </p>
-            @endif
+            @enderror
 
             <p id="additionalInformationReceiverFundsCoderHelp" class="text-note">
                 {{ __('forms.receiver_funds_code') }}
@@ -52,15 +47,15 @@
                 placeholder=" "
                 id="additionalInformationBeneficiary"
                 wire:model="legalEntityForm.beneficiary"
-                aria-describedby="{{ $hasAdditionalInformationBeneficiaryError ? 'additionalInformationBeneficiaryErrorHelp' : '' }}"
-                class="input peer"
+                aria-describedby="@error('legalEntityForm.beneficiary') additionalInformationBeneficiaryErrorHelp @enderror"
+                class="input @error('legalEntityForm.beneficiary') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             />
 
-            @if($hasAdditionalInformationBeneficiaryError)
+            @error('legalEntityForm.beneficiary')
                 <p id="additionalInformationBeneficiaryErrorHelp" class="text-error">
-                    {{ $errors->first('legalEntityForm.beneficiary') }}
+                    {{ $message }}
                 </p>
-            @endif
+            @enderror
 
             <p id="additionalInformationBeneficiaryHelp" class="text-note">
                 {{ __('forms.beneficiary_info') }}

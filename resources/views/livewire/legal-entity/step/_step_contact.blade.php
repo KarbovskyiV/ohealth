@@ -1,8 +1,3 @@
-@php
-    $hasContactEmailError = $errors->has('legalEntityForm.email');
-    $hasWebsiteError = $errors->has('legalEntityForm.website');
-@endphp
-
 <fieldset
     class="p-4 sm:p-8 sm:pb-10 mb-16 mt-6 border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 max-w-[1280px]"
     xmlns="http://www.w3.org/1999/html"
@@ -31,15 +26,15 @@
                 id="contact_email"
                 wire:model="legalEntityForm.email"
                 value="{{ $legalEntityForm->email ?? '' }}"
-                aria-describedby="{{ $hasContactEmailError ? 'contactEmailErrorHelp' : '' }}"
-                class="input {{ $hasContactEmailError ? 'input-error border-red-500 focus:border-red-500' : ''}} peer"
+                aria-describedby="@error('legalEntityForm.email') contactEmailErrorHelp @enderror"
+                class="input @error('legalEntityForm.email') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             />
 
-            @if($hasContactEmailError)
+            @error('legalEntityForm.email')
                 <p id="contactEmailErrorHelp" class="text-error">
-                    {{ $errors->first('legalEntityForm.email') }}
+                    {{ $message }}
                 </p>
-            @endif
+            @enderror
 
             <label for="contact_email" class="label z-10">
                 {{ __('forms.email') }}
@@ -54,15 +49,15 @@
                 id="website"
                 value="{{ $legalEntityForm->website ?? '' }}"
                 wire:model="legalEntityForm.website"
-                aria-describedby="{{ $hasWebsiteError ? 'websiteErrorHelp' : '' }}"
-                class="input {{ $hasWebsiteError ? 'input-error border-red-500 focus:border-red-500' : ''}} peer"
+                aria-describedby="@error('legalEntityForm.website') websiteErrorHelp @enderror"
+                class="input @error('legalEntityForm.website') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             />
 
-            @if($hasWebsiteError)
+            @error('legalEntityForm.website')
                 <p id="websiteErrorHelp" class="text-error">
-                    {{ $errors->first('legalEntityForm.website') }}
+                    {{ $message }}
                 </p>
-            @endif
+            @enderror
 
             <label for="website" class="label z-10">
                 {{ __('forms.website') }}
@@ -94,7 +89,7 @@
                         required
                         x-model="phones[index].type"
                         class="input-select"
-                        :class="{ 'input-error': errors[`legalEntityForm.phones.${index}.type`] }"
+                        :class="{ 'input-error scroll-to-error': errors[`legalEntityForm.phones.${index}.type`] }"
                         :id="$id('phone', '_type_' + index)"
                     >
                         <option value="_placeholder_" selected hidden>-- {{ __('forms.type_mobile') }} --</option>
@@ -125,7 +120,7 @@
                         x-model="phones[index].number"
                         x-mask="+380999999999"
                         :id="$id('phone', '_number' + index)"
-                        :class="{ 'input-error border-red-500': errors[`legalEntityForm.phones.${index}.number`] }"
+                        :class="{ 'input-error border-red-500 scroll-to-error': errors[`legalEntityForm.phones.${index}.number`] }"
                     />
 
                     <template x-if="errors[`legalEntityForm.phones.${index}.number`]">

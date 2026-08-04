@@ -22,7 +22,7 @@
                 id="licenseType"
                 wire:model.defer="legalEntityForm.license.type"
                 aria-describedby="@error('legalEntityForm.license.type') licenseTypeErrorHelp @enderror"
-                class="input-select !cursor-default text-gray-400 border-gray-200 dark:text-gray-500 @error('legalEntityForm.license.type') input-error border-red-500 focus:border-red-500 @enderror peer"
+                class="input-select !cursor-default text-gray-400 border-gray-200 dark:text-gray-500 @error('legalEntityForm.license.type') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 disabled
             >
                 <option value="_placeholder_" selected hidden>-- {{ __('forms.select') }} --</option>
@@ -51,7 +51,7 @@
                 placeholder=" "
                 id="licenseNumber"
                 wire:model="legalEntityForm.license.licenseNumber"
-                class="input  @error('legalEntityForm.license.licenseNumber') input-error border-red-500 focus:border-red-500 @enderror peer"
+                class="input  @error('legalEntityForm.license.licenseNumber') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 aria-describedby="@error('legalEntityForm.license.licenseNumber') licenseNumberErrorHelp @enderror"
                 :class="isDisabled ? 'text-gray-400 border-gray-200 dark:text-gray-500' : 'text-gray-900 border-gray-300'"
                 :disabled="isDisabled"
@@ -76,7 +76,7 @@
                 id="licenseIssuedBy"
                 wire:model="legalEntityForm.license.issuedBy"
                 aria-describedby="@error('legalEntityForm.license.issuedBy') licenseIssuedByErrorHelp @enderror"
-                class="input @error('legalEntityForm.license.issuedBy') input-error border-red-500 focus:border-red-500 @enderror peer"
+                class="input @error('legalEntityForm.license.issuedBy') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 :class="isDisabled ? 'text-gray-400 border-gray-200 dark:text-gray-500' : 'text-gray-900 border-gray-300'"
                 :disabled="isDisabled"
             />
@@ -105,7 +105,7 @@
                 id="licenseIssuedDate"
                 wire:model="legalEntityForm.license.issuedDate"
                 aria-describedby="@error('legalEntityForm.license.issuedDate') licenseIssuedDateErrorHelp @enderror"
-                class="input datepicker-input @error('legalEntityForm.license.issuedDate') input-error border-red-500 focus:border-red-500 @enderror peer"
+                class="input datepicker-input @error('legalEntityForm.license.issuedDate') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 :class="isDisabled ? 'text-gray-400 border-gray-200 dark:text-gray-500' : 'text-gray-900 border-gray-300'"
                 :disabled="isDisabled"
             />
@@ -134,7 +134,7 @@
                 id="licenseActiveFromDate"
                 wire:model="legalEntityForm.license.activeFromDate"
                 aria-describedby="@error('legalEntityForm.license.activeFromDate') licenseActiveFromDateErrorHelp @enderror"
-                class="input datepicker-input @error('legalEntityForm.license.activeFromDate') input-error border-red-500 focus:border-red-500 @enderror peer"
+                class="input datepicker-input @error('legalEntityForm.license.activeFromDate') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 :class="isDisabled ? 'text-gray-400 border-gray-200 dark:text-gray-500' : 'text-gray-900 border-gray-300'"
                 :disabled="isDisabled"
             />
@@ -161,7 +161,7 @@
                 datepicker-format="{{ frontendDateFormat() }}"
                 id="licenseExpiryDate"
                 wire:model="legalEntityForm.license.expiryDate"
-                class="input @error('legalEntityForm.license.expiryDate') input-error border-red-500 focus:border-red-500 @enderror datepicker-input peer"
+                class="input @error('legalEntityForm.license.expiryDate') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror datepicker-input peer"
                 aria-describedby="@error('legalEntityForm.license.expiryDate') licenseExpirationDateErrorHelp @enderror"
                 :class="isDisabled ? 'text-gray-400 border-gray-200 dark:text-gray-500' : 'text-gray-900 border-gray-300'"
                 :disabled="isDisabled"
@@ -185,7 +185,7 @@
                 placeholder=" "
                 id="licenseWhatLicensed"
                 wire:model="legalEntityForm.license.whatLicensed"
-                class="input @error('legalEntityForm.license.whatLicensed') input-error border-red-500 focus:border-red-500 @enderror peer"
+                class="input @error('legalEntityForm.license.whatLicensed') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 aria-describedby="@error('legalEntityForm.license.whatLicensed') licenseWhatLicensedErrorHelp @enderror"
                 :class="isDisabled ? 'text-gray-400 border-gray-200 dark:text-gray-500' : 'text-gray-900 border-gray-300'"
                 :disabled="isDisabled"
@@ -210,7 +210,7 @@
                 id="licenseOrderNumber"
                 wire:model="legalEntityForm.license.orderNo"
                 aria-describedby="@error('legalEntityForm.license.orderNo') licenseOrderNumberErrorHelp @enderror"
-                class="input @error('legalEntityForm.license.orderNo') input-error border-red-500 focus:border-red-500 @enderror peer"
+                class="input @error('legalEntityForm.license.orderNo') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 :class="isDisabled ? 'text-gray-400 border-gray-200 dark:text-gray-500' : 'text-gray-900 border-gray-300'"
                 :disabled="isDisabled"
             />

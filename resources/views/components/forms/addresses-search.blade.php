@@ -75,7 +75,7 @@
             @blur="selecting=false"
             @change="address.settlement=null" {{-- This need to properly set a Kyiv area --}}
             aria-describedby="@error('address.area') addressAreaErrorHelp @enderror"
-            class="input-select text-gray-800 @error('address.area') input-error border-red-500 focus:border-red-500 @enderror peer"
+            class="input-select text-gray-800 @error('address.area') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             :disabled="readonly"
         >
             <option value="_placeholder_" hidden>-- {{ __('forms.select') }} --</option>
@@ -147,7 +147,7 @@
             id="addressRegion"
             autocomplete="off"
             aria-describedby="@error('address.region') addressRegionErrorHelp @enderror"
-            class="input @error('address.region') input-error border-red-500 focus:border-red-500 @enderror peer"
+            class="input @error('address.region') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             :disabled="!address.area || address.area === 'М.КИЇВ' || readonly"
         />
 
@@ -200,7 +200,7 @@
             @blur="selecting=false"
             id="addressSettlementType"
             aria-describedby="@error('address.settlementType') addressSettlementTypeErrorHelp @enderror"
-            class="input-select text-gray-800 @error('address.settlementType') input-error border-red-500 focus:border-red-500 @enderror peer"
+            class="input-select text-gray-800 @error('address.settlementType') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             :disabled="!address.area || readonly"
         >
             <option value="_placeholder_" selected hidden>-- {{ __('forms.select') }} --</option>
@@ -229,7 +229,7 @@
     </div>
 
     {{-- SETTLEMENT --}}
-    <div class="form-group group !z-[25]"
+    <div class="form-group group !z-[25] self-start"
         {{-- @mouseleave="timeout = setTimeout(() => { showTo = false }, 800)" --}}
         x-data="{
             showTo: false,
@@ -267,63 +267,65 @@
         }"
         x-init="init()"
     >
-        <input
-            x-model.debounce.400ms="address.settlement"
-            @keydown.escape="showTo = false"
-            @change="showTo = false; settlements = []"
-            @blur="selecting = false"
-            required
-            type="text"
-            placeholder=" "
-            id="addressSettlement"
-            autocomplete="off"
-            aria-describedby="@error('address.settlement') addressSettlementErrorHelp @enderror"
-            class="input @error('address.settlement') input-error border-red-500 focus:border-red-500 @enderror peer"
-            :disabled="!address.settlementType || address.area === 'М.КИЇВ' || readonly"
-        />
+        <div class="relative">
+            <input
+                x-model.debounce.400ms="address.settlement"
+                @keydown.escape="showTo = false"
+                @change="showTo = false; settlements = []"
+                @blur="selecting = false"
+                required
+                type="text"
+                placeholder=" "
+                id="addressSettlement"
+                autocomplete="off"
+                aria-describedby="@error('address.settlement') addressSettlementErrorHelp @enderror"
+                class="input @error('address.settlement') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
+                :disabled="!address.settlementType || address.area === 'М.КИЇВ' || readonly"
+            />
 
-        <div x-show="showTo && address.area !== 'М.КИЇВ'" x-cloak>
-            <div
-                @click.away="showTo = false"
-                x-transition
-                class="absolute left-0 right-0 top-full bg-white border border-gray-300 rounded-bl-md rounded-br-md shadow-lg dark:bg-gray-800 dark:border-gray-500"
-            >
-                <ul class="py-2 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownHoverButton">
-                    <template x-for="settlement in settlements" :key="settlement.id">
-                        <li
-                            x-on:mousedown.stop="
-                                selecting = true;
-                                showTo = false;
+            <div x-show="showTo && address.area !== 'М.КИЇВ'" x-cloak>
+                <div
+                    @click.away="showTo = false"
+                    x-transition
+                    class="absolute left-0 right-0 top-full origin-top bg-white border border-gray-300 rounded-bl-md rounded-br-md shadow-lg dark:bg-gray-800 dark:border-gray-500 !z-[25]"
+                >
+                    <ul class="py-2 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownHoverButton">
+                        <template x-for="settlement in settlements" :key="settlement.id">
+                            <li
+                                x-on:mousedown.stop="
+                                    selecting = true;
+                                    showTo = false;
 
-                                address.settlement = settlement.name.replace(/'/g, '\'');
-                                address.settlementId = settlement.id;
-                            "
-                            class="cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-blue-800"
-                        >
-                            <span x-text="settlement.name"></span>
-                        </li>
-                    </template>
+                                    address.settlement = settlement.name.replace(/'/g, '\'');
+                                    address.settlementId = settlement.id;
+                                "
+                                class="cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-blue-800"
+                            >
+                                <span x-text="settlement.name"></span>
+                            </li>
+                        </template>
 
-                    <div x-show="!settlements || (Array.isArray(settlements) && settlements.length === 0)" x-cloak>
-                        <li class="cursor-default px-4 py-2">
-                            {{ __('forms.nothing_found') }}
-                        </li>
-                    </div>
-                </ul>
+                        <div x-show="!settlements || (Array.isArray(settlements) && settlements.length === 0)" x-cloak>
+                            <li class="cursor-default px-4 py-2">
+                                {{ __('forms.nothing_found') }}
+                            </li>
+                        </div>
+                    </ul>
+                </div>
             </div>
+
+            @error('address.settlement')
+                <p id="addressSettlementErrorHelp" class="text-error">
+                    {{ $message}}
+                </p>
+            @enderror
+
+            <label for="addressSettlement" class="label z-10">
+                {{ __('forms.settlement') }}
+            </label>
         </div>
 
-        @error('address.settlement')
-            <p id="addressSettlementErrorHelp" class="text-error">
-                {{ $message}}
-            </p>
-        @enderror
-
-        <label for="addressSettlement" class="label z-10">
-            {{ __('forms.settlement') }}
-        </label>
-
-        <div class="form-group group">
+        <div class="mt-2 flex items-center gap-2">
             <input
                 type="checkbox"
                 id="exactSettlementSearch"
@@ -343,7 +345,7 @@
             id="addressStreetType"
             @blur="selecting=false"
             aria-describedby="@error('address.streetType') addressStreetTypeErrorHelp @enderror"
-            class="input-select text-gray-800 @error('address.streetType') input-error border-red-500 focus:border-red-500 @enderror peer"
+            class="input-select text-gray-800 @error('address.streetType') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             :disabled="!address.settlement || readonly"
         >
             <option value="_placeholder_" selected hidden>-- {{ __('forms.select') }} --</option>
@@ -372,7 +374,7 @@
     </div>
 
     {{-- STREET --}}
-    <div class="form-group group !z-[23]"
+    <div class="form-group group !z-[23] self-start"
        {{-- @mouseleave="timeout = setTimeout(() => { showTo = false }, 800)" --}}
         x-data="{
             showTo: false,
@@ -422,14 +424,14 @@
             id="addressStreet"
             autocomplete="off"
             aria-describedby="@error('address.street') addressStreetErrorHelp @enderror"
-            class="input @error('address.street') input-error border-red-500 focus:border-red-500 @enderror peer"
+            class="input @error('address.street') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             :disabled="(!address.settlementType && !selecting) || readonly"
         />
 
         <div x-cloak x-show="showTo"
-             @click.away="showTo = false"
-             x-transition
-             class="absolute left-0 right-0 top-full bg-white border border-gray-300 rounded-bl-md rounded-br-md shadow-lg dark:bg-gray-800 dark:border-gray-500"
+            @click.away="showTo = false"
+            x-transition
+            class="absolute left-0 right-0 top-full origin-top bg-white border border-gray-300 rounded-bl-md rounded-br-md shadow-lg dark:bg-gray-800 dark:border-gray-500"
         >
             <ul class="py-2 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownHoverButton">
                 <template x-for="street in streets" :key="street.id">
@@ -472,7 +474,7 @@
             placeholder=" "
             id="addressBuilding"
             aria-describedby="@error('address.building') addressBuildingErrorHelp @enderror"
-            class="input @error('address.building') input-error border-red-500 focus:border-red-500 @enderror peer"
+            class="input @error('address.building') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             :disabled="!address.street || readonly"
         />
 
@@ -495,7 +497,7 @@
             placeholder=" "
             id="addressApartment"
             aria-describedby="@error('address.apartment') addressApartmentErrorHelp @enderror"
-            class="input @error('address.apartment') input-error border-red-500 focus:border-red-500 @enderror peer"
+            class="input @error('address.apartment') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             :disabled="!address.street || readonly"
         />
 
@@ -519,7 +521,7 @@
             placeholder=" "
             id="addressZip"
             aria-describedby="@error('address.zip') addressZipErrorHelp @enderror"
-            class="input @error('address.zip') input-error border-red-500 focus:border-red-500 @enderror peer"
+            class="input @error('address.zip') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
             :disabled="!address.street || readonly"
         />
 
