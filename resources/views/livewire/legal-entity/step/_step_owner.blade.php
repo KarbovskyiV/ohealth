@@ -28,12 +28,12 @@
         },
         initTempOwnerData() {
             this.tempOwnerData = Object.keys(this.owner).reduce((acc, key) => ({ ...acc, [key]: null }), {});
-            this.tempOwnerData.noTaxId = false;
+            this.tempOwnerData.noTaxId = this.owner.noTaxId;
             this.tempOwnerData.phones = [{ ...this.defaultPhone }];
             this.tempOwnerData.documents = [{ ...this.defaultDoc }];
         },
         updateTaxIdInput() {
-            if (this.owner.noTaxId) {
+            if (this.isOwnerChange ? this.tempOwnerData.noTaxId : this.owner.noTaxId) {
                 this.$refs.taxIdInput.value = ''
             } else {
                 this.isOwnerChange
@@ -46,10 +46,12 @@
                 this.isDisabled = false;
                 this.copyOwner(this.owner, this.ownerData);
                 this.copyOwner(this.tempOwnerData, this.owner);
+                this.owner.noTaxId = this.tempOwnerData.noTaxId;
                 this.updateTaxIdInput();
             } else {
                 this.isDisabled = @json($isEdit);
                 this.copyOwner(this.owner, this.tempOwnerData);
+                this.tempOwnerData.noTaxId = this.owner.noTaxId;
                 this.copyOwner(this.ownerData, this.owner);
             }
         },

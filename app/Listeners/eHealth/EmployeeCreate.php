@@ -10,6 +10,7 @@ use App\Core\Arr;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Enums\Status;
+use RuntimeException;
 use App\Enums\JobStatus;
 use App\Enums\User\Role;
 use App\Models\Relations\Party;
@@ -154,8 +155,25 @@ class EmployeeCreate
                     $currOwner = $event->legalEntity->getOwner();
 
                     // $currOwner = null when the Legal Entity just created, so we don't need to change anything in this case.
-                    if ($currOwner && $currOwner?->uuid !== $eHealthEmployee['uuid']) {
-                        Repository::legalEntity()->setNewOwner(User::find($currOwner->userId), $event->legalEntity);
+                    if ($currOwner?->uuid && $currOwner->uuid !== $eHealthEmployee['uuid']) {
+                        $currentOwnerUser = User::find($currOwner->userId);
+
+                        // Just overcautiousness
+                        if ($currentOwnerUser) {
+                            Repository::legalEntity()->setNewOwner($currentOwnerUser, $event->legalEntity);
+                        } else {
+                             Log::error('[EmployeeCreate] User not found for current owner.', [
+                                'user_id' => $currOwner->userId,
+                                'legal_entity_uuid' => $event->legalEntity->uuid,
+                                'employee_uuid' => $eHealthEmployee['uuid'] ?? null,
+                            ]);
+
+                            throw new RuntimeException(
+                                "User not found for current owner with ID: {$currOwner->userId}. " .
+                                "Legal Entity UUID: {$event->legalEntity->uuid}. " .
+                                "Employee UUID: " . ($eHealthEmployee['uuid'] ?? 'null')
+                            );
+                        }
                     }
                 }
 
