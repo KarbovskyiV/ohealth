@@ -25,6 +25,32 @@ class EmployeeRequestPendingStatusTest extends TestCase
     }
 
     #[Test]
+    public function local_draft_ignores_applied_at_when_uuid_missing(): void
+    {
+        $request = new EmployeeRequest([
+            'status' => RequestStatus::NEW,
+            'uuid' => null,
+            'applied_at' => now(),
+        ]);
+
+        $this->assertTrue($request->isLocalDraft());
+        $this->assertFalse($request->isPendingEhealth());
+    }
+
+    #[Test]
+    public function empty_uuid_string_is_treated_as_local_draft(): void
+    {
+        $request = new EmployeeRequest([
+            'status' => RequestStatus::NEW,
+            'uuid' => '',
+            'applied_at' => null,
+        ]);
+
+        $this->assertTrue($request->isLocalDraft());
+        $this->assertFalse($request->isPendingEhealth());
+    }
+
+    #[Test]
     public function submitted_new_with_uuid_is_pending_not_draft(): void
     {
         $request = new EmployeeRequest([

@@ -13,7 +13,6 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Jobs\EmployeeSync;
 use App\Models\Employee\Employee;
-use App\Models\Employee\EmployeeRequest;
 use App\Models\LegalEntity;
 use App\Models\Role as ModelsRole;
 use App\Models\User;
@@ -21,6 +20,7 @@ use App\Notifications\EmployeeSyncCompleted;
 use App\Notifications\SyncNotification;
 use App\Repositories\Repository;
 use App\Traits\BatchLegalEntityQueries;
+use App\Livewire\Employee\Concerns\DeletesEmployeeRequestDraft;
 use Illuminate\Bus\Batch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -42,6 +42,7 @@ class EmployeeIndex extends EmployeeComponent
 {
     use WithPagination;
     use BatchLegalEntityQueries;
+    use DeletesEmployeeRequestDraft;
 
     protected const string BATCH_NAME = 'EmployeeFullSync';
     protected const string DEPENDENT_BATCH_NAME = 'EmployeeDetailsSync';
@@ -74,10 +75,6 @@ class EmployeeIndex extends EmployeeComponent
 
     public ?int $employeeToDismissId = null;
     public ?string $employeeToDismissName = null;
-
-    public bool $showDeleteModal = false;
-    public ?int $requestToDeleteId = null;
-    public ?string $deleteRequestName = null;
 
     public ?string $batchId = null;
     public string $dismissalMessageType = 'default';
@@ -629,54 +626,6 @@ class EmployeeIndex extends EmployeeComponent
 
         if ($success) {
             $this->refreshTrigger++;
-        }
-    }
-
-    public function confirmRequestDeletion(int $id): void
-    {
-        $request = EmployeeRequest::with('party')->find($id);
-
-        if (!$request) {
-            return;
-        }
-
-        $this->requestToDeleteId = $id;
-        $this->deleteRequestName = $request->party?->fullName ?? __('employees.modals.delete_draft.default_name');
-
-        $this->showDeleteModal = true;
-    }
-
-    /**
-     * This method is triggered by the "Delete" button in the modal window.
-     * It retrieves the stored ID and executes the deletion logic.
-     */
-    public function deleteRequest(): void
-    {
-        if ($this->requestToDeleteId) {
-            $request = EmployeeRequest::with('revision')->find($this->requestToDeleteId);
-
-            // Make sure the request exists and it's a local draft (without UUID)
-            if ($request && $request->isLocalDraft()) {
-
-                // 1. Delete the related revision if it exists
-                if ($request->revision) {
-                    // Since Revision model uses SoftDeletes, standard delete() only hides the record.
-                    // We use forceDelete() to physically remove the draft data from the database.
-                    $request->revision->forceDelete();
-                }
-
-                // 2. Delete the request itself
-                $request->delete();
-
-                $this->dispatch(
-                    'flashMessage',
-                    ['message' => __('employees.draft.delete_success'), 'type' => 'success']
-                );
-            }
-
-            // Close the modal and clear the ID
-            $this->showDeleteModal = false;
-            $this->requestToDeleteId = null;
         }
     }
 

@@ -107,13 +107,12 @@ class EmployeeRequest extends BaseEmployee
     }
 
     /**
-     * Local draft: not yet submitted to eHealth (no uuid). Status stays NEW.
+     * Local draft: saved only in MIS, not signed/sent to eHealth (no UUID).
+     * Status stays NEW; applied_at is irrelevant — UUID is the source of truth.
      */
     public function isLocalDraft(): bool
     {
-        return $this->uuid === null
-            && $this->status === RequestStatus::NEW
-            && $this->applied_at === null;
+        return blank($this->uuid) && $this->status === RequestStatus::NEW;
     }
 
     /**
@@ -127,7 +126,7 @@ class EmployeeRequest extends BaseEmployee
             return true;
         }
 
-        return $this->status === RequestStatus::NEW && $this->uuid !== null;
+        return $this->status === RequestStatus::NEW && filled($this->uuid);
     }
 
     /**
