@@ -150,7 +150,7 @@ class LegalEntityRepository
             ->where('user_id', $oldOwner->id)
             ->each(fn ($employee) => $employee->users()->detach($partyUserIds));
 
-        // Set the user_id to null for the OWNER's employee record in the employees table
+        // Set the employee status to STOPPED for the OWNER's employee record in the employees table
         // Because the OWNER's employee record is no longer associated with a user
         Employee::where('legal_entity_id', $legalEntity->id)
             ->whereIn('employee_type', [Role::OWNER->value, Role::REORGANIZATION_OWNER->value])
