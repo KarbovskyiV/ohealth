@@ -61,6 +61,8 @@ return [
         'INVALID_BIRTH_DATE' => 'Невалідна дата народження',
         'INVALID_RNOKPP_FORMAT' => 'Встановлено по причині невалідного формату ІПН або паспортного документу',
         'MANUAL' => 'Встановлено вручну',
+        // Legacy / narrative aliases (display only; PATCH sends MANUAL_DECEASED / MANUAL_NO_DEATH_RECORD)
+        'MANUAL_COMFIRMED' => 'Підтверджено смерть працівника',
         'MANUAL_CONFIRMED' => 'Підтверджено смерть працівника',
         'MANUAL_NOT_CONFIRMED' => 'Спростовано смерть працівника',
         'MANUAL_DECEASED' => 'Підтверджено смерть працівника',
