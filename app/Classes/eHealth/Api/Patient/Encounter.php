@@ -33,6 +33,21 @@ class Encounter extends PatientApiBase
     }
 
     /**
+     * Submit signed data for marking the encounter and every record of its package as entered in error.
+     *
+     * @param  string  $id  Person ID
+     * @param  array{signed_data: string, signed_data_encoding: string}  $data
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/encounter-data-package/cancel-encounter-package
+     */
+    public function cancel(string $id, array $data): PromiseInterface|EHealthResponse
+    {
+        return $this->patch(self::URL . "/$id/encounter_package", $data);
+    }
+
+    /**
      * Get a list of short Encounter info filtered by search params.
      *
      * @param  string  $patientId
@@ -230,7 +245,6 @@ class Encounter extends PatientApiBase
         return ValidationRuleBuilder::merge(
             // Basic fields
             [
-                'cancellation_reason' => ['nullable', 'string', 'max:255'],
                 'explanatory_letter' => ['nullable', 'string', 'max:255'],
                 'uuid' => ['required', 'uuid'],
                 'ehealth_inserted_at' => ['required', 'date'],
@@ -250,6 +264,7 @@ class Encounter extends PatientApiBase
 
             // Coding relationships
             ValidationRuleBuilder::codingRules('class', true),
+            ValidationRuleBuilder::codeableConceptRules('cancellation_reason'),
 
             // Diagnoses
             [

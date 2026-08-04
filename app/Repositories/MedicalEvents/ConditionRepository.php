@@ -108,6 +108,20 @@ class ConditionRepository extends BaseRepository
     }
 
     /**
+     * Get conditions recorded within the encounter, with all relationships needed for the edit form.
+     *
+     * @param  string  $encounterId  eHealth ID of the encounter
+     * @return array
+     */
+    public function get(string $encounterId): array
+    {
+        return $this->model->withAllRelations()
+            ->forEncounter($encounterId)
+            ->get()
+            ->toArray();
+    }
+
+    /**
      * Build a UUID => [insertedAt, codeCode] map for the given condition/observation UUIDs.
      *
      * @param  array  $uuids
@@ -115,7 +129,14 @@ class ConditionRepository extends BaseRepository
      */
     public function getDetailsMapByUuids(array $uuids): array
     {
-        return collect($this->model->whereIn('uuid', $uuids)->with(['code.coding', 'stageSummary'])->get()->toArray())
+        // The model appends evidences, so the relation behind them has to come along with the rest
+        return collect(
+            $this->model
+                ->whereIn('uuid', $uuids)
+                ->with(['code.coding', 'stageSummary', 'evidencesRelation.codes.coding', 'evidencesRelation.details.type.coding'])
+                ->get()
+                ->toArray()
+        )
             ->mapWithKeys(fn (array $condition) => [
                 $condition['uuid'] => [
                     'ehealthInsertedAt' => $condition['ehealthInsertedAt'] ?? null,

@@ -59,6 +59,7 @@ class EncounterPackageBuilder
                     if (isset($data['encounter']['diagnoses'][$index])) {
                         $condition['clinicalStatus'] = ConditionClinicalStatus::ACTIVE->value;
                     }
+
                     return Fhir::condition()->toFhir($condition, $uuids);
                 }
             )
@@ -88,8 +89,8 @@ class EncounterPackageBuilder
                     return Fhir::diagnosticReport()->toFhir(
                         $diagnosticReport,
                         array_merge($uuids, ['diagnosticReport' => $diagnosticReport['uuid'] ?? Str::uuid()->toString(), ]),
-                        DiagnosticReportStatus::FINAL,
-                        $data['encounter']
+                        DiagnosticReportStatus::tryFrom($diagnosticReport['status'] ?? '')
+                            ?? DiagnosticReportStatus::FINAL
                     );
                 }
             )

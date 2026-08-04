@@ -2,6 +2,9 @@
      id="immunizations-section"
      x-data="{
          immunizations: $wire.entangle('form.immunizations'),
+         selectedRecords: $wire.entangle('selectedRecords.immunizations'),
+         cancelledRecords: $wire.cancelledRecords.immunizations,
+         canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
          openModal: false,
          showDuplicateCodeWarning: false,
          modalImmunization: new Immunization(),
@@ -18,8 +21,21 @@
             <div class="record-inner-card">
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
-                        <input type="checkbox" class="default-checkbox w-5 h-5" disabled>
+                        <input type="checkbox"
+                               class="default-checkbox w-5 h-5"
+                               :value="immunization.uuid"
+                               x-model="selectedRecords"
+                               :disabled="!canCancelRecords
+                                   || !immunization.uuid
+                                   || cancelledRecords.includes(immunization.uuid)"
+                        >
                     </div>
+
+                    <template x-if="cancelledRecords.includes(immunization.uuid)">
+                        <span class="record-inner-badge-error">
+                            {{ __('patients.status.entered_in_error') }}
+                        </span>
+                    </template>
 
                     <div class="record-inner-column flex-1">
                         <div class="record-inner-label">{{ __('patients.vaccine') }}</div>
@@ -68,7 +84,7 @@
                                  }
                              }"
                              @keydown.escape.prevent.stop="close($refs.button)"
-                             @focusin.window="! $refs.panel.contains($event.target) && close()"
+                             @focusin.window="$refs.panel && ! $refs.panel.contains($event.target) && close()"
                              x-id="['dropdown-button']"
                              class="relative"
                         >
@@ -220,7 +236,7 @@
                                                             {{ __('patients.target_diseases') }}
                                                         </div>
                                                         <div class="record-inner-subvalue"
-                                                             x-text="vaccinationTargetDiseasesDictionary[protocol.targetDiseaseCodes?.[0]] || '-'"
+                                                             x-text="$wire.dictionaries['eHealth/vaccination_target_diseases'][protocol.targetDiseaseCodes?.[0]] || '-'"
                                                         ></div>
                                                     </div>
                                                     <div>
@@ -284,15 +300,17 @@
 
     <div>
         {{-- Button to trigger the modal --}}
-        <button @click.prevent="
-                    openModal = true; {{-- Open the Modal --}}
-                    newImmunization = true; {{-- We are adding a new immumization --}}
-                    modalImmunization = new Immunization(); {{-- Replace the data of the previous immumization with a new one--}}
-                "
-                class="item-add my-5"
-        >
-            {{ __('forms.add') }}
-        </button>
+        @unless($isReadonly)
+            <button @click.prevent="
+                        openModal = true; {{-- Open the Modal --}}
+                        newImmunization = true; {{-- We are adding a new immumization --}}
+                        modalImmunization = new Immunization(); {{-- Replace the data of the previous immumization with a new one--}}
+                    "
+                    class="item-add my-5"
+            >
+                {{ __('forms.add') }}
+            </button>
+        @endunless
 
         {{-- Modal --}}
         <template x-teleport="body"> {{-- This moves the modal at the end of the body tag --}}
@@ -384,6 +402,16 @@
                                                     modalImmunization.date.trim() &&
                                                     modalImmunization.time.trim() &&
                                                     (modalImmunization.reasons?.[0]?.code?.trim?.() || modalImmunization.reasonNotGivenCode?.trim?.()) &&
+                                                    (modalImmunization.primarySource || modalImmunization.reportOriginCode?.trim?.()) &&
+                                                    (modalImmunization.notGiven ||
+                                                    (modalImmunization.doseQuantityValue && modalImmunization.doseQuantityUnit?.trim?.())) &&
+                                                    (modalImmunization.notGiven || !modalImmunization.primarySource ||
+                                                    (modalImmunization.manufacturer?.trim?.() &&
+                                                    modalImmunization.lotNumber?.trim?.() &&
+                                                    modalImmunization.expirationDate?.trim?.() &&
+                                                    modalImmunization.siteCode?.trim?.() &&
+                                                    modalImmunization.routeCode?.trim?.() &&
+                                                    modalImmunization.doseQuantityCode?.trim?.())) &&
                                                     (modalImmunization.vaccinationProtocols.length > 0 &&
                                                     (!modalImmunization.primarySource ||
                                                     modalImmunization.vaccinationProtocols.every(protocol => protocol.doseSequence && protocol.series && protocol.seriesDoses)))

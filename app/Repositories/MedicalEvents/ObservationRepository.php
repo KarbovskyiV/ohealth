@@ -72,9 +72,10 @@ class ObservationRepository extends BaseRepository
                 $code = Repository::codeableConcept()->store($datum['code']);
 
                 $performer = null;
-                if (isset($datum['performer'])) {
-                    $performer = Repository::identifier()->store($datum['performer']['identifier']['value']);
-                    Repository::codeableConcept()->attach($performer, $datum['performer']);
+                $performerData = data_get($datum, 'performer.0') ?? data_get($datum, 'performer');
+                if (!empty($performerData)) {
+                    $performer = Repository::identifier()->store($performerData['identifier']['value']);
+                    Repository::codeableConcept()->attach($performer, $performerData);
                 }
 
                 $context = null;
@@ -309,7 +310,8 @@ class ObservationRepository extends BaseRepository
 
                 $code = $this->syncCodeableConcept($existing, $data['code'], 'code');
                 $context = $this->syncIdentifier($existing, $data['context'] ?? null, 'context');
-                $performer = $this->syncIdentifier($existing, $data['performer'] ?? null, 'performer');
+                $performerData = data_get($data, 'performer.0') ?? ($data['performer'] ?? null);
+                $performer = $this->syncIdentifier($existing, $performerData, 'performer');
                 $reportOrigin = $this->syncCodeableConcept($existing, $data['report_origin'] ?? null, 'reportOrigin');
                 $diagnosticReport = $this->syncIdentifier(
                     $existing,

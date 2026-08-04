@@ -235,12 +235,14 @@
                                             </a>
                                         @endif
 
-                                        <button @click="close($refs.button)"
-                                                class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                                        >
-                                            @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                            {{ __('patients.status.entered_in_error') }}
-                                        </button>
+                                        @if(EncounterStatus::from(data_get($encounter, 'status')) === EncounterStatus::FINISHED)
+                                            <button @click="close($refs.button); $wire.openEncounterCancellation('{{ data_get($encounter, 'uuid') }}')"
+                                                    class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                                            >
+                                                @icon('alert-circle', 'w-5 h-5 text-gray-500')
+                                                {{ __('patients.status.entered_in_error') }}
+                                            </button>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -306,6 +308,8 @@
             </div>
         </div>
     </div>
+
+    @include('livewire.encounter.encounter-cancellation')
 
     <x-forms.loading/>
 </x-layouts.patient>

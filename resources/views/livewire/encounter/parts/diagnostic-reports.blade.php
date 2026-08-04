@@ -6,6 +6,9 @@
     "
     x-data="{
          diagnosticReports: $wire.entangle('form.diagnosticReports'),
+         selectedRecords: $wire.entangle('selectedRecords.diagnosticReports'),
+         cancelledRecords: $wire.cancelledRecords.diagnosticReports,
+         canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
          modalDiagnosticReport: new DiagnosticReport(),
          newDiagnosticReport: false,
          openDiagnosticReportDrawer: false,
@@ -171,8 +174,21 @@
             <div class="record-inner-card">
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
-                        <input type="checkbox" class="default-checkbox w-5 h-5" disabled>
+                        <input type="checkbox"
+                               class="default-checkbox w-5 h-5"
+                               :value="diagnosticReport.uuid"
+                               x-model="selectedRecords"
+                               :disabled="!canCancelRecords
+                                   || !diagnosticReport.uuid
+                                   || cancelledRecords.includes(diagnosticReport.uuid)"
+                        >
                     </div>
+
+                    <template x-if="cancelledRecords.includes(diagnosticReport.uuid)">
+                        <span class="record-inner-badge-error">
+                            {{ __('patients.status.entered_in_error') }}
+                        </span>
+                    </template>
 
                     <div class="record-inner-column flex-1">
                         <div class="record-inner-label">{{ __('patients.diagnostic_report') }}</div>
@@ -204,7 +220,7 @@
                                 }
                             }"
                             @keydown.escape.prevent.stop="close($refs.button)"
-                            @focusin.window="!$refs.panel.contains($event.target) && close()"
+                            @focusin.window="$refs.panel && !$refs.panel.contains($event.target) && close()"
                             x-id="['dropdown-button']"
                             class="relative"
                         >
@@ -331,19 +347,21 @@
     </div>
 
     {{-- Button to trigger the drawer --}}
-    <button
-        x-show="divisionId"
-        x-cloak
-        @click.prevent="
-            newDiagnosticReport = true;
-            modalDiagnosticReport = new DiagnosticReport();
-            issuedDateTimeInvalid = false;
-            openDiagnosticReportDrawer = true;
-        "
-        class="item-add my-5"
-    >
-        {{ __('forms.add') }}
-    </button>
+    @unless($isReadonly)
+        <button
+            x-show="divisionId"
+            x-cloak
+            @click.prevent="
+                newDiagnosticReport = true;
+                modalDiagnosticReport = new DiagnosticReport();
+                issuedDateTimeInvalid = false;
+                openDiagnosticReportDrawer = true;
+            "
+            class="item-add my-5"
+        >
+            {{ __('forms.add') }}
+        </button>
+    @endunless
 
     <x-dialog-drawer x-model="openDiagnosticReportDrawer" maxWidth="4/5" wire:ignore>
         <x-slot name="title">

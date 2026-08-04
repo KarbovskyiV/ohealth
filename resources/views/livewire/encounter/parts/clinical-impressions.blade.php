@@ -2,6 +2,9 @@
      id="clinical-impressions-section"
      x-data="{
          clinicalImpressions: $wire.entangle('form.clinicalImpressions'),
+         selectedRecords: $wire.entangle('selectedRecords.clinicalImpressions'),
+         cancelledRecords: $wire.cancelledRecords.clinicalImpressions,
+         canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
          modalClinicalImpression: new ClinicalImpression(),
          newClinicalImpression: false,
          openClinicalImpressionDrawer: false,
@@ -15,8 +18,21 @@
             <div class="record-inner-card">
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
-                        <input type="checkbox" class="default-checkbox w-5 h-5" disabled>
+                        <input type="checkbox"
+                               class="default-checkbox w-5 h-5"
+                               :value="clinicalImpression.uuid"
+                               x-model="selectedRecords"
+                               :disabled="!canCancelRecords
+                                   || !clinicalImpression.uuid
+                                   || cancelledRecords.includes(clinicalImpression.uuid)"
+                        >
                     </div>
+
+                    <template x-if="cancelledRecords.includes(clinicalImpression.uuid)">
+                        <span class="record-inner-badge-error">
+                            {{ __('patients.status.entered_in_error') }}
+                        </span>
+                    </template>
 
                     <div class="record-inner-column flex-1">
                         <div class="record-inner-label">{{ __('patients.clinical_impression') }}</div>
@@ -45,7 +61,7 @@
                             }
                         }"
                              @keydown.escape.prevent.stop="close($refs.button)"
-                             @focusin.window="!$refs.panel.contains($event.target) && close()"
+                             @focusin.window="$refs.panel && !$refs.panel.contains($event.target) && close()"
                              x-id="['dropdown-button']"
                              class="relative"
                         >
@@ -145,17 +161,19 @@
 
     <div>
         {{-- Button to trigger the modal --}}
-        <button @click.prevent="
-                    newClinicalImpression = true; {{-- We are adding a new clinicalImpression --}}
-                    modalClinicalImpression = new ClinicalImpression(); {{-- Replace the data of the previous clinicalImpression with a new one--}}
-                    $wire.problems = [];
-                    $wire.findings = [];
-                    openClinicalImpressionDrawer = true;
-                "
-                class="item-add my-5"
-        >
-            {{ __('forms.add') }}
-        </button>
+        @unless($isReadonly)
+            <button @click.prevent="
+                        newClinicalImpression = true; {{-- We are adding a new clinicalImpression --}}
+                        modalClinicalImpression = new ClinicalImpression(); {{-- Replace the data of the previous clinicalImpression with a new one--}}
+                        $wire.problems = [];
+                        $wire.findings = [];
+                        openClinicalImpressionDrawer = true;
+                    "
+                    class="item-add my-5"
+            >
+                {{ __('forms.add') }}
+            </button>
+        @endunless
 
         {{-- Modal --}}
         <x-dialog-drawer x-model="openClinicalImpressionDrawer" maxWidth="4/5" wire:ignore>

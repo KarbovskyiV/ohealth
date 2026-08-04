@@ -46,6 +46,7 @@ class Immunization extends Model
 
     protected $casts = [
         'date' => EHealthTimestampCast::class,
+        'expiration_date' => EHealthTimestampCast::class,
         'status' => ImmunizationStatus::class
     ];
 
@@ -123,6 +124,22 @@ class Immunization extends Model
     {
         return $query->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('ehealth_updated_at');
+    }
+
+    /**
+     * Filter immunizations created within the given encounter, which is stored as the context identifier.
+     *
+     * @param  Builder  $query
+     * @param  string  $encounterId
+     * @return Builder
+     */
+    #[Scope]
+    protected function forEncounter(Builder $query, string $encounterId): Builder
+    {
+        return $query->whereHas(
+            'context',
+            static fn (Builder $identifier): Builder => $identifier->whereValue($encounterId)
+        );
     }
 
     public function preperson(): BelongsTo

@@ -59,4 +59,9 @@ final class Fhir
     {
         return app(EncounterPackageBuilder::class);
     }
+
+    public static function encounterPackageLoader(): EncounterPackageLoader
+    {
+        return app(EncounterPackageLoader::class);
+    }
 }

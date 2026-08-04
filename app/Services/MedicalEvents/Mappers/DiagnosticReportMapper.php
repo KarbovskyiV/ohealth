@@ -87,9 +87,10 @@ class DiagnosticReportMapper implements FhirMapperContract
                 ->pluck('id')
                 ->filter()
                 ->unique()
-                ->map(static fn (string $equipmentUuid) => FhirResource::make()
-                    ->coding('eHealth/resources', 'equipment')
-                    ->toIdentifier($equipmentUuid)
+                ->map(
+                    static fn (string $equipmentUuid) => FhirResource::make()
+                        ->coding('eHealth/resources', 'equipment')
+                        ->toIdentifier($equipmentUuid)
                 )
                 ->values()
                 ->toArray();
@@ -145,6 +146,7 @@ class DiagnosticReportMapper implements FhirMapperContract
 
         return [
             'uuid' => data_get($data, 'uuid'),
+            'status' => data_get($data, 'status', DiagnosticReportStatus::FINAL->value),
             'categoryCode' => data_get($data, 'category.0.coding.0.code'),
             'codeValue' => data_get($data, 'code.identifier.value', ''),
             'primarySource' => data_get($data, 'primarySource'),

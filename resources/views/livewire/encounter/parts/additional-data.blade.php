@@ -257,7 +257,7 @@
                         category: String(typeof service === 'object' ? (service.category ?? '') : ''),
                         searchText: (String(typeof service === 'object' ? (service.name ?? '') : service) + ' ' + String(typeof service === 'object' ? (service.code ?? '') : '')).toLowerCase(),
                     }))
-                    .filter(service => service.id);
+                    .filter(service => service.id && service.category);
 
                 this.services = Array.isArray(this.services) && this.services.length ? this.services : [{uuid: ''}];
                 this.coAuthors = Array.isArray(this.coAuthors) ? this.coAuthors : [];
@@ -376,7 +376,17 @@
         }"
          class="space-y-6"
     >
-        <div class="space-y-3" x-show="$wire.form.encounter.classCode !== 'PHC'">
+        <div class="space-y-3"
+             x-show="$wire.form.encounter.classCode !== 'PHC'"
+             x-effect="
+                 if ($wire.form.encounter.classCode === 'PHC' && services.some(service => service.uuid)) {
+                     services = [{uuid: ''}];
+                     serviceSearches = [''];
+                     serviceDropdowns = [false];
+                     serviceFilteredOptions = [[]];
+                 }
+             "
+        >
             <template x-for="(service, index) in services" :key="index">
                 <div class="relative pr-10">
                     <div class="form-group group relative" @click.away="serviceDropdowns[index] = false">

@@ -23,4 +23,24 @@ class BaseForm extends Form
             'keyContainerUpload' => ['required', 'file', 'extensions:dat,pfx,pk8,zs2,jks,p7s']
         ];
     }
+
+    /**
+     * Clear the signing credentials so that they never outlive a single request.
+     *
+     * @return void
+     */
+    public function resetSigningFields(): void
+    {
+        if (isset($this->knedp)) {
+            $this->knedp = '';
+        }
+
+        if (isset($this->password)) {
+            $this->password = '';
+        }
+
+        if (isset($this->keyContainerUpload)) {
+            unset($this->keyContainerUpload);
+        }
+    }
 }

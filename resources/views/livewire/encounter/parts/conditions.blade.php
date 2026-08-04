@@ -1,3 +1,5 @@
+@use('App\Enums\Person\ConditionVerificationStatus')
+
 <div class="p-4 sm:p-8"
      id="conditions-section"
      x-data="{
@@ -130,7 +132,7 @@
                                  }
                              }"
                              @keydown.escape.prevent.stop="close($refs.button)"
-                             @focusin.window="!$refs.panel.contains($event.target) && close()"
+                             @focusin.window="$refs.panel && !$refs.panel.contains($event.target) && close()"
                              x-id="['dropdown-button']"
                              class="relative"
                         >
@@ -441,6 +443,21 @@
                                 >
                                     <option value="" selected>{{ __('forms.select') }}</option>
                                     @foreach($this->dictionaries['eHealth/condition_verification_statuses'] as $key => $verificationStatus)
+                                        @if($key === ConditionVerificationStatus::ENTERED_IN_ERROR->value)
+                                            {{-- A condition added to the encounter as a diagnosis has to stay
+                                                 active, so the status stays out of reach unless the condition
+                                                 already carries it. The option itself is always in the DOM, since
+                                                 x-model reads it before any x-if of its own would run and would
+                                                 otherwise fall back to an empty select --}}
+                                            <option value="{{ $key }}"
+                                                    :disabled="modalCondition.verificationStatus !== '{{ $key }}'"
+                                            >
+                                                {{ $verificationStatus }}
+                                            </option>
+
+                                            @continue
+                                        @endif
+
                                         <option value="{{ $key }}">{{ $verificationStatus }}</option>
                                     @endforeach
                                 </select>

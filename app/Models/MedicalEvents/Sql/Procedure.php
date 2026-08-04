@@ -241,6 +241,22 @@ class Procedure extends Model
             : $query->wherePersonId($patient->id);
     }
 
+    /**
+     * Filter procedures recorded within the given encounter, which is stored as an identifier holding its eHealth ID.
+     *
+     * @param  Builder  $query
+     * @param  string  $encounterId
+     * @return Builder
+     */
+    #[Scope]
+    protected function forEncounter(Builder $query, string $encounterId): Builder
+    {
+        return $query->whereHas(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereValue($encounterId)
+        );
+    }
+
     #[Scope]
     protected function withAllRelations(Builder $query): Builder
     {
