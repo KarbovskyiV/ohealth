@@ -9,7 +9,6 @@ use App\Enums\Person\ConditionClinicalStatus;
 use App\Enums\Person\DiagnosticReportStatus;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-use Carbon\CarbonImmutable;
 
 class EncounterPackageBuilder
 {
@@ -84,20 +83,13 @@ class EncounterPackageBuilder
                         $diagnosticReport['effectivePeriodStartTime'] = $encounterPeriodStart;
                         $diagnosticReport['effectivePeriodEndDate'] = $encounterPeriodDate;
                         $diagnosticReport['effectivePeriodEndTime'] = $encounterPeriodEnd;
-
-                        $encounterEndDateTime = CarbonImmutable::createFromFormat(config('app.date_format') . ' H:i', $encounterPeriodDate . ' ' . $encounterPeriodEnd);
-                        $issuedDateTime = CarbonImmutable::createFromFormat(config('app.date_format') . ' H:i', $diagnosticReport['issuedDate'] . ' ' . $diagnosticReport['issuedTime']);
-
-                        if ($issuedDateTime->lessThan($encounterEndDateTime)) {
-                            $diagnosticReport['issuedDate'] = $encounterEndDateTime->format(config('app.date_format'));
-                            $diagnosticReport['issuedTime'] = $encounterEndDateTime->format('H:i');
-                        }
                     }
 
                     return Fhir::diagnosticReport()->toFhir(
                         $diagnosticReport,
                         array_merge($uuids, ['diagnosticReport' => $diagnosticReport['uuid'] ?? Str::uuid()->toString(), ]),
-                        DiagnosticReportStatus::FINAL
+                        DiagnosticReportStatus::FINAL,
+                        $data['encounter']
                     );
                 }
             )
@@ -131,33 +123,6 @@ class EncounterPackageBuilder
             ->toArray();
 
         $encounterData = $data['encounter'];
-        $hasPrimarySourceCondition = collect($data['conditions'] ?? [])->contains(
-            static fn (array $condition): bool => ($condition['primarySource'] ?? false)
-        );
-
-        $participantUuids = collect($encounterData['participant'] ?? [])
-            ->pluck('uuid')
-            ->when(
-                $hasPrimarySourceCondition,
-                static fn ($participants) => $participants->push($uuids['employee'])
-            )
-            ->merge(
-                collect($data['diagnosticReports'] ?? [])
-                    ->filter(static fn (array $diagnosticReport): bool => $diagnosticReport['primarySource'] ?? false)
-                    ->pluck('performerEmployeeId')
-            )
-            ->merge(
-                collect($data['procedures'] ?? [])
-                    ->filter(static fn (array $procedure): bool => $procedure['primarySource'] ?? false)
-                    ->pluck('performerEmployeeId')
-            )
-            ->filter()
-            ->unique()
-            ->values();
-
-        $encounterData['participant'] = $participantUuids
-            ->map(static fn (string $uuid): array => ['uuid' => $uuid, ])
-            ->toArray();
 
         return [
             'encounter' => Fhir::encounter()->toFhir($encounterData, $fhirConditions, $uuids),

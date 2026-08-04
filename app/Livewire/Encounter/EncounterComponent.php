@@ -710,6 +710,42 @@ class EncounterComponent extends Component
         }
     }
 
+    public function syncEncounterParticipants(): void
+    {
+        $this->form->syncParticipants();
+
+        $encounterWriterEmployee = Auth::user()->getEncounterWriterEmployee(
+            data_get($this->form->encounter, 'classCode')
+        );
+
+        $employeeNames = collect($this->diagnosticReportEmployees)
+            ->when(
+                $encounterWriterEmployee !== null,
+                static fn ($employees) => $employees->push([
+                    'uuid' => $encounterWriterEmployee->uuid,
+                    'name' => $encounterWriterEmployee->fullName,
+                ])
+            )
+            ->filter(static fn (array $employee): bool => !empty($employee['uuid']))
+            ->unique('uuid')
+            ->pluck('name', 'uuid');
+
+        $this->form->encounter['participant'] = collect($this->form->encounter['participant'] ?? [])
+            ->map(
+                static function (array $participant) use ($employeeNames): array {
+                    if (($participant['locked'] ?? false) !== true) {
+                        return $participant;
+                    }
+
+                    $participant['name'] = $employeeNames->get($participant['uuid'], $participant['uuid']);
+
+                    return $participant;
+                }
+            )
+            ->values()
+            ->toArray();
+    }
+
     protected function setPatientData(): void
     {
         $patient = $this->patient();

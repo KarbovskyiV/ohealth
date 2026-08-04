@@ -11,6 +11,23 @@
         equipmentOptions: @js($equipmentOptions),
         procedureEmployees: @js($procedureEmployees),
 
+        syncProcedureParticipants() {
+            const performers = this.procedures
+                .filter(procedure => procedure.primarySource === true && procedure.performerEmployeeId)
+                .map(procedure => {
+                    const employee = this.procedureEmployees.find(
+                        employee => String(employee.uuid) === String(procedure.performerEmployeeId)
+                    );
+
+                    return {
+                        uuid: procedure.performerEmployeeId,
+                        name: employee?.name || procedure.performerEmployeeId,
+                    };
+                });
+
+            this.syncLocalEncounterParticipants('procedure', performers);
+        },
+
         complicationOptions() {
             return this.conditions
                 .filter(condition => condition.uuid && condition.codeCode)
@@ -195,7 +212,12 @@
                                         </button>
 
                                         <button class="dropdown-delete"
-                                                @click.prevent="procedures.splice(index, 1); close($refs.button)">
+                                                @click.prevent="
+                                                    procedures.splice(index, 1);
+                                                    syncProcedureParticipants();
+                                                    close($refs.button);
+                                                "
+                                        >
                                             {{ __('forms.delete') }}
                                         </button>
                                     </div>
@@ -299,6 +321,7 @@
                                         newProcedure !== false
                                             ? procedures.push(modalProcedure)
                                             : procedures[item] = modalProcedure;
+                                        syncProcedureParticipants();
                                         openProcedureDrawer = false;
                                     "
                                     class="button-primary"

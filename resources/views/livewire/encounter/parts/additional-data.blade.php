@@ -243,7 +243,6 @@
 
     <div x-data="{
             services: $wire.entangle('form.encounter.actionReferences'),
-            coAuthors: $wire.entangle('form.encounter.participant'),
             serviceOptions: [],
             serviceSearches: [],
             serviceDropdowns: [],
@@ -261,7 +260,7 @@
                     .filter(service => service.id);
 
                 this.services = Array.isArray(this.services) && this.services.length ? this.services : [{uuid: ''}];
-                this.coAuthors = Array.isArray(this.coAuthors) && this.coAuthors.length ? this.coAuthors : [{uuid: ''}];
+                this.coAuthors = Array.isArray(this.coAuthors) ? this.coAuthors : [];
 
                 this.serviceSearches = this.services.map(service => {
                     if (!service.uuid) { return ''; }
@@ -331,13 +330,48 @@
                 this.updateFilteredOptions(index);
             },
 
+            isCoAuthorAlreadySelected(employeeUuid, currentIndex) {
+                if (!employeeUuid) {
+                    return false;
+                }
+
+                return (Array.isArray(this.coAuthors) ? this.coAuthors : [])
+                    .some((coAuthor, index) =>
+                        index !== currentIndex
+                        && coAuthor?.uuid
+                        && String(coAuthor.uuid) === String(employeeUuid)
+                    );
+            },
+
+            validateCoAuthorSelection(index) {
+                const selectedUuid = this.coAuthors[index]?.uuid;
+
+                if (selectedUuid && this.isCoAuthorAlreadySelected(selectedUuid, index)) {
+                    this.coAuthors[index].uuid = '';
+                }
+            },
+
             addCoAuthor() {
-                this.coAuthors = [...(Array.isArray(this.coAuthors) ? this.coAuthors : []), {uuid: ''}];
+                this.coAuthors = [
+                    ...(Array.isArray(this.coAuthors) ? this.coAuthors : []),
+                    {
+                        uuid: '',
+                        name: '',
+                        locked: false,
+                        manual: true,
+                        sources: []
+                    }
+                ];
             },
 
             removeCoAuthor(index) {
-                this.coAuthors = this.coAuthors.filter((_, rowIndex) => rowIndex !== index);
-                this.coAuthors = this.coAuthors.length ? this.coAuthors : [''];
+                if (this.coAuthors[index]?.locked) {
+                    return;
+                }
+
+                this.coAuthors = this.coAuthors.filter(
+                    (_, rowIndex) => rowIndex !== index
+                );
             },
         }"
          class="space-y-6"
@@ -406,22 +440,58 @@
         </div>
 
         <div class="space-y-3">
-            <template x-for="(coAuthor, index) in coAuthors" :key="index">
+            <template x-for="(coAuthor, index) in coAuthors" :key="`${coAuthor.uuid || 'manual'}-${index}`">
                 <div class="relative pr-10">
-                    <div class="form-group group">
-                        <select class="input-select peer @error('form.encounter.participant.0') input-error @enderror"
+                    <template x-if="coAuthor.locked">
+                        <div class="form-group group">
+                            <input type="text"
+                                class="input peer"
+                                :id="'coAuthor_' + index"
+                                :value="coAuthor.name || coAuthor.uuid"
+                                disabled
+                                placeholder=" "
+                            >
+                            <label
+                                :for="'coAuthor_' + index"
+                                class="label"
+                                x-text="participantLabel(coAuthor)"
+                            ></label>
+                        </div>
+                    </template>
+
+                    <template x-if="!coAuthor.locked">
+                        <div class="form-group group">
+                            <select
+                                class="input-select peer @error('form.encounter.participant.0') input-error @enderror"
                                 :id="'coAuthor_' + index"
                                 x-model="coAuthors[index].uuid"
-                        >
-                            <option value="" selected>{{ __('patients.find_doctor') }}</option>
-                            @foreach($this->employees as $employee)
-                                <option value="{{ $employee['uuid'] }}">{{ $employee['name'] }}</option>
-                            @endforeach
-                        </select>
-                        <label :for="'coAuthor_' + index" class="label">{{ __('patients.coauthor') }}</label>
-                    </div>
+                                @change="validateCoAuthorSelection(index)"
+                            >
+                                <option value="">
+                                    {{ __('patients.find_doctor') }}
+                                </option>
+
+                                @foreach($this->employees as $employee)
+                                    <option
+                                        value="{{ $employee['uuid'] }}"
+                                        :disabled="isCoAuthorAlreadySelected(
+                                            @js((string) $employee['uuid']),
+                                            index
+                                        )"
+                                    >
+                                        {{ $employee['name'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+
+                            <label :for="'coAuthor_' + index" class="label">
+                                {{ __('patients.coauthor') }}
+                            </label>
+                        </div>
+                    </template>
+
                     <button type="button"
-                            x-show="index > 0"
+                            x-show="!coAuthor.locked"
                             x-cloak
                             @click="removeCoAuthor(index)"
                             class="absolute right-0 top-3 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"

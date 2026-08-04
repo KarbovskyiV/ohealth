@@ -240,6 +240,7 @@
             <div class="datepicker-wrapper">
                 <input
                     x-model="modalDiagnosticReport.issuedDate"
+                    @input="validateIssuedDateTime()"
                     datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
                     type="text"
                     name="issuedDate"
@@ -264,7 +265,9 @@
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
                 <input
                     x-model="modalDiagnosticReport.issuedTime"
-                    @input="$event.target.blur()"
+                    @input="$event.target.blur(); validateIssuedDateTime()"
+                    :min="encounterPeriodStart"
+                    :max="encounterPeriodEnd"
                     datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
                     type="time"
                     name="issuedTime"
@@ -278,6 +281,9 @@
             @error($diagnosticReportErrorPath . '.issuedTime')
             <p class="text-error">{{ $message }}</p>
             @enderror
+            <p x-show="issuedDateTimeInvalid" x-cloak class="text-error">
+                {{ __('patients.diagnostic_report_issued_outside_encounter_period') }}
+            </p>
         </div>
     </div>
 

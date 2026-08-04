@@ -20,6 +20,13 @@
     ];
 
     $footerItems = [];
+
+    $escapeForAlpineAttribute = static function (mixed $value): string {
+        return e(json_encode(
+            $value,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP
+        ));
+    };
 @endphp
 
 <x-layouts.patient
@@ -37,11 +44,126 @@
     <div class="breadcrumb-form p-4 shift-content">
         @php
             $allBlockIds = array_column(array_merge($mainGroups, $footerItems), 'id');
-            $initialActiveSections = isset($encounterId) ? '[]' : json_encode($allBlockIds);
+            $initialActiveSections = isset($encounterId) ? [] : $allBlockIds;
         @endphp
-        <div x-data='{
-                activeSections: {!! $initialActiveSections !!},
-                typeCode: $wire.entangle("form.encounter.typeCode"),
+        <div x-data="{
+                activeSections: {!! $escapeForAlpineAttribute($initialActiveSections) !!},
+                typeCode: $wire.entangle('form.encounter.typeCode'),
+                coAuthors: $wire.entangle('form.encounter.participant'),
+
+                conditionPerformer: {
+                    uuid: {!! $escapeForAlpineAttribute(
+                        auth()->user()
+                            ->getEncounterWriterEmployee(
+                                data_get($this->form->encounter, 'classCode')
+                            )
+                            ?->uuid
+                    ) !!},
+                    name: {!! $escapeForAlpineAttribute($employeeFullName) !!},
+                },
+
+                participantSourceLabels: {
+                    diagnosis: {!! $escapeForAlpineAttribute(__('patients.diagnosis_performer')) !!},
+                    procedure: {!! $escapeForAlpineAttribute(__('patients.procedure_performer')) !!},
+                    diagnosticReport: {!! $escapeForAlpineAttribute(__('patients.diagnostic_report_performer')) !!},
+                },
+
+                sortEncounterParticipants(participants = []) {
+                    const normalizedParticipants = Array.isArray(participants) ? participants : [];
+
+                    return [
+                        ...normalizedParticipants.filter(participant => participant?.locked === true),
+                        ...normalizedParticipants.filter(participant => participant?.locked !== true),
+                    ];
+                },
+
+                init() {
+                    const participants = (Array.isArray(this.coAuthors) ? this.coAuthors : [])
+                        .map(participant => ({
+                            ...participant,
+                            uuid: participant?.uuid ?? '',
+                            name: participant?.name ?? '',
+                            locked: participant?.locked === true,
+                            manual: participant?.manual ?? (participant?.locked !== true),
+                            sources: Array.isArray(participant?.sources) ? participant.sources : [],
+                        }));
+
+                    this.coAuthors = this.sortEncounterParticipants(participants);
+                },
+
+                syncLocalEncounterParticipants(source, performers = []) {
+                    const uniquePerformers = Array.from(
+                        new Map(
+                            (Array.isArray(performers) ? performers : [])
+                                .filter(performer => performer?.uuid)
+                                .map(performer => [String(performer.uuid), performer])
+                        ).values()
+                    );
+
+                    let participants = (Array.isArray(this.coAuthors) ? this.coAuthors : [])
+                        .map(participant => ({
+                            ...participant,
+                            uuid: participant?.uuid ?? '',
+                            name: participant?.name ?? '',
+                            locked: participant?.locked === true,
+                            manual: participant?.manual ?? (participant?.locked !== true),
+                            sources: Array.isArray(participant?.sources) ? [...participant.sources] : [],
+                        }))
+                        .map(participant => {
+                            if (!participant.locked || !participant.sources.includes(source)) {
+                                return participant;
+                            }
+
+                            const sources = participant.sources.filter(participantSource => participantSource !== source);
+
+                            if (sources.length) {
+                                return { ...participant, sources };
+                            }
+
+                            return participant.manual ? { ...participant, locked: false, sources: [] } : null;
+                        })
+                        .filter(Boolean);
+
+                    uniquePerformers.forEach(performer => {
+                        const index = participants.findIndex(
+                            participant => String(participant.uuid) === String(performer.uuid)
+                        );
+
+                        if (index === -1) {
+                            participants.push({
+                                uuid: performer.uuid,
+                                name: performer.name || performer.uuid,
+                                locked: true,
+                                manual: false,
+                                sources: [source],
+                            });
+
+                            return;
+                        }
+
+                        const participant = participants[index];
+
+                        participants[index] = {
+                            ...participant,
+                            name: performer.name || participant.name || performer.uuid,
+                            locked: true,
+                            manual: participant.manual ?? (participant.locked !== true),
+                            sources: Array.from(new Set([...(participant.sources ?? []), source])),
+                        };
+                    });
+
+                    this.coAuthors = this.sortEncounterParticipants(participants);
+                },
+
+                participantLabel(participant) {
+                    const labels = (participant?.sources ?? [])
+                        .map(source => this.participantSourceLabels[source])
+                        .filter(Boolean);
+
+                    return labels.length
+                        ? `${{!! $escapeForAlpineAttribute(__('patients.coauthor')) !!}} - ${labels.join(', ')}`
+                        : {!! $escapeForAlpineAttribute(__('patients.coauthor')) !!};
+                },
                 toggle(id) {
                     if (this.activeSections.includes(id)) {
                         this.activeSections = this.activeSections.filter(i => i !== id);
@@ -49,7 +171,7 @@
                         this.activeSections.push(id);
                     }
                 }
-             }'
+             }"
              class="flex flex-col lg:flex-row gap-8 lg:gap-12"
         >
 
