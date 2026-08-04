@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace App\Livewire\Party;
 
 use App\Classes\eHealth\EHealth;
+use App\Enums\Party\DracsDeathVerificationReason;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\LegalEntity;
 use App\Models\Relations\Party;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
-use Livewire\Attributes\Validate;
 use Livewire\Component;
 
 class PartyVerify extends Component
@@ -31,13 +32,13 @@ class PartyVerify extends Component
     #[Locked]
     public bool $showUpdateModal = false;
 
-    #[Validate('required|string|in:VERIFIED,NOT_VERIFIED')]
+    /**
+     * Always VERIFIED for DRACS death updates (API allows only this status).
+     */
     public string $status = 'VERIFIED';
 
-    #[Validate('required|string|max:255')]
     public string $reason = '';
 
-    #[Validate('nullable|string|max:1000')]
     public string $comment = '';
     public string $backUrl = '';
 
@@ -58,50 +59,36 @@ class PartyVerify extends Component
         }
     }
 
-    public function updatedStatus(string $value): void
+    public function updatedReason(string $value): void
     {
-        $this->reason = '';
+        $normalized = DracsDeathVerificationReason::tryFromLegacy($value);
+        if ($normalized !== null && $normalized->value !== $value) {
+            $this->reason = $normalized->value;
+        }
     }
 
     /**
-     * Determines if there is any problem that can be solved manually.
+     * API allows update only when current dracs_death status is NOT_VERIFIED.
      */
     #[Computed]
     public function canUpdateVerification(): bool
     {
-        // 1. Getting the current death status
         $deathStatus = data_get($this->verificationDetails, 'details.dracs_death.verification_status');
-        $deathReason = data_get($this->verificationDetails, 'details.dracs_death.verification_reason');
 
-        // 2. Allow the button if status is NOT_VERIFIED, VERIFICATION_NEEDED,
-        // or VERIFIED with a manual DRACS reason (ESОЗ acceptance codes).
-        if (in_array($deathStatus, ['NOT_VERIFIED', 'VERIFICATION_NEEDED'], true)) {
-            return true;
-        }
-
-        return $deathStatus === 'VERIFIED'
-            && in_array($deathReason, ['MANUAL_CONFIRMED', 'MANUAL_NOT_CONFIRMED'], true);
+        return $deathStatus === 'NOT_VERIFIED';
     }
 
     /**
      * Loads and filters verification details for the party from the eHealth API.
-     *
-     * This method retrieves the party details and strictly filters the verification streams
-     * to include only the allowed directions ('drfo', 'dracs_death', 'dms_passport') as required by
-     * the MIS/PIS UI documentation (3.23 п.3.2.2). It handles variations in the API response
-     * structure and updates the $verificationDetails property. In case of an API failure or
-     * exception, the details are safely defaulted to an empty array.
      *
      * @return void
      */
     public function loadVerificationDetails(): void
     {
         try {
-            //Getting data
             $response = EHealth::party()->getDetails($this->party->uuid);
             $data = is_array($response) ? $response : $response->json();
 
-            // Streams that trigger warning messages per 3.23 п.3.2.2
             $allowedStreams = ['drfo', 'dracs_death', 'dms_passport'];
 
             if (!empty($data['data']['details']) && is_array($data['data']['details'])) {
@@ -138,6 +125,9 @@ class PartyVerify extends Component
 
         $this->status = 'VERIFIED';
         $this->verificationStream = 'dracs_death';
+        $this->reason = '';
+        $this->comment = '';
+        $this->resetErrorBag();
         $this->showUpdateModal = true;
     }
 
@@ -153,28 +143,48 @@ class PartyVerify extends Component
     {
         $this->authorize('updateVerification', $this->party);
 
+        $this->status = 'VERIFIED';
+        $this->verificationStream = 'dracs_death';
+
+        $normalizedReason = DracsDeathVerificationReason::tryFromLegacy($this->reason);
+        if ($normalizedReason !== null) {
+            $this->reason = $normalizedReason->value;
+        }
+
         $this->validate([
-            'verificationStream' => 'required|string',
-            'status' => 'required|string|in:VERIFIED,NOT_VERIFIED',
-            'reason' => 'required|string',
-            'comment' => 'nullable|string|max:3000',
+            'verificationStream' => 'required|string|in:dracs_death',
+            'status' => 'required|string|in:VERIFIED',
+            'reason' => ['required', 'string', Rule::enum(DracsDeathVerificationReason::class)],
+            'comment' => 'required|string|max:3000',
         ]);
 
+        if (!$this->canUpdateVerification) {
+            $this->dispatch('flashMessage', [
+                'message' => __('party_verification.update_unavailable_reason'),
+                'type' => 'error',
+            ]);
+
+            return;
+        }
+
         try {
-            // Wrap the data in the stream key
             $payload = [
-                $this->verificationStream => [
-                    'verification_status' => $this->status,
+                'dracs_death' => [
+                    'verification_status' => 'VERIFIED',
                     'verification_reason' => $this->reason,
                     'verification_comment' => $this->comment,
-                ]
+                ],
             ];
+
+            Log::channel('e_health_errors')->info('[PARTY UPDATE PAYLOAD]', [
+                'party_uuid' => $this->party->uuid,
+                'payload' => $payload,
+            ]);
 
             EHealth::party()->update($this->party->uuid, $payload);
 
             $this->loadVerificationDetails();
 
-            // Sync the overall status to the local party record
             $overallStatus = data_get($this->verificationDetails, 'verification_status');
             if ($overallStatus) {
                 $this->party->update(['verification_status' => $overallStatus]);
@@ -192,6 +202,7 @@ class PartyVerify extends Component
                 'party_uuid' => $this->party->uuid,
                 'message' => $e->getMessage(),
                 'details' => $e->getDetails(),
+                'enum_values' => data_get($e->getDetails(), 'error.invalid.0.rules.0.params.values'),
             ]);
 
             $this->dispatch('flashMessage', [

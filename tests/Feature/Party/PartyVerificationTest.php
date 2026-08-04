@@ -209,8 +209,8 @@ class PartyVerificationTest extends TestCase
             ->with($party->uuid, [
                 'dracs_death' => [
                     'verification_status' => 'VERIFIED',
-                    'verification_reason' => 'MANUAL_NOT_CONFIRMED',
-                    'verification_comment' => 'Everything is fine',
+                    'verification_reason' => 'MANUAL_DECEASED',
+                    'verification_comment' => 'Employee death confirmed',
                 ],
             ])
             ->once()
@@ -220,10 +220,9 @@ class PartyVerificationTest extends TestCase
             ->assertSet('canUpdateVerification', true)
             ->call('checkAndOpenModal')
             ->assertSet('showUpdateModal', true)
-            ->set('status', 'VERIFIED')
             ->assertSet('reason', '')
-            ->set('reason', 'MANUAL_NOT_CONFIRMED')
-            ->set('comment', 'Everything is fine')
+            ->set('reason', 'MANUAL_DECEASED')
+            ->set('comment', 'Employee death confirmed')
             ->call('updateStatus')
             ->assertHasNoErrors()
             ->assertDispatched('flashMessage', function (string $eventName, array $params): bool {
@@ -232,6 +231,86 @@ class PartyVerificationTest extends TestCase
                 return ($payload['message'] ?? null) === __('party_verification.messages.update_success')
                     && ($payload['type'] ?? null) === 'success';
             });
+    }
+
+    public function test_party_verify_normalizes_narrative_reason_codes_to_live_schema(): void
+    {
+        ['legalEntity' => $legalEntity, 'party' => $party] = $this->createVerificationFixture('NOT_VERIFIED');
+
+        $mockPartyApi = Mockery::mock(PartyApi::class);
+        $this->instance(PartyApi::class, $mockPartyApi);
+
+        $detailResponse = [
+            'verification_status' => 'NOT_VERIFIED',
+            'details' => [
+                'dracs_death' => [
+                    'verification_status' => 'NOT_VERIFIED',
+                    'verification_reason' => 'RULES_TRIGGERED',
+                ],
+            ],
+        ];
+
+        $mockResponse = Mockery::mock(EHealthResponse::class);
+        $mockResponse->shouldReceive('json')->andReturn($detailResponse);
+        $mockResponse->shouldReceive('getData')->andReturn($detailResponse);
+
+        $mockPartyApi->shouldReceive('getDetails')
+            ->with($party->uuid)
+            ->andReturn($mockResponse);
+
+        $updateResponse = Mockery::mock(EHealthResponse::class);
+        $mockPartyApi->shouldReceive('update')
+            ->with($party->uuid, [
+                'dracs_death' => [
+                    'verification_status' => 'VERIFIED',
+                    'verification_reason' => 'MANUAL_DECEASED',
+                    'verification_comment' => 'Confirmed via legacy spelling',
+                ],
+            ])
+            ->once()
+            ->andReturn($updateResponse);
+
+        Livewire::test(PartyVerify::class, ['legalEntity' => $legalEntity, 'party' => $party])
+            ->call('checkAndOpenModal')
+            ->set('reason', 'MANUAL_CONFIRMED')
+            ->assertSet('reason', 'MANUAL_DECEASED')
+            ->set('comment', 'Confirmed via legacy spelling')
+            ->call('updateStatus')
+            ->assertHasNoErrors();
+    }
+
+    public function test_party_verify_rejects_reason_outside_api_enum(): void
+    {
+        ['legalEntity' => $legalEntity, 'party' => $party] = $this->createVerificationFixture('NOT_VERIFIED');
+
+        $mockPartyApi = Mockery::mock(PartyApi::class);
+        $this->instance(PartyApi::class, $mockPartyApi);
+
+        $detailResponse = [
+            'verification_status' => 'NOT_VERIFIED',
+            'details' => [
+                'dracs_death' => [
+                    'verification_status' => 'NOT_VERIFIED',
+                ],
+            ],
+        ];
+
+        $mockResponse = Mockery::mock(EHealthResponse::class);
+        $mockResponse->shouldReceive('json')->andReturn($detailResponse);
+        $mockResponse->shouldReceive('getData')->andReturn($detailResponse);
+
+        $mockPartyApi->shouldReceive('getDetails')
+            ->with($party->uuid)
+            ->andReturn($mockResponse);
+
+        $mockPartyApi->shouldNotReceive('update');
+
+        Livewire::test(PartyVerify::class, ['legalEntity' => $legalEntity, 'party' => $party])
+            ->call('checkAndOpenModal')
+            ->set('reason', 'AUTO_ONLINE')
+            ->set('comment', 'Should fail local validation')
+            ->call('updateStatus')
+            ->assertHasErrors(['reason']);
     }
 
     public function test_party_verify_shows_dms_passport_warning_when_not_verified(): void
@@ -266,10 +345,10 @@ class PartyVerificationTest extends TestCase
             ->andReturn($mockResponse);
 
         Livewire::test(PartyVerify::class, ['legalEntity' => $legalEntity, 'party' => $party])
-            ->assertSee('Увага! Персональні дані працівника потребують перевірки:', false)
-            ->assertSee('Зазначений паспорт працівника не дійсний за даними ДМС', false)
-            ->assertSee('ДПС, ДРАЦСГ або ДМС', false)
-            ->assertDontSee('РНОКПП, дата народження або ПІБ не відповідають даним в реєстрі ДПС', false)
-            ->assertDontSee('Зафіксовано актовий запис про смерть', false);
+            ->assertSee(__('party_verification.warning.header'), false)
+            ->assertSee(__('party_verification.warning.dms_passport'), false)
+            ->assertSee(__('party_verification.warning.footer'), false)
+            ->assertDontSee(__('party_verification.warning.drfo'), false)
+            ->assertDontSee(__('party_verification.warning.dracs_death'), false);
     }
 }
