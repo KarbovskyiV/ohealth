@@ -28,7 +28,11 @@
             ? !empty($position->uuid)
             : $position->isPendingEhealth()
     );
-    $showDelete = !$linksOnly && $isRequest && auth()->user()->can('delete', $position);
+    // Delete only local drafts (no eHealth UUID). Policy also enforces isLocalDraft().
+    $showDelete = !$linksOnly
+        && $isRequest
+        && $position->isLocalDraft()
+        && auth()->user()->can('delete', $position);
 
     // We also prohibit the dismissal of the owner through the interface, if necessary
     $showDismiss = !$linksOnly && $isEmployee && !$isOwner && $status === 'APPROVED' && ($permissions['employee_deactivate'] ?? false);

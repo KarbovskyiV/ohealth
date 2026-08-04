@@ -132,5 +132,7 @@
         </div>
     </div>
 
+    @include('livewire.employee.parts.modals.delete-draft-modal')
+
     <x-forms.loading wire:target="sync"/>
 </div>

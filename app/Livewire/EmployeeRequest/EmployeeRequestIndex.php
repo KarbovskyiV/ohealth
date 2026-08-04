@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Session;
 use App\Traits\BatchLegalEntityQueries;
 use App\Models\Employee\EmployeeRequest;
 use App\Livewire\Employee\EmployeeComponent;
+use App\Livewire\Employee\Concerns\DeletesEmployeeRequestDraft;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Notifications\EmployeeRequestSyncCompleted;
 use App\Services\Employee\EmployeeRequestProcessor;
@@ -32,6 +33,7 @@ class EmployeeRequestIndex extends EmployeeComponent
 {
     use WithPagination;
     use BatchLegalEntityQueries;
+    use DeletesEmployeeRequestDraft;
 
     protected const string BATCH_NAME = 'EmployeeRequestsSyncAll';
     protected const string DEPENDENT_BATCH_NAME = 'EmployeeRequestDetailsSync';
