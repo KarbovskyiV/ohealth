@@ -170,8 +170,7 @@ class LegalEntitiesForms extends Form
             'beneficiary' => [
                 'nullable',
                 'string',
-                new Cyrillic(),
-                "regex:/^(?!.*[ЫЪЭЁыъэё@%&$^#])[А-ЯҐЇІЄа-яґїіє’\'\- ]+$/u",
+                new Name()
             ],
             'archive' => 'nullable|array',
             'archive.*.date'  => ['required_if:archivationShow,true', new DateFormat(), 'before_or_equal:today'],
@@ -241,7 +240,6 @@ class LegalEntitiesForms extends Form
             'beneficiary.min' => __('validation.attributes.errors.wrongFieldFormat') . '('. __('validation.attributes.errors.minLen3') . ')',
             'beneficiary.required' => __('validation.attributes.errors.nonEmpty'),
             'beneficiary.regex' => __('validation.attributes.errors.wrongSymbols'),
-            'beneficiary' => __('validation.attributes.errors.wrongFieldFormat') . '('. __('validation.attributes.errors.onlyCyrillic') . ')',
             'archive.*.date.required_if' => __('validation.attributes.errors.requiredField'),
             'archive.*.date.before_or_equal' => __('validation.attributes.errors.expiryDateGreat'),
             'archive.*.place.required_if' => __('validation.attributes.errors.requiredField')
