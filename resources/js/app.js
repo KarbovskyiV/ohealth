@@ -223,10 +223,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Prevent floating label from jumping when clicking inside the datepicker
     document.addEventListener('mousedown', (event) => {
         const activeInput = document.activeElement;
-        const isClickInsideDatepicker = event.target.closest('.datepicker');
+        const isClickInsideDatepicker = event.target.closest('.datepicker, .flatpickr-calendar');
         if (activeInput?.classList?.contains('datepicker-input') && isClickInsideDatepicker) {
             event.preventDefault();
         }
+    });
+
+    ['click', 'pointerdown', 'mousedown', 'mouseup'].forEach(evt => {
+        document.body.addEventListener(evt, (event) => {
+            if (event.target.closest('.datepicker, .flatpickr-calendar')) {
+                event.stopPropagation();
+            }
+        });
     });
 
     function initDefaultDatepickerMasks() {
@@ -394,96 +402,143 @@ function initUkTimepickers(root = document) {
     const inputs = root.querySelectorAll('input.timepicker-uk:not([data-tp-initialized])');
 
     inputs.forEach((el) => {
-        if (el._flatpickr) return;
-
-        flatpickr(el, {
-            enableTime: true,
-            noCalendar: true,
-            time_24hr: true,
-            dateFormat: "H:i",
-            allowInput: true,
-            locale: Ukrainian,
-
-            onChange: (selectedDates, dateStr, instance) => {
-                const v = selectedDates[0]
-                    ? instance.formatDate(selectedDates[0], "H:i")
-                    : dateStr;
-                el.value = v || "";
-                el.dispatchEvent(new Event("input", { bubbles: true }));
-                el.dispatchEvent(new Event("change", { bubbles: true }));
-            },
-
-            onClose: (selectedDates, dateStr, instance) => {
-                if (!dateStr) return;
-                try {
-                    const [h, m] = dateStr.split(":").map((x) => x.trim());
-                    if (
-                        h !== undefined &&
-                        m !== undefined &&
-                        /^\d{1,2}$/.test(h) &&
-                        /^\d{1,2}$/.test(m)
-                    ) {
-                        const hh = String(Math.min(Math.max(parseInt(h, 10), 0), 23)).padStart(2, "0");
-                        const mm = String(Math.min(Math.max(parseInt(m, 10), 0), 59)).padStart(2, "0");
-                        const norm = `${hh}:${mm}`;
-                        if (norm !== el.value) {
-                            el._flatpickr.setDate(norm, false, "H:i");
-                            el.value = norm;
-                            el.dispatchEvent(new Event("input", { bubbles: true }));
-                            el.dispatchEvent(new Event("change", { bubbles: true }));
-                        }
-                    }
-                } catch (_) {}
-            },
-        });
         el.setAttribute('data-tp-initialized', 'true');
-        el.addEventListener('input', (e) => {
-            if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
-                e.target.value = e.target.value.replace(/[^\d:]/g, '').slice(0, 5);
+        el.setAttribute('placeholder', '--:--');
+        el.setAttribute('maxlength', '5');
+        el.setAttribute('autocomplete', 'off');
+
+        function formatTime(digits) {
+            if (digits.length === 0) return '';
+            if (digits.length <= 2) return digits;
+            return digits.substring(0, 2) + ':' + digits.substring(2);
+        }
+
+        function validateDigits(val) {
+            if (val.length >= 1 && parseInt(val[0], 10) > 2) {
+                val = '0' + val;
+            }
+            if (val.length >= 2 && parseInt(val.substring(0, 2), 10) > 23) {
+                val = '23' + val.substring(2);
+            }
+            if (val.length >= 3 && parseInt(val[2], 10) > 5) {
+                val = val.substring(0, 2) + '0' + val[2] + val.substring(3);
+            }
+            if (val.length >= 4 && parseInt(val.substring(2, 4), 10) > 59) {
+                val = val.substring(0, 2) + '59';
+            }
+            return val.substring(0, 4);
+        }
+
+        el.addEventListener('keydown', (e) => {
+            const isDigit = /^\d$/.test(e.key);
+            const isNav   = ['ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'].includes(e.key);
+
+            if (!isDigit && !isNav && e.key !== 'Backspace' && e.key !== 'Delete') {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'a') return;
+                e.preventDefault();
                 return;
             }
 
-            let val = e.target.value.replace(/\D/g, '');
-            if (val.length === 0) {
-                e.target.value = '';
-                return;
-            }
+            if (isNav) return;
 
-            let h = '';
-            let m = '';
+            e.preventDefault();
 
-            if (val.length >= 1) {
-                if (parseInt(val[0]) > 2) {
-                    val = '0' + val;
+            const selStart = el.selectionStart;
+            const selEnd   = el.selectionEnd;
+            const hasSelection = selStart !== selEnd;
+
+            if (hasSelection) {
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                    const dStart = selStart >= 3 ? selStart - 1 : selStart;
+                    const dEnd   = selEnd   >= 3 ? selEnd   - 1 : selEnd;
+                    let val = el.value.replace(/\D/g, '');
+                    val = val.substring(0, dStart) + val.substring(dEnd);
+                    val = validateDigits(val);
+                    const formatted = formatTime(val);
+                    el.value = formatted;
+                    let newCur = dStart;
+                    if (newCur >= 2 && formatted.length > 2) newCur++;
+                    newCur = Math.min(newCur, formatted.length);
+                    el.setSelectionRange(newCur, newCur);
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    return;
+                }
+
+                if (isDigit) {
+                    const dStart = selStart >= 3 ? selStart - 1 : selStart;
+                    const dEnd   = selEnd   >= 3 ? selEnd   - 1 : selEnd;
+                    let val = el.value.replace(/\D/g, '');
+                    val = val.substring(0, dStart) + e.key + val.substring(dEnd);
+                    val = validateDigits(val);
+                    const formatted = formatTime(val);
+                    el.value = formatted;
+                    let newCur = dStart + 1;
+                    if (newCur >= 2 && formatted.length > 2) newCur++;
+                    newCur = Math.min(newCur, formatted.length);
+                    el.setSelectionRange(newCur, newCur);
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    return;
                 }
             }
 
-            if (val.length >= 2) {
-                h = val.substring(0, 2);
-                if (parseInt(h) > 23) h = '23';
+            let val = el.value.replace(/\D/g, '');
+            const cur = selStart;
+            let digitPos = cur >= 3 ? cur - 1 : cur;
+
+            if (e.key === 'Backspace') {
+                if (digitPos > 0) {
+                    val = val.substring(0, digitPos - 1) + val.substring(digitPos);
+                }
+                val = validateDigits(val);
+                const formatted = formatTime(val);
+                el.value = formatted;
+
+                let newCur = digitPos - 1;
+                if (newCur >= 2 && formatted.length > 2) newCur++;
+                el.setSelectionRange(Math.max(0, newCur), Math.max(0, newCur));
+
+            } else if (e.key === 'Delete') {
+                if (digitPos < val.length) {
+                    val = val.substring(0, digitPos) + val.substring(digitPos + 1);
+                }
+                val = validateDigits(val);
+                const formatted = formatTime(val);
+                el.value = formatted;
+
+                let newCur = digitPos;
+                if (newCur >= 2 && formatted.length > 2) newCur++;
+                el.setSelectionRange(Math.min(newCur, formatted.length), Math.min(newCur, formatted.length));
+
             } else {
-                h = val;
-            }
-
-            if (val.length >= 3) {
-                m = val.substring(2, 4);
-                if (parseInt(m[0]) > 5) {
-                    m = '0' + m[0];
+                if (val.length >= 4) {
+                    val = val.substring(0, digitPos) + e.key + val.substring(digitPos + 1);
+                } else {
+                    val = val.substring(0, digitPos) + e.key + val.substring(digitPos);
                 }
-                if (val.length >= 4 && parseInt(m) > 59) {
-                    m = '59';
-                }
+                val = validateDigits(val);
+                const formatted = formatTime(val);
+                el.value = formatted;
+
+                let newCur = digitPos + 1;
+                if (newCur >= 2 && formatted.length > 2) newCur++; // jump over ':'
+                if (newCur > formatted.length) newCur = formatted.length;
+                el.setSelectionRange(newCur, newCur);
             }
 
-            let res = h;
-            if (val.length >= 2) {
-                res += ':';
-            }
-            if (m.length > 0) {
-                res += m;
-            }
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        });
 
-            e.target.value = res;
+        el.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pasted = (e.clipboardData || window.clipboardData).getData('text');
+            let val = pasted.replace(/\D/g, '');
+            val = validateDigits(val);
+            el.value = formatTime(val);
+            el.setSelectionRange(el.value.length, el.value.length);
+            el.dispatchEvent(new Event('input', { bubbles: true }));
         });
     });
 }
