@@ -6,6 +6,9 @@ namespace App\Enums\Person;
 
 use App\Traits\EnumUtils;
 
+/**
+ * see https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/18422661631/PERSON_VERIFICATION_STATUSES
+ */
 enum VerificationStatus: string
 {
     use EnumUtils;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\User\Role;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -27,6 +28,32 @@ class PersonPolicy
     public function view(User $user): Response
     {
         if ($user->cannot('patient_summary:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Determine whether the user can view the person verification details.
+     */
+    public function viewVerificationDetails(User $user): Response
+    {
+        if ($user->cannot('person_verification:details')) {
+            return Response::denyWithStatus(404);
+        }
+
+        $allowedRoles = [
+            Role::OWNER,
+            Role::ADMIN,
+            Role::SPECIALIST,
+            Role::DOCTOR,
+            Role::RECEPTIONIST,
+            Role::ASSISTANT,
+            Role::MED_COORDINATOR
+        ];
+
+        if (!$user->hasAllowedRole($allowedRoles)) {
             return Response::denyWithStatus(404);
         }
 
