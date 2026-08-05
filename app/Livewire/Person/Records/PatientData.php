@@ -195,12 +195,22 @@ class PatientData extends BasePatientComponent
      */
     public function getVerificationStatus(): void
     {
+        if (Auth::user()->cannot('viewVerificationDetails', Person::class)) {
+            Session::flash('error', __('patients.policy.verification_details'));
+
+            return;
+        }
+
         try {
             $response = EHealth::person()->getPersonVerificationDetails($this->uuid);
             $validated = $response->validate();
 
             try {
-                Repository::person()->updateVerificationStatusById($this->uuid, $validated['verification_status']);
+                Repository::person()->updateVerificationStatusById(
+                    $this->personId,
+                    $validated['verification_status']
+                );
+                Repository::person()->syncVerificationDetails($this->personId, $validated['details']);
 
                 $this->verificationStatus = $validated['verification_status'];
             } catch (Exception $exception) {
