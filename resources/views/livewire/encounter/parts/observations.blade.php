@@ -3,6 +3,9 @@
     id="observations-section"
     x-data="{
         observations: $wire.entangle('form.observations'),
+        selectedRecords: $wire.entangle('selectedRecords.observations'),
+        cancelledRecords: $wire.cancelledRecords.observations,
+        canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
         openModal: false,
         showDuplicateCodeWarning: false,
         modalObservation: new Observation(),
@@ -23,8 +26,21 @@
             <div class="record-inner-card">
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
-                        <input type="checkbox" class="default-checkbox w-5 h-5" disabled>
+                        <input type="checkbox"
+                               class="default-checkbox w-5 h-5"
+                               :value="observation.uuid"
+                               x-model="selectedRecords"
+                               :disabled="!canCancelRecords
+                                   || !observation.uuid
+                                   || cancelledRecords.includes(observation.uuid)"
+                        >
                     </div>
+
+                    <template x-if="cancelledRecords.includes(observation.uuid)">
+                        <span class="record-inner-badge-error">
+                            {{ __('patients.status.entered_in_error') }}
+                        </span>
+                    </template>
 
                     <div class="record-inner-column flex-1">
                         <div class="record-inner-label">{{ __('forms.code') }}</div>
@@ -61,7 +77,7 @@
                                 }
                             }"
                             @keydown.escape.prevent.stop="close($refs.button)"
-                            @focusin.window="!$refs.panel.contains($event.target) && close()"
+                            @focusin.window="$refs.panel && !$refs.panel.contains($event.target) && close()"
                             x-id="['dropdown-button']"
                             class="relative"
                         >
@@ -187,16 +203,18 @@
 
     <div>
         {{-- Button to trigger the modal --}}
-        <button
-            @click.prevent="
-                openModal = true;
-                newObservation = true;
-                modalObservation = new Observation();
-            "
-            class="item-add my-5"
-        >
-            {{ __('forms.add') }}
-        </button>
+        @unless($isReadonly)
+            <button
+                @click.prevent="
+                    openModal = true;
+                    newObservation = true;
+                    modalObservation = new Observation();
+                "
+                class="item-add my-5"
+            >
+                {{ __('forms.add') }}
+            </button>
+        @endunless
 
         {{-- Modal --}}
         <template x-teleport="body"> {{-- This moves the modal at the end of the body tag --}}

@@ -261,6 +261,7 @@ return [
     'issued_at' => 'Коли виданий',
     'select_document_type' => 'Оберіть тип документа',
     'uploading_documents' => 'Завантаження документів',
+    'loading' => 'Завантаження...',
 
     // Position & Division
     'position' => 'Посада',
@@ -368,6 +369,8 @@ return [
     'key_container_upload' => 'Оберіть файл ключа',
     'key_file_description' => 'Файловий носій з ключем (наприклад, key.dat, *.jks, *.pfx тощо)',
     'drag_key_file' => 'Перетягніть файл ключа сюди або натисніть, щоб обрати',
+    'key_file_extension_hint' => '(зазвичай його назва "Key-6.dat" або *.pfx, *.pk8, *.zs2, *.jks)',
+    'file_uploaded_success' => 'Файл :name успішно завантажено!',
     'password' => 'Пароль',
     'password_confirmation' => 'Підтвердження пароля',
     'first_login' => 'Перший вхід',
@@ -425,7 +428,8 @@ return [
         'dracs_death_unverified' => 'Потребує підтвердження смерті',
         'unknown' => 'Невідомо',
         'stopped' => 'Припинено',
-        'entered_in_error' => 'Внесено помилково'
+        'entered_in_error' => 'Внесено помилково',
+        'expired' => 'Прострочено'
     ],
 
     // Reorganization types

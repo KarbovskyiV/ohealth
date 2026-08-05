@@ -99,7 +99,7 @@ class DiagnosticReport extends Model
     protected function effectiveDate(): Attribute
     {
         return Attribute::make(
-            get: fn (): string =>  $this->effectiveDateTime ? convertToAppDateFormat($this->effectiveDateTime) : '',
+            get: fn (): string => $this->effectiveDateTime ? convertToAppDateFormat($this->effectiveDateTime) : '',
         );
     }
 
@@ -132,7 +132,7 @@ class DiagnosticReport extends Model
     {
         return Attribute::make(
             get: fn (): string =>
-                $this->effectivePeriod?->end ? CarbonImmutable::parse($this->effectivePeriod->end)->format(config('app.date_format')): '',
+                $this->effectivePeriod?->end ? CarbonImmutable::parse($this->effectivePeriod->end)->format(config('app.date_format')) : '',
         );
     }
 
@@ -282,6 +282,22 @@ class DiagnosticReport extends Model
     protected function final(Builder $query): Builder
     {
         return $query->whereStatus(DiagnosticReportStatus::FINAL);
+    }
+
+    /**
+     * Filter reports recorded within the given encounter, which is stored as an identifier holding its eHealth ID.
+     *
+     * @param  Builder  $query
+     * @param  string  $encounterId
+     * @return Builder
+     */
+    #[Scope]
+    protected function forEncounter(Builder $query, string $encounterId): Builder
+    {
+        return $query->whereHas(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereValue($encounterId)
+        );
     }
 
     /**

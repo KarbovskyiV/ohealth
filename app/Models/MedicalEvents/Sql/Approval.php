@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models\MedicalEvents\Sql;
 
 use Illuminate\Database\Eloquent\Model;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Builder;
-use App\Models\MedicalEvents\Sql\Identifier;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -67,7 +68,6 @@ class Approval extends Model
         return $this->belongsTo(Identifier::class, 'reason_id');
     }
 
-
     public function grantedResources(): HasMany
     {
         return $this->hasMany(ApprovalGrantedResource::class);
@@ -112,6 +112,23 @@ class Approval extends Model
             'grantedResources.grantedTo.type.coding',
             'grantedResourceTypes.codeableConcept.coding',
         ]);
+    }
+
+    /**
+     * Filter approvals that grant write access to the resource with the given eHealth ID.
+     *
+     * @param  Builder  $query
+     * @param  string  $resourceId
+     * @return Builder
+     */
+    #[Scope]
+    protected function grantingWriteAccessTo(Builder $query, string $resourceId): Builder
+    {
+        return $query->whereAccessLevel('write')
+            ->whereHas(
+                'grantedResources.grantedTo',
+                static fn (Builder $identifier): Builder => $identifier->whereValue($resourceId)
+            );
     }
 
     #[Scope]

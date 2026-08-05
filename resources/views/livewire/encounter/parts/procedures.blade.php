@@ -2,6 +2,9 @@
      id="procedures-section"
      x-data="{
         procedures: $wire.entangle('form.procedures'),
+        selectedRecords: $wire.entangle('selectedRecords.procedures'),
+        cancelledRecords: $wire.cancelledRecords.procedures,
+        canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
         conditions: $wire.entangle('form.conditions'),
         modalProcedure: new Procedure(),
         newProcedure: false,
@@ -117,8 +120,21 @@
             <div class="record-inner-card">
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
-                        <input type="checkbox" class="default-checkbox w-5 h-5" disabled>
+                        <input type="checkbox"
+                               class="default-checkbox w-5 h-5"
+                               :value="procedure.uuid"
+                               x-model="selectedRecords"
+                               :disabled="!canCancelRecords
+                                   || !procedure.uuid
+                                   || cancelledRecords.includes(procedure.uuid)"
+                        >
                     </div>
+
+                    <template x-if="cancelledRecords.includes(procedure.uuid)">
+                        <span class="record-inner-badge-error">
+                            {{ __('patients.status.entered_in_error') }}
+                        </span>
+                    </template>
 
                     <div class="record-inner-column flex-1">
                         <div class="record-inner-label">{{ __('patients.procedure') }}</div>
@@ -147,7 +163,7 @@
                             }
                         }"
                              @keydown.escape.prevent.stop="close($refs.button)"
-                             @focusin.window="! $refs.panel.contains($event.target) && close()"
+                             @focusin.window="$refs.panel && ! $refs.panel.contains($event.target) && close()"
                              x-id="['dropdown-button']"
                              class="relative"
                         >
@@ -278,15 +294,17 @@
 
     <div>
         {{-- Button to trigger the drawer --}}
-        <button @click.prevent="
-                    newProcedure = true;
-                    modalProcedure = new Procedure();
-                    openProcedureDrawer = true;
-                "
-                class="item-add my-5"
-        >
-            {{ __('forms.add') }}
-        </button>
+        @unless($isReadonly)
+            <button @click.prevent="
+                        newProcedure = true;
+                        modalProcedure = new Procedure();
+                        openProcedureDrawer = true;
+                    "
+                    class="item-add my-5"
+            >
+                {{ __('forms.add') }}
+            </button>
+        @endunless
 
         <x-dialog-drawer x-model="openProcedureDrawer" maxWidth="4/5" wire:ignore>
             <x-slot name="title">

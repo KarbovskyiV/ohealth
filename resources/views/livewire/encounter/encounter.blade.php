@@ -4,6 +4,7 @@
     $patientName = $patientFullName ?? __('forms.patient');
     $title = __('patients.encounter') . ' - ' . $patientName;
     $isReadonly = $this instanceof EncounterEdit && $this->isReadonly;
+    $canCancelRecords = $this instanceof EncounterEdit && $this->canBeCancelled;
 
     $mainGroups = [
         ['id' => 'referral', 'label' => __('patients.referrals'), 'icon' => 'arrow-right', 'view' => 'livewire.encounter.parts.referral'],
@@ -12,11 +13,11 @@
         ['id' => 'reasons', 'label' => __('patients.reasons_for_visit'), 'icon' => 'person', 'view' => 'livewire.encounter.parts.reasons'],
         ['id' => 'actions', 'label' => __('forms.actions'), 'icon' => 'check-box', 'view' => 'livewire.encounter.parts.actions'],
         ['id' => 'additional-data', 'label' => __('patients.additional_data'), 'icon' => 'Edit3', 'view' => 'livewire.encounter.parts.additional-data'],
-        ['id' => 'observations', 'label' => __('patients.observation'), 'icon' => 'heart', 'view' => 'livewire.encounter.parts.observations'],
-        ['id' => 'immunizations', 'label' => __('patients.immunizations'), 'icon' => 'shield', 'view' => 'livewire.encounter.parts.immunizations'],
-        ['id' => 'procedures', 'label' => __('patients.procedures'), 'icon' => 'settings', 'view' => 'livewire.encounter.parts.procedures'],
-        ['id' => 'diagnostic-reports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity', 'view' => 'livewire.encounter.parts.diagnostic-reports'],
-        ['id' => 'clinical-impressions', 'label' => __('patients.clinical_impressions'), 'icon' => 'check', 'view' => 'livewire.encounter.parts.clinical-impressions'],
+        ['id' => 'observations', 'label' => __('patients.observation'), 'icon' => 'heart', 'view' => 'livewire.encounter.parts.observations', 'holdsCancellableRecords' => true],
+        ['id' => 'immunizations', 'label' => __('patients.immunizations'), 'icon' => 'shield', 'view' => 'livewire.encounter.parts.immunizations', 'holdsCancellableRecords' => true],
+        ['id' => 'procedures', 'label' => __('patients.procedures'), 'icon' => 'settings', 'view' => 'livewire.encounter.parts.procedures', 'holdsCancellableRecords' => true],
+        ['id' => 'diagnostic-reports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity', 'view' => 'livewire.encounter.parts.diagnostic-reports', 'holdsCancellableRecords' => true],
+        ['id' => 'clinical-impressions', 'label' => __('patients.clinical_impressions'), 'icon' => 'check', 'view' => 'livewire.encounter.parts.clinical-impressions', 'holdsCancellableRecords' => true],
     ];
 
     $footerItems = [];
@@ -226,7 +227,10 @@
                                 style="display: none;"
                                 class="px-5 pb-5"
                             >
-                                <fieldset @disabled($isReadonly)>
+                                {{-- A disabled fieldset disables every control inside it, the record cancellation
+                                     checkboxes included, so a section holding records to pick is left to the
+                                     readonly handling it carries of its own --}}
+                                <fieldset @disabled($isReadonly && !($canCancelRecords && ($item['holdsCancellableRecords'] ?? false)))>
                                     @include($item['view'])
                                 </fieldset>
                             </div>
@@ -322,12 +326,21 @@
                 <!-- Actions -->
                 <div class="pt-8">
                     <div class="flex flex-wrap gap-4">
-                        @if($this instanceof EncounterEdit)
+                        @if($this instanceof EncounterEdit && $this->canBeCancelled)
                             <button
+                                wire:click="openPackageCancellation"
                                 type="button"
                                 class="button-primary-outline-red"
                             >
                                 {{ __('patients.encounter_entered_in_error') }}
+                            </button>
+
+                            <button
+                                wire:click="openRecordsCancellation"
+                                type="button"
+                                class="button-primary-outline-red"
+                            >
+                                {{ __('patients.records_entered_in_error') }}
                             </button>
                         @endif
 
@@ -378,6 +391,15 @@
     @unless($isReadonly)
         <x-signature-modal method="sign" />
     @endunless
+
+    @if($this instanceof EncounterEdit && $this->canBeCancelled)
+        @include('livewire.encounter.encounter-cancellation', [
+            'formPath' => 'cancellationForm',
+            'description' => array_filter($this->selectedRecords)
+                ? __('patients.messages.encounter_records_cancel_modal_description')
+                : __('patients.messages.encounter_cancel_modal_description')
+        ])
+    @endif
     <livewire:components.x-message :key="time()" />
     <x-forms.loading />
 </x-layouts.patient>

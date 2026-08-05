@@ -248,6 +248,33 @@ class EncounterComponent extends Component
     public array $procedureEmployees = [];
 
     /**
+     * eHealth IDs of the package records picked to be marked as entered in error, keyed by package section.
+     * Only an encounter that has been signed has records to pick, so on creation these stay empty.
+     *
+     * @var array
+     */
+    public array $selectedRecords = self::NO_RECORDS_SELECTED;
+
+    /**
+     * eHealth IDs of the package records already marked as entered in error, keyed by package section.
+     *
+     * @var array
+     */
+    #[Locked]
+    public array $cancelledRecords = self::NO_RECORDS_SELECTED;
+
+    /**
+     * Package sections whose records may be marked as entered in error on their own.
+     */
+    protected const array NO_RECORDS_SELECTED = [
+        'observations' => [],
+        'immunizations' => [],
+        'diagnosticReports' => [],
+        'procedures' => [],
+        'clinicalImpressions' => []
+    ];
+
+    /**
      * List of dictionary names.
      *
      * @var array|string[]
@@ -295,6 +322,7 @@ class EncounterComponent extends Component
         'eHealth/procedure_categories',
         'eHealth/procedure_outcomes',
         'eHealth/clinical_impression_patient_categories',
+        'eHealth/cancellation_reasons',
         'POSITION'
     ];
 

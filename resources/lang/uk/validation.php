@@ -288,6 +288,8 @@ return [
             'actionReferences' => [
                 'required_activity' => 'Потрібно додати щонайменше одну послугу, діагностичний звіт або процедуру',
                 'prohibited_concilium' => 'Для типу взаємодії «Консиліум» послуги не передаються',
+                'prohibited_phc' => 'Для первинної медичної допомоги послуги не передаються',
+                'service_not_found' => 'Вибраної послуги немає в довіднику послуг',
                 'invalid_amb_category' => 'Для амбулаторної взаємодії послуга має належати до категорії «консультування»'
             ],
             'observations' => [
@@ -300,9 +302,15 @@ return [
                 'laborant_category' => 'Лаборант може створювати діагностичний звіт лише з категорією "Лабораторна процедура".',
             ],
         ],
+        'immunizations' => [
+            'not_given_by_patient' => 'Зі слів пацієнта можна вносити лише проведену вакцинацію'
+        ],
         'conditions' => [
             'codeSystem' => [
                 'class_forbidden' => "Для класу взаємодії 'Амбулаторна медична допомога' та 'Стаціонарна медична допомога' дозволена лише система eHealth/ICD10_AM/condition_codes"
+            ],
+            'verificationStatus' => [
+                'not_in' => 'Діагноз, який додано до взаємодії, не може бути позначений внесеним помилково'
             ],
             'psychiatry_evidence_required' => 'Для коду діагнозу :code необхідно вказати стан як доказ',
             'psychiatry_evidence_code_forbidden' => 'Стан не може бути використаний як доказ для коду діагнозу :code',
@@ -358,6 +366,8 @@ return [
         'episode_period_start' => 'дата відкриття епізоду',
         'issued' => 'час внесення',
         'effective_period_start' => 'час початку прийому',
+        'encounter_period_start' => 'час початку взаємодії',
+        'encounter_period_end' => 'час завершення взаємодії',
         'performed_period_start' => 'час початку процедури',
         'password' => 'пароль',
         'keyContainerUpload' => 'контейнер ключа',
@@ -731,6 +741,7 @@ return [
             '*.routeCode' => 'шлях введення вакцини',
             '*.doseQuantityValue' => 'кількість введеної вакцини',
             '*.doseQuantityCode' => 'одиниця виміру вакцини',
+            '*.doseQuantityUnit' => 'назва одиниці виміру вакцини',
             '*.vaccinationProtocols' => 'протоколи імунізації',
             '*.vaccinationProtocols.*.authorityCode' => 'автор протоколу імунізації',
             '*.vaccinationProtocols.*.doseSequence' => 'порядковий номер дози імунізації',

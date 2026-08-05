@@ -234,6 +234,22 @@ class Observation extends Model
     }
 
     /**
+     * Filter observations created within the given encounter, which is stored as the context identifier.
+     *
+     * @param  Builder  $query
+     * @param  string  $encounterId
+     * @return Builder
+     */
+    #[Scope]
+    protected function forEncounter(Builder $query, string $encounterId): Builder
+    {
+        return $query->whereHas(
+            'context',
+            static fn (Builder $identifier): Builder => $identifier->whereValue($encounterId)
+        );
+    }
+
+    /**
      * Scope to eager load all observation relationships.
      */
     #[Scope]

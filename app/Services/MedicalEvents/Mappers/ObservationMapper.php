@@ -25,7 +25,7 @@ class ObservationMapper implements FhirMapperContract
 
         $result = [
             'id' => $data['uuid'] ?? Str::uuid()->toString(),
-            'status' => ObservationStatus::VALID->value,
+            'status' => $data['status'] ?? ObservationStatus::VALID->value,
             'categories' => [
                 FhirResource::make()
                     ->coding($data['categorySystem'], $data['categoryCode'])
@@ -57,9 +57,11 @@ class ObservationMapper implements FhirMapperContract
         }
 
         if ($data['primarySource']) {
-            $result['performer'] = FhirResource::make()
-                ->coding('eHealth/resources', 'employee')
-                ->toIdentifier($uuids['employee']);
+            $result['performer'] = [
+                FhirResource::make()
+                    ->coding('eHealth/resources', 'employee')
+                    ->toIdentifier($uuids['employee'])
+            ];
         } else {
             $result['reportOrigin'] = FhirResource::make()
                 ->coding('eHealth/report_origins', $data['reportOriginCode'])
@@ -211,6 +213,7 @@ class ObservationMapper implements FhirMapperContract
 
         $flat = [
             'uuid' => data_get($data, 'uuid'),
+            'status' => data_get($data, 'status', ObservationStatus::VALID->value),
             'codingSystem' => $codingSystem,
             'categorySystem' => $categorySystem,
             'codeSystem' => data_get($data, 'code.coding.0.system'),

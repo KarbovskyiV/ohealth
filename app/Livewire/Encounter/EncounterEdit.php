@@ -8,12 +8,14 @@ use App\Classes\Cipher\Api\CipherRequest;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\Person\EncounterStatus;
+use App\Livewire\Encounter\Forms\EncounterCancellationForm;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
 use App\Services\MedicalEvents\Fhir;
+use App\Traits\HandlesEncounterCancellation;
 use App\Exceptions\Cipher\CipherConnectionException;
 use App\Exceptions\Cipher\CipherException;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -26,11 +28,26 @@ use Throwable;
 
 class EncounterEdit extends EncounterComponent
 {
+    use HandlesEncounterCancellation;
+
     #[Locked]
     public int $encounterId;
 
     #[Locked]
+    public string $encounterUuid;
+
+    #[Locked]
     public bool $isReadonly;
+
+    /**
+     * Whether the encounter may be marked as entered in error by the current user.
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $canBeCancelled;
+
+    public EncounterCancellationForm $cancellationForm;
 
     public function mount(LegalEntity $legalEntity, int $encounterId, ?Person $person = null, ?Preperson $preperson = null): void
     {
@@ -43,23 +60,40 @@ class EncounterEdit extends EncounterComponent
         $this->initializeComponent();
         $this->encounterId = $encounterId;
 
-        $encounter = Encounter::withRelationships()->whereId($encounterId)->firstOrFail()->toArray();
-        $this->isReadonly = $encounter['status'] !== EncounterStatus::DRAFT->value;
-        $supportingInfoDetails = $this->getEncounterSupportingInfoDetailsMap($encounter);
+        $encounterModel = Encounter::withRelationships()->whereId($encounterId)->firstOrFail();
+        $this->encounterUuid = $encounterModel->uuid;
+        $this->canBeCancelled = Auth::user()->can('cancel', $encounterModel);
+        $this->cancelledRecords = Repository::encounter()->cancelledRecordIds($encounterModel->uuid);
 
-        $this->form->encounter = Fhir::encounter()->fromFhir($encounter, $supportingInfoDetails);
+        $encounter = $encounterModel->toArray();
+        $this->isReadonly = $encounter['status'] !== EncounterStatus::DRAFT->value;
+
+        $package = Fhir::encounterPackageLoader()->load($encounter);
+
+        $this->form->encounter = $package['encounter'];
+        $this->form->conditions = $package['conditions'];
+        $this->form->immunizations = $package['immunizations'];
+        $this->form->diagnosticReports = $package['diagnosticReports'];
+        $this->form->observations = $package['observations'];
+        $this->form->procedures = $package['procedures'];
+        $this->form->clinicalImpressions = $package['clinicalImpressions'];
+
         $this->episodeType = 'existing';
         $this->form->episode = array_merge(
             $this->form->episode,
             ['id' => data_get($encounter, 'episode.identifier.value', '')]
         );
 
-        $this->loadConditions($encounter);
-        $this->loadImmunizations($encounter['uuid']);
-        $this->loadDiagnosticReports($encounter['uuid']);
-        $this->loadObservations($encounter['uuid']);
-        $this->loadProcedures($encounter['uuid']);
-        $this->loadClinicalImpressions($encounter['uuid']);
+        $this->loadIcd10Descriptions(
+            collect([...$package['procedures'], ...$package['clinicalImpressions']])
+                ->flatMap(static fn (array $record) => array_merge(
+                    $record['reasonReferences'] ?? [],
+                    $record['complicationDetails'] ?? [],
+                    $record['problems'] ?? [],
+                    $record['findings'] ?? []
+                ))
+                ->toArray()
+        );
     }
 
     /**
@@ -72,7 +106,7 @@ class EncounterEdit extends EncounterComponent
         if ($this->isReadonly) {
             return null;
         }
-        
+
         try {
             $this->syncEncounterParticipants();
             $validated = $this->form->validate();
@@ -127,7 +161,8 @@ class EncounterEdit extends EncounterComponent
 
         Session::flash('success', __('patients.messages.encounter_updated'));
 
-        return [
+        // Sections with no records stay out of the package, the same way the create flow signs it
+        return array_filter([
             'encounter' => $fhirEncounter,
             'conditions' => $fhirConditions,
             'immunizations' => $fhirImmunizations,
@@ -135,7 +170,7 @@ class EncounterEdit extends EncounterComponent
             'observations' => $fhirObservations,
             'procedures' => $fhirProcedures,
             'clinicalImpressions' => $fhirClinicalImpressions
-        ];
+        ]);
     }
 
     /**
@@ -148,7 +183,7 @@ class EncounterEdit extends EncounterComponent
         if ($this->isReadonly) {
             return;
         }
-    
+
         if (Auth::user()->cannot('create', Encounter::class)) {
             Session::flash('error', __('patients.policy.create_encounter'));
 
@@ -201,7 +236,7 @@ class EncounterEdit extends EncounterComponent
 
             return;
         }
-        
+
         Encounter::query()
             ->whereId($this->encounterId)
             ->update([
@@ -211,193 +246,84 @@ class EncounterEdit extends EncounterComponent
         $this->redirectRoute('persons.index', [legalEntity()], navigate: true);
     }
 
-    protected function loadConditions(array $encounter): void
+    /**
+     * Ask for the reason the whole package is being marked as entered in error, dropping whatever records
+     * were picked before, so that the encounter itself is the one being cancelled.
+     *
+     * @return void
+     */
+    public function openPackageCancellation(): void
     {
-        $conditions = Repository::condition()->getByUuids(
-            collect(data_get($encounter, 'diagnoses', []))
-                ->pluck('condition.identifier.value')
-                ->filter()
-                ->values()
-                ->toArray()
-        );
+        $this->selectedRecords = self::NO_RECORDS_SELECTED;
 
-        if (!$conditions) {
-            return;
-        }
-
-        $detailsMap = Repository::condition()->getDetailsMapForEvidences($conditions);
-
-        $this->form->conditions = collect($conditions)
-            ->map(fn (array $condition) => Fhir::condition()->fromFhir($condition, $detailsMap))
-            ->toArray();
-    }
-
-    protected function loadImmunizations(string $encounterUuid): void
-    {
-        $immunizations = Repository::immunization()->get($encounterUuid);
-
-        if (!$immunizations) {
-            return;
-        }
-
-        $this->form->immunizations = collect($immunizations)
-            ->map(fn (array $immunization) => Fhir::immunization()->fromFhir($immunization))
-            ->toArray();
-    }
-
-    protected function loadDiagnosticReports(string $encounterUuid): void
-    {
-        $diagnosticReports = Repository::diagnosticReport()->get($encounterUuid);
-
-        if (!$diagnosticReports) {
-            return;
-        }
-
-        $this->form->diagnosticReports = collect($diagnosticReports)
-            ->map(fn (array $diagnosticReport) => Fhir::diagnosticReport()->fromFhir($diagnosticReport))
-            ->toArray();
-    }
-
-    protected function loadObservations(string $encounterUuid): void
-    {
-        $observations = Repository::observation()->get($encounterUuid);
-
-        if (!$observations) {
-            return;
-        }
-
-        $this->form->observations = collect($observations)
-            ->map(fn (array $observation) => Fhir::observation()->fromFhir($observation))
-            ->toArray();
-    }
-
-    protected function loadProcedures(string $encounterUuid): void
-    {
-        $procedures = Repository::procedure()->get($encounterUuid);
-
-        if (!$procedures) {
-            return;
-        }
-
-        $conditionUuids = collect($procedures)
-            ->flatMap(fn (array $procedure) => array_merge(
-                collect(data_get($procedure, 'reasonReferences', []))
-                    ->filter(fn (array $reference) => data_get($reference, 'identifier.type.coding.0.code') === 'condition')
-                    ->pluck('identifier.value')
-                    ->toArray(),
-                collect(data_get($procedure, 'complicationDetails', []))
-                    ->pluck('identifier.value')
-                    ->toArray()
-            ))
-            ->filter()->unique()->values()->toArray();
-
-        $observationUuids = collect($procedures)
-            ->flatMap(
-                fn (array $procedure) => collect(data_get($procedure, 'reasonReferences', []))
-                    ->filter(fn (array $reference) => data_get($reference, 'identifier.type.coding.0.code') === 'observation')
-                    ->pluck('identifier.value')
-                    ->toArray()
-            )
-            ->filter()->unique()->values()->toArray();
-
-        $detailsMap = array_merge(
-            Repository::condition()->getProcedureReferenceDetailsMapByUuids($conditionUuids),
-            Repository::observation()->getDetailsMapByUuids($observationUuids)
-        );
-
-        $this->form->procedures = collect($procedures)
-            ->map(fn (array $procedure) => Fhir::procedure()->fromFhir($procedure, $detailsMap))
-            ->toArray();
-
-        $icd10Items = collect($this->form->procedures)
-            ->flatMap(fn (array $procedure) => array_merge(
-                $procedure['reasonReferences'] ?? [],
-                $procedure['complicationDetails'] ?? []
-            ))
-            ->toArray();
-
-        $this->loadIcd10Descriptions($icd10Items);
-    }
-
-    protected function loadClinicalImpressions(string $encounterUuid): void
-    {
-        $clinicalImpressions = Repository::clinicalImpression()->get($encounterUuid);
-
-        if (!$clinicalImpressions) {
-            return;
-        }
-
-        $allSupportingInfo = collect($clinicalImpressions)
-            ->flatMap(fn (array $ci) => data_get($ci, 'supportingInfo', []))
-            ->filter();
-
-        $conditionUuids = collect($clinicalImpressions)
-            ->flatMap(fn (array $clinicalImpression) => array_merge(
-                collect(data_get($clinicalImpression, 'problems', []))
-                    ->pluck('identifier.value')
-                    ->toArray(),
-                collect(data_get($clinicalImpression, 'findings', []))
-                    ->filter(fn (array $finding) => data_get($finding, 'itemReference.identifier.type.coding.0.code') === 'condition')
-                    ->pluck('itemReference.identifier.value')
-                    ->toArray()
-            ))
-            ->filter()->unique()->values()->toArray();
-
-        $observationUuids = collect($clinicalImpressions)
-            ->flatMap(
-                fn (array $clinicalImpression) => collect(data_get($clinicalImpression, 'findings', []))
-                    ->filter(fn (array $finding) => data_get($finding, 'itemReference.identifier.type.coding.0.code') === 'observation')
-                    ->pluck('itemReference.identifier.value')
-                    ->toArray()
-            )
-            ->filter()->unique()->values()->toArray();
-
-        $previousUuids = collect($clinicalImpressions)
-            ->pluck('previous.identifier.value')
-            ->filter()->unique()->values()->toArray();
-
-        $uuidsByType = $allSupportingInfo
-            ->groupBy(fn (array $item) => data_get($item, 'identifier.type.coding.0.code'))
-            ->map(fn ($group) => $group->pluck('identifier.value')->filter()->unique()->values()->toArray());
-
-        $detailsMap = array_merge(
-            Repository::condition()->getDetailsMapByUuids($conditionUuids),
-            Repository::observation()->getDetailsMapByUuids($observationUuids),
-            Repository::clinicalImpression()->getDetailsMapByUuids($previousUuids),
-            Repository::diagnosticReport()->getDetailsMapByUuids($uuidsByType->get('diagnostic_report', [])),
-            Repository::procedure()->getDetailsMapByUuids($uuidsByType->get('procedure', [])),
-            Repository::encounter()->getDetailsMapByUuids($uuidsByType->get('encounter', [])),
-            Repository::episode()->getDetailsMapByUuids($uuidsByType->get('episode_of_care', [])),
-        );
-
-        $this->form->clinicalImpressions = collect($clinicalImpressions)
-            ->map(fn (array $clinicalImpression) => Fhir::clinicalImpression()->fromFhir($clinicalImpression, $detailsMap))
-            ->toArray();
-
-        $icd10Items = collect($this->form->clinicalImpressions)
-            ->flatMap(fn (array $clinicalImpression) => array_merge($clinicalImpression['problems'] ?? [], $clinicalImpression['findings'] ?? []))
-            ->toArray();
-
-        $this->loadIcd10Descriptions($icd10Items);
+        $this->openEncounterCancellation($this->encounterUuid);
     }
 
     /**
-     * Get details for selected encounter supporting info records.
+     * Ask for the reason the picked records are being marked as entered in error.
      *
-     * @param  array  $encounter
-     * @return array
+     * @return void
      */
-    private function getEncounterSupportingInfoDetailsMap(array $encounter): array
+    public function openRecordsCancellation(): void
     {
-        $uuidsByType = collect(data_get($encounter, 'supporting_info', []))
-            ->groupBy(fn (array $item) => data_get($item, 'identifier.type.coding.0.code'))
-            ->map(fn ($group) => $group->pluck('identifier.value')->filter()->unique()->values()->toArray());
+        if ($this->selectedCancellationRecords() === []) {
+            Session::flash('error', __('patients.messages.encounter_cancel_records_not_picked'));
 
-        return array_merge(
-            Repository::condition()->getDetailsMapByUuids($uuidsByType->get('condition', [])),
-            Repository::observation()->getDetailsMapByUuids($uuidsByType->get('observation', [])),
-            Repository::diagnosticReport()->getDetailsMapByUuids($uuidsByType->get('diagnostic_report', []))
-        );
+            return;
+        }
+
+        $this->openEncounterCancellation($this->encounterUuid);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function encounterCancellationForm(): EncounterCancellationForm
+    {
+        return $this->cancellationForm;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function selectedCancellationRecords(): array
+    {
+        // The picks arrive from the browser, so only known sections holding record ids survive
+        return array_filter(array_map(
+            static fn (mixed $recordIds): array => array_filter((array)$recordIds, 'is_string'),
+            array_intersect_key($this->selectedRecords, self::NO_RECORDS_SELECTED)
+        ));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function afterEncounterCancelled(): void
+    {
+        // Cancelled records leave the encounter itself alive, so the page reloads to show them as they now are
+        if ($this->selectedCancellationRecords() !== []) {
+            $this->redirectRoute(
+                $this->prepersonId !== null ? 'prepersons.encounter.edit' : 'encounter.edit',
+                $this->prepersonId !== null
+                    ? [legalEntity(), 'preperson' => $this->prepersonId, 'encounterId' => $this->encounterId]
+                    : [legalEntity(), $this->personId, $this->encounterId],
+                navigate: true
+            );
+
+            return;
+        }
+
+        if ($this->prepersonId !== null) {
+            $this->redirectRoute(
+                'prepersons.encounters',
+                [legalEntity(), 'preperson' => $this->prepersonId],
+                navigate: true
+            );
+
+            return;
+        }
+
+        $this->redirectRoute('persons.encounters', [legalEntity(), $this->personId], navigate: true);
     }
 
     /**

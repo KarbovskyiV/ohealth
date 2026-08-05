@@ -8,11 +8,13 @@ use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\JobStatus;
 use App\Jobs\EncounterFullSync;
+use App\Livewire\Encounter\Forms\EncounterCancellationForm;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Identifier;
 use App\Repositories\MedicalEvents\Repository;
 use App\Traits\BatchLegalEntityQueries;
+use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Session;
@@ -20,13 +22,16 @@ use Illuminate\View\View;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use Livewire\Attributes\Computed;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Throwable;
 
 class PatientEncounters extends BasePatientComponent
 {
     use BatchLegalEntityQueries;
+    use HandlesEncounterCancellation;
     use HandlesSyncBatch;
+    use WithFileUploads;
     use WithPagination;
 
     public array $episodes = [];
@@ -49,9 +54,14 @@ class PatientEncounters extends BasePatientComponent
 
     public bool $showAdditionalParams = false;
 
+    public bool $showSignatureModal = false;
+
+    public EncounterCancellationForm $form;
+
     public array $dictionaryNames = [
         'eHealth/encounter_classes',
         'eHealth/encounter_types',
+        'eHealth/cancellation_reasons',
         'SPECIALITY_TYPE'
     ];
 
@@ -270,7 +280,6 @@ class PatientEncounters extends BasePatientComponent
         $perPage = config('pagination.per_page');
         $page = $this->getPage();
 
-        // todo: cancel encounter package
         // The pickers keep both bounds in one field, the API takes them as separate params
         $periodStart = array_map('trim', explode('—', $this->filterStartDateRange));
         $periodEnd = array_map('trim', explode('—', $this->filterEndDateRange));
@@ -301,6 +310,23 @@ class PatientEncounters extends BasePatientComponent
         return new LengthAwarePaginator(collect($encounters), $total, $perPage, $page, [
             'path' => LengthAwarePaginator::resolveCurrentPath()
         ]);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function encounterCancellationForm(): EncounterCancellationForm
+    {
+        return $this->form;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function afterEncounterCancelled(): void
+    {
+        $this->isSearching = false;
+        $this->resetPage();
     }
 
     public function render(): View
