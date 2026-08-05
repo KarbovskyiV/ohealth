@@ -215,14 +215,13 @@
         <select wire:model="form.encounter.priorityCode"
                 id="priority"
                 class="input-select peer @error('form.encounter.priorityCode') input-error @enderror"
-                required
         >
             <option value="" selected>{{ __('forms.select') }} {{ mb_strtolower(__('patients.priority')) }}</option>
             @foreach($this->dictionaries['eHealth/encounter_priority'] as $key => $encounterPriority)
                 <option value="{{ $key }}">{{ $encounterPriority }}</option>
             @endforeach
         </select>
-        <label for="priority" class="label required">
+        <label for="priority" class="label">
             {{ __('patients.priority') }}
         </label>
         @error('form.encounter.priorityCode')

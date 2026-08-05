@@ -515,17 +515,16 @@
 
                         <div>
                             <label class="text-xs block mb-1">&nbsp;</label>
-                            <div class="relative" onclick="document.getElementById('onsetTime').showPicker()">
+                            <div class="relative">
                                 <div class="absolute inset-y-0 start-0 flex items-center pointer-events-none pl-1">
                                     @icon('mingcute-time-fill', 'w-4 h-4 text-gray-400')
                                 </div>
                                 <input
                                     x-model="modalCondition.onsetTime"
-                                    @input="$event.target.blur()"
-                                    type="time"
+                                    type="text"
                                     name="onsetTime"
                                     id="onsetTime"
-                                    class="input pl-7 w-full cursor-pointer"
+                                    class="timepicker-uk input pl-7 w-full cursor-pointer"
                                     autocomplete="off"
                                     required
                                 >
@@ -557,17 +556,16 @@
 
                         <div>
                             <label class="text-xs block mb-1">&nbsp;</label>
-                            <div class="relative" onclick="document.getElementById('assertedTime').showPicker()">
+                            <div class="relative">
                                 <div class="absolute inset-y-0 start-0 flex items-center pointer-events-none pl-1">
                                     @icon('mingcute-time-fill', 'w-4 h-4 text-gray-400')
                                 </div>
                                 <input
                                     x-model="modalCondition.assertedTime"
-                                    @input="$event.target.blur()"
-                                    type="time"
+                                    type="text"
                                     name="assertedTime"
                                     id="assertedTime"
-                                    class="input pl-7 w-full cursor-pointer"
+                                    class="timepicker-uk input pl-7 w-full cursor-pointer"
                                     autocomplete="off"
                                     required
                                 >

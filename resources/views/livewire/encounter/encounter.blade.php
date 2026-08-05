@@ -199,7 +199,7 @@
                             </div>
                         @endif
                         <div id="block-{{ $item['id'] }}"
-                             class="bg-white dark:bg-gray-800 rounded-xl scroll-mt-24 dark:border-gray-700"
+                             class="bg-white dark:bg-gray-800 rounded-xl scroll-mt-16 dark:border-gray-700"
                              :class="activeSections.includes('{{ $item['id'] }}') ? 'summary-section-active' : 'summary-section-inactive'"
                         >
                             <button @click="toggle('{{ $item['id'] }}')"
@@ -332,7 +332,7 @@
                                 type="button"
                                 class="button-primary-outline-red"
                             >
-                                {{ __('patients.encounter_entered_in_error') }}
+                                {{ __('forms.delete') }}
                             </button>
 
                             <button
@@ -348,8 +348,9 @@
                             <button
                                 wire:click.prevent="save"
                                 type="submit"
-                                class="button-primary"
+                                class="button-primary-outline flex items-center gap-2"
                             >
+                                @icon('archive', 'w-4 h-4')
                                 {{ __('forms.save') }}
                             </button>
 
@@ -358,7 +359,7 @@
                                 @click="$wire.showSignatureModal = true"
                                 class="button-primary"
                             >
-                                {{ __('forms.save_and_send') }}
+                                {{ __('forms.complete_the_interaction_and_sign') }}
                             </button>
                         @endunless
                     </div>
