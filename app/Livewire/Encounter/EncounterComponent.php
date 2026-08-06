@@ -26,6 +26,7 @@ use App\Models\Icd10;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\Repository;
+use App\Services\Dictionary\Mappers\ImmunizationDictionaryMapper;
 use App\Traits\FormTrait;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Locked;
@@ -275,6 +276,17 @@ class EncounterComponent extends Component
     ];
 
     /**
+     * Vaccine options prepared for search by code, name and target disease.
+     *
+     * @var array<int, array{
+     *     code: string,
+     *     name: string,
+     *     targetDiseases: array<int, array{code: string, name: string}>
+     * }>
+     */
+    public array $vaccineOptions = [];
+
+    /**
      * List of dictionary names.
      *
      * @var array|string[]
@@ -338,6 +350,8 @@ class EncounterComponent extends Component
         ];
 
         $this->getDictionary();
+
+        $this->loadVaccineOptions();
 
         $this->dictionaries['eHealth/ICD10_AM/condition_codes'] = $icd10Cache;
 
@@ -867,6 +881,19 @@ class EncounterComponent extends Component
 
             return;
         }
+    }
+
+    /**
+     * Prepare vaccine options for searching by vaccine code, name and target disease.
+     *
+     * @return void
+     */
+    private function loadVaccineOptions(): void
+    {
+        $this->vaccineOptions = app(ImmunizationDictionaryMapper::class)->map(
+            $this->dictionaries['eHealth/vaccine_codes'] ?? [],
+            $this->dictionaries['eHealth/vaccination_target_diseases'] ?? []
+        );
     }
 
     /**

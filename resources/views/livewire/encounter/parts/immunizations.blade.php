@@ -1,18 +1,112 @@
 <div class="p-4 sm:p-8"
      id="immunizations-section"
      x-data="{
-         immunizations: $wire.entangle('form.immunizations'),
-         selectedRecords: $wire.entangle('selectedRecords.immunizations'),
-         cancelledRecords: $wire.cancelledRecords.immunizations,
-         canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
-         openModal: false,
-         showDuplicateCodeWarning: false,
-         modalImmunization: new Immunization(),
-         newImmunization: false,
-         item: 0,
-         vaccineCodesDictionary: $wire.dictionaries['eHealth/vaccine_codes'],
-         reasonExplanationsDictionary: $wire.dictionaries['eHealth/reason_explanations'],
-         reasonNotGivenExplanationsDictionary: $wire.dictionaries['eHealth/reason_not_given_explanations']
+        immunizations: $wire.entangle('form.immunizations'),
+        selectedRecords: $wire.entangle('selectedRecords.immunizations'),
+        cancelledRecords: $wire.cancelledRecords.immunizations,
+        canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
+
+        openModal: false,
+        showDuplicateCodeWarning: false,
+        modalImmunization: new Immunization(),
+        newImmunization: false,
+        item: 0,
+
+        vaccineCodesDictionary: $wire.dictionaries['eHealth/vaccine_codes'],
+        vaccineOptions: @js($this->vaccineOptions),
+
+        vaccineSearch: { name: '', code: '', disease: ''},
+        vaccineSearchResults: [],
+        vaccineSearchPerformed: false,
+
+        reasonExplanationsDictionary: $wire.dictionaries['eHealth/reason_explanations'],
+        reasonNotGivenExplanationsDictionary: $wire.dictionaries['eHealth/reason_not_given_explanations'],
+
+        normalizeSearchValue(value) {
+            return String(value ?? '')
+                .trim()
+                .toLowerCase();
+        },
+
+        searchVaccines() {
+            const name = this.normalizeSearchValue(this.vaccineSearch.name);
+            const code = this.normalizeSearchValue(this.vaccineSearch.code);
+            const disease = this.normalizeSearchValue(this.vaccineSearch.disease);
+
+            this.vaccineSearchResults = this.vaccineOptions.filter(
+                vaccine => {
+                    const vaccineDiseases = Array.isArray(vaccine.targetDiseases) ? vaccine.targetDiseases : [];
+                    const matchesName = name === '' || this.normalizeSearchValue(vaccine.name).includes(name);
+                    const matchesCode = code === '' || this.normalizeSearchValue(vaccine.code).includes(code);
+                    const matchesDisease = disease === '' || vaccineDiseases.some(targetDisease => 
+                        this.normalizeSearchValue(targetDisease.code).includes(disease) || this.normalizeSearchValue(targetDisease.name).includes(disease));
+
+                    return matchesName && matchesCode && matchesDisease;
+                }
+            );
+
+            this.vaccineSearchPerformed = true;
+        },
+
+        resetVaccineSearch() {
+            this.vaccineSearch = { name: '', code: '', disease: ''};
+            this.vaccineSearchResults = [];
+            this.vaccineSearchPerformed = false;
+        },
+
+        allowedTargetDiseases() {
+            const vaccine = this.vaccineOptions.find(vaccine => vaccine.code === this.modalImmunization.vaccineCode);
+
+            return Array.isArray(vaccine?.targetDiseases) ? vaccine.targetDiseases : [];
+        },
+
+        isTargetDiseaseAllowed(targetDiseaseCode) {
+            if (!targetDiseaseCode) {
+                return false;
+            }
+
+            return this.allowedTargetDiseases().some(
+                targetDisease => targetDisease.code === targetDiseaseCode
+            );
+        },
+
+        allSelectedTargetDiseaseCodes() {
+            return this.modalImmunization
+                .vaccinationProtocols
+                .flatMap(protocol => Array.isArray(protocol.targetDiseaseCodes) ? protocol.targetDiseaseCodes.filter(Boolean) : []);
+        },
+
+        hasDuplicateTargetDiseasesInImmunization() {
+            const targetDiseaseCodes = this.allSelectedTargetDiseaseCodes();
+
+            return new Set(targetDiseaseCodes).size !== targetDiseaseCodes.length;
+        },
+
+        hasInvalidTargetDiseases() {
+            return this.modalImmunization
+                .vaccinationProtocols
+                .some(protocol => {
+                    const targetDiseaseCodes = Array.isArray(protocol.targetDiseaseCodes) ? protocol.targetDiseaseCodes : [];
+
+                    return targetDiseaseCodes.length === 0 || targetDiseaseCodes.some(targetDiseaseCode => !this.isTargetDiseaseAllowed(targetDiseaseCode));
+                });
+        },
+
+        selectVaccine(vaccineCode) {
+            if (this.modalImmunization.vaccineCode !== vaccineCode) {
+                this.modalImmunization.vaccinationProtocols = [];
+            }
+
+            this.modalImmunization.vaccineCode = vaccineCode;
+
+            this.resetVaccineSearch();
+        },
+
+        chooseAnotherVaccine() {
+            this.modalImmunization.vaccineCode = '';
+            this.modalImmunization.vaccinationProtocols = [];
+            this.resetVaccineSearch();
+        }
      }"
 >
 
@@ -98,6 +192,7 @@
                                             JSON.stringify(immunizations[index])
                                         );
                                         newImmunization = false;
+                                        resetVaccineSearch();
                                     "
                                     class="record-inner-action-btn cursor-pointer"
                                     title="{{ __('forms.view') }}"
@@ -142,6 +237,7 @@
                                                     item = index;
                                                     modalImmunization = JSON.parse(JSON.stringify(immunizations[index]));
                                                     newImmunization = false;
+                                                    resetVaccineSearch();
                                                     close($refs.button);
                                                 "
                                         >
@@ -301,12 +397,14 @@
     <div>
         {{-- Button to trigger the modal --}}
         @unless($isReadonly)
-            <button @click.prevent="
-                        openModal = true; {{-- Open the Modal --}}
-                        newImmunization = true; {{-- We are adding a new immumization --}}
-                        modalImmunization = new Immunization(); {{-- Replace the data of the previous immumization with a new one--}}
-                    "
-                    class="item-add my-5"
+            <button
+                @click.prevent="
+                    openModal = true;
+                    newImmunization = true;
+                    modalImmunization = new Immunization();
+                    resetVaccineSearch();
+                "
+                class="item-add my-5"
             >
                 {{ __('forms.add') }}
             </button>
@@ -349,6 +447,7 @@
                                 ])
                             >
                                 @include('livewire.encounter.immunization-parts.data')
+                                @include('livewire.encounter.immunization-parts.vaccine-search')
                                 @include('livewire.encounter.immunization-parts.information-about')
                                 @include('livewire.encounter.immunization-parts.vaccination-protocol')
 
@@ -399,22 +498,41 @@
                                                 "
                                                 class="button-primary"
                                                 :disabled="!(
+                                                    Object.keys(vaccineCodesDictionary).includes(modalImmunization.vaccineCode) &&
                                                     modalImmunization.date.trim() &&
                                                     modalImmunization.time.trim() &&
                                                     (modalImmunization.reasons?.[0]?.code?.trim?.() || modalImmunization.reasonNotGivenCode?.trim?.()) &&
-                                                    (modalImmunization.primarySource || modalImmunization.reportOriginCode?.trim?.()) &&
-                                                    (modalImmunization.notGiven ||
-                                                    (modalImmunization.doseQuantityValue && modalImmunization.doseQuantityUnit?.trim?.())) &&
-                                                    (modalImmunization.notGiven || !modalImmunization.primarySource ||
-                                                    (modalImmunization.manufacturer?.trim?.() &&
-                                                    modalImmunization.lotNumber?.trim?.() &&
-                                                    modalImmunization.expirationDate?.trim?.() &&
-                                                    modalImmunization.siteCode?.trim?.() &&
-                                                    modalImmunization.routeCode?.trim?.() &&
-                                                    modalImmunization.doseQuantityCode?.trim?.())) &&
-                                                    (modalImmunization.vaccinationProtocols.length > 0 &&
-                                                    (!modalImmunization.primarySource ||
-                                                    modalImmunization.vaccinationProtocols.every(protocol => protocol.doseSequence && protocol.series && protocol.seriesDoses)))
+                                                    (modalImmunization.primarySource ||
+                                                    modalImmunization.reportOriginCode?.trim?.()) &&
+
+                                                    (modalImmunization.notGiven || (
+                                                        modalImmunization.doseQuantityValue &&
+                                                        modalImmunization.doseQuantityUnit?.trim?.()
+                                                    )) && (
+                                                        modalImmunization.notGiven ||
+                                                        !modalImmunization.primarySource ||
+                                                        (
+                                                            modalImmunization.manufacturer?.trim?.() &&
+                                                            modalImmunization.lotNumber?.trim?.() &&
+                                                            modalImmunization.expirationDate?.trim?.() &&
+                                                            modalImmunization.siteCode?.trim?.() &&
+                                                            modalImmunization.routeCode?.trim?.() &&
+                                                            modalImmunization.doseQuantityCode?.trim?.()
+                                                        )
+                                                    ) && (
+                                                        modalImmunization.vaccinationProtocols.length > 0 &&
+                                                        !hasDuplicateTargetDiseasesInImmunization() &&
+                                                        !hasInvalidTargetDiseases() &&
+                                                        (
+                                                            !modalImmunization.primarySource ||
+                                                            modalImmunization.vaccinationProtocols.every(
+                                                                protocol =>
+                                                                    protocol.doseSequence &&
+                                                                    protocol.series &&
+                                                                    protocol.seriesDoses
+                                                            )
+                                                        )
+                                                    )
                                                 )"
                                         >
                                             {{ __('forms.save') }}

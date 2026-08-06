@@ -5,6 +5,7 @@
      x-data="{
              conditions: $wire.entangle('form.conditions'),
              diagnoses: $wire.entangle('form.encounter.diagnoses'),
+             encounter: $wire.entangle('form.encounter'),
              showPrimaryWarning: false,
              showDuplicateCodeWarning: false,
              modalCondition: new Condition(),
@@ -70,6 +71,54 @@
                      }
                  }
              },
+
+             parseConditionDateTime(date, time) {
+                const dateParts = String(date ?? '')
+                    .split('.')
+                    .map(Number);
+
+                const timeParts = String(time ?? '')
+                    .split(':')
+                    .map(Number);
+
+                if (dateParts.length !== 3 || timeParts.length !== 2) {
+                    return null;
+                }
+
+                const [day, month, year] = dateParts;
+                const [hours, minutes] = timeParts;
+
+                const dateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+                if (dateTime.getFullYear() !== year || dateTime.getMonth() !== month - 1 || dateTime.getDate() !== day || dateTime.getHours() !== hours || dateTime.getMinutes() !== minutes) {
+                    return null;
+                }
+
+                return dateTime;
+            },
+
+            conditionOnsetAfterEncounterEnd() {
+                const onsetDateTime = this.parseConditionDateTime(this.modalCondition.onsetDate, this.modalCondition.onsetTime);
+                const encounterEndDateTime = this.parseConditionDateTime(this.encounter.periodDate, this.encounter.periodEnd);
+
+                return Boolean(onsetDateTime && encounterEndDateTime && onsetDateTime > encounterEndDateTime);
+            },
+
+            conditionAssertedOutsideEncounterPeriod() {
+                const assertedDateTime = this.parseConditionDateTime(this.modalCondition.assertedDate, this.modalCondition.assertedTime);
+                const encounterStartDateTime = this.parseConditionDateTime(this.encounter.periodDate, this.encounter.periodStart);
+                const encounterEndDateTime = this.parseConditionDateTime(this.encounter.periodDate, this.encounter.periodEnd);
+
+                if (!assertedDateTime || !encounterStartDateTime || !encounterEndDateTime) {
+                    return false;
+                }
+
+                return assertedDateTime < encounterStartDateTime || assertedDateTime > encounterEndDateTime;
+            },
+
+            conditionDatesAreValid() {
+                return !this.conditionOnsetAfterEncounterEnd() && !this.conditionAssertedOutsideEncounterPeriod();
+            },
 
              init() {
                  this.$watch('evidenceSelectedType', () => this.fetchEvidenceRecords());
@@ -249,7 +298,7 @@
         {{-- Button to trigger the drawer --}}
         <button @click.prevent="
                     newCondition = true; {{-- We are adding a new condition --}}
-                    modalCondition = new Condition(); {{-- Replace the data of the previous condition with a new one--}}
+                    modalCondition = new Condition(null, encounter); {{-- Replace the data of the previous condition with a new one--}}
                     modalDiagnosis = new Diagnosis();
                     openConditionDrawer = true;
                 "
@@ -502,7 +551,7 @@
                                 </div>
                                 <input
                                     x-model="modalCondition.onsetDate"
-                                    datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
+                                    :datepicker-max-date="encounter.periodDate"
                                     type="text"
                                     name="onsetDate"
                                     id="onsetDate"
@@ -529,6 +578,13 @@
                                     required
                                 >
                             </div>
+                            <p
+                                class="text-error text-xs mt-1"
+                                x-show="conditionOnsetAfterEncounterEnd()"
+                                x-cloak
+                            >
+                                {{ __('validation.condition_onset_after_encounter_end') }}
+                            </p>
                         </div>
 
                         <div>
@@ -543,7 +599,8 @@
                                 </div>
                                 <input
                                     x-model="modalCondition.assertedDate"
-                                    datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
+                                    :datepicker-min-date="encounter.periodDate"
+                                    :datepicker-max-date="encounter.periodDate"
                                     type="text"
                                     name="assertedDate"
                                     id="assertedDate"
@@ -570,6 +627,13 @@
                                     required
                                 >
                             </div>
+                            <p
+                                class="text-error text-xs mt-1"
+                                x-show="conditionAssertedOutsideEncounterPeriod()"
+                                x-cloak
+                            >
+                                {{ __('validation.condition_asserted_outside_encounter_period') }}
+                            </p>
                         </div>
 
                         <div class="col-span-1 md:col-span-2 space-y-4">
@@ -817,7 +881,12 @@
                                     modalCondition.clinicalStatus.trim() &&
                                     modalCondition.verificationStatus.trim() &&
                                     modalCondition.codeCode.trim() &&
-                                    modalDiagnosis.roleCode
+                                    modalDiagnosis.roleCode &&
+                                    modalCondition.onsetDate?.trim() &&
+                                    modalCondition.onsetTime?.trim() &&
+                                    modalCondition.assertedDate?.trim() &&
+                                    modalCondition.assertedTime?.trim() &&
+                                    conditionDatesAreValid()
                                 )"
                         >
                             <span
@@ -953,7 +1022,7 @@
      * Representation of the user's personal conditions
      */
     class Condition {
-        constructor(obj = null) {
+        constructor(obj = null, encounter = null) {
             const now = new Date();
             const [yyyy, mm, dd] = now.toISOString().split('T')[0].split('-');
             const formattedDate = `${dd}.${mm}.${yyyy}`;
@@ -962,6 +1031,8 @@
                 minute: '2-digit',
                 hour12: false
             });
+            const defaultDate = encounter?.periodDate || formattedDate;
+            const defaultTime = encounter?.periodStart || formattedTime;
 
             this.uuid = obj?.uuid || crypto.randomUUID();
             this.primarySource = true;
@@ -969,10 +1040,10 @@
             this.codeCode = '';
             this.clinicalStatus = '';
             this.verificationStatus = '';
-            this.onsetDate = formattedDate;
-            this.onsetTime = formattedTime;
-            this.assertedDate = formattedDate;
-            this.assertedTime = formattedTime;
+            this.onsetDate = defaultDate;
+            this.onsetTime = defaultTime;
+            this.assertedDate = defaultDate;
+            this.assertedTime = defaultTime;
             this.severityCode = '';
             this.asserterText = '';
             this.reportOriginCode = '';

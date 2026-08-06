@@ -366,6 +366,14 @@ return [
     'vaccination_protocol_required' => 'Необхідно додати принаймні один протокол вакцинації.',
     'vaccination_protocol_required_fields' => 'Для цієї вакцинації необхідно заповнити порядковий номер дози, етап імунізації та кількість доз по протоколу.',
     'immunization_search' => 'Пошук вакцинації',
+    'vaccine_search' => 'Пошук вакцини',
+    'vaccine_name' => 'Назва вакцини',
+    'vaccine_code' => 'Код вакцини',
+    'disease' => 'Хвороба',
+    'select_vaccine' => 'Обрати вакцину',
+    'choose_another_vaccine' => 'Обрати іншу вакцину',
+    'vaccine_code_and_name' => 'Код вакцини та назва',
+    'vaccine_information' => 'Інформація про вакцину',
 
     // Diagnostic reports
     'diagnostic_report' => 'Діагностичний звіт',

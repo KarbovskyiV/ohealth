@@ -2,13 +2,68 @@
     <fieldset class="fieldset"
               {{-- Binding vaccinationProtocolCodes to Alpine, it will be re-used in the modal.
                 Note that it's necessary for modal to work properly --}}
-              x-data="{
-                  openModal: false,
-                  modalVaccinationProtocol: new VaccinationProtocol(),
-                  newVaccinationProtocol: false,
-                  item: 0,
-                  vaccinationTargetDiseasesDictionary: $wire.dictionaries['eHealth/vaccination_target_diseases']
-              }"
+            x-data="{
+                openModal: false,
+                modalVaccinationProtocol: new VaccinationProtocol(),
+                newVaccinationProtocol: false,
+                item: 0,
+                vaccinationTargetDiseasesDictionary: $wire.dictionaries['eHealth/vaccination_target_diseases'],
+
+                targetDiseaseCodesFromOtherProtocols() {
+                    return this.modalImmunization.vaccinationProtocols
+                        .filter((protocol, protocolIndex) => this.newVaccinationProtocol || protocolIndex !== this.item)
+                        .flatMap( protocol => Array.isArray(protocol.targetDiseaseCodes) ? protocol.targetDiseaseCodes.filter(Boolean): []);
+                },
+
+                isTargetDiseaseAlreadySelected(targetDiseaseCode, currentIndex) {
+                    if (!targetDiseaseCode) {
+                        return false;
+                    }
+
+                    const selectedInCurrentProtocol = this.modalVaccinationProtocol.targetDiseaseCodes.some(
+                            (selectedCode, index) => index !== currentIndex && selectedCode === targetDiseaseCode
+                        );
+
+                    const selectedInOtherProtocol = this.targetDiseaseCodesFromOtherProtocols().includes(targetDiseaseCode);
+
+                    return selectedInCurrentProtocol || selectedInOtherProtocol;
+                },
+
+                hasDuplicateTargetDiseases() {
+                    const selectedCodes = this.modalVaccinationProtocol.targetDiseaseCodes.filter(Boolean);
+                    const hasDuplicatesInsideCurrentProtocol = new Set(selectedCodes).size !== selectedCodes.length;
+                    const otherProtocolCodes = new Set(this.targetDiseaseCodesFromOtherProtocols());
+                    const isUsedInAnotherProtocol = selectedCodes.some(targetDiseaseCode => otherProtocolCodes.has(targetDiseaseCode));
+
+                    return hasDuplicatesInsideCurrentProtocol || isUsedInAnotherProtocol;
+                },
+
+                hasInvalidTargetDiseasesInCurrentProtocol() {
+                    return this.modalVaccinationProtocol
+                        .targetDiseaseCodes
+                        .some(targetDiseaseCode => !targetDiseaseCode || !this.isTargetDiseaseAllowed(targetDiseaseCode));
+                },
+
+                canAddTargetDiseaseField() {
+                    const unavailableCodes = new Set([
+                        ...this.targetDiseaseCodesFromOtherProtocols(),
+                        ...this.modalVaccinationProtocol
+                            .targetDiseaseCodes
+                            .filter(Boolean)
+                    ]);
+
+                    return this.allowedTargetDiseases().some(targetDisease => !unavailableCodes.has(targetDisease.code));
+                },
+
+                canAddVaccinationProtocol() {
+                    const usedCodes = new Set(
+                        this.modalImmunization.vaccinationProtocols
+                            .flatMap(protocol => Array.isArray(protocol.targetDiseaseCodes) ? protocol.targetDiseaseCodes.filter(Boolean) : [])
+                    );
+
+                    return this.allowedTargetDiseases().some(targetDisease => !usedCodes.has(targetDisease.code));
+                }
+            }"
     >
         <legend class="legend">
             <h2>{{ __('patients.vaccination_protocol') }}</h2>
@@ -32,8 +87,13 @@
                     <td class="td-input"
                         x-text="vaccinationProtocol.series"
                     ></td>
-                    <td class="td-input"
-                        x-text="vaccinationTargetDiseasesDictionary[vaccinationProtocol.targetDiseaseCodes[0]]"
+                    <td
+                        class="td-input"
+                        x-text="
+                            vaccinationProtocol.targetDiseaseCodes
+                                .map(targetDiseaseCode => vaccinationTargetDiseasesDictionary[targetDiseaseCode] ?? targetDiseaseCode)
+                                .join(', ')
+                        "
                     ></td>
                     <td class="td-input">
                         {{-- That all that is needed for the dropdown --}}
@@ -131,12 +191,17 @@
 
         <div>
             {{-- Button to trigger the modal --}}
-            <button @click.prevent="
-                        openModal = true; {{-- Open the Modal --}}
-                        newVaccinationProtocol = true; {{-- We are adding a new vaccinationProtocol --}}
-                        modalVaccinationProtocol = new VaccinationProtocol(); {{-- Replace the data of the previous vaccinationProtocol with a new one--}}
-                    "
-                    class="item-add my-5"
+            <button
+                @click.prevent="
+                    openModal = true;
+                    newVaccinationProtocol = true;
+                    modalVaccinationProtocol = new VaccinationProtocol();
+                "
+                class="item-add my-5"
+                :disabled="
+                    !modalImmunization.vaccineCode ||
+                    !canAddVaccinationProtocol()
+                "
             >
                 {{ __('forms.add') }}
             </button>
@@ -179,15 +244,32 @@
                                             <label :for="'vaccinationTargetDisease-' + index" class="label-modal">
                                                 {{ __('patients.target_diseases') }}
                                             </label>
-                                            <select x-model="modalVaccinationProtocol.targetDiseaseCodes[index]"
-                                                    :id="'vaccinationTargetDisease-' + index"
-                                                    class="input-modal"
-                                                    required
+                                            <select
+                                                x-model="
+                                                    modalVaccinationProtocol.targetDiseaseCodes[index]
+                                                "
+                                                :id="'vaccinationTargetDisease-' + index"
+                                                class="input-modal"
+                                                required
                                             >
-                                                <option value="" selected>{{ __('forms.select') }}</option>
-                                                @foreach($this->dictionaries['eHealth/vaccination_target_diseases'] as $key => $vaccinationTargetDisease)
-                                                    <option value="{{ $key }}">{{ $vaccinationTargetDisease }}</option>
-                                                @endforeach
+                                                <option value="">
+                                                    {{ __('forms.select') }}
+                                                </option>
+
+                                                <template
+                                                    x-for="
+                                                        targetDisease in allowedTargetDiseases()
+                                                    "
+                                                    :key="targetDisease.code"
+                                                >
+                                                    <option
+                                                        :value="targetDisease.code"
+                                                        :disabled="
+                                                            isTargetDiseaseAlreadySelected(targetDisease.code, index)
+                                                        "
+                                                        x-text="targetDisease.name"
+                                                    ></option>
+                                                </template>
                                             </select>
 
                                             <p class="text-error text-xs"
@@ -195,11 +277,30 @@
                                             >
                                                 {{ __('forms.field_empty') }}
                                             </p>
+
+                                            <p
+                                                class="text-error text-xs"
+                                                x-show="
+                                                    modalVaccinationProtocol.targetDiseaseCodes[index] &&
+                                                    !isTargetDiseaseAllowed(modalVaccinationProtocol.targetDiseaseCodes[index])
+                                                "
+                                            >
+                                                {{ __('validation.vaccine_target_disease_mismatch') }}
+                                            </p>
+
+                                            <p class="text-error text-xs"
+                                                x-show="
+                                                    modalVaccinationProtocol.targetDiseaseCodes[index] &&
+                                                    isTargetDiseaseAlreadySelected(modalVaccinationProtocol.targetDiseaseCodes[index], index)
+                                                "
+                                                >
+                                                    {{ __('validation.duplicate_target_disease_in_protocol') }}
+                                            </p>
                                         </div>
 
                                         <!-- Remove Button -->
                                         <template
-                                            x-if="index == modalVaccinationProtocol.targetDiseaseCodes.length - 1 & index != 0"
+                                            x-if="index == modalVaccinationProtocol.targetDiseaseCodes.length - 1 && index != 0"
                                         >
                                             <button type="button"
                                                     @click="modalVaccinationProtocol.targetDiseaseCodes.pop(), index--"
@@ -210,10 +311,17 @@
                                         </template>
                                         <!-- Add Button -->
                                         <template x-if="index === modalVaccinationProtocol.targetDiseaseCodes.length - 1">
-                                            <button type="button"
-                                                    @click="modalVaccinationProtocol.targetDiseaseCodes.push('')"
-                                                    class="item-add lg:justify-self-start"
-                                                    :class="{ 'lg:justify-self-start': index > 0 }"
+                                            <button
+                                                type="button"
+                                                @click="
+                                                    modalVaccinationProtocol
+                                                        .targetDiseaseCodes.push('')
+                                                "
+                                                class="item-add lg:justify-self-start"
+                                                :class="{
+                                                    'lg:justify-self-start': index > 0
+                                                }"
+                                                :disabled="!canAddTargetDiseaseField()"
                                             >
                                                 {{ __('forms.add') }}
                                             </button>
@@ -346,9 +454,22 @@
                                                 openModal = false;
                                             "
                                             class="button-primary"
-                                            :disabled="!modalVaccinationProtocol.authorityCode.trim() ||
-                                                       ((modalVaccinationProtocol.authorityCode === 'MoH' || modalImmunization.primarySource) &&
-                                                        (!modalVaccinationProtocol.doseSequence || !modalVaccinationProtocol.series || !modalVaccinationProtocol.seriesDoses))"
+                                            :disabled="
+                                                modalVaccinationProtocol.targetDiseaseCodes.length === 0 ||
+                                                hasInvalidTargetDiseasesInCurrentProtocol() ||
+                                                hasDuplicateTargetDiseases() ||
+                                                !modalVaccinationProtocol.authorityCode.trim() ||
+                                                (
+                                                    (
+                                                        modalVaccinationProtocol.authorityCode === 'MoH' ||
+                                                        modalImmunization.primarySource
+                                                    ) && (
+                                                        !modalVaccinationProtocol.doseSequence ||
+                                                        !modalVaccinationProtocol.series ||
+                                                        !modalVaccinationProtocol.seriesDoses
+                                                    )
+                                                )
+                                            "
                                     >
                                         {{ __('forms.save') }}
                                     </button>
