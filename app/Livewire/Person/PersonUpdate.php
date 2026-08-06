@@ -166,7 +166,7 @@ class PersonUpdate extends PersonComponent
             ])->toArray()
         );
 
-        $this->address = Arr::get($this->form->person, 'addresses.0', []);
+        $this->addresses = Arr::get($this->form->person, 'addresses') ?: $this->addresses;
 
         if (empty($this->form->person['phones'])) {
             $this->form->person['phones'] = [['type' => null, 'number' => null]];
@@ -233,19 +233,14 @@ class PersonUpdate extends PersonComponent
             return;
         }
 
-        $this->form->person['addresses'] = [$this->address]; // must be multiple
+        $this->form->person['addresses'] = $this->addresses;
 
         try {
-            $addressErrors = $this->addressValidation();
-            if (!empty($addressErrors)) {
-                throw ValidationException::withMessages($addressErrors);
-            }
-
             $validated = $this->form->validate($this->form->rulesForUpdate());
             $this->formKey++;
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
-            $this->setErrorBag($exception->validator->getMessageBag());
+            $this->setAddressAwareErrorBag($exception);
             $this->formKey++;
 
             return;

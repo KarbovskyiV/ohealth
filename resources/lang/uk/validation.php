@@ -188,8 +188,9 @@ return [
             'repeated_special' => 'Поле не може містити однакові спеціальні символи поспіль (пробіл, крапка, дефіс, слеш, апостроф).',
         ],
         'person' => [
-            'single_residence_address_required' => 'Має бути рівно одна адреса з типом «Місце проживання».',
-            'ua_residence_address_required' => 'Для пацієнта без іноземного документа адреса проживання має бути в Україні.',
+            'single_residence_address_required' => 'Має бути рівно одна адреса з типом «:type».',
+            'ua_residence_address_required' => 'Для пацієнта без іноземного документа адреса з типом «:type» має бути в Україні.',
+            'settlement_must_be_picked' => 'Оберіть населений пункт зі списку, що з’являється під час введення — інакше адресу не вдасться звірити з реєстром.',
             'document_number_of' => 'серія/номер документа «:document»',
             'search_without_last_name_requires_document_or_tax_id' => 'Щоб шукати без прізвища, вкажіть РНОКПП або тип і номер документа.',
             'confidant_person_required_for_children' => "Довірена особа є обов'язковою для дітей.",

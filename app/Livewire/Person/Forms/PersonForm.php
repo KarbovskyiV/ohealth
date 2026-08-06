@@ -57,7 +57,10 @@ class PersonForm extends BaseForm
             'phones' => [['type' => null, 'number' => null]]
         ],
         'confidantPerson' => ['documentsRelationship' => []],
-        'authenticationMethods' => [['type' => null]]
+        'authenticationMethods' => [['type' => null]],
+        // The flag has to be answered, and null is reserved for a person with a foreign document who has
+        // no Ukrainian tax number to refuse in the first place
+        'noTaxId' => false
     ];
 
     public array $addresses = [];
@@ -169,17 +172,6 @@ class PersonForm extends BaseForm
             ? config('ehealth.person_documents_specific_expiration_date')
             : 'today';
 
-        // The address UI collects a single address, so its country selects the alphabet for every address field
-        $isUkraineAddress = ($this->person['addresses'][0]['country'] ?? 'UA') === 'UA';
-
-        $addressTextPattern = $isUkraineAddress
-            ? 'regex:/^(?!.*[ЫЪЭЁыъэё@%&$^#])[a-zA-ZА-ЯҐЇІЄа-яґїіє0-9№.,\'"()\/_\- ]+$/u'
-            : 'regex:/^[A-Za-z\s.\-\/\']+$/u';
-
-        $addressBuildingPattern = $isUkraineAddress
-            ? 'regex:/^[1-9]((?![ЫЪЭЁыъэё])()([А-ЯҐЇІЄа-яґїіє \/\'\-0-9])){0,20}$/u'
-            : 'regex:/^[A-Za-z0-9\s\/-]+$/u';
-
         $rules = [
             'person.names' => ['required', 'array', 'min:1'],
             'person.names.*.language' => ['required', 'distinct', new InDictionary('LANGUAGE')],
@@ -255,49 +247,28 @@ class PersonForm extends BaseForm
                 function (string $attribute, mixed $value, Closure $fail): void {
                     $residenceAddresses = collect($value)->where('type', 'RESIDENCE');
 
+                    $residenceType = dictionary()->basics()
+                        ->byName('ADDRESS_TYPE')
+                        ->asCodeDescription()
+                        ->get('RESIDENCE');
+
                     if ($residenceAddresses->count() !== 1) {
-                        $fail(__('validation.custom.person.single_residence_address_required'));
+                        $fail(__(
+                            'validation.custom.person.single_residence_address_required',
+                            ['type' => $residenceType]
+                        ));
 
                         return;
                     }
 
                     if (!$this->hasForeignDocument() && !$residenceAddresses->contains('country', 'UA')) {
-                        $fail(__('validation.custom.person.ua_residence_address_required'));
+                        $fail(__(
+                            'validation.custom.person.ua_residence_address_required',
+                            ['type' => $residenceType]
+                        ));
                     }
                 }
             ],
-            'person.addresses.*.type' => ['required', new InDictionary('ADDRESS_TYPE')],
-            'person.addresses.*.country' => ['required', new InDictionary('COUNTRY')],
-            'person.addresses.*.area' => ['required', 'string', 'max:255', $addressTextPattern],
-            'person.addresses.*.region' => [
-                'sometimes',
-                'required_unless:person.addresses.*.area,М.КИЇВ',
-                $addressTextPattern
-            ],
-            'person.addresses.*.settlement' => ['required', 'string', 'max:255', $addressTextPattern],
-            // Both are only part of the schema for Ukrainian addresses, so they are dropped from the payload otherwise
-            'person.addresses.*.settlementId' => [
-                'exclude_unless:person.addresses.*.country,UA',
-                'required',
-                'uuid'
-            ],
-            'person.addresses.*.streetType' => [
-                'exclude_unless:person.addresses.*.country,UA',
-                'nullable',
-                new InDictionary('STREET_TYPE')
-            ],
-            'person.addresses.*.street' => [
-                'nullable',
-                'required_if:person.addresses.*.country,UA',
-                'string',
-                'max:255',
-                $addressTextPattern
-            ],
-            'person.addresses.*.building' => ['nullable', $addressBuildingPattern],
-            'person.addresses.*.apartment' => $isUkraineAddress
-                ? ['nullable', 'string', 'max:255']
-                : ['nullable', $addressBuildingPattern],
-            'person.addresses.*.zip' => ['nullable', 'string', new Zip()],
 
             'person.emergencyContact.firstName' => ['required', 'min:3'],
             'person.emergencyContact.lastName' => ['required', 'min:3'],
@@ -308,6 +279,10 @@ class PersonForm extends BaseForm
             'processDisclosureDataConsent' => ['required', 'boolean:strict', Rule::in([true])],
             'patientSigned' => ['required', 'boolean:strict', Rule::in([false])]
         ];
+
+        foreach ($this->person['addresses'] ?? [] as $index => $address) {
+            $rules += $this->addressRules($index, ($address['country'] ?? 'UA') === 'UA');
+        }
 
         $this->normalizeNoTaxIdForForeignDocuments();
         $this->validateNoTaxIdFlag();
@@ -336,6 +311,55 @@ class PersonForm extends BaseForm
         }
 
         return $rules;
+    }
+
+    /**
+     * Rules of a single address. Its country decides both the alphabet the address is filled in and which of
+     * its parts belong to the schema at all: the ones taken from the address registry are dropped from the
+     * payload of an address abroad. The settlement type has no rule on purpose, it is collected to search
+     * the registry but the schema of a person address has no such property and rejects it.
+     *
+     * @param  int  $index
+     * @param  bool  $isUkraineAddress
+     * @return array
+     */
+    protected function addressRules(int $index, bool $isUkraineAddress): array
+    {
+        // An address abroad is spelled in the Latin alphabet and carries no digits at all, its text fields
+        // are matched against exactly this pattern on the eHealth side too
+        $textPattern = $isUkraineAddress
+            ? 'regex:/^(?!.*[ЫЪЭЁыъэё@%&$^#])[a-zA-ZА-ЯҐЇІЄа-яґїіє0-9№.,\'"()\/_\- ]+$/u'
+            : 'regex:/^[A-Za-z\s.\-\/\']+$/u';
+
+        $buildingPattern = $isUkraineAddress
+            ? 'regex:/^[1-9]((?![ЫЪЭЁыъэё])()([А-ЯҐЇІЄа-яґїіє \/\'\-0-9])){0,20}$/u'
+            : 'regex:/^[A-Za-z0-9\s\/-]+$/u';
+
+        // An address abroad is typed in by hand, so it carries only the parts that are known
+        $registryField = $isUkraineAddress ? 'required' : 'nullable';
+
+        return [
+            "person.addresses.$index.type" => ['required', new InDictionary('ADDRESS_TYPE')],
+            "person.addresses.$index.country" => ['required', new InDictionary('COUNTRY')],
+            "person.addresses.$index.area" => [$registryField, 'string', 'max:255', $textPattern],
+            "person.addresses.$index.region" => [$registryField, 'string', 'max:255', $textPattern],
+            "person.addresses.$index.settlement" => [$registryField, 'string', 'max:255', $textPattern],
+            "person.addresses.$index.street" => [$registryField, 'string', 'max:255', $textPattern],
+            "person.addresses.$index.settlementId" => $isUkraineAddress
+                ? ['required', 'uuid']
+                : ['exclude'],
+            "person.addresses.$index.streetType" => $isUkraineAddress
+                ? ['nullable', new InDictionary('STREET_TYPE')]
+                : ['exclude'],
+            "person.addresses.$index.building" => ['nullable', $buildingPattern],
+            "person.addresses.$index.apartment" => $isUkraineAddress
+                ? ['nullable', 'string', 'max:255']
+                : ['nullable', $buildingPattern],
+            // The five digit index is the Ukrainian postal code, an address abroad follows its own country
+            "person.addresses.$index.zip" => $isUkraineAddress
+                ? ['nullable', 'string', new Zip()]
+                : ['nullable', 'string', 'max:255']
+        ];
     }
 
     /**
@@ -432,13 +456,24 @@ class PersonForm extends BaseForm
     }
 
     /**
-     * Name each document number after its own document, so an error tells the user which one is wrong.
+     * Name each document number after its own document, so an error tells the user which one is wrong, and
+     * name the fields of every address, because the rules of an address are built for its position in the
+     * list and no longer carry the wildcard the translations are keyed by.
      *
      * @return array
      */
     public function validationAttributes(): array
     {
         $attributes = [];
+
+        $addressAttributes = collect(__('validation.attributes'))
+            ->filter(static fn (mixed $name, string $key): bool => str_starts_with($key, 'person.addresses.*.'));
+
+        foreach (array_keys($this->person['addresses'] ?? []) as $index) {
+            foreach ($addressAttributes as $key => $name) {
+                $attributes[str_replace('.*.', ".$index.", $key)] = $name;
+            }
+        }
 
         foreach ($this->person['documents'] ?? [] as $index => $document) {
             if (blank($document['type'] ?? null)) {
@@ -462,6 +497,8 @@ class PersonForm extends BaseForm
             'person.documents.*.issuingCountry.required' => __(
                 'validation.custom.person.issuing_country_required_for_foreign'
             ),
+            'person.addresses.*.settlementId.required' => __('validation.custom.person.settlement_must_be_picked'),
+            'person.addresses.*.settlementId.uuid' => __('validation.custom.person.settlement_must_be_picked'),
             'person.names.min' => __('validation.custom.person.names_min'),
             'person.names.*.language.distinct' => __('validation.custom.person.names_language_distinct'),
             'person.names.*.lastName.required' => __('validation.custom.person.no_last_name_false_requires_last_name'),

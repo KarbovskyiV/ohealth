@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\View\Components\Forms;
 
 use App\Rules\Zip;
-use Illuminate\Validation\Rule;
 use Illuminate\Contracts\View\View;
 
 class AddressesSearch extends Addresses
@@ -13,9 +12,16 @@ class AddressesSearch extends Addresses
     /**
      * Create a new component instance.
      */
-    public function __construct($address, $districts, $settlements, $streets, $class, $readonly = false)
-    {
-        parent::__construct($address, $districts, $settlements, $streets, $class, $readonly);
+    public function __construct(
+        $address,
+        $districts,
+        $settlements,
+        $streets,
+        $class,
+        $readonly = false,
+        string $property = 'address'
+    ) {
+        parent::__construct($address, $districts, $settlements, $streets, $class, $readonly, $property);
     }
 
     public static function getAddressRules(array $address): array
