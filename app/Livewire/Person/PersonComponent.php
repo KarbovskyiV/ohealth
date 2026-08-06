@@ -17,8 +17,9 @@ use App\Exceptions\EHealth\EHealthValidationException;
 use App\Livewire\Person\Forms\PersonForm as Form;
 use App\Models\Person\Person;
 use App\Models\Person\PersonRequest;
+use App\Models\Relations\Address;
 use App\Repositories\Repository;
-use App\Traits\Addresses\AddressSearch;
+use App\Traits\Addresses\BaseAddress;
 use App\Traits\FormTrait;
 use Carbon\CarbonImmutable;
 use Exception;
@@ -40,9 +41,29 @@ class PersonComponent extends Component
 {
     use FormTrait;
     use WithFileUploads;
-    use AddressSearch;
+    use BaseAddress;
 
     private const int SMS_RESEND_LIMIT = 1;
+
+    /**
+     * Addresses of the person, exactly one of which has to be the address of residence.
+     *
+     * @var array
+     */
+    public array $addresses = [
+        ['country' => Address::DEFAULT_COUNTRY, 'type' => Address::DEFAULT_TYPE]
+    ];
+
+    /**
+     * Suggestions of the address registry for the address being filled in.
+     *
+     * @var array
+     */
+    public array $districts = [];
+
+    public array $settlements = [];
+
+    public array $streets = [];
 
     #[Locked]
     public int $personId;
@@ -160,7 +181,9 @@ class PersonComponent extends Component
         'GENDER',
         'PHONE_TYPE',
         'LANGUAGE',
-        'ISSUING_COUNTRY'
+        'ISSUING_COUNTRY',
+        'COUNTRY',
+        'ADDRESS_TYPE'
     ];
 
     public function baseMount(): void
@@ -268,19 +291,14 @@ class PersonComponent extends Component
             return;
         }
 
-        $this->form->person['addresses'] = [$this->address]; // must be multiple
+        $this->form->person['addresses'] = $this->addresses;
 
         try {
-            $addressErrors = $this->addressValidation();
-            if (!empty($addressErrors)) {
-                throw ValidationException::withMessages($addressErrors);
-            }
-
             $validated = $this->form->validate($this->form->rulesForCreate());
             $this->formKey++;
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
-            $this->setErrorBag($exception->validator->getMessageBag());
+            $this->setAddressAwareErrorBag($exception);
             $this->formKey++;
 
             return;
@@ -345,14 +363,14 @@ class PersonComponent extends Component
             return;
         }
 
-        $this->form->person['addresses'] = [$this->address]; // must be multiple
+        $this->form->person['addresses'] = $this->addresses;
 
         try {
             $validated = $this->form->validate($this->form->rulesForCreate());
             $this->formKey++;
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
-            $this->setErrorBag($exception->validator->getMessageBag());
+            $this->setAddressAwareErrorBag($exception);
             $this->formKey++;
 
             return;
@@ -387,6 +405,125 @@ class PersonComponent extends Component
 
         Session::flash('success', $successMessage);
         $this->redirectRoute('persons.index', [legalEntity()], navigate: true);
+    }
+
+    /**
+     * Report the address errors of the form under the addresses.* keys as well, because that is where the
+     * shared address component looks them up.
+     *
+     * @param  ValidationException  $exception
+     * @return void
+     */
+    protected function setAddressAwareErrorBag(ValidationException $exception): void
+    {
+        $messages = $exception->validator->errors()->getMessages();
+
+        foreach ($messages as $key => $keyMessages) {
+            if (str_starts_with($key, 'form.person.addresses.')) {
+                $messages[Str::replaceFirst('form.person.', '', $key)] = $keyMessages;
+            }
+        }
+
+        $this->setErrorBag($messages);
+    }
+
+    /**
+     * Give every address a slot of its own in the suggestion lists. The address component binds them by
+     * position, and a slot that does not exist yet leaves the registry search of that address unbound.
+     *
+     * @return void
+     */
+    public function dehydrate(): void
+    {
+        foreach (array_keys($this->addresses) as $index) {
+            $this->districts[$index] ??= [];
+            $this->settlements[$index] ??= [];
+            $this->streets[$index] ??= [];
+        }
+    }
+
+    /**
+     * Add an address the user fills in on top of the one the form starts with.
+     *
+     * @return void
+     */
+    public function addAddress(): void
+    {
+        $this->addresses[] = ['country' => Address::DEFAULT_COUNTRY, 'type' => ''];
+    }
+
+    /**
+     * Remove the address at the given position, leaving at least one in the form.
+     *
+     * @param  int  $index
+     * @return void
+     */
+    public function removeAddress(int $index): void
+    {
+        if (count($this->addresses) <= 1) {
+            return;
+        }
+
+        unset($this->addresses[$index]);
+
+        $this->addresses = array_values($this->addresses);
+
+        $this->districts = $this->shiftSuggestions($this->districts, $index);
+        $this->settlements = $this->shiftSuggestions($this->settlements, $index);
+        $this->streets = $this->shiftSuggestions($this->streets, $index);
+    }
+
+    /**
+     * Drop the suggestion slot of the removed address and pull the ones behind it down, so that every slot
+     * keeps matching the position of its address.
+     *
+     * @param  array  $lists
+     * @param  int  $index
+     * @return array
+     */
+    private function shiftSuggestions(array $lists, int $index): array
+    {
+        unset($lists[$index]);
+
+        $shifted = [];
+
+        foreach ($lists as $position => $list) {
+            $shifted[$position > $index ? $position - 1 : $position] = $list;
+        }
+
+        return $shifted;
+    }
+
+    /**
+     * Drop the address being edited when it stops being a Ukrainian one or becomes it, because the two are
+     * filled in a different alphabet and only the Ukrainian one takes its values from the address registry.
+     * A switch between two countries abroad keeps everything that was typed in.
+     *
+     * @param  mixed  $value
+     * @param  string|null  $key
+     * @return void
+     */
+    public function updatingAddresses(mixed $value, ?string $key): void
+    {
+        [$index, $field] = array_pad(explode('.', (string)$key, 2), 2, null);
+
+        if ($field !== 'country') {
+            return;
+        }
+
+        $currentCountry = $this->addresses[$index]['country'] ?? Address::DEFAULT_COUNTRY;
+
+        if ($value === $currentCountry) {
+            return;
+        }
+
+        if ($value !== Address::DEFAULT_COUNTRY && $currentCountry !== Address::DEFAULT_COUNTRY) {
+            return;
+        }
+
+        $this->addresses[$index] = ['type' => $this->addresses[$index]['type'] ?? Address::DEFAULT_TYPE];
+
+        unset($this->districts[$index], $this->settlements[$index], $this->streets[$index]);
     }
 
     /**

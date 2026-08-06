@@ -163,11 +163,29 @@ class PersonRequest extends Request
             'person.addresses' => ['required', 'array'],
             'person.addresses.*.type' => ['required', new InDictionary('ADDRESS_TYPE')],
             'person.addresses.*.country' => ['required', new InDictionary('COUNTRY')],
-            'person.addresses.*.area' => ['required', 'string', 'max:255'],
+            // An address abroad is typed in by hand and comes back with only the parts that were filled
+            'person.addresses.*.area' => [
+                'nullable',
+                'required_if:person.addresses.*.country,UA',
+                'string',
+                'max:255'
+            ],
             'person.addresses.*.region' => ['nullable', 'string', 'max:255'],
-            'person.addresses.*.settlement' => ['required', 'string', 'max:255'],
-            'person.addresses.*.settlement_id' => ['required', 'uuid'],
+            'person.addresses.*.settlement' => [
+                'nullable',
+                'required_if:person.addresses.*.country,UA',
+                'string',
+                'max:255'
+            ],
+            // Part of the address schema for Ukrainian addresses only
+            'person.addresses.*.settlement_id' => ['nullable', 'uuid'],
             'person.addresses.*.street_type' => ['nullable', new InDictionary('STREET_TYPE')],
+            'person.addresses.*.street' => [
+                'nullable',
+                'required_if:person.addresses.*.country,UA',
+                'string',
+                'max:255'
+            ],
             'person.addresses.*.building' => ['nullable', 'string', 'max:255'],
             'person.addresses.*.apartment' => ['nullable', 'string', 'max:255'],
             'person.addresses.*.zip' => ['nullable', new Zip()],

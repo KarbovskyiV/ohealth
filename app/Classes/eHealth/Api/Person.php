@@ -739,13 +739,15 @@ class Person extends Request
         $validator = Validator::make($replaced, [
             'addresses' => ['required', 'array', 'min:1'],
             'addresses.*.apartment' => ['nullable', 'string'],
-            'addresses.*.area' => ['required', 'string'],
+            // An address abroad is typed in by hand and comes back with only the parts that were filled
+            'addresses.*.area' => ['nullable', 'required_if:addresses.*.country,UA', 'string'],
             'addresses.*.building' => ['nullable', 'string'],
             'addresses.*.country' => ['required', 'string'],
             'addresses.*.region' => ['nullable', 'string'],
-            'addresses.*.settlement' => ['required', 'string'],
-            'addresses.*.settlement_id' => ['required', 'string'],
-            'addresses.*.settlement_type' => ['required', 'string'],
+            'addresses.*.settlement' => ['nullable', 'required_if:addresses.*.country,UA', 'string'],
+            // Part of the address schema for Ukrainian addresses only
+            'addresses.*.settlement_id' => ['nullable', 'string'],
+            'addresses.*.settlement_type' => ['nullable', 'string'],
             'addresses.*.street' => ['nullable', 'string'],
             'addresses.*.street_type' => ['nullable', 'string'],
             'addresses.*.type' => ['required', 'string'],
