@@ -1,32 +1,7 @@
 <fieldset class="fieldset">
     <legend class="legend">
-        {{ __('forms.information') }}
+        {{ __('patients.vaccine_information') }}
     </legend>
-
-    <div class="form-row-modal">
-        <div class="form-group group">
-            <label for="vaccineCode" class="label-modal">
-                {{ __('patients.code_and_name') }}
-            </label>
-            <select type="text"
-                    x-model="modalImmunization.vaccineCode"
-                    id="vaccineCode"
-                    class="input-modal"
-                    required
-            >
-                <option value="" selected>{{ __('forms.select') }}</option>
-                @foreach($this->dictionaries['eHealth/vaccine_codes'] as $key => $vaccineCode)
-                    <option value="{{ $key }}">{{ $key }} - {{ $vaccineCode }}</option>
-                @endforeach
-            </select>
-
-            <p class="text-error text-xs"
-               x-show="!Object.keys(vaccineCodesDictionary).includes(modalImmunization.vaccineCode)"
-            >
-                {{ __('forms.field_empty') }}
-            </p>
-        </div>
-    </div>
 
     <div class="form-row-modal">
         <div class="form-group group">
