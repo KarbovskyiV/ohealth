@@ -324,6 +324,7 @@ class EncounterRepository extends BaseRepository
 
     /**
      * Get encounter data that is related to the patient (person or preperson).
+     * Every record carries a readable `name` built from the action and class codes, so it can label a filter option.
      *
      * @param  Person|Preperson  $patient
      * @return array
@@ -336,6 +337,18 @@ class EncounterRepository extends BaseRepository
             ->withRelationships()
             ->where($ownerColumn, $ownerId)
             ->get()
+            ->map(static function (Encounter $encounter): array {
+                $data = $encounter->toArray();
+
+                $label = collect([
+                    data_get($data, 'actions.0.coding.0.code'),
+                    data_get($data, 'class.code')
+                ])->filter()->implode(' | ');
+
+                $data['name'] = $label ?: $encounter->uuid;
+
+                return $data;
+            })
             ->toArray();
     }
 
