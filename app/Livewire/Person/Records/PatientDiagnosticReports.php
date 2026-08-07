@@ -18,18 +18,20 @@ use App\Jobs\DiagnosticReportSync;
 use App\Livewire\DiagnosticReport\Forms\DiagnosticReportCancellationForm as Form;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
-use App\Models\MedicalEvents\Sql\Episode;
+use App\Models\MedicalEvents\Sql\Identifier;
 use App\Repositories\MedicalEvents\Repository;
 use App\Services\MedicalEvents\Fhir;
 use App\Services\MedicalEvents\FhirResource;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesSyncBatch;
+use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\View\View;
+use Livewire\Attributes\Computed;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Throwable;
@@ -49,19 +51,15 @@ class PatientDiagnosticReports extends BasePatientComponent
 
     public ?int $cancellingDiagnosticReportId = null;
 
-    public bool $fromDb = true;
+    public array $services = [];
 
-    public array $diagnosticReports = [];
+    public array $encounters = [];
 
-    public array $filterCodeOptions = [];
+    public array $episodes = [];
 
-    public array $filterEncounterOptions = [];
+    public array $basedOnRequests = [];
 
-    public array $filterEpisodeOptions = [];
-
-    public array $filterBasedOnOptions = [];
-
-    public array $filterSpecimenOptions = [];
+    public array $specimens = [];
 
     public string $filterCategory = '';
 
@@ -83,11 +81,7 @@ class PatientDiagnosticReports extends BasePatientComponent
 
     public bool $showAdditionalParams = false;
 
-    public int $totalEntries = 0;
-
     public string $syncStatus = '';
-
-    public int $pageSize = 10;
 
     protected array $dictionaryNames = [
         'eHealth/diagnostic_report_categories',
@@ -119,26 +113,46 @@ class PatientDiagnosticReports extends BasePatientComponent
         $this->syncStatus = $status->value;
     }
 
-    public function initializeComponent(): void
+    protected function initializeComponent(): void
     {
         $this->getDictionary();
 
-        $this->dictionaries['custom/services'] = dictionary()->services()->flattened()->toArray();
+        $this->syncStatus = legalEntity()->getEntityStatus(LegalEntity::ENTITY_DIAGNOSTIC_REPORT) ?? '';
 
-        $this->loadFilters();
+        $this->loadFilterOptions();
+    }
 
-        $this->loadDiagnosticReportsFromDb();
+    /**
+     * Narrow the service list down to the picked category and drop the service that no longer belongs to it.
+     *
+     * @return void
+     */
+    public function updatedFilterCategory(): void
+    {
+        $this->filterCode = '';
+
+        $this->loadServices();
+    }
+
+    /**
+     * Diagnostic reports for the current page, either from the eHealth search or from the local database.
+     *
+     * @return LengthAwarePaginator
+     */
+    #[Computed]
+    public function paginatedDiagnosticReports(): LengthAwarePaginator
+    {
+        return $this->isSearching
+            ? $this->searchDiagnosticReportsFromEHealth()
+            : $this->paginateLocalDiagnosticReports();
     }
 
     public function search(): void
     {
         $this->validate($this->filterValidationRules());
 
-        $this->fromDb = false;
-
+        $this->isSearching = true;
         $this->resetPage();
-
-        $this->loadDiagnosticReports($this->buildSearchParams());
     }
 
     public function resetFilters(): void
@@ -153,13 +167,12 @@ class PatientDiagnosticReports extends BasePatientComponent
             'filterIssuedTo',
             'filterBasedOn',
             'filterSpecimenId',
+            'isSearching'
         ]);
 
+        $this->loadServices();
+
         $this->resetPage();
-
-        $this->fromDb = false;
-
-        $this->loadDiagnosticReports($this->buildSearchParams());
     }
 
     public function sync(): void
@@ -177,7 +190,7 @@ class PatientDiagnosticReports extends BasePatientComponent
         try {
             $response = EHealth::diagnosticReport()->getBySearchParams(
                 $this->uuid,
-                $this->buildSearchParams(),
+                ['managing_organization_id' => legalEntity()->uuid]
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing diagnostic report');
@@ -201,10 +214,10 @@ class PatientDiagnosticReports extends BasePatientComponent
             Session::flash('success', __('patients.messages.diagnostic_reports_synced_successfully'));
         }
 
-        $this->loadDiagnosticReportsFromDb();
+        $this->loadFilterOptions();
 
-        $this->loadEpisodes();
-        $this->loadEncounters();
+        $this->isSearching = false;
+        $this->resetPage();
     }
 
     public function openDiagnosticReportView(string $diagnosticReportUuid): void
@@ -402,7 +415,6 @@ class PatientDiagnosticReports extends BasePatientComponent
         }
 
         $this->resetCancellationState();
-        $this->loadDiagnosticReportsFromDb();
 
         Session::flash('success', __('patients.messages.diagnostic_report_cancel_request_sent'));
     }
@@ -456,11 +468,11 @@ class PatientDiagnosticReports extends BasePatientComponent
         string $cancellationReason,
         ?string $explanatoryLetter
     ): array {
-        try {
-            $reportRaw = EHealth::diagnosticReport()
-                ->getById($this->uuid, $diagnosticReport->uuid)
-                ->getData();
+        $reportRaw = EHealth::diagnosticReport()
+            ->getById($this->uuid, $diagnosticReport->uuid)
+            ->getData();
 
+        try {
             $observationsRaw = $this->loadObservationRawData($diagnosticReport->uuid, onlyActive: true);
         } catch (EHealthException|EHealthConnectionException $exception) {
             report($exception);
@@ -529,165 +541,100 @@ class PatientDiagnosticReports extends BasePatientComponent
         $this->resetValidation();
     }
 
-    public function updatedPage(): void
+    /**
+     * Paginate locally stored (synced) diagnostic reports straight from the database.
+     *
+     * @return LengthAwarePaginator
+     */
+    protected function paginateLocalDiagnosticReports(): LengthAwarePaginator
     {
-        if ($this->fromDb) {
-            $this->loadDiagnosticReportsFromDb();
+        $paginator = DiagnosticReport::forPatient($this->patient())
+            ->withAllRelations()
+            ->recentlyUpdatedFirst()
+            ->paginate(config('pagination.per_page'));
 
-            return;
-        }
+        $paginator->setCollection(
+            collect($this->formatDatesForDisplay(Arr::toCamelCase($paginator->getCollection()->toArray())))
+        );
 
-        $this->loadDiagnosticReports($this->buildSearchParams());
+        return $paginator;
     }
 
-    private function loadFilters(): void
+    /**
+     * Fetch a single page of diagnostic reports from the eHealth API for the active search filters.
+     *
+     * @return LengthAwarePaginator
+     */
+    protected function searchDiagnosticReportsFromEHealth(): LengthAwarePaginator
+    {
+        $perPage = config('pagination.per_page');
+        $page = $this->getPage();
+
+        try {
+            $response = EHealth::diagnosticReport()->getBySearchParams($this->uuid, $this->buildSearchParams());
+            $diagnosticReports = Arr::toCamelCase($response->validate());
+            $total = $response->getPaging()['total_entries'];
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error while loading diagnostic reports');
+            $diagnosticReports = [];
+            $total = 0;
+        }
+
+        return new LengthAwarePaginator(collect($diagnosticReports), $total, $perPage, $page, [
+            'path' => LengthAwarePaginator::resolveCurrentPath()
+        ]);
+    }
+
+    /**
+     * Load the dropdown options the user can filter diagnostic reports by.
+     *
+     * @return void
+     */
+    private function loadFilterOptions(): void
     {
         $this->loadServices();
 
-        $this->loadEpisodesFromDb();
+        $this->episodes = Repository::episode()->getByPersonId($this->patient());
 
-        $this->loadEncountersFromDb();
+        $this->encounters = Repository::encounter()->getByPersonId($this->patient());
+
+        $this->loadBasedOnRequestsFromDb();
     }
 
-    private function loadDiagnosticReports(array $params = []): void
+    /**
+     * Build the service request options out of the referrals the stored diagnostic reports were based on.
+     *
+     * @return void
+     */
+    private function loadBasedOnRequestsFromDb(): void
     {
-        try {
-            $response = EHealth::diagnosticReport()->getBySearchParams($this->uuid, $params);
-
-            $validateData = $response->validate();
-
-            $paging = $response->getPaging();
-            $this->totalEntries = $paging['total_entries'] ?? 0;
-            $this->pageSize = $paging['page_size'] ?? 10;
-
-            $this->diagnosticReports = Arr::toCamelCase($validateData);
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $this->diagnosticReports = [];
-
-            $exception->handle('Error while loading diagnostic reports');
-        }
-    }
-
-    private function loadDiagnosticReportsFromDb(): void
-    {
-        $paginator = Repository::diagnosticReport()->getPaginatedByPatient(
-            $this->patient(),
-            $this->getPage(),
-            $this->pageSize
-        );
-
-        $this->totalEntries = $paginator->total();
-        $this->pageSize = $paginator->perPage();
-
-        $this->diagnosticReports = $this->formatDatesForDisplay(
-            $paginator
-                ->getCollection()
-                ->map(function (DiagnosticReport $diagnosticReport): array {
-                    $data = Arr::toCamelCase($diagnosticReport->toArray());
-                    $data['id'] = $diagnosticReport->id;
-
-                    return $data;
-                })
-                ->toArray()
-        );
-    }
-
-    private function loadEpisodes(): void
-    {
-        try {
-            $response = EHealth::episode()->getBySearchParams(
-                $this->uuid,
-                ['managing_organization_id' => legalEntity()?->uuid]
-            );
-
-            $validatedData = $response->validate();
-
-            $this->filterEpisodeOptions = collect($validatedData)
-                ->map(function (array $episode) {
-                    $episodeId = data_get($episode, 'uuid');
-
-                    if (!$episodeId) {
-                        return null;
-                    }
-
-                    return [
-                        'value' => $episodeId,
-                        'label' => data_get($episode, 'name') ?: $episodeId,
-                        'description' => $episodeId,
-                    ];
-                })
-                ->filter()
-                ->unique('value')
-                ->sortBy('label')
-                ->values()
-                ->toArray();
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $this->filterEpisodeOptions = [];
-
-            $exception->handle('Error while loading episodes');
-        }
-    }
-
-    private function loadEpisodesFromDb(): void
-    {
-        $filterEpisodeOptions = Episode::forPatient($this->patient())->get()->toArray();
-
-        $this->totalEntries = count($filterEpisodeOptions);
-
-        $this->filterEpisodeOptions = collect($filterEpisodeOptions)
-            ->map(function (array $episode) {
-                $episodeId = data_get($episode, 'uuid');
-
-                if (!$episodeId) {
-                    return null;
-                }
-
-                return [
-                    'value' => $episodeId,
-                    'label' => data_get($episode, 'name') ?: $episodeId,
-                    'description' => $episodeId,
-                ];
-            })
-            ->filter()
-            ->unique('value')
+        $this->basedOnRequests = DiagnosticReport::forPatient($this->patient())
+            ->with('basedOn')
+            ->get()
+            ->pluck('basedOn')
+            ->filter(static fn (?Identifier $basedOn): bool => (bool) $basedOn?->value)
+            ->map(static fn (Identifier $basedOn): array => [
+                'uuid' => $basedOn->value,
+                'name' => $basedOn->displayValue ?: $basedOn->value
+            ])
+            ->unique('uuid')
             ->values()
             ->toArray();
     }
 
-    private function loadEncounters(): void
-    {
-        try {
-            $response = EHealth::encounter()->getBySearchParams(
-                $this->uuid,
-                [
-                    'managing_organization_id' => legalEntity()?->uuid,
-                    'page_size' => 100,
-                ]
-            );
-
-            $validatedData = $response->validate();
-
-            $this->filterEncounterOptions = Arr::toCamelCase($validatedData);
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $this->filterEncounterOptions = [];
-
-            $exception->handle('Error while loading encounters');
-        }
-    }
-
-    private function loadEncountersFromDb(): void
-    {
-        $this->filterEncounterOptions = Arr::toCamelCase(
-            $this->formatDatesForDisplay(
-                Repository::encounter()->getByPersonId($this->patient())
-            )
-        );
-    }
-
+    /**
+     * Build the service options for the code combobox, limited to the picked category when there is one.
+     *
+     * @return void
+     */
     private function loadServices(): void
     {
-        $this->filterCodeOptions = collect(dictionary()->services()->flattened()->toArray())
-            ->map(function (array $service) {
+        $this->services = collect(dictionary()->services()->flattened()->toArray())
+            ->when(
+                $this->filterCategory !== '',
+                fn (Collection $services): Collection => $services->where('category', $this->filterCategory)
+            )
+            ->map(static function (array $service): ?array {
                 $serviceId = data_get($service, 'id');
 
                 if (!$serviceId) {
@@ -698,16 +645,15 @@ class PatientDiagnosticReports extends BasePatientComponent
                 $serviceName = data_get($service, 'name') ?: $serviceId;
 
                 return [
-                    'value' => $serviceId,
-                    'label' => $serviceCode
+                    'id' => $serviceId,
+                    'name' => $serviceCode
                         ? $serviceCode . ' | ' . $serviceName
-                        : $serviceName,
-                    'description' => $serviceId,
+                        : $serviceName
                 ];
             })
             ->filter()
-            ->unique('value')
-            ->sortBy('label')
+            ->unique('id')
+            ->sortBy('name')
             ->values()
             ->toArray();
     }
@@ -722,22 +668,11 @@ class PatientDiagnosticReports extends BasePatientComponent
             'issued_from' => $this->filterIssuedFrom ?: null,
             'issued_to' => $this->filterIssuedTo ?: null,
             'based_on' => $this->filterBasedOn ?: null,
-            'managing_organization_id' => legalEntity()?->uuid,
+            'managing_organization_id' => legalEntity()->uuid,
             'specimen_id' => $this->filterSpecimenId ?: null,
             'page' => $this->getPage(),
-            'page_size' => $this->pageSize,
-        ], static fn ($value) => $value !== null && $value !== '');
-    }
-
-    private function buildPaginator(): LengthAwarePaginator
-    {
-        return new LengthAwarePaginator(
-            $this->diagnosticReports,
-            $this->totalEntries,
-            $this->pageSize,
-            $this->getPage(),
-            ['path' => request()->url()]
-        );
+            'page_size' => config('pagination.per_page')
+        ], static fn (mixed $value): bool => $value !== null && $value !== '');
     }
 
     protected function filterValidationRules(): array
@@ -757,8 +692,6 @@ class PatientDiagnosticReports extends BasePatientComponent
 
     public function render(): View
     {
-        return view('livewire.person.records.diagnostic-reports', [
-            'paginatedDiagnosticReports' => $this->buildPaginator(),
-        ]);
+        return view('livewire.person.records.diagnostic-reports');
     }
 }
