@@ -111,7 +111,7 @@
                     id="accreditationIssuedDate"
                     x-model="acdIssuedDate"
                     aria-describedby="@error('legalEntityForm.accreditation.issuedDate') accreditationIssuedDateErrorHelp @enderror"
-                    class="input @error('legalEntityForm.accreditation.issuedDate') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
+                    class="input datepicker-input @error('legalEntityForm.accreditation.issuedDate') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
                 />
 
                 @error('legalEntityForm.accreditation.issuedDate')
