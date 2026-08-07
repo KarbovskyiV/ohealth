@@ -66,6 +66,7 @@ Route::prefix('persons')->group(static function () {
 
         Route::middleware('can:view,' . Person::class)->group(function () {
             Route::get('/{person}/patient-data', PatientData::class)->name('patient-data');
+            Route::get('/{person}/verification', \App\Livewire\Person\Records\PatientVerification::class)->name('verification');
             Route::get('/{person}/summary', PatientSummary::class)->can('view', Person::class)->name('summary');
             Route::get('/{person}/episodes', EpisodeIndex::class)->can('view', Episode::class)->name('episodes');
             Route::get('/{person}/episodes/create', EpisodeCreate::class)
@@ -144,6 +145,7 @@ Route::prefix('prepersons')
         Route::get('/{preperson}/edit', PrepersonEdit::class)->can('edit', 'preperson')->name('edit');
 
         Route::get('/{preperson}/patient-data', PrepersonData::class)->can('view', 'preperson')->name('patient-data');
+        Route::get('/{preperson}/verification', \App\Livewire\Person\Records\PatientVerification::class)->can('view', 'preperson')->name('verification');
         Route::get('/{preperson}/summary', PatientSummary::class)->can('view', 'preperson')->name('summary');
         Route::get('/{preperson}/episodes', EpisodeIndex::class)->can('view', 'preperson')->name('episodes');
         Route::get('/{preperson}/episodes/create', EpisodeCreate::class)

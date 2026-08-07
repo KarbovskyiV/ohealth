@@ -141,6 +141,14 @@
                     {{ __('patients.update_status') }}
                     @icon('refresh', 'w-4 h-4')
                 </button>
+
+                <button
+                    type="button"
+                    @click="$dispatch('show-patient-verification-notification')"
+                    class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                >
+                    <span>{{ __('patients.view_patient_verifications') }}</span>
+                </button>
             @endcan
         </div>
 
