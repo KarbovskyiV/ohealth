@@ -60,6 +60,12 @@
                             {{ __('patients.patient_data') }}
                         </a>
 
+                        <a href="{{ route("$routePrefix.verification", [legalEntity(), $routeParamKey => $recordId]) }}"
+                           class="summary-tab {{ ($activeTab === 'verification' || request()->routeIs("$routePrefix.verification")) ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                        >
+                            {{ __('patients.verification') }}
+                        </a>
+
                         @can('view', Person::class)
                             <a href="{{ route("$routePrefix.summary", [legalEntity(), $routeParamKey => $recordId]) }}"
                                class="summary-tab {{ request()->routeIs("$routePrefix.summary") ? 'summary-tab-active' : 'summary-tab-inactive' }}"

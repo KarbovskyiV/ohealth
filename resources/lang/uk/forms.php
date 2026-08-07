@@ -244,6 +244,8 @@ return [
     'request_id' => 'ID запиту',
     'save_and_send' => 'Зберегти та надіслати',
     'cyrillic_with_spaces_and_dots' => ':Attribute має містити лише кириличні символи, пробіли та крапки.',
+    'dracs_status' => 'Статус ДРАЦСГ',
+    'type_drafts_patients' => 'Тип (чернетки/пацієнти)',
     'update_verification_status_dracs' => 'Оновити статус верифікації працівника в ДРАЦС',
     'no_positions_found' => 'Посади відсутні',
     'application_register' => 'Реєстр заявок працівників',

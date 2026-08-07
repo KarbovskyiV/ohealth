@@ -254,7 +254,7 @@
 
                 @if($context === 'index')
                     <div class="form-group group" x-data="{ open: false }">
-                        <label for="filterDropdown" class="label"></label>
+                        <label for="filterDropdown" class="label">{{ __('forms.type_drafts_patients') }}</label>
                         <div class="relative">
                             <input
                                 type="text"
@@ -315,6 +315,31 @@
                         </div>
                     </div>
                 @endif
+            </div>
+
+            <div class="form-row-3">
+                <div class="form-group">
+                    <label for="filterDracsStatus" class="label">
+                        {{ __('forms.dracs_status') }}
+                    </label>
+                    <select
+                        wire:model="form.dracsStatus"
+                        name="filterDracsStatus"
+                        id="filterDracsStatus"
+                        class="input-select peer @error('form.dracsStatus') input-error @enderror"
+                    >
+                        <option value="">{{ __('forms.select') }}</option>
+                        @foreach(\App\Enums\Person\VerificationStatus::options() as $key => $status)
+                            <option value="{{ $key }}">{{ $status }}</option>
+                        @endforeach
+                    </select>
+
+                    @error('form.dracsStatus')
+                    <p class="text-error">
+                        {{ $message }}
+                    </p>
+                    @enderror
+                </div>
             </div>
         </div>
     </div>
