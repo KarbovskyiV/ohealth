@@ -216,8 +216,8 @@
                                     x-model="status"
                                     class="w-full bg-transparent py-1.5 text-sm font-normal text-gray-900 dark:text-white focus:outline-none cursor-pointer border-0 p-0"
                                 >
-                                    <option value="VERIFIED">{{ __('patients.status.verified') }}</option>
-                                    <option value="NOT_VERIFIED">{{ __('patients.status.not_verified') }}</option>
+                                    <option value="VERIFIED" class="dark:bg-gray-800">{{ __('patients.status.verified') }}</option>
+                                    <option value="NOT_VERIFIED" class="dark:bg-gray-800">{{ __('patients.status.not_verified') }}</option>
                                 </select>
                             </div>
                         </div>
@@ -233,7 +233,7 @@
                                     x-model="reason"
                                     class="w-full bg-transparent py-1.5 text-sm font-normal text-gray-900 dark:text-white focus:outline-none cursor-pointer border-0 p-0"
                                 >
-                                    <option value="MANUAL_DECEASED">{{ __('patients.reason_manual_confirmed') }}</option>
+                                    <option value="MANUAL_DECEASED" class="dark:bg-gray-800">{{ __('patients.reason_manual_confirmed') }}</option>
                                 </select>
                             </div>
                         </div>
