@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace App\Livewire\Division\Forms;
 
 use App\Core\Arr;
-use Carbon\CarbonImmutable;
-use App\Enums\Division\Status;
-use App\Enums\License\Type;
+use Livewire\Form;
 use App\Models\Division;
-use App\Models\HealthcareService;
 use App\Rules\InDictionary;
-use Illuminate\Database\Query\Builder as QueryBuilder;
-use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Carbon\CarbonImmutable;
+use App\Enums\License\Type;
+use App\Enums\Division\Status;
 use Illuminate\Validation\Rule;
+use App\Models\HealthcareService;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\ValidationException;
-use Livewire\Form;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 
 class HealthcareServiceForm extends Form
 {
@@ -26,9 +26,9 @@ class HealthcareServiceForm extends Form
         'coding' => [['system' => 'HEALTHCARE_SERVICE_CATEGORIES', 'code' => '']]
     ];
 
-    public ?string $specialityType = '';
+    public ?string $specialityType = null;
 
-    public string $providingCondition = '';
+    public ?string $providingCondition = null;
 
     public ?array $type = [
         'coding' => [['system' => 'HEALTHCARE_SERVICE_PHARMACY_DRUGS_TYPES', 'code' => '']]
