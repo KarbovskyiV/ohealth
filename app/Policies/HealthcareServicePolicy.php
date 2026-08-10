@@ -41,12 +41,12 @@ class HealthcareServicePolicy
      */
     public function view(User $user, HealthcareService $healthcareService): Response
     {
-        // Should belong to the same legal entity
-        if (legalEntity()->id !== $healthcareService->legalEntityId) {
+        if ($user->cannot('healthcare_service:read')) {
             return Response::denyWithStatus(404);
         }
 
-        if ($user->cannot('healthcare_service:read')) {
+        // Should belong to the same legal entity
+        if (legalEntity()->id !== $healthcareService->legalEntityId) {
             return Response::denyWithStatus(404);
         }
 
@@ -99,12 +99,12 @@ class HealthcareServicePolicy
      */
     public function edit(User $user, HealthcareService $healthcareService): Response
     {
-        // Should belong to the same legal entity
-        if ($healthcareService->legalEntityId !== legalEntity()->id) {
+        if ($user->cannot('healthcare_service:write')) {
             return Response::denyWithStatus(404);
         }
 
-        if ($user->cannot('healthcare_service:write')) {
+        // Should belong to the same legal entity
+        if ($healthcareService->legalEntityId !== legalEntity()->id) {
             return Response::denyWithStatus(404);
         }
 
@@ -121,12 +121,12 @@ class HealthcareServicePolicy
      */
     public function update(User $user, HealthcareService $healthcareService): Response
     {
-        // Should belong to the same legal entity
-        if ($healthcareService->legalEntityId !== legalEntity()->id) {
+        if ($user->cannot('healthcare_service:write')) {
             return Response::denyWithStatus(404);
         }
 
-        if ($user->cannot('healthcare_service:write')) {
+        // Should belong to the same legal entity
+        if ($healthcareService->legalEntityId !== legalEntity()->id) {
             return Response::denyWithStatus(404);
         }
 
@@ -148,12 +148,12 @@ class HealthcareServicePolicy
      */
     public function activate(User $user, HealthcareService $healthcareService): Response
     {
-        // Should belong to the same legal entity
-        if ($healthcareService->legalEntityId !== legalEntity()->id) {
+        if ($user->cannot('healthcare_service:write')) {
             return Response::denyWithStatus(404);
         }
 
-        if ($user->cannot('healthcare_service:write')) {
+        // Should belong to the same legal entity
+        if ($healthcareService->legalEntityId !== legalEntity()->id) {
             return Response::denyWithStatus(404);
         }
 
@@ -180,12 +180,12 @@ class HealthcareServicePolicy
      */
     public function deactivate(User $user, HealthcareService $healthcareService): Response
     {
-        // Should belong to the same legal entity
-        if ($healthcareService->legalEntityId !== legalEntity()->id) {
+        if ($user->cannot('healthcare_service:write')) {
             return Response::denyWithStatus(404);
         }
 
-        if ($user->cannot('healthcare_service:write')) {
+        // Should belong to the same legal entity
+        if ($healthcareService->legalEntityId !== legalEntity()->id) {
             return Response::denyWithStatus(404);
         }
 
