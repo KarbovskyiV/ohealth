@@ -707,42 +707,40 @@ class EncounterForm extends BaseForm
             'diagnosticReports.*.issuedTime' => Rule::forEach(
                 function (mixed $value, string $attribute): array {
                     $index = (int) explode('.', $attribute)[1];
-                    $issuedDate = $this->diagnosticReports[$index]['issuedDate'] ?? '';
+                    $diagnosticReport = $this->diagnosticReports[$index] ?? [];
+                    $issuedDate = $diagnosticReport['issuedDate'] ?? '';
+                    $effectiveType = $diagnosticReport['effectiveType'] ?? null;
 
                     return [
                         'required_with:diagnosticReports',
                         'date_format:H:i',
                         new PastDateTime($issuedDate),
-                        function (string $attribute, mixed $value, Closure $fail) use ($issuedDate): void {
+                        function (string $attribute, mixed $value, Closure $fail) use ($issuedDate, $effectiveType): void {
                             $periodDate = $this->encounter['periodDate'] ?? '';
                             $periodStart = $this->encounter['periodStart'] ?? '';
                             $periodEnd = $this->encounter['periodEnd'] ?? '';
 
-                            if (!$issuedDate || !$value || !$periodDate || !$periodStart || !$periodEnd) {
+                            if (empty($issuedDate) || empty($value) || empty($periodDate) || empty($periodStart) || empty($periodEnd)) {
                                 return;
                             }
 
                             try {
-                                $issued = CarbonImmutable::createFromFormat(
-                                    config('app.date_format') . ' H:i',
-                                    $issuedDate . ' ' . $value
-                                );
-
-                                $encounterStart = CarbonImmutable::createFromFormat(
-                                    config('app.date_format') . ' H:i',
-                                    $periodDate . ' ' . $periodStart
-                                );
-
-                                $encounterEnd = CarbonImmutable::createFromFormat(
-                                    config('app.date_format') . ' H:i',
-                                    $periodDate . ' ' . $periodEnd
-                                );
+                                $format = config('app.date_format') . ' H:i';
+                                $issued = CarbonImmutable::createFromFormat($format, $issuedDate . ' ' . $value);
+                                $encounterStart = CarbonImmutable::createFromFormat($format, $periodDate . ' ' . $periodStart);
+                                $encounterEnd = CarbonImmutable::createFromFormat($format, $periodDate . ' ' . $periodEnd);
                             } catch (\Throwable) {
                                 return;
                             }
 
                             if ($issued->lessThan($encounterStart) || $issued->greaterThan($encounterEnd)) {
                                 $fail(__('patients.diagnostic_report_issued_outside_encounter_period'));
+
+                                return;
+                            }
+
+                            if ($effectiveType === 'period' && $encounterEnd->greaterThan($issued)) {
+                                $fail( __('validation.after_or_equal', ['date' => __('validation.attributes.encounter_period_end'),]));
                             }
                         },
                     ];
@@ -861,6 +859,7 @@ class EncounterForm extends BaseForm
                 'string',
                 new InDictionary('eHealth/observation_methods')
             ],
+            'observations.*.reactionOn' => ['nullable', 'uuid'],
             'observations.*.dictionaryName' => ['nullable', 'string'],
             'observations.*.components' => ['nullable', 'array'],
             'observations.*.components.*.codeCode' => ['nullable', 'string'],

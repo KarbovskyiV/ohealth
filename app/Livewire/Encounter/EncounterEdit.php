@@ -70,6 +70,13 @@ class EncounterEdit extends EncounterComponent
 
         $package = Fhir::encounterPackageLoader()->load($encounter);
 
+        $reactionIds = collect($package['observations'])->pluck('reactionOn')->filter()->unique();
+        $packageImmunizationIds = collect($package['immunizations'])->pluck('uuid')->filter()->unique();
+
+        if ($reactionIds->diff($packageImmunizationIds)->isNotEmpty()) {
+            $this->searchReactionImmunizations();
+        }
+
         $this->form->encounter = $package['encounter'];
         $this->form->conditions = $package['conditions'];
         $this->form->immunizations = $package['immunizations'];
@@ -92,6 +99,14 @@ class EncounterEdit extends EncounterComponent
                     $record['problems'] ?? [],
                     $record['findings'] ?? []
                 ))
+                ->concat(
+                    collect($package['diagnosticReports'])
+                        ->filter(static fn (array $report): bool => !empty($report['conclusionCode']))
+                        ->map(static fn (array $report): array => [
+                            'codeSystem' => 'eHealth/ICD10_AM/condition_codes',
+                            'codeCode' => $report['conclusionCode'],
+                        ])
+                )
                 ->toArray()
         );
     }

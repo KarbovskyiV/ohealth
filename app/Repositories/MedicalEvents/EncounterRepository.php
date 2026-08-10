@@ -314,7 +314,7 @@ class EncounterRepository extends BaseRepository
                 return [
                     $encounter->uuid => [
                         'ehealthInsertedAt' => convertToAppDateFormat($encounter->period?->start),
-                        'codeCode' => data_get($condition?->toArray(), 'code.coding.0.code'),
+                        'codeCode' => $condition?->code?->coding?->first()?->code,
                         'type' => 'encounter'
                     ]
                 ];

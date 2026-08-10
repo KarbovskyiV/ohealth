@@ -411,6 +411,8 @@ return [
     'vaccination_protocol_required' => 'Необхідно додати принаймні один протокол вакцинації.',
     'vaccination_protocol_required_fields' => 'Для цієї вакцинації необхідно заповнити порядковий номер дози, етап імунізації та кількість доз по протоколу.',
     'immunization_search' => 'Пошук вакцинації',
+    'reaction_on_immunization' => 'Реакція на вакцинацію',
+    'add_immunization' => 'Додати вакцинацію',
     'vaccine_search' => 'Пошук вакцини',
     'vaccine_name' => 'Назва вакцини',
     'vaccine_code' => 'Код вакцини',

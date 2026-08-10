@@ -280,7 +280,7 @@
                         modalProcedure.usedReferences = [];
                     "
                     @if(count($divisions) === 1)
-                        x-init="modalProcedure.divisionId = '{{ $divisions[0]['uuid'] }}';"
+                        x-init="if (!modalProcedure.divisionId) modalProcedure.divisionId = '{{ $divisions[0]['uuid'] }}';"
                     @endif
                     id="divisionNames"
                     class="input-select peer"

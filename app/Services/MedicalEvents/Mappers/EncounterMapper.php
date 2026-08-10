@@ -240,7 +240,10 @@ class EncounterMapper implements FhirMapperContract
                 ->values()
                 ->toArray(),
             'participant' => collect(data_get($data, 'participants', []))
-                ->map(static fn (array $item) => ['uuid' => data_get($item, 'identifier.value')])
+                ->map(static fn (array $item) => [
+                    'uuid' => data_get($item, 'identifier.value'),
+                    'name' => data_get($item, 'displayValue', data_get($item, 'display_value', '')),
+                ])
                 ->filter(static fn (array $item) => !empty($item['uuid']))
                 ->values()
                 ->toArray(),

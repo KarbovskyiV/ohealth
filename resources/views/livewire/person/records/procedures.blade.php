@@ -217,7 +217,8 @@
 
                             <div class="record-inner-column flex-1">
                                 <div class="record-inner-label">{{ __('patients.code_and_name') }}</div>
-                                <div class="record-inner-value text-[16px]">
+                                <div
+                                    class="record-inner-value text-[16px]">
                                     {{
                                         data_get($procedure, 'code.identifier.value') && data_get($procedure, 'code.displayValue')
                                         ? data_get($procedure, 'code.identifier.value') . ' | ' . data_get($procedure, 'code.displayValue')
@@ -341,10 +342,10 @@
 
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.performer') }}
-                                            </div>
-                                            <div class="record-inner-value text-[14px] font-semibold wrap-break-word uppercase">
+                                            <div
+                                                class="record-inner-label text-[10px] uppercase">{{ __('patients.performer') }}</div>
+                                            <div
+                                                class="record-inner-value text-[14px] font-semibold break-words uppercase">
                                                 {{ data_get($procedure, 'performer.displayValue', '-') }}
                                             </div>
                                         </div>
@@ -372,10 +373,9 @@
                                             </div>
                                         </div>
                                         <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.doctor') }}
-                                            </div>
-                                            <div class="record-inner-value text-[14px] font-semibold wrap-break-word">
+                                            <div
+                                                class="record-inner-label text-[10px] uppercase">{{ __('patients.doctor') }}</div>
+                                            <div class="record-inner-value text-[14px] font-semibold break-words">
                                                 {{ data_get($procedure, 'recordedBy.displayValue') ?? '-' }}
                                             </div>
                                         </div>

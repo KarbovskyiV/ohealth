@@ -84,6 +84,12 @@ class ObservationRepository extends BaseRepository
                     Repository::codeableConcept()->attach($context, $datum['context']);
                 }
 
+                $reactionOn = null;
+                if (isset($datum['reactionOn'])) {
+                    $reactionOn = Repository::identifier()->store($datum['reactionOn']['identifier']['value']);
+                    Repository::codeableConcept()->attach($reactionOn, $datum['reactionOn']);
+                }
+
                 $observation = $this->model->create([
                     'uuid' => $datum['uuid'] ?? $datum['id'],
                     $ownerColumn => $ownerId,
@@ -107,6 +113,7 @@ class ObservationRepository extends BaseRepository
                     'method_id' => isset($datum['method'])
                         ? Repository::codeableConcept()->store($datum['method'])->id
                         : null,
+                    'reaction_on_id' => $reactionOn?->id,
                     'context_id' => $context?->id
                 ]);
 

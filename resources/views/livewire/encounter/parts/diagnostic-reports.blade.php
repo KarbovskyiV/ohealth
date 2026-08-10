@@ -276,12 +276,17 @@
                                         class="dropdown-panel relative"
                                     >
                                         <button
-                                            @click.prevent="
+                                            @click.prevent.stop="
                                                 item = index;
-                                                modalDiagnosticReport = JSON.parse(JSON.stringify(diagnosticReports[index]));
+                                                modalDiagnosticReport = new DiagnosticReport(diagnosticReports[index]);
                                                 newDiagnosticReport = false;
-                                                openDiagnosticReportDrawer = true;
-                                                close($refs.button);
+                                                issuedDateTimeInvalid = false;
+
+                                                close();
+
+                                                $nextTick(() => {
+                                                    openDiagnosticReportDrawer = true;
+                                                });
                                             "
                                         >
                                             {{ __('forms.edit') }}
@@ -398,11 +403,11 @@
                             "
                             class="button-primary"
                             :disabled="!(
-                                modalDiagnosticReport.categoryCode.trim()
-                                && modalDiagnosticReport.codeValue.trim()
+                                String(modalDiagnosticReport.categoryCode ?? '').trim()
+                                && String(modalDiagnosticReport.codeValue ?? '').trim()
                                 && (
                                     modalDiagnosticReport.primarySource === false
-                                    || modalDiagnosticReport.performerEmployeeId.trim()
+                                    || String(modalDiagnosticReport.performerEmployeeId ?? '').trim()
                                 )
                             )"
                         >

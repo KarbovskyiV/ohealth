@@ -22,6 +22,11 @@
 
     $footerItems = [];
 
+    $participantEmployeeNames = collect([...$this->employees, ...$this->diagnosticReportEmployees])
+        ->filter(static fn (array $employee): bool => !empty($employee['uuid']))
+        ->pluck('name', 'uuid')
+        ->all();
+
     $escapeForAlpineAttribute = static function (mixed $value): string {
         return e(json_encode(
             $value,
@@ -67,6 +72,13 @@
                     diagnosis: {!! $escapeForAlpineAttribute(__('patients.diagnosis_performer')) !!},
                     procedure: {!! $escapeForAlpineAttribute(__('patients.procedure_performer')) !!},
                     diagnosticReport: {!! $escapeForAlpineAttribute(__('patients.diagnostic_report_performer')) !!},
+                    participantEmployeeNames: {!! $escapeForAlpineAttribute($participantEmployeeNames) !!},
+                },
+
+                participantName(participant) {
+                    const uuid = participant?.uuid ?? '';
+
+                    return participant?.name || this.participantEmployeeNames[uuid] || (String(this.conditionPerformer.uuid) === String(uuid) ? this.conditionPerformer.name : uuid);
                 },
 
                 sortEncounterParticipants(participants = []) {

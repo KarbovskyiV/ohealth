@@ -11,6 +11,7 @@ use App\Core\Arr;
 use App\Enums\Episode\Status as EpisodeStatus;
 use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\Person\ClinicalImpressionStatus;
+use App\Enums\Person\ImmunizationStatus;
 use App\Enums\Person\ObservationStatus;
 use App\Enums\Status;
 use App\Enums\User\Role;
@@ -23,6 +24,8 @@ use App\Livewire\Encounter\Forms\EncounterForm as Form;
 use App\Models\Employee\Employee;
 use App\Models\Equipment;
 use App\Models\Icd10;
+use App\Models\MedicalEvents\Sql\Encounter;
+use App\Models\MedicalEvents\Sql\Immunization;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\Repository;
@@ -285,6 +288,19 @@ class EncounterComponent extends Component
      * }>
      */
     public array $vaccineOptions = [];
+
+    /** 
+     * 
+     * 
+     * @var array<int, array{
+     *      uuid: string, 
+     *      vaccineCode: string, 
+     *      date: string, 
+     *      notGiven: bool, 
+     *      status: string
+     * }> 
+     */
+    public array $reactionImmunizations = [];
 
     /**
      * List of dictionary names.
@@ -576,6 +592,46 @@ class EncounterComponent extends Component
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while getting reason references');
         }
+    }
+
+    /**
+     * Load patient immunizations that may be referenced from observation.reaction_on.
+     */
+    public function searchReactionImmunizations(?string $episodeId = null): void
+    {
+        $patient = $this->patient();
+
+        $query = Immunization::query()
+            ->forPatient($patient)
+            ->with('vaccineCode.coding')
+            ->where('status', ImmunizationStatus::COMPLETED->value)
+            ->where('not_given', false);
+
+        if ($episodeId) {
+            $query->whereHas(
+                'context',
+                static fn ($context) => $context->whereIn(
+                    'value',
+                    Encounter::query()
+                        ->forPatient($patient)
+                        ->forEpisode($episodeId)
+                        ->select('uuid')
+                )
+            );
+        }
+
+        $this->reactionImmunizations = $query
+            ->get()
+            ->map(static fn (Immunization $immunization): array => [
+                'uuid' => $immunization->uuid,
+                'vaccineCode' => $immunization->vaccineCode?->coding?->first()?->code,
+                'date' => convertToAppDateFormat($immunization->date),
+                'episodeId' => $episodeId,
+                'notGiven' => false,
+                'status' => ImmunizationStatus::COMPLETED->value
+            ])
+            ->values()
+            ->all();
     }
 
     /**

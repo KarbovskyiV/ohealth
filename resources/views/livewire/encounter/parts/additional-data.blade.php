@@ -451,12 +451,12 @@
         <div class="space-y-3">
             <template x-for="(coAuthor, index) in coAuthors" :key="`${coAuthor.uuid || 'manual'}-${index}`">
                 <div class="relative pr-10">
-                    <template x-if="coAuthor.locked">
+                    <template x-if="coAuthor.locked || {{ $isReadonly ? 'true' : 'false' }}">
                         <div class="form-group group">
                             <input type="text"
                                 class="input peer"
                                 :id="'coAuthor_' + index"
-                                :value="coAuthor.name || coAuthor.uuid"
+                                :value="participantName(coAuthor)"
                                 disabled
                                 placeholder=" "
                             >
@@ -468,7 +468,7 @@
                         </div>
                     </template>
 
-                    <template x-if="!coAuthor.locked">
+                    <template x-if="!coAuthor.locked && !{{ $isReadonly ? 'true' : 'false' }}">
                         <div class="form-group group">
                             <select
                                 class="input-select peer @error('form.encounter.participant.0') input-error @enderror"
@@ -500,7 +500,7 @@
                     </template>
 
                     <button type="button"
-                            x-show="!coAuthor.locked"
+                            x-show="!coAuthor.locked && !{{ $isReadonly ? 'true' : 'false' }}"
                             x-cloak
                             @click="removeCoAuthor(index)"
                             class="absolute right-0 top-3 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
@@ -510,13 +510,15 @@
                 </div>
             </template>
 
-            <button type="button"
-                    @click="addCoAuthor()"
-                    class="cursor-pointer text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1.5 font-medium text-sm transition-colors ml-1"
-            >
-                @icon('plus', 'w-4 h-4')
-                <span>{{ __('patients.add_coauthor') }}</span>
-            </button>
+            @unless($isReadonly)
+                <button type="button"
+                        @click="addCoAuthor()"
+                        class="cursor-pointer text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1.5 font-medium text-sm transition-colors ml-1"
+                >
+                    @icon('plus', 'w-4 h-4')
+                    <span>{{ __('patients.add_coauthor') }}</span>
+                </button>
+            @endunless
             @error('form.encounter.participant.0')
                 <p class="text-error">{{ $message }}</p>
             @enderror
