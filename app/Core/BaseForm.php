@@ -13,6 +13,8 @@ class BaseForm extends Form
 
     public TemporaryUploadedFile $keyContainerUpload;
 
+    public string $keyContainerFileName = '';
+
     public string $password;
 
     public function signingRules(): array
@@ -42,5 +44,7 @@ class BaseForm extends Form
         if (isset($this->keyContainerUpload)) {
             unset($this->keyContainerUpload);
         }
+
+        $this->keyContainerFileName = '';
     }
 }
