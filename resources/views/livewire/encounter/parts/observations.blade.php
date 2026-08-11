@@ -1,10 +1,22 @@
+@php($isEncounterContext = ($context ?? 'encounter') === 'encounter')
 <div
     class="p-4 sm:p-8"
     id="observations-section"
     x-data="{
         observations: $wire.entangle('form.observations'),
-        selectedRecords: $wire.entangle('selectedRecords.observations'),
-        cancelledRecords: $wire.cancelledRecords.observations,
+        @if($isEncounterContext)
+            currentImmunizations: $wire.entangle('form.immunizations'),
+            currentEpisodeId: $wire.entangle('form.episode.id'),
+            reactionImmunizations: $wire.entangle('reactionImmunizations'),
+            selectedRecords: $wire.entangle('selectedRecords.observations'),
+            cancelledRecords: $wire.cancelledRecords.observations,
+        @else
+            currentImmunizations: [],
+            currentEpisodeId: '',
+            reactionImmunizations: [],
+            selectedRecords: [],
+            cancelledRecords: [],
+        @endif
         canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
         openModal: false,
         showDuplicateCodeWarning: false,
@@ -17,7 +29,93 @@
         observationCodesDictionary: $wire.dictionaries['eHealth/LOINC/observation_codes'],
         icfObservationCodesDictionary: $wire.dictionaries['eHealth/ICF/classifiers'],
         customObservationCodesDictionary: $wire.dictionaries['eHealth/custom/observation_codes'],
-        observationInterpretationsDictionary: $wire.dictionaries['eHealth/observation_interpretations']
+        observationInterpretationsDictionary: $wire.dictionaries['eHealth/observation_interpretations'],
+        vaccineCodesDictionary: @if($isEncounterContext) $wire.dictionaries['eHealth/vaccine_codes'] @else {} @endif,
+        reactionEpisodeId: '',
+        showReactionDrawer: false,
+        reactionLoading: false,
+        reactionHasSearched: false,
+
+        reactionImmunizationName(immunization) {
+            if (!immunization) {
+                return '—';
+            }
+
+            const code = immunization.vaccineCode || '';
+            const name = this.vaccineCodesDictionary[code] || '';
+
+            return [code, name].filter(Boolean).join(' - ') || '—';
+        },
+
+        uniqueReactionImmunizations(items) {
+            const unique = new Map();
+
+            items.forEach(immunization => {
+                if (!immunization?.uuid || immunization.notGiven === true || immunization.status === 'entered_in_error') {
+                    return;
+                }
+
+                unique.set(immunization.uuid, immunization);
+            });
+
+            return [...unique.values()];
+        },
+
+        reactionCandidates() {
+            const items = [...this.reactionImmunizations];
+
+            if (this.reactionEpisodeId && this.reactionEpisodeId === this.currentEpisodeId) {
+                items.unshift(...this.currentImmunizations);
+            }
+
+            return this.uniqueReactionImmunizations(items);
+        },
+
+        selectedReactionImmunization() {
+            return this.uniqueReactionImmunizations([
+                ...this.currentImmunizations,
+                ...this.reactionImmunizations
+            ]).find(immunization => immunization.uuid === this.modalObservation.reactionOn) || null;
+        },
+
+        loadReactionImmunizations() {
+            if (!this.reactionEpisodeId) {
+                this.reactionImmunizations = [];
+                this.reactionHasSearched = false;
+
+                return;
+            }
+
+            this.reactionLoading = true;
+
+            $wire.searchReactionImmunizations(this.reactionEpisodeId)
+                .then(() => {
+                    this.reactionHasSearched = true;
+                })
+                .finally(() => {
+                    this.reactionLoading = false;
+                });
+        },
+
+        openReactionDrawer() {
+            this.showReactionDrawer = true;
+            this.reactionEpisodeId = this.currentEpisodeId || '';
+            this.reactionImmunizations = [];
+            this.reactionHasSearched = false;
+
+            if (this.reactionEpisodeId) {
+                this.loadReactionImmunizations();
+            }
+        },
+
+        selectReactionImmunization(immunization) {
+            this.modalObservation.reactionOn = immunization.uuid;
+            this.showReactionDrawer = false;
+        },
+
+        removeReactionImmunization() {
+            this.modalObservation.reactionOn = '';
+        }
     }"
 >
 
@@ -257,6 +355,9 @@
                                 @include('livewire.encounter.observation-parts.coding-system')
                                 @include('livewire.encounter.observation-parts.main-information')
                                 @include('livewire.encounter.observation-parts.additional-information')
+                                @if($isEncounterContext)
+                                    @include('livewire.encounter.observation-parts.reaction-on')
+                                @endif
 
                                 <div class="mt-6 flex justify-between space-x-2">
                                     <button type="button" @click="openModal = false" class="button-minor">
@@ -343,6 +444,7 @@
         methodCode = '';
         interpretationCode = '';
         bodySiteCode = '';
+        reactionOn = '';
         valueQuantityValue = '';
         valueQuantityComparator = '';
         valueQuantityUnit = '';

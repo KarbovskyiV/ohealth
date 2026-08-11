@@ -2,6 +2,7 @@
      id="immunizations-section"
      x-data="{
         immunizations: $wire.entangle('form.immunizations'),
+        observations: $wire.entangle('form.observations'),
         selectedRecords: $wire.entangle('selectedRecords.immunizations'),
         cancelledRecords: $wire.cancelledRecords.immunizations,
         canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
@@ -106,6 +107,20 @@
             this.modalImmunization.vaccineCode = '';
             this.modalImmunization.vaccinationProtocols = [];
             this.resetVaccineSearch();
+        },
+
+        removeImmunization(index) {
+            const uuid = this.immunizations[index]?.uuid;
+
+            if (uuid) {
+                this.observations.forEach(observation => {
+                    if (observation.reactionOn === uuid) {
+                        observation.reactionOn = '';
+                    }
+                });
+            }
+
+            this.immunizations.splice(index, 1);
         }
      }"
 >
@@ -245,7 +260,7 @@
                                         </button>
 
                                         <button class="dropdown-delete"
-                                                @click.prevent="immunizations.splice(index, 1); close($refs.button)">
+                                                @click.prevent="removeImmunization(index); close($refs.button)">
                                             {{ __('forms.delete') }}
                                         </button>
                                     </div>
@@ -559,6 +574,7 @@
      */
     class Immunization {
         constructor(obj = null) {
+            this.uuid = crypto.randomUUID();
             const now = new Date();
             const [yyyy, mm, dd] = now.toISOString().split('T')[0].split('-');
 

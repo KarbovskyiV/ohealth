@@ -111,7 +111,7 @@
         <fieldset @disabled($isReadonly) @class(['pointer-events-none opacity-80' => $isReadonly])>
             @include('livewire.encounter.diagnostic-report-parts.main-information', ['context' => 'diagnostic-report'])
             @include('livewire.encounter.diagnostic-report-parts.additional-information', ['context' => 'diagnostic-report'])
-            @include('livewire.encounter.parts.observations')
+            @include('livewire.encounter.parts.observations', ['context' => 'diagnostic-report'])
         </fieldset>
 
         <div class="flex gap-8">

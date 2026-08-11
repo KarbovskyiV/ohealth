@@ -241,8 +241,13 @@
                 selected: null,
                 results: $wire.entangle('results'),
                 showResults: false,
-                conclusionCodeLabel: modalDiagnosticReport.conclusionCodeLabel || modalDiagnosticReport.conclusionCode || '',
+                conclusionCodeLabel: '',
              }"
+             x-effect="
+                const code = modalDiagnosticReport.conclusionCode || '';
+                const description = $wire.dictionaries['eHealth/ICD10_AM/condition_codes']?.[code] || '';
+                conclusionCodeLabel = code ? [code, description].filter(Boolean).join(' - ') : '';
+            "
              class="form-row-2 relative"
         >
             <div class="form-group group">
