@@ -888,10 +888,15 @@ return [
             'effectivePeriodEndTime' => 'час завершення прийому діагностичного звіту'
         ],
 
+        'procedure' => [
+            'performerEmployeeId' => 'виконавець процедури',
+        ],
+
         'procedures.*' => [
             'categoryCode' => 'категорія',
             'codeValue' => 'послуги',
             'primarySource' => 'джерело інформації',
+            'performerEmployeeId' => 'виконавець процедури',
             'reportOriginCode' => 'джерело',
             'reportOriginText' => 'текст джерела',
             'divisionId' => 'місце надання послуг',
