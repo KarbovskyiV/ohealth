@@ -65,16 +65,7 @@
                     *
                 </option>
 
-                <template
-                    x-for="
-                        employee in procedureEmployees.filter(
-                            employee =>
-                                !modalProcedure.divisionId
-                                || employee.divisionUuid === modalProcedure.divisionId
-                        )
-                    "
-                    :key="employee.uuid"
-                >
+                <template x-for="employee in procedureEmployees" :key="employee.uuid">
                     <option
                         :value="employee.uuid"
                         :selected="

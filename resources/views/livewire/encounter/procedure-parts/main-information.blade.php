@@ -275,10 +275,7 @@
         <div class="form-row-2">
             <div class="form-group group">
                 <select x-model="modalProcedure.divisionId"
-                    @change="
-                        modalProcedure.performerEmployeeId = '';
-                        modalProcedure.usedReferences = [];
-                    "
+                    @change="modalProcedure.usedReferences = []"
                     @if(count($divisions) === 1)
                         x-init="if (!modalProcedure.divisionId) modalProcedure.divisionId = '{{ $divisions[0]['uuid'] }}';"
                     @endif

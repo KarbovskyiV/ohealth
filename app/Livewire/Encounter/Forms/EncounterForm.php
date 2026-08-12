@@ -920,32 +920,21 @@ class EncounterForm extends BaseForm
 
                     $isPrimarySource = ($procedure['primarySource'] ?? true) === true;
 
-                    $divisionUuid = data_get($procedure, 'divisionId');
-
                     return [
                         Rule::requiredIf($isPrimarySource),
                         Rule::prohibitedIf(!$isPrimarySource),
                         'nullable',
                         'uuid',
                         Rule::exists('employees', 'uuid')->where(
-                            static function ($query) use ($divisionUuid): void {
-                                $query
-                                    ->where('legal_entity_id', legalEntity()->id)
-                                    ->where('status', Status::APPROVED->value)
-                                    ->where('is_active', true)
-                                    ->whereIn('employee_type', [
-                                        Role::DOCTOR->value,
-                                        Role::SPECIALIST->value,
-                                        Role::ASSISTANT->value,
-                                    ]);
-
-                                if (filled($divisionUuid)) {
-                                    $query->where(
-                                        'division_uuid',
-                                        $divisionUuid
-                                    );
-                                }
-                            }
+                            static fn ($query) => $query
+                                ->where('legal_entity_id', legalEntity()->id)
+                                ->where('status', Status::APPROVED->value)
+                                ->where('is_active', true)
+                                ->whereIn('employee_type', [
+                                    Role::DOCTOR->value,
+                                    Role::SPECIALIST->value,
+                                    Role::ASSISTANT->value,
+                                ])
                         ),
                     ];
                 }
