@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Session;
 use App\Classes\eHealth\Api\EmployeeApi;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
+use App\Auth\SessionBinder;
 use App\Auth\EHealth\Services\TokenStorage;
 use App\Classes\eHealth\Exceptions\ApiException;
 use App\Classes\eHealth\Request as EHealthRequest;
@@ -83,7 +84,13 @@ class EHealthLoginController extends Controller
 
         $validatedEHealthTokenData = $validator->validated();
 
-        app(TokenStorage::class)->store($validatedEHealthTokenData);
+        $tokenStorage = app(TokenStorage::class);
+
+        // Grab whatever token this browser was carrying before it gets overwritten below,
+        // so the eHealth session behind it can be terminated once the user is authenticated anew
+        $previousBearerToken = $tokenStorage->getBearerToken();
+
+        $tokenStorage->store($validatedEHealthTokenData);
 
         $authUserUUID = $validatedEHealthTokenData['user_id'];
         $authLegalEntityUUID = $validatedEHealthTokenData['details']['client_id'];
@@ -120,6 +127,8 @@ class EHealthLoginController extends Controller
         }
 
         Auth::guard($loginedGuard)->login($user);
+
+        new SessionBinder()->bind($user, $previousBearerToken);
 
         Session::forget('mis_2fa');
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Auth;
 
+use App\Auth\SessionBinder;
 use App\Models\User;
 use App\Models\Role;
 use Illuminate\Support\Facades\Cache;
@@ -180,6 +181,8 @@ class Login extends Component
 
         $this->clearLoginAttempts();
         Session::regenerate();
+
+        new SessionBinder()->bind($user);
 
         return Redirect::route('legal-entity.new.create');
     }
