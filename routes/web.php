@@ -175,9 +175,11 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
                 Route::get('/', EmployeeIndex::class)->name('index');
 
                 Route::get('/{employee}', EmployeeShow::class)
+                    ->whereNumber('employee')
                     ->name('show')->middleware('can:view,employee');
 
                 Route::get('/{employee}/edit', EmployeeEdit::class)
+                    ->whereNumber('employee')
                     ->name('edit')->middleware('can:update,employee');
             });
 
@@ -188,9 +190,11 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
                 Route::get('/party/{party}/position-add', EmployeePositionAdd::class)->name('position-add');
 
                 Route::get('/{employee_request}', EmployeeRequestShow::class)
+                    ->whereNumber('employee_request')
                     ->name('show')->middleware('can:view,employee_request');
 
                 Route::get('/{employee_request}/edit', EmployeeRequestEdit::class)
+                    ->whereNumber('employee_request')
                     ->name('edit')->middleware('can:update,employee_request');
             });
 
