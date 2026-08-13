@@ -58,7 +58,7 @@
                 <div x-show="openGroupActions"
                      x-transition
                      x-cloak
-                     class="absolute top-full right-0 z-10 mt-2 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-700"
+                     class="absolute top-full left-0 z-10 mt-2 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-700"
                 >
                     <div class="py-1">
                         <button type="button"
