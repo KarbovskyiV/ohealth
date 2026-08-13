@@ -29,6 +29,7 @@ use App\Livewire\Person\Records\PatientImmunizations;
 use App\Livewire\Person\Records\PatientObservations;
 use App\Livewire\Person\Records\PatientProcedures;
 use App\Livewire\Person\Records\PatientSummary;
+use App\Livewire\Person\Records\PatientVerification;
 use App\Livewire\Preperson\PrepersonData;
 use App\Livewire\Preperson\PrepersonEdit;
 use App\Livewire\Preperson\PrepersonIndex;
@@ -42,6 +43,7 @@ use App\Models\MedicalEvents\Sql\Procedure;
 use App\Models\Person\Person;
 use App\Models\Person\PersonRequest;
 use App\Models\Preperson;
+use App\Models\Relations\PersonVerificationDetail;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -66,7 +68,9 @@ Route::prefix('persons')->group(static function () {
 
         Route::middleware('can:view,' . Person::class)->group(function () {
             Route::get('/{person}/patient-data', PatientData::class)->name('patient-data');
-            Route::get('/{person}/verification', \App\Livewire\Person\Records\PatientVerification::class)->name('verification');
+            Route::get('/{person}/verification', PatientVerification::class)
+                ->can('view', PersonVerificationDetail::class)
+                ->name('verification');
             Route::get('/{person}/summary', PatientSummary::class)->can('view', Person::class)->name('summary');
             Route::get('/{person}/episodes', EpisodeIndex::class)->can('view', Episode::class)->name('episodes');
             Route::get('/{person}/episodes/create', EpisodeCreate::class)
@@ -145,7 +149,6 @@ Route::prefix('prepersons')
         Route::get('/{preperson}/edit', PrepersonEdit::class)->can('edit', 'preperson')->name('edit');
 
         Route::get('/{preperson}/patient-data', PrepersonData::class)->can('view', 'preperson')->name('patient-data');
-        Route::get('/{preperson}/verification', \App\Livewire\Person\Records\PatientVerification::class)->can('view', 'preperson')->name('verification');
         Route::get('/{preperson}/summary', PatientSummary::class)->can('view', 'preperson')->name('summary');
         Route::get('/{preperson}/episodes', EpisodeIndex::class)->can('view', 'preperson')->name('episodes');
         Route::get('/{preperson}/episodes/create', EpisodeCreate::class)

@@ -1,6 +1,5 @@
 @use('App\Models\Person\Person')
 @use('App\Enums\Person\AuthenticationMethod')
-@use('App\Enums\Person\VerificationStatus as Status')
 @use('App\Enums\Person\Gender')
 
 <x-layouts.patient :personId="$personId" :patientFullName="$patientFullName" :activeTab="'patient-data'">
@@ -42,8 +41,6 @@
         $address = collect($patientAddresses)->firstWhere('type', 'RESIDENCE') ?: collect($patientAddresses)->first();
         $address = $address ? \App\Core\Arr::toCamelCase($address->toArray()) : [];
         $documentsList = $patientDocuments ? \App\Core\Arr::toCamelCase($patientDocuments->toArray()) : [];
-
-        $verificationStatusEnum = Status::from($verificationStatus);
     @endphp
 
     <div
@@ -125,33 +122,6 @@
              }
          }"
     >
-        <div class="mb-4 flex items-center gap-4">
-            @php $verificationStatusEnum = Status::from($verificationStatus); @endphp
-            <p class="text-sm text-gray-700 dark:text-gray-300">
-                <span class="font-medium">{{ __('patients.verification_in_eHealth') }}:</span>
-                <span class="ml-1 {{ $verificationStatusEnum->color() }}">{{ $verificationStatusEnum->label() }}</span>
-            </p>
-
-            @can('viewVerificationDetails', Person::class)
-                <button
-                    wire:click.once="getVerificationStatus"
-                    type="button"
-                    class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                >
-                    {{ __('patients.update_status') }}
-                    @icon('refresh', 'w-4 h-4')
-                </button>
-
-                <button
-                    type="button"
-                    @click="$dispatch('show-patient-verification-notification')"
-                    class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
-                >
-                    <span>{{ __('patients.view_patient_verifications') }}</span>
-                </button>
-            @endcan
-        </div>
-
         <div id="accordion-open" data-accordion="open" class="flex flex-col gap-4">
             <div
                 x-data="{ open: true }"

@@ -48,13 +48,6 @@ class PatientData extends BasePatientComponent
 
     public string $lastName;
 
-    /**
-     * Patient verification status.
-     *
-     * @var string
-     */
-    public string $verificationStatus;
-
     public array $phones = [];
 
     public array $confidantPersonRelationships = [];
@@ -164,7 +157,6 @@ class PatientData extends BasePatientComponent
 
         $this->firstName = $patient->primaryName?->firstName ?? '';
         $this->lastName = $patient->primaryName?->lastName ?? '';
-        $this->verificationStatus = $patient->verificationStatus;
         $this->phones = $patient->phones->toArray();
         $this->form->person = Arr::toCamelCase($patient->toArray());
         $this->confidantPersonRelationshipRequests = $this->loadConfidantPersonRelationshipRequests($patient);
@@ -185,43 +177,6 @@ class PatientData extends BasePatientComponent
 
                 $this->isSyncing = false;
             }
-        }
-    }
-
-    /**
-     * Get patient verification status.
-     *
-     * @return void
-     */
-    public function getVerificationStatus(): void
-    {
-        if (Auth::user()->cannot('viewVerificationDetails', Person::class)) {
-            Session::flash('error', __('patients.policy.verification_details'));
-
-            return;
-        }
-
-        try {
-            $response = EHealth::person()->getPersonVerificationDetails($this->uuid);
-            $validated = $response->validate();
-
-            try {
-                Repository::person()->updateVerificationStatusById(
-                    $this->personId,
-                    $validated['verification_status']
-                );
-                Repository::person()->syncVerificationDetails($this->personId, $validated['details']);
-
-                $this->verificationStatus = $validated['verification_status'];
-            } catch (Exception $exception) {
-                $this->handleDatabaseErrors($exception, 'Error when updating person verification status');
-
-                return;
-            }
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error when getting person verification details');
-
-            return;
         }
     }
 

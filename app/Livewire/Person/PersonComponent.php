@@ -18,6 +18,7 @@ use App\Livewire\Person\Forms\PersonForm as Form;
 use App\Models\Person\Person;
 use App\Models\Person\PersonRequest;
 use App\Models\Relations\Address;
+use App\Notifications\NhsVerificationNeededNotification;
 use App\Repositories\Repository;
 use App\Traits\Addresses\BaseAddress;
 use App\Traits\FormTrait;
@@ -342,6 +343,10 @@ class PersonComponent extends Component
         $this->uploadedDocuments = $urgent['documents'] ?? [];
         $this->authenticationMethodCurrent = $urgent['authentication_method_current'] ?? [];
         $this->showInformationMessageModal = true;
+
+        if ($this->form->needsNhsVerification()) {
+            Auth::user()->notify(new NhsVerificationNeededNotification());
+        }
     }
 
     public function openNewState(): void

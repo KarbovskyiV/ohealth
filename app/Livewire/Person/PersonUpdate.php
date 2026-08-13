@@ -15,6 +15,7 @@ use App\Livewire\Person\Traits\ManagesConfidantPersonRelationships;
 use App\Models\LegalEntity;
 use App\Models\Person\Person;
 use App\Models\Person\PersonRequest;
+use App\Notifications\NhsVerificationNeededNotification;
 use App\Repositories\Repository;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -272,6 +273,10 @@ class PersonUpdate extends PersonComponent
         $this->uploadedDocuments = $urgent['documents'] ?? [];
         $this->authenticationMethodCurrent = $urgent['authentication_method_current'] ?? [];
         $this->viewState = 'new';
+
+        if ($this->form->needsNhsVerification()) {
+            Auth::user()->notify(new NhsVerificationNeededNotification());
+        }
     }
 
     public function render(): View
