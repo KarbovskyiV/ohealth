@@ -32,6 +32,7 @@ return [
     'saving' => 'Збереження...',
     'saved_successfully' => 'Дані успішно збережено',
     'data_saved_successfully' => 'Дані успішно збережено',
+    'mark_as_error' => 'Позначити помилковим',
     'name' => 'Назва',
     'accreditationShow' => 'Наявна акредитація',
     'start_time' => 'Час початку',
