@@ -45,7 +45,41 @@
         ['label' => $patientName]
     ]"
 >
-    <x-slot name="headerActions"></x-slot>
+    <x-slot name="headerActions">
+        <div class="w-full lg:w-75 flex justify-start">
+            @if($canCancelRecords)
+                <div class="relative inline-block" x-data="{ openGroupActions: false }" @click.outside="openGroupActions = false">
+                    <button type="button"
+                            @click="openGroupActions = !openGroupActions"
+                            class="button-primary-outline px-5 py-2.5 text-sm"
+                    >
+                        {{ __('patients.group_actions') }}
+                    </button>
+
+                    <div x-show="openGroupActions"
+                         x-transition
+                         x-cloak
+                         class="absolute top-full left-0 z-10 mt-2 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-700"
+                    >
+                        <div class="py-1">
+                            <button type="button"
+                                    @click="openGroupActions = false"
+                                    wire:click="openRecordsCancellation"
+                                    class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-600"
+                            >
+                                <span class="!text-red-500 dark:!text-red-400">
+                                    @icon('close', 'w-4 h-4')
+                                </span>
+                                <span class="!text-red-500 dark:!text-red-400">
+                                    {{ __('forms.mark_as_error') }}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+    </x-slot>
 
     <div class="breadcrumb-form p-4 shift-content">
         @php

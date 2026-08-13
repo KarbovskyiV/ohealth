@@ -9,7 +9,8 @@ import uk from '../../node_modules/flowbite-datepicker/js/i18n/locales/uk.js';
 
 // Date input mask DD.MM.YYYY
 function attachDateMask(el) {
-    if (el.hasAttribute('data-date-mask')) return;
+    if (el._date_mask_initialized) return;
+    el._date_mask_initialized = true;
     el.setAttribute('data-date-mask', 'true');
 
     let lastInputType = '';
@@ -177,7 +178,15 @@ function attachDateMask(el) {
 // Selecting all elements with the 'datepicker-input' class
 document.addEventListener('DOMContentLoaded', () => {
     function initDatepickers() {
-        document.querySelectorAll('.datepicker-input:not([data-initialized])').forEach((datepickerEl) => {
+        document.querySelectorAll('.datepicker-input').forEach((datepickerEl) => {
+            if (datepickerEl._datepicker_initialized) {
+                if (!datepickerEl.hasAttribute('data-initialized')) {
+                    datepickerEl.setAttribute('data-initialized', 'true');
+                }
+                return;
+            }
+            datepickerEl._datepicker_initialized = true;
+
             Datepicker.locales.uk = uk.uk;
 
             const minDate = datepickerEl.getAttribute('datepicker-min-date') || null;
@@ -399,9 +408,17 @@ import "flatpickr/dist/flatpickr.css";
 import { Ukrainian } from "flatpickr/dist/l10n/uk.js";
 
 function initUkTimepickers(root = document) {
-    const inputs = root.querySelectorAll('input.timepicker-uk:not([data-tp-initialized])');
+    const inputs = root.querySelectorAll('input.timepicker-uk');
 
     inputs.forEach((el) => {
+        if (el._tp_initialized) {
+            if (!el.hasAttribute('data-tp-initialized')) {
+                el.setAttribute('data-tp-initialized', 'true');
+            }
+            return;
+        }
+        el._tp_initialized = true;
+
         el.setAttribute('data-tp-initialized', 'true');
         el.setAttribute('placeholder', '--:--');
         el.setAttribute('maxlength', '5');
@@ -544,10 +561,15 @@ function initUkTimepickers(root = document) {
 }
 
 function initUkDateRangePickers(root = document) {
-    const inputs = root.querySelectorAll('input.daterangepicker-uk:not([data-drp-initialized])');
+    const inputs = root.querySelectorAll('input.daterangepicker-uk');
 
     inputs.forEach((el) => {
-        if (el._flatpickr) return;
+        if (el._flatpickr) {
+            if (!el.hasAttribute('data-drp-initialized')) {
+                el.setAttribute('data-drp-initialized', 'true');
+            }
+            return;
+        }
 
         flatpickr(el, {
             mode: "range",
