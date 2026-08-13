@@ -239,8 +239,8 @@ return [
     'verification_recommendations_header' => 'РЕКОМЕНДАЦІЇ',
     'update_data' => 'Оновити дані',
     'update_verification_dracs_title' => 'Оновити статус верифікації пацієнта в ДРАЦС',
-    'status_field' => 'Статус',
     'verification_reason_field' => 'Причина верифікації',
+    'death_date' => 'Дата смерті',
     'reason_manual_confirmed' => 'Підтверджена мануально',
     'comment_death_confirmed' => 'Смерть пацієнта підтверджено',
     'update_data_in_ehealth' => 'Оновити дані в ЕСОЗ',
@@ -579,6 +579,7 @@ return [
         'cancel_procedure' => 'У вас немає дозволу на позначення процедури внесеною помилково.',
         'cancel_encounter' => 'У вас немає дозволу на позначення взаємодії внесеною помилково.',
         'verification_details' => 'У вас немає дозволу на перегляд статусу верифікації пацієнта.',
+        'verification_update' => 'У вас немає дозволу на підтвердження або спростування факту смерті пацієнта.',
     ],
 
     'messages' => [
@@ -601,6 +602,7 @@ return [
         'encounter_cancel_package_save_error' => 'Помилка збереження оновленого пакета взаємодії після позначення внесеною помилково.',
         'person_request_updated' => 'Заявка на створення пацієнта успішно оновлена.',
         'person_request_created' => 'Заявка на створення пацієнта успішно створена.',
+        'verification_status_updated' => 'Статус верифікації пацієнта успішно оновлено.',
         'person_request_approved' => 'Заявку успішно підтверджено.',
         'person_request_rejected' => 'Заявку успішно відхилено.',
         'person_updated' => 'Пацієнт успішно оновлений',

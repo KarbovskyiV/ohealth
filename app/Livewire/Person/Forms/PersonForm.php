@@ -456,6 +456,30 @@ class PersonForm extends BaseForm
     }
 
     /**
+     * Check whether the person data has to be additionally verified by the NHS employees.
+     *
+     * @return bool
+     */
+    public function needsNhsVerification(): bool
+    {
+        if (data_get($this->person, 'authenticationMethods.0.type') === AuthenticationMethod::OFFLINE->value) {
+            return true;
+        }
+
+        $documentType = $this->personAge < self::NO_SELF_AUTH_AGE
+            ? 'BIRTH_CERTIFICATE_FOREIGN'
+            : 'PERMANENT_RESIDENCE_PERMIT';
+
+        foreach ($this->person['documents'] as $document) {
+            if ($document['type'] === $documentType) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Name each document number after its own document, so an error tells the user which one is wrong, and
      * name the fields of every address, because the rules of an address are built for its position in the
      * list and no longer carry the wildcard the translations are keyed by.

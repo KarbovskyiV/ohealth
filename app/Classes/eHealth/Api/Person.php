@@ -140,6 +140,23 @@ class Person extends Request
     }
 
     /**
+     * Update the person verification status of the DRACS death or the DRACS name change stream.
+     *
+     * @param  string  $id
+     * @param  array  $data
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://uaehealthapi.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/persons/update-person-verification-status
+     */
+    public function updateVerificationStatus(string $id, array $data): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validatePersonVerificationDetails(...));
+
+        return $this->patch(self::URL . "/$id/verification", $data);
+    }
+
+    /**
      * Get list of active confidant person relationships.
      *
      * @param  string  $id
