@@ -141,7 +141,7 @@
         <template x-if="episodeType === 'existing'">
             <div class="form-row-2" x-transition>
                 <div class="form-group group">
-                    <select wire:model="form.episode.id"
+                    <select wire:model.live="form.episode.id"
                             id="existingEpisodeId"
                             class="input-select peer @error('form.episode.id') input-error @enderror"
                     >

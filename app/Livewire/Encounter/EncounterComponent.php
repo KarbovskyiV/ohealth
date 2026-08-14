@@ -28,7 +28,11 @@ use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Immunization;
 use App\Models\Person\Person;
 use App\Models\Preperson;
+use App\Models\MedicalEvents\Sql\Episode;
+use App\Models\MedicalEvents\Sql\EpisodeCurrentDiagnosis;
 use App\Repositories\Repository;
+use App\Repositories\MedicalEvents\Repository as MedicalEventsRepository;
+use App\Services\MedicalEvents\Fhir;
 use App\Services\Dictionary\Mappers\ImmunizationDictionaryMapper;
 use App\Traits\FormTrait;
 use Illuminate\Support\Facades\Auth;
@@ -546,6 +550,53 @@ class EncounterComponent extends Component
         }
 
         $this->getEpisodes();
+    }
+
+    /**
+     * Load the primary diagnosis from the selected episode.
+     *
+     * @param string|null $episodeId Episode UUID.
+     * @return void
+     */
+    public function updatedFormEpisodeId(?string $episodeId): void
+    {
+        $this->form->conditions = [];
+        $this->form->encounter['diagnoses'] = [];
+
+        if (empty($episodeId)) {
+            return;
+        }
+
+        $episode = Episode::forPatient($this->patient())
+            ->whereUuid($episodeId)
+            ->with(['currentDiagnoses.condition', 'currentDiagnoses.role.coding'])
+            ->first();
+
+        $diagnosis = $episode?->currentDiagnoses->first(
+            static fn (EpisodeCurrentDiagnosis $diagnosis): bool => $diagnosis->role?->coding->first()?->code === 'primary'
+        );
+
+        if ($diagnosis?->condition === null) {
+            return;
+        }
+
+        $condition = MedicalEventsRepository::condition()->getByUuids([$diagnosis->condition->value])[0] ?? null;
+
+        if ($condition === null) {
+            return;
+        }
+
+        $detailsMap = MedicalEventsRepository::condition()->getDetailsMapForEvidences([$condition]);
+
+        $this->form->conditions = [Arr::except(
+            Fhir::condition()->fromFhir($condition, $detailsMap),
+            ['uuid', 'assertedDate', 'assertedTime']
+        )];
+
+        $this->form->encounter['diagnoses'] = [[
+            'roleCode' => $diagnosis->role->coding->first()?->code,
+            'rank' => $diagnosis->rank ?? ''
+        ]];
     }
 
     /**
