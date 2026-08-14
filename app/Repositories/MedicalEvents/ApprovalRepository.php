@@ -187,7 +187,7 @@ class ApprovalRepository extends BaseRepository
             $reason = $this->syncIdentifier($existing, $modelData['reason'] ?? null, 'reason');
 
             if ($grantedTo) {
-                $grantedToType = $grantedTo?->type->first()?->coding->first()?->code ?? null;
+                $grantedToType = $grantedTo?->load('type.coding')->type->first()?->coding->first()?->code ?? null;
             }
 
             $authMethod = AuthenticationMethod::getByModelAndUuid($approvableModel)->first();

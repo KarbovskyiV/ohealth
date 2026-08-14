@@ -17,8 +17,8 @@ return [
 
     'accepted' => 'Ви повинні прийняти :attribute.',
     'activeUrl' => 'Поле :attribute не є правильним URL.',
-    'after' => 'Поле :attribute має містити дату не раніше :date.',
-    'after_or_equal' => 'Поле :attribute має містити дату не раніше або дорівнюватися :date.',
+    'after' => 'Поле :attribute не може містити дату раніше :date.',
+    'after_or_equal' => 'Поле :attribute має містити дату більше або рівну :date.',
     'alpha' => 'Поле :attribute має містити лише літери.',
     'alphaDash' => 'Поле :attribute має містити лише літери, цифри та підкреслення.',
     'alphaNum' => 'Поле :attribute має містити лише літери та цифри.',
