@@ -287,7 +287,7 @@ abstract class DiagnosticReportComponent extends Component
      */
     public function searchICD10(string $value): void
     {
-        $this->results = Icd10::search($value)->limit(50)
+        $this->results = Icd10::search($value)->active()->limit(50)
             ->get(['code', 'description'])
             ->toArray();
     }

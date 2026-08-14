@@ -155,7 +155,7 @@ class EpisodeIndex extends BasePatientComponent
 
     public function searchICD10(string $value): void
     {
-        $this->icd10Results = Icd10::search($value)->limit(50)
+        $this->icd10Results = Icd10::search($value)->active()->limit(50)
             ->get(['code', 'description'])
             ->toArray();
     }

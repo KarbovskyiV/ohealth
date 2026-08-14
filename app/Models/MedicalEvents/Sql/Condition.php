@@ -7,6 +7,7 @@ namespace App\Models\MedicalEvents\Sql;
 use App\Casts\EHealthTimestampCast;
 use App\Enums\Person\ConditionClinicalStatus;
 use App\Enums\Person\ConditionVerificationStatus;
+use App\Models\Icd10;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use Eloquence\Behaviours\HasCamelCasing;
@@ -153,6 +154,11 @@ class Condition extends Model
         $coding = $this->code?->coding?->first();
         if ($coding) {
             $code = $coding->code;
+
+            if ($coding->system === 'eHealth/ICD10_AM/condition_codes') {
+                return Icd10::where('code', $code)->value('description') ?? $code;
+            }
+
             try {
                 $dict = dictionary()->basics()->byName($coding->system);
                 if ($dict) {

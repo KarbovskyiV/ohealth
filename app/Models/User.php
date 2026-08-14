@@ -574,9 +574,9 @@ class User extends Authenticatable implements MustVerifyEmail
         $employees = $this->party?->employees()
             ->whereLegalEntityId(legalEntity()->id)
             ->whereStatus(Status::APPROVED)
-            ->with('party:id,first_name,last_name,second_name')
             ->whereIn('employee_type', $roleValues)
-            ->get(['id', 'uuid', 'party_id', 'employee_type']);
+            ->get(['id', 'uuid', 'party_id', 'employee_type'])
+            ->each(fn (Employee $employee) => $employee->setRelation('party', $this->party));
 
         return $employees->sortBy(
             fn (Employee $employee) => array_search($employee->employeeType, $roleValues, true)

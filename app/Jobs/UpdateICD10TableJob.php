@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Classes\eHealth\EHealth;
+use App\Services\Dictionary\Collections\BasicDictionaryCollection;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -24,7 +26,12 @@ class UpdateICD10TableJob implements ShouldQueue
         try {
             Log::channel('task_scheduling')->info('Updating ICD-10 codes begins.');
 
-            $dictionary = dictionary()->basics()->byName('eHealth/ICD10_AM/condition_codes')->asLargeDictionary()->toArray();
+            $response = EHealth::dictionary()->getMany(['name' => 'eHealth/ICD10_AM/condition_codes']);
+
+            $dictionary = BasicDictionaryCollection::make($response->getData())
+                ->byName('eHealth/ICD10_AM/condition_codes')
+                ->asLargeDictionary()
+                ->toArray();
 
             $data = [];
             foreach ($dictionary as $key => $value) {
@@ -38,13 +45,14 @@ class UpdateICD10TableJob implements ShouldQueue
                 ];
             }
 
-            // Clear an old table before inserting new data
-            DB::table('icd_10')->truncate();
-
-            // Insert data by chunks
+            // Upsert by chunks: the table is never empty for readers, and a failed run leaves the previous data intact
             $chunks = array_chunk($data, 10000);
             foreach ($chunks as $chunk) {
-                DB::table('icd_10')->insert($chunk);
+                DB::table('icd_10')->upsert(
+                    $chunk,
+                    ['code'],
+                    ['description', 'is_active', 'child_values', 'updated_at']
+                );
             }
 
             Log::channel('task_scheduling')->info('Updating ICD-10 codes successfully ended.');

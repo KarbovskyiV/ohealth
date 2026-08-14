@@ -1,7 +1,7 @@
 <fieldset
     class="fieldset"
     x-data="{ showContactPerson: {{ ($showContactPersonOpen ?? false) ? 'true' : 'false' }} }"
-    x-effect="if (reason === 'NEWBORN_WITHOUT_CERTIFICATE') showContactPerson = true"
+    x-effect="if (reason === 'NEWBORN_WITHOUT_CERTIFICATE') showContactPerson = true;"
 >
     <legend class="legend flex items-baseline gap-2">
         <input
@@ -9,7 +9,10 @@
             class="default-checkbox mb-2"
             x-model="showContactPerson"
             :disabled="reason === 'NEWBORN_WITHOUT_CERTIFICATE'"
-            @change="if (! $event.target.checked) $wire.set('form.person.emergencyContact', { phones: [{ type: null, number: null }] }, false)"
+            @change="
+                if (! $event.target.checked)
+                    $wire.set('form.person.emergencyContact', { phones: [{ type: null, number: null }] }, false);
+            "
             id="showContactPerson"
         />
         <label for="showContactPerson" class="cursor-pointer select-none">
@@ -32,9 +35,7 @@
                             :required="showContactPerson"
                             autocomplete="off"
                         />
-                        <label for="emergencyContactFirstName" class="label">
-                            {{ __('forms.first_name') }}
-                        </label>
+                        <label for="emergencyContactFirstName" class="label"> {{ __('forms.first_name') }} </label>
                         <button
                             type="button"
                             class="absolute inset-y-0 end-0 flex items-center pe-3 text-gray-400 hover:text-gray-600"
@@ -44,7 +45,9 @@
                             @icon('close', 'w-4 h-4')
                         </button>
                     </div>
-                    @error('form.person.emergencyContact.firstName') <p class="text-error">{{ $message }}</p> @enderror
+                    @error('form.person.emergencyContact.firstName')
+                        <p class="text-error">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="form-group group">
@@ -59,9 +62,7 @@
                             :required="showContactPerson"
                             autocomplete="off"
                         />
-                        <label for="emergencyContactLastName" class="label">
-                            {{ __('forms.last_name') }}
-                        </label>
+                        <label for="emergencyContactLastName" class="label"> {{ __('forms.last_name') }} </label>
                         <button
                             type="button"
                             class="absolute inset-y-0 end-0 flex items-center pe-3 text-gray-400 hover:text-gray-600"
@@ -71,7 +72,9 @@
                             @icon('close', 'w-4 h-4')
                         </button>
                     </div>
-                    @error('form.person.emergencyContact.lastName') <p class="text-error">{{ $message }}</p> @enderror
+                    @error('form.person.emergencyContact.lastName')
+                        <p class="text-error">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="form-group group">
@@ -85,9 +88,7 @@
                             placeholder=" "
                             autocomplete="off"
                         />
-                        <label for="emergencyContactSecondName" class="label">
-                            {{ __('forms.second_name') }}
-                        </label>
+                        <label for="emergencyContactSecondName" class="label"> {{ __('forms.second_name') }} </label>
                         <button
                             type="button"
                             class="absolute inset-y-0 end-0 flex items-center pe-3 text-gray-400 hover:text-gray-600"
@@ -97,7 +98,9 @@
                             @icon('close', 'w-4 h-4')
                         </button>
                     </div>
-                    @error('form.person.emergencyContact.secondName') <p class="text-error">{{ $message }}</p> @enderror
+                    @error('form.person.emergencyContact.secondName')
+                        <p class="text-error">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
@@ -111,22 +114,21 @@
                         :required="showContactPerson"
                     >
                         <option value="" selected>{{ __('forms.select') }} *</option>
-                        @foreach($this->dictionaries['PHONE_TYPE'] as $key => $phoneType)
+                        @foreach ($this->dictionaries['PHONE_TYPE'] as $key => $phoneType)
                             <option value="{{ $key }}">{{ $phoneType }}</option>
                         @endforeach
                     </select>
-                    <label for="emergencyContactPhoneType" class="label">
-                        {{ __('forms.phone_type') }}
-                    </label>
-                    @error('form.person.emergencyContact.phones.0.type') <p
-                        class="text-error">{{ $message }}</p> @enderror
+                    <label for="emergencyContactPhoneType" class="label"> {{ __('forms.phone_type') }} </label>
+                    @error('form.person.emergencyContact.phones.0.type')
+                        <p class="text-error">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="form-group group">
                     <div class="phone-wrapper">
                         <input
                             wire:model="form.person.emergencyContact.phones.0.number"
-                            x-mask="+380999999999"
+                            x-mask="+999999999999"
                             type="tel"
                             name="emergencyContactPhone"
                             id="emergencyContactPhone"
@@ -134,12 +136,10 @@
                             placeholder=" "
                             :required="showContactPerson"
                         />
-                        <label for="emergencyContactPhone" class="wrapped-label">
-                            {{ __('forms.phone') }}
-                        </label>
+                        <label for="emergencyContactPhone" class="wrapped-label"> {{ __('forms.phone') }} </label>
                     </div>
                     @error('form.person.emergencyContact.phones.0.number')
-                    <p class="text-error">{{ $message }}</p>
+                        <p class="text-error">{{ $message }}</p>
                     @enderror
                 </div>
             </div>

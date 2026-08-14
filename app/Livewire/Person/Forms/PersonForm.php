@@ -284,7 +284,6 @@ class PersonForm extends BaseForm
             $rules += $this->addressRules($index, ($address['country'] ?? 'UA') === 'UA');
         }
 
-        $this->normalizeNoTaxIdForForeignDocuments();
         $this->validateNoTaxIdFlag();
         $this->addTaxIdUniquenessValidation($rules);
         $this->addNamesLastNameValidation($rules);
@@ -875,33 +874,11 @@ class PersonForm extends BaseForm
         $submittedTypes = array_column($this->person['documents'] ?? [], 'type');
         $hasForeignDocument = (bool)array_intersect($submittedTypes, $foreignTypes);
 
-        // a non-foreign document requires a defined no_tax_id (the foreign no_tax_id = null case is guaranteed by normalizeNoTaxIdForForeignDocuments)
+        // a non-foreign document requires a defined no_tax_id, a foreign one leaves it null
         if (!$hasForeignDocument && $noTaxId === null) {
             throw ValidationException::withMessages([
                 'person.noTaxId' => __('validation.custom.person.no_tax_id_cannot_be_null')
             ]);
-        }
-    }
-
-    /**
-     * When a foreign identity document is present and tax_id is missing, no_tax_id must be null: the person has no
-     * Ukrainian tax number to refuse, so the flag does not apply.
-     *
-     * @return void
-     */
-    private function normalizeNoTaxIdForForeignDocuments(): void
-    {
-        if (!empty($this->person['taxId'])) {
-            return;
-        }
-
-        $foreignTypes = config('ehealth.identity_document_types_foreign');
-
-        $hasForeignDocument = collect($this->person['documents'] ?? [])
-            ->contains(static fn (array $document): bool => in_array($document['type'] ?? null, $foreignTypes, true));
-
-        if ($hasForeignDocument) {
-            $this->person['noTaxId'] = null;
         }
     }
 

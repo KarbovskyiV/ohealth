@@ -17,7 +17,6 @@ use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\Preperson;
 use App\Rules\InDictionary;
-use App\Rules\PhoneNumber;
 use App\Rules\TaxId;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Log;
@@ -537,7 +536,7 @@ class Person extends Request
             '*.gender' => ['required', new InDictionary('GENDER')],
             '*.id' => ['required', 'uuid'],
             '*.phones' => ['nullable', 'array'],
-            '*.phones.*.number' => ['required', new PhoneNumber()],
+            '*.phones.*.number' => ['required', 'regex:/^\+[0-9]{11,12}$/'],
             '*.phones.*.type' => ['required', new InDictionary('PHONE_TYPE')],
             '*.tax_id' => ['nullable', new TaxId()]
         ]);

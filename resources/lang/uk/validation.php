@@ -784,6 +784,8 @@ return [
             'valueQuantity.value' => 'значення обстеження',
             'valueQuantityValue' => 'значення обстеження',
             'valueQuantityUnit' => 'одиниця виміру значення',
+            'valueQuantitySystem' => 'словник одиниці виміру значення',
+            'valueQuantityCode' => 'код одиниці виміру значення',
             'valueCodeableConcept' => 'значення обстеження',
             'valueString' => 'значення обстеження',
             'valueBoolean' => 'значення обстеження',
