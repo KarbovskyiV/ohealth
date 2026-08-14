@@ -145,6 +145,9 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
                 ->can('viewAny', LegalEntity::class)
                 ->name('legal-entity.details');
 
+            Route::get('/mis-ehealth-connections', \App\Livewire\MisConnection\MisConnectionIndex::class)->name('mis-ehealth-connections.index');
+            Route::get('/mis-ehealth-connections/{id}', \App\Livewire\MisConnection\MisConnectionShow::class)->name('mis-ehealth-connections.show');
+
             Route::get('/healthcare-service', HealthcareServiceIndex::class)
                 ->name('healthcare-service.index')
                 ->can('viewAny', HealthcareService::class);

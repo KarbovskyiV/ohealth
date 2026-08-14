@@ -96,6 +96,16 @@
             @endif
 
             @if (legalEntity() && Auth::user()->cannot('limitedAction', LegalEntity::class))
+                    <li>
+                        <a href="{{ route('mis-ehealth-connections.index', [legalEntity()]) }}"
+                           class="menu-item-simple {{ request()->routeIs('mis-ehealth-connections.*') ? 'menu-item-active' : '' }}"
+                        >
+                            @icon('connection-two-way')
+                            <span>{{ __('Зв\'язки МІС та СГуСОЗ') }}</span>
+                        </a>
+                    </li>
+
+
                 @can('viewAny', Division::class)
                     <li>
                         <a href="{{ route('division.index', [legalEntity()]) }}" class="menu-item-simple">
