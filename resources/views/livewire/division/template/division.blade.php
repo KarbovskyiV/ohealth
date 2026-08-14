@@ -26,7 +26,7 @@
             actionButtonText: ''
         }"
     >
-        <x-header-navigation x-data="{ showFilter: false }" class="items-start">
+        <x-header-navigation x-data="{ showFilter: false }" class="items-start md:max-w-6xl pr-4">
             <x-slot name='title'>
                 @yield('title')
             </x-slot>
