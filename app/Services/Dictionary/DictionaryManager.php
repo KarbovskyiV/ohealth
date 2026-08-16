@@ -182,7 +182,9 @@ class DictionaryManager
                 }
 
                 $response = $dictionary->fetch();
-                $freshData = $response->getData();
+                $freshData = $dictionary instanceof BasicDictionary
+                    ? BasicDictionary::prune($response->getData())
+                    : $response->getData();
                 $paging = $response->getPaging();
                 $totalPages = $paging['total_pages'] ?? 1;
 

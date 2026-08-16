@@ -57,7 +57,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('persons')->group(static function () {
+Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'encounterId'])->group(static function () {
     Route::name('persons.')->group(static function () {
         Route::get('/', PersonIndex::class)->can('viewAny', Person::class)->name('index');
         Route::get('/create', PersonCreate::class)->can('create', PersonRequest::class)->name('create');

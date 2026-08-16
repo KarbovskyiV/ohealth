@@ -452,8 +452,14 @@ class DiagnosticReportForm extends BaseForm
             'observations.*.valueQuantityValue' => ['nullable', 'numeric'],
             'observations.*.valueQuantityComparator' => ['nullable', 'string', Rule::in(['>', '>=', '=', '<=', '<'])],
             'observations.*.valueQuantityUnit' => ['nullable', 'string', new InDictionary('eHealth/ucum/units')],
-            'observations.*.valueQuantitySystem' => ['nullable', 'string'],
-            'observations.*.valueQuantityCode' => ['nullable', 'string'],
+            'observations.*.valueQuantitySystem' => [
+                'required_with:observations.*.valueQuantityValue',
+                'string'
+            ],
+            'observations.*.valueQuantityCode' => [
+                'required_with:observations.*.valueQuantityValue',
+                'string'
+            ],
 
             'observations.*.valueCodeableConcept' => ['nullable', 'string'],
             'observations.*.valueString' => ['nullable', 'string'],

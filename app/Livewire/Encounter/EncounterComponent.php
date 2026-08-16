@@ -293,16 +293,16 @@ class EncounterComponent extends Component
      */
     public array $vaccineOptions = [];
 
-    /** 
-     * 
-     * 
+    /**
+     *
+     *
      * @var array<int, array{
-     *      uuid: string, 
-     *      vaccineCode: string, 
-     *      date: string, 
-     *      notGiven: bool, 
+     *      uuid: string,
+     *      vaccineCode: string,
+     *      date: string,
+     *      notGiven: bool,
      *      status: string
-     * }> 
+     * }>
      */
     public array $reactionImmunizations = [];
 
@@ -430,7 +430,7 @@ class EncounterComponent extends Component
      */
     public function searchICD10(string $value): void
     {
-        $query = Icd10::search($value)->limit(50);
+        $query = Icd10::search($value)->active()->limit(50);
 
         $allowedCodes = $this->allowedConditionCodesBySystem['eHealth/ICD10_AM/condition_codes'] ?? null;
         if ($allowedCodes !== null) {
@@ -555,7 +555,7 @@ class EncounterComponent extends Component
     /**
      * Load the primary diagnosis from the selected episode.
      *
-     * @param string|null $episodeId Episode UUID.
+     * @param  string|null  $episodeId  Episode UUID.
      * @return void
      */
     public function updatedFormEpisodeId(?string $episodeId): void

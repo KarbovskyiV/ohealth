@@ -478,7 +478,7 @@ class EncounterForm extends BaseForm
                     }
 
                     $isAllowed = app(ImmunizationDictionaryMapper::class)
-                        ->isTargetDiseaseAllowed($vaccineCode,$value);
+                        ->isTargetDiseaseAllowed($vaccineCode, $value);
 
                     if (!$isAllowed) {
                         $fail(__('validation.vaccine_target_disease_mismatch'));
@@ -740,7 +740,7 @@ class EncounterForm extends BaseForm
                             }
 
                             if ($effectiveType === 'period' && $encounterEnd->greaterThan($issued)) {
-                                $fail( __('validation.after_or_equal', ['date' => __('validation.attributes.encounter_period_end'),]));
+                                $fail(__('validation.after_or_equal', ['date' => __('validation.attributes.encounter_period_end'),]));
                             }
                         },
                     ];
@@ -875,8 +875,14 @@ class EncounterForm extends BaseForm
             'observations.*.valueQuantityValue' => ['nullable', 'numeric'],
             'observations.*.valueQuantityComparator' => ['nullable', 'string', Rule::in(['>', '>=', '=', '<=', '<'])],
             'observations.*.valueQuantityUnit' => ['nullable', 'string', new InDictionary('eHealth/ucum/units')],
-            'observations.*.valueQuantitySystem' => ['nullable', 'string'],
-            'observations.*.valueQuantityCode' => ['nullable', 'string'],
+            'observations.*.valueQuantitySystem' => [
+                'required_with:observations.*.valueQuantityValue',
+                'string'
+            ],
+            'observations.*.valueQuantityCode' => [
+                'required_with:observations.*.valueQuantityValue',
+                'string'
+            ],
             'observations.*.valueCodeableConcept' => ['nullable', 'string'],
             'observations.*.valueString' => ['nullable', 'string'],
             'observations.*.valueBoolean' => ['nullable', 'boolean'],
@@ -1544,8 +1550,8 @@ class EncounterForm extends BaseForm
             ->contains(static fn (array $condition): bool => ($condition['primarySource'] ?? false) === true);
 
         $encounterWriterEmployeeUuid = $hasPrimarySourceCondition ? Auth::user()
-                ->getEncounterWriterEmployee($this->encounter['classCode'] ?? null)
-                ?->uuid : null;
+            ->getEncounterWriterEmployee($this->encounter['classCode'] ?? null)
+            ?->uuid : null;
 
         $requiredParticipantUuids = collect($this->procedures ?? [])
             ->concat($this->diagnosticReports ?? [])

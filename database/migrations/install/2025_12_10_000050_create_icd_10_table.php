@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Classes\eHealth\EHealth;
+use App\Services\Dictionary\Collections\BasicDictionaryCollection;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
@@ -17,7 +19,7 @@ return new class extends Migration
     {
         Schema::create('icd_10', static function (Blueprint $table) {
             $table->id();
-            $table->string('code')->index();
+            $table->string('code')->unique();
             $table->string('description', 500)->index();
             $table->boolean('is_active');
             $table->jsonb('child_values');
@@ -48,7 +50,12 @@ return new class extends Migration
      */
     protected function setData(): void
     {
-        $dictionary = dictionary()->basics()->byName('eHealth/ICD10_AM/condition_codes')->asLargeDictionary()->toArray();
+        $response = EHealth::dictionary()->getMany(['name' => 'eHealth/ICD10_AM/condition_codes']);
+
+        $dictionary = BasicDictionaryCollection::make($response->getData())
+            ->byName('eHealth/ICD10_AM/condition_codes')
+            ->asLargeDictionary()
+            ->toArray();
 
         $data = [];
 

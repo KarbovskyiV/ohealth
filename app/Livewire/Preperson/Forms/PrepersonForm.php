@@ -8,7 +8,6 @@ use App\Core\BaseForm;
 use App\Enums\Preperson\Reason;
 use App\Rules\InDictionary;
 use App\Rules\NameFields;
-use App\Rules\PhoneNumber;
 use Illuminate\Validation\Rule;
 
 class PrepersonForm extends BaseForm
@@ -67,7 +66,7 @@ class PrepersonForm extends BaseForm
                 'nullable',
                 Rule::requiredIf($emergencyContactRequired),
                 'string',
-                new PhoneNumber(),
+                'regex:/^\+[0-9]{11,12}$/',
                 'distinct'
             ],
 
@@ -147,7 +146,7 @@ class PrepersonForm extends BaseForm
                 'nullable',
                 Rule::requiredIf($emergencyContactRequired),
                 'string',
-                new PhoneNumber(),
+                'regex:/^\+[0-9]{11,12}$/',
                 'distinct'
             ]
         ];

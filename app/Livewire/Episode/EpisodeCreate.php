@@ -53,12 +53,14 @@ class EpisodeCreate extends BaseEpisodeComponent
         $formattedData = $this->formatEpisode($validated, Status::ACTIVE);
 
         try {
-            EHealth::episode()->create($this->uuid, Arr::toSnakeCase($formattedData));
+            $response = EHealth::episode()->create($this->uuid, Arr::toSnakeCase($formattedData));
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while creating episode');
 
             return;
         }
+
+        logger()->debug('Job ID to further debug', $response->getData());
 
         // eHealth accepted the episode; only now persist it locally
         try {
