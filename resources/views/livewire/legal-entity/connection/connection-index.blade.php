@@ -1,3 +1,5 @@
+@use(App\Enums\LegalEntity\States)
+
 <div x-data="{ openGrantAccessDrawer: false, showSignatureModal: $wire.entangle('showSignatureModal') }">
     <livewire:components.x-message :key="time()" />
     <x-forms.loading />
@@ -9,22 +11,15 @@
 
         <div class="mt-3 ml-0 flex flex-col sm:flex-row sm:flex-wrap gap-2 self-start">
             <button type="button"
-
-                    @click="openGrantAccessDrawer = true"
-
-                    class="button-primary flex items-center gap-2"
-
+                @click="openGrantAccessDrawer = true"
+                class="button-primary flex items-center gap-2"
             >
                 @icon('plus', 'w-4 h-4')
                 {{ __('legal-entity-connection.btn_grant_access') }}
             </button>
 
             <button type="button"
-
-
-                    class="button-sync flex items-center gap-2 whitespace-nowrap"
-
-
+                class="button-sync flex items-center gap-2 whitespace-nowrap"
             >
                 @icon('refresh', 'w-4 h-4')
                 <span>{{ __('legal-entity-connection.sync_data') }}</span>
@@ -39,10 +34,10 @@
                     <table class="index-table">
                         <thead class="index-table-thead">
                         <tr>
-                            <th class="index-table-th w-[20%]">{!! __('legal-entity-connection.table_facility_name_id') !!}</th>
-                            <th class="index-table-th w-[15%]">{!! __('legal-entity-connection.table_mis_id') !!}</th>
-                            <th class="index-table-th w-[15%]">{!! __('legal-entity-connection.table_conn_id') !!}</th>
-                            <th class="index-table-th w-[20%]">{!! __('legal-entity-connection.table_callback_url') !!}</th>
+                            <th class="index-table-th w-[20%]">{{ __('legal-entity.name') }},<br>{{ __('forms.uuid') }}</th>
+                            <th class="index-table-th w-[15%]">{{ __('legal-entity-connection.table_mis_id') }}</th>
+                            <th class="index-table-th w-[15%]">{{ __('legal-entity-connection.table_conn_id') }}</th>
+                            <th class="index-table-th w-[20%]">{{ __('legal-entity-connection.table_callback_url') }}</th>
                             <th class="index-table-th w-[10%]">{{ __('legal-entity-connection.table_status') }}</th>
                             <th class="index-table-th w-[10%]">{{ __('legal-entity-connection.table_created') }}</th>
                             <th class="index-table-th w-[10%]">{{ __('legal-entity-connection.table_action') }}</th>
@@ -51,44 +46,49 @@
 
                         <tbody>
                         @foreach ($connections as $connection)
-                            <tr wire:key="connection-{{ $connection['id'] }}" class="index-table-tr">
+                            <tr wire:key="connection-{{ $connection->id }}" class="index-table-tr">
                                 <td class="index-table-td-primary">
-                                    <span class="font-bold">{{ $connection['name'] }}</span><br>
-                                    <span class="text-gray-500 text-sm">{{ $connection['identifier'] }}</span>
+                                    <span class="font-bold">{{ $connection->client->name }}</span><br>
+                                    <span class="text-gray-500 text-sm">{{ $connection->legalEntity->uuid }}</span>
                                 </td>
                                 <td class="index-table-td">
-                                    {{ $connection['mis_id'] }}
+                                    {{ $connection->consumer_uuid }}
                                 </td>
                                 <td class="index-table-td">
-                                    {{ $connection['conn_id'] }}
+                                    {{ $connection->uuid }}
                                 </td>
                                 <td class="index-table-td">
-                                    {{ $connection['callback'] }}
+                                    {{ $connection->redirect_uri }}
                                 </td>
                                 <td class="index-table-td !whitespace-nowrap">
-                                    <span class="badge-green whitespace-nowrap">
-                                        {{ $connection['status'] }}
+                                    {{-- status-alert-* classes are full-width alert blocks, use their badge-* (pill) equivalent here --}}
+                                    @php
+                                        $legalEntityState = States::tryFrom($connection->legalEntity->status);
+                                        $badgeClass = str_replace('status-alert-', 'badge-', $legalEntityState?->cssClass() ?? 'status-alert-default');
+                                    @endphp
+                                    <span class="{{ $badgeClass }} whitespace-nowrap">
+                                        {{ $legalEntityState?->label() ?? __('forms.unknown') }}
                                     </span>
                                 </td>
                                 <td class="index-table-td">
-                                    {{ $connection['created_at'] }}
+                                    {{ $connection->ehealthInsertedAt }}
                                 </td>
                                 <td class="index-table-td-actions">
                                     <div class="flex justify-center relative">
                                         <div x-data="{
-                                                 open: false,
-                                                 toggle() {
-                                                     if (this.open) {
-                                                         return this.close();
-                                                     }
-                                                     this.$refs.button.focus();
-                                                     this.open = true;
-                                                 },
-                                                 close(focusAfter) {
-                                                     if (!this.open) return;
-                                                     this.open = false;
-                                                     focusAfter && focusAfter.focus()
-                                                 }
+                                                open: false,
+                                                toggle() {
+                                                    if (this.open) {
+                                                        return this.close();
+                                                    }
+                                                    this.$refs.button.focus();
+                                                    this.open = true;
+                                                },
+                                                close(focusAfter) {
+                                                    if (!this.open) return;
+                                                    this.open = false;
+                                                    focusAfter && focusAfter.focus()
+                                                }
                                              }"
                                              @keydown.escape.prevent.stop="close($refs.button)"
                                              @focusin.window="!$refs.panel.contains($event.target) && close()"
@@ -125,12 +125,17 @@
                                                 <a href="#" class="flex items-center gap-2 w-full first-of-type:rounded-t-md px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
                                                     @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300') {{ __('legal-entity-connection.btn_view_details') }}
                                                 </a>
+                                                @can('updateSecret', $connection)
                                                 <a href="#" class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
                                                     @icon('refresh', 'w-5 h-5 text-gray-600 dark:text-gray-300') {{ __('legal-entity-connection.btn_update_secret_short') }}
                                                 </a>
+                                                @endcan
+
+                                                @can('updateConnection', $connection)
                                                 <a href="#" class="flex items-center gap-2 w-full last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
                                                     @icon('refresh', 'w-5 h-5 text-gray-600 dark:text-gray-300') {{ __('legal-entity-connection.btn_update_callback_short') }}
                                                 </a>
+                                                @endcan
                                             </div>
                                         </div>
                                     </div>
@@ -159,13 +164,9 @@
             <div class="flex flex-col gap-6 max-w-2xl">
                 <div class="form-group group top-3 grow">
                     <input type="text"
-
-                           id="client_id"
-
-                           placeholder=" "
-
-                           class="input peer"
-
+                        id="client_id"
+                        placeholder=" "
+                        class="input peer"
                     >
                     <label for="client_id" class="label">
                         {{ __('legal-entity-connection.client_id_label_lower') }}
@@ -175,20 +176,14 @@
 
             <div class="flex items-center gap-4 mt-8">
                 <button type="button"
-
-                        @click="openGrantAccessDrawer = false"
-
-                        class="button-minor px-6"
-
+                    @click="openGrantAccessDrawer = false"
+                    class="button-minor px-6"
                 >
                     {{ __('legal-entity-connection.btn_back') }}
                 </button>
                 <button type="button"
-
                         @click="openGrantAccessDrawer = false; showSignatureModal = true"
-
                         class="button-primary px-6"
-
                 >
                     {{ __('legal-entity-connection.btn_sign') }}
                 </button>

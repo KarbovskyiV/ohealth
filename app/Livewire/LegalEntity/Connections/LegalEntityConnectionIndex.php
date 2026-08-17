@@ -2,8 +2,12 @@
 
 namespace App\Livewire\LegalEntity\Connections;
 
+use App\Models\Client;
 use Livewire\Component;
+use App\Models\Connection;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Computed;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class LegalEntityConnectionIndex extends Component
 {
@@ -27,42 +31,36 @@ class LegalEntityConnectionIndex extends Component
         ]);
     }
 
+    #[Computed]
+    public function connections(): LengthAwarePaginator
+    {
+        $ownerUuid = Client::where('legal_entity_id', $this->legalEntity->id)->value('user_uuid');
+
+        $connections = Connection::with(['legalEntity', 'client'])
+            ->whereHas('client', function ($query) use ($ownerUuid) {
+                $query->where('user_uuid', $ownerUuid);
+            })
+            ->get();
+
+        // Pagination
+        $perPage = config('pagination.per_page');
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $currentItems = $connections->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        return new LengthAwarePaginator(
+            $currentItems,
+            $connections->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url()]
+        );
+    }
+
     #[Title('Зв\'язки МІС та СГуСОЗ')]
     public function render()
     {
-        $connections = collect([
-            [
-                'id' => 1,
-                'name' => 'ТОВ "Класна лікарня"',
-                'identifier' => '1331qwee13-1312qe11',
-                'mis_id' => 'MIS-12334145',
-                'conn_id' => 'conn-13-1312qe11',
-                'callback' => 'https://mis.example.com/',
-                'status' => 'Активний',
-                'created_at' => '22.06.2026',
-            ],
-            [
-                'id' => 2,
-                'name' => 'КНП "Лікарня №4"',
-                'identifier' => '1331qwee13-1312qe11',
-                'mis_id' => 'MIS-12334145',
-                'conn_id' => 'conn-13-1312qe11',
-                'callback' => 'https://mis.example.com/',
-                'status' => 'Активний',
-                'created_at' => '22.06.2026',
-            ],
-        ]);
-
-        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
-            $connections,
-            $connections->count(),
-            10,
-            1,
-            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
-        );
-
-        return view('livewire.division.legal-entity-connection.legal-entity-connection-index', [
-            'connections' => $paginator
+        return view('livewire.legal-entity.connection.connection-index', [
+            'connections' => $this->connections(),
         ]);
     }
 }
