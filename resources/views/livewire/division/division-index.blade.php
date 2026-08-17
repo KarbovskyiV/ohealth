@@ -80,7 +80,7 @@
                     {{-- Filters --}}
                     <div x-cloak x-show="showFilter" x-transition class="pt-0 mt-4 w-full lg:w-96">
                         <div class="flex flex-col gap-4">
-                            <div class="form-group group">
+                            <div class="form-group group relative" style="z-index: 30;">
                                 <x-forms.multiselect
                                     bind="typeFilter"
                                     :options="$availableTypes"
@@ -89,7 +89,7 @@
                                 />
                             </div>
 
-                            <div class="form-group group">
+                            <div class="form-group group relative" style="z-index: 20;">
                                 <x-forms.multiselect
                                     bind="searchByUuid"
                                     :options="$divisionUuids"
@@ -98,7 +98,7 @@
                                 />
                             </div>
 
-                            <div class="form-group group">
+                            <div class="form-group group relative" style="z-index: 10;">
                                 <x-forms.multiselect
                                     bind="statusFilter"
                                     :options="DivisionStatus::entries()"
