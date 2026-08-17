@@ -84,7 +84,8 @@ class EncounterPolicy
         }
 
         return Approval::grantingWriteAccessTo($encounter->uuid)
-            ->isAlive()
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '>', now())
             ->isVerified()
             ->whereHas(
                 'grantedTo',

@@ -190,19 +190,9 @@ class Immunization extends Model
     protected function explanation(): Attribute
     {
         return Attribute::make(
-            get: fn () => [
-                'reasons' => $this->explanations()
-                    ->with(['reasons.coding'])
-                    ->get()
-                    ->pluck('reasons')
-                    ->filter()
-                    ?->toArray() ?: [],
-                'reasonsNotGiven' => $this->explanations()
-                    ->with(['reasonsNotGiven.coding'])
-                    ->get()
-                    ->pluck('reasonsNotGiven')
-                    ->filter()
-                    ?->toArray() ?: []
+            get: fn (): array => [
+                'reasons' => $this->explanations->pluck('reasons')->filter()->toArray(),
+                'reasonsNotGiven' => $this->explanations->pluck('reasonsNotGiven')->filter()->toArray()
             ]
         );
     }

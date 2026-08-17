@@ -6,10 +6,12 @@ namespace App\Classes\eHealth\Api;
 
 use App\Classes\eHealth\EHealthRequest as Request;
 use App\Classes\eHealth\EHealthResponse;
+use App\Classes\eHealth\ValidationRuleBuilder;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use GuzzleHttp\Promise\PromiseInterface;
+use Illuminate\Support\Facades\Validator;
 
 class Patient extends Request
 {
@@ -27,6 +29,7 @@ class Patient extends Request
      */
     public function getActiveDiagnoses(string $patientId, array $query = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateDiagnoses(...));
         $this->setDefaultPageSize();
 
         $mergedQuery = array_merge($this->options['query'], $query ?? []);
@@ -108,6 +111,36 @@ class Patient extends Request
         $mergedQuery = array_merge($this->options['query'], $query ?? []);
 
         return $this->get(self::URL . "/$patientId/summary/medication_statements", $mergedQuery);
+    }
+
+    /**
+     * Validate a list of active diagnoses from eHealth API response.
+     *
+     * @param  EHealthResponse  $response
+     * @return array
+     */
+    protected function validateDiagnoses(EHealthResponse $response): array
+    {
+        $rules = collect($this->diagnosisValidationRules())
+            ->mapWithKeys(static fn (array $rule, string $field): array => ["*.$field" => $rule])
+            ->toArray();
+
+        return Validator::make($response->getData(), $rules)->validate();
+    }
+
+    /**
+     * Validation rules for a single active diagnosis.
+     *
+     * @return array
+     */
+    protected function diagnosisValidationRules(): array
+    {
+        return ValidationRuleBuilder::merge(
+            ['rank' => ['nullable', 'integer']],
+            ValidationRuleBuilder::identifierRules('condition', true),
+            ValidationRuleBuilder::codeableConceptRules('code', true),
+            ValidationRuleBuilder::codeableConceptRules('role', true)
+        );
     }
 
     /**

@@ -359,6 +359,10 @@ return [
     'new_primary_diagnose' => "Ви вказали новий основний діагноз.<br> Підтвердження дії змінить основний діагноз епізоду медичної допомоги!",
     'duplicate_code_warning' => 'Такий код вже існує',
 
+    // Diagnoses
+    'diagnosis_role' => 'Роль діагнозу',
+    'diagnosis_rank' => 'Пріоритет',
+
     // Conditions
     'condition' => 'Стан',
     'conditions' => 'Стани',

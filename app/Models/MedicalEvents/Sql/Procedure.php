@@ -257,6 +257,34 @@ class Procedure extends Model
         );
     }
 
+    /**
+     * Limit procedures to the services allowed in the patient summary.
+     * The procedure stores its service as a reference, so the allowed service codes are resolved to ids first.
+     * An empty list of allowed codes leaves the query untouched.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function allowedForSummary(Builder $query): Builder
+    {
+        $allowedCodes = config('ehealth.summary_procedures_allowed');
+
+        if (empty($allowedCodes)) {
+            return $query;
+        }
+
+        $serviceIds = dictionary()->services()
+            ->flattened()
+            ->whereIn('code', $allowedCodes)
+            ->pluck('id');
+
+        return $query->whereHas(
+            'code',
+            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $serviceIds)
+        );
+    }
+
     #[Scope]
     protected function withAllRelations(Builder $query): Builder
     {
