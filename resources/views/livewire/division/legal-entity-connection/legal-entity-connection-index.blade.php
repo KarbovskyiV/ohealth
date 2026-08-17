@@ -4,7 +4,7 @@
 
     <x-header-navigation class="items-start">
         <x-slot name="title">
-            {{ __('mis-connection.index_title') }}
+            {{ __('legal-entity-connection.index_title') }}
         </x-slot>
 
         <div class="mt-3 ml-0 flex flex-col sm:flex-row sm:flex-wrap gap-2 self-start">
@@ -16,7 +16,7 @@
 
             >
                 @icon('plus', 'w-4 h-4')
-                {{ __('mis-connection.btn_grant_access') }}
+                {{ __('legal-entity-connection.btn_grant_access') }}
             </button>
 
             <button type="button"
@@ -27,7 +27,7 @@
 
             >
                 @icon('refresh', 'w-4 h-4')
-                <span>{{ __('mis-connection.sync_data') }}</span>
+                <span>{{ __('legal-entity-connection.sync_data') }}</span>
             </button>
         </div>
     </x-header-navigation>
@@ -39,13 +39,13 @@
                     <table class="index-table">
                         <thead class="index-table-thead">
                         <tr>
-                            <th class="index-table-th w-[20%]">{!! __('mis-connection.table_facility_name_id') !!}</th>
-                            <th class="index-table-th w-[15%]">{!! __('mis-connection.table_mis_id') !!}</th>
-                            <th class="index-table-th w-[15%]">{!! __('mis-connection.table_conn_id') !!}</th>
-                            <th class="index-table-th w-[20%]">{!! __('mis-connection.table_callback_url') !!}</th>
-                            <th class="index-table-th w-[10%]">{{ __('mis-connection.table_status') }}</th>
-                            <th class="index-table-th w-[10%]">{{ __('mis-connection.table_created') }}</th>
-                            <th class="index-table-th w-[10%]">{{ __('mis-connection.table_action') }}</th>
+                            <th class="index-table-th w-[20%]">{!! __('legal-entity-connection.table_facility_name_id') !!}</th>
+                            <th class="index-table-th w-[15%]">{!! __('legal-entity-connection.table_mis_id') !!}</th>
+                            <th class="index-table-th w-[15%]">{!! __('legal-entity-connection.table_conn_id') !!}</th>
+                            <th class="index-table-th w-[20%]">{!! __('legal-entity-connection.table_callback_url') !!}</th>
+                            <th class="index-table-th w-[10%]">{{ __('legal-entity-connection.table_status') }}</th>
+                            <th class="index-table-th w-[10%]">{{ __('legal-entity-connection.table_created') }}</th>
+                            <th class="index-table-th w-[10%]">{{ __('legal-entity-connection.table_action') }}</th>
                         </tr>
                         </thead>
 
@@ -123,13 +123,13 @@
                                                 class="absolute right-0 mt-2 w-48 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-md z-50"
                                             >
                                                 <a href="#" class="flex items-center gap-2 w-full first-of-type:rounded-t-md px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                                    @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300') {{ __('mis-connection.btn_view_details') }}
+                                                    @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300') {{ __('legal-entity-connection.btn_view_details') }}
                                                 </a>
                                                 <a href="#" class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                                    @icon('refresh', 'w-5 h-5 text-gray-600 dark:text-gray-300') {{ __('mis-connection.btn_update_secret_short') }}
+                                                    @icon('refresh', 'w-5 h-5 text-gray-600 dark:text-gray-300') {{ __('legal-entity-connection.btn_update_secret_short') }}
                                                 </a>
                                                 <a href="#" class="flex items-center gap-2 w-full last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                                    @icon('refresh', 'w-5 h-5 text-gray-600 dark:text-gray-300') {{ __('mis-connection.btn_update_callback_short') }}
+                                                    @icon('refresh', 'w-5 h-5 text-gray-600 dark:text-gray-300') {{ __('legal-entity-connection.btn_update_callback_short') }}
                                                 </a>
                                             </div>
                                         </div>
@@ -152,7 +152,7 @@
 
     <x-dialog-drawer x-model="openGrantAccessDrawer" maxWidth="4/5" overlayWidth="100%">
         <x-slot name="title">
-            <span class="text-xl font-semibold">{{ __('mis-connection.btn_grant_access') }}</span>
+            <span class="text-xl font-semibold">{{ __('legal-entity-connection.btn_grant_access') }}</span>
         </x-slot>
 
         <form class="space-y-6 mt-6">
@@ -168,7 +168,7 @@
 
                     >
                     <label for="client_id" class="label">
-                        {{ __('mis-connection.client_id_label_lower') }}
+                        {{ __('legal-entity-connection.client_id_label_lower') }}
                     </label>
                 </div>
             </div>
@@ -181,7 +181,7 @@
                         class="button-minor px-6"
 
                 >
-                    {{ __('mis-connection.btn_back') }}
+                    {{ __('legal-entity-connection.btn_back') }}
                 </button>
                 <button type="button"
 
@@ -190,7 +190,7 @@
                         class="button-primary px-6"
 
                 >
-                    {{ __('mis-connection.btn_sign') }}
+                    {{ __('legal-entity-connection.btn_sign') }}
                 </button>
             </div>
         </form>
@@ -198,7 +198,7 @@
 
     <x-dialog-drawer x-model="showSignatureModal" maxWidth="4/5" overlayWidth="100%">
         <x-slot name="title">
-            <span class="text-xl font-semibold">{{ __('mis-connection.signature_modal_title') }}</span>
+            <span class="text-xl font-semibold">{{ __('legal-entity-connection.signature_modal_title') }}</span>
         </x-slot>
 
         <div x-data="{
@@ -320,7 +320,7 @@
                         class="button-minor"
 
                 >
-                    {{ __('mis-connection.btn_cancel') }}
+                    {{ __('legal-entity-connection.btn_cancel') }}
                 </button>
                 <button wire:click="sign"
                         type="button"
@@ -329,7 +329,7 @@
                         wire:loading.class="opacity-50 cursor-not-allowed"
                         wire:target="sign"
                 >
-                    <span wire:loading.remove wire:target="sign">{{ __('mis-connection.btn_sign') }}</span>
+                    <span wire:loading.remove wire:target="sign">{{ __('legal-entity-connection.btn_sign') }}</span>
                     <span wire:loading wire:target="sign">{{ __('forms.signature') }}...</span>
                 </button>
             </div>

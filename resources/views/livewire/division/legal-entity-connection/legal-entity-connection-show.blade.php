@@ -12,7 +12,7 @@
 
     <x-header-navigation class="breadcrumb-form">
         <x-slot name="title">
-            {{ __('mis-connection.details_title') }} {{ $connectionId }}
+            {{ __('legal-entity-connection.details_title') }} {{ $connectionId }}
         </x-slot>
         <x-slot name="actions">
             <button type="button"
@@ -21,7 +21,7 @@
 
             >
                 @icon('refresh', 'w-4 h-4')
-                <span>{{ __('mis-connection.sync_data') }}</span>
+                <span>{{ __('legal-entity-connection.sync_data') }}</span>
             </button>
         </x-slot>
     </x-header-navigation>
@@ -42,7 +42,7 @@
                        disabled
 
                 >
-                <label for="name" class="label">{{ __('mis-connection.facility_name') }}</label>
+                <label for="name" class="label">{{ __('legal-entity-connection.facility_name') }}</label>
             </div>
 
             <div class="form-group group">
@@ -59,7 +59,7 @@
                        disabled
 
                 >
-                <label for="callback" class="label">{{ __('mis-connection.callback_url_label') }}</label>
+                <label for="callback" class="label">{{ __('legal-entity-connection.callback_url_label') }}</label>
             </div>
 
             <div class="form-group group">
@@ -76,7 +76,7 @@
                        disabled
 
                 >
-                <label for="client_id" class="label">{{ __('mis-connection.client_id_label') }}</label>
+                <label for="client_id" class="label">{{ __('legal-entity-connection.client_id_label') }}</label>
             </div>
 
             <div class="form-group group">
@@ -93,7 +93,7 @@
                        disabled
 
                 >
-                <label for="status" class="label">{{ __('mis-connection.status') }}</label>
+                <label for="status" class="label">{{ __('legal-entity-connection.status') }}</label>
             </div>
 
             <div class="form-group group">
@@ -110,7 +110,7 @@
                        disabled
 
                 >
-                <label for="consumer_id" class="label">{{ __('mis-connection.consumer_id_label') }}</label>
+                <label for="consumer_id" class="label">{{ __('legal-entity-connection.consumer_id_label') }}</label>
             </div>
 
             <div class="form-group group">
@@ -127,7 +127,7 @@
                        disabled
 
                 >
-                <label for="created_at" class="label">{{ __('mis-connection.created_at') }}</label>
+                <label for="created_at" class="label">{{ __('legal-entity-connection.created_at') }}</label>
             </div>
 
             <div class="form-group group">
@@ -144,7 +144,7 @@
                        disabled
 
                 >
-                <label for="conn_id" class="label">{{ __('mis-connection.conn_id_label') }}</label>
+                <label for="conn_id" class="label">{{ __('legal-entity-connection.conn_id_label') }}</label>
             </div>
 
             <div class="form-group group">
@@ -161,17 +161,17 @@
                        disabled
 
                 >
-                <label for="updated_at" class="label">{{ __('mis-connection.updated_at') }}</label>
+                <label for="updated_at" class="label">{{ __('legal-entity-connection.updated_at') }}</label>
             </div>
         </div>
 
         <div class="mt-12 flex flex-row items-center gap-4">
-            <a href="{{ route('mis-ehealth-connections.index', ['legalEntity' => $legalEntity]) }}"
+            <a href="{{ route('legal-entity-connection.index', ['legalEntity' => $legalEntity]) }}"
 
                class="button-minor px-6"
 
             >
-                {{ __('mis-connection.btn_back') }}
+                {{ __('legal-entity-connection.btn_back') }}
             </a>
             <button type="button"
 
@@ -180,7 +180,7 @@
                     class="button-primary-outline-red"
 
             >
-                {{ __('mis-connection.btn_terminate_connection') }}
+                {{ __('legal-entity-connection.btn_terminate_connection') }}
             </button>
             <button type="button"
 
@@ -191,7 +191,7 @@
             >
                 <span class="flex items-center gap-2">
                     @icon('refresh', 'w-4 h-4')
-                    {{ __('mis-connection.btn_update_secret') }}
+                    {{ __('legal-entity-connection.btn_update_secret') }}
                 </span>
             </button>
             <button type="button"
@@ -203,14 +203,14 @@
             >
                 <span class="flex items-center gap-2">
                     @icon('refresh', 'w-4 h-4')
-                    {{ __('mis-connection.btn_update_callback') }}
+                    {{ __('legal-entity-connection.btn_update_callback') }}
                 </span>
             </button>
         </div>
     </div>
     <x-dialog-drawer x-model="openTerminateConnectionDrawer" maxWidth="4/5" overlayWidth="100%">
         <x-slot name="title">
-            <span class="text-xl font-semibold">{{ __('mis-connection.terminate_title') }} {{ $connectionId }}</span>
+            <span class="text-xl font-semibold">{{ __('legal-entity-connection.terminate_title') }} {{ $connectionId }}</span>
         </x-slot>
 
         <div class="mt-6 max-w-5xl">
@@ -220,10 +220,10 @@
                         @icon('alert-circle', 'h-5 w-5 text-red-600')
                     </div>
                     <div class="ml-3">
-                        <h3 class="text-sm font-bold text-red-600 uppercase">{{ __('mis-connection.warning_title') }}</h3>
+                        <h3 class="text-sm font-bold text-red-600 uppercase">{{ __('legal-entity-connection.warning_title') }}</h3>
                         <div class="mt-2 text-sm text-red-600 space-y-1">
-                            <p>{{ __('mis-connection.terminate_warning_text') }}</p>
-                            <p>{{ __('mis-connection.terminate_confirm_text') }}</p>
+                            <p>{{ __('legal-entity-connection.terminate_warning_text') }}</p>
+                            <p>{{ __('legal-entity-connection.terminate_confirm_text') }}</p>
                         </div>
                     </div>
                 </div>
@@ -237,16 +237,16 @@
                         class="button-minor px-6"
 
                 >
-                    {{ __('mis-connection.btn_back') }}
+                    {{ __('legal-entity-connection.btn_back') }}
                 </button>
                 <button type="button"
 
-                        @click="window.location.href='{{ route('mis-ehealth-connections.index', ['legalEntity' => $legalEntity]) }}'"
+                        @click="window.location.href='{{ route('legal-entity-connection.index', ['legalEntity' => $legalEntity]) }}'"
 
                         class="bg-[#b91c1c] text-white hover:bg-red-800 font-medium rounded-md text-sm px-5 py-2.5 outline-none transition-colors"
 
                 >
-                    {{ __('mis-connection.btn_terminate_connection') }}
+                    {{ __('legal-entity-connection.btn_terminate_connection') }}
                 </button>
             </div>
         </div>
@@ -254,8 +254,8 @@
     <x-dialog-drawer x-model="openUpdateSecretDrawer" maxWidth="4/5" overlayWidth="100%">
         <x-slot name="title">
             <span class="text-xl font-semibold">
-                <span x-show="isSecretUpdated" x-cloak>{{ __('mis-connection.secret_updated_title') }}</span>
-                <span x-show="!isSecretUpdated">{{ __('mis-connection.update_secret_title') }}</span>
+                <span x-show="isSecretUpdated" x-cloak>{{ __('legal-entity-connection.secret_updated_title') }}</span>
+                <span x-show="!isSecretUpdated">{{ __('legal-entity-connection.update_secret_title') }}</span>
             </span>
         </x-slot>
 
@@ -276,7 +276,7 @@
                                disabled
 
                         >
-                        <label for="updated_secret" class="label">{{ __('mis-connection.secret_string_label') }}</label>
+                        <label for="updated_secret" class="label">{{ __('legal-entity-connection.secret_string_label') }}</label>
                     </div>
 
                     <div class="hidden md:block"></div>
@@ -295,7 +295,7 @@
                                disabled
 
                         >
-                        <label for="updated_client_id" class="label">{{ __('mis-connection.client_id_label') }}</label>
+                        <label for="updated_client_id" class="label">{{ __('legal-entity-connection.client_id_label') }}</label>
                     </div>
                     
                     <div class="form-group group">
@@ -312,7 +312,7 @@
                                disabled
 
                         >
-                        <label for="updated_callback" class="label">{{ __('mis-connection.callback_url_label') }}</label>
+                        <label for="updated_callback" class="label">{{ __('legal-entity-connection.callback_url_label') }}</label>
                     </div>
 
                     <div class="form-group group">
@@ -329,7 +329,7 @@
                                disabled
 
                         >
-                        <label for="updated_consumer_id" class="label">{{ __('mis-connection.consumer_id_label') }}</label>
+                        <label for="updated_consumer_id" class="label">{{ __('legal-entity-connection.consumer_id_label') }}</label>
                     </div>
 
                     <div class="form-group group">
@@ -346,7 +346,7 @@
                                disabled
 
                         >
-                        <label for="updated_conn_id" class="label">{{ __('mis-connection.conn_id_label') }}</label>
+                        <label for="updated_conn_id" class="label">{{ __('legal-entity-connection.conn_id_label') }}</label>
                     </div>
                 </div>
 
@@ -358,7 +358,7 @@
                             class="button-minor px-6"
 
                     >
-                        {{ __('mis-connection.btn_close') }}
+                        {{ __('legal-entity-connection.btn_close') }}
                     </button>
                 </div>
             </div>
@@ -379,7 +379,7 @@
                                disabled
 
                         >
-                        <label for="secret_client_id" class="label">{{ __('mis-connection.client_id_label_lower') }}</label>
+                        <label for="secret_client_id" class="label">{{ __('legal-entity-connection.client_id_label_lower') }}</label>
                     </div>
 
                     <div class="form-group group">
@@ -396,7 +396,7 @@
                                disabled
 
                         >
-                        <label for="secret_conn_id" class="label">{{ __('mis-connection.conn_id_label_lower') }}</label>
+                        <label for="secret_conn_id" class="label">{{ __('legal-entity-connection.conn_id_label_lower') }}</label>
                     </div>
                 </div>
 
@@ -408,7 +408,7 @@
                             class="button-minor px-6"
 
                     >
-                        {{ __('mis-connection.btn_back') }}
+                        {{ __('legal-entity-connection.btn_back') }}
                     </button>
                     <button type="button"
 
@@ -417,7 +417,7 @@
                             class="button-primary px-6"
 
                     >
-                        {{ __('mis-connection.btn_update') }}
+                        {{ __('legal-entity-connection.btn_update') }}
                     </button>
                 </div>
             </div>
@@ -426,8 +426,8 @@
     <x-dialog-drawer x-model="openUpdateCallbackDrawer" maxWidth="4/5" overlayWidth="100%">
         <x-slot name="title">
             <span class="text-xl font-semibold">
-                <span x-show="isCallbackUpdated" x-cloak>{{ __('mis-connection.callback_updated_title') }}</span>
-                <span x-show="!isCallbackUpdated">{{ __('mis-connection.update_callback_title') }}</span>
+                <span x-show="isCallbackUpdated" x-cloak>{{ __('legal-entity-connection.callback_updated_title') }}</span>
+                <span x-show="!isCallbackUpdated">{{ __('legal-entity-connection.update_callback_title') }}</span>
             </span>
         </x-slot>
 
@@ -448,7 +448,7 @@
                                disabled
 
                         >
-                        <label for="updated_callback_url" class="label">{{ __('mis-connection.callback_url_label') }}</label>
+                        <label for="updated_callback_url" class="label">{{ __('legal-entity-connection.callback_url_label') }}</label>
                     </div>
 
                     <div class="form-group group">
@@ -465,7 +465,7 @@
                                disabled
 
                         >
-                        <label for="updated_callback_consumer_id" class="label">{{ __('mis-connection.consumer_id_label') }}</label>
+                        <label for="updated_callback_consumer_id" class="label">{{ __('legal-entity-connection.consumer_id_label') }}</label>
                     </div>
 
                     <div class="form-group group">
@@ -482,7 +482,7 @@
                                disabled
 
                         >
-                        <label for="updated_callback_client_id" class="label">{{ __('mis-connection.client_id_label') }}</label>
+                        <label for="updated_callback_client_id" class="label">{{ __('legal-entity-connection.client_id_label') }}</label>
                     </div>
 
                     <div class="form-group group">
@@ -499,7 +499,7 @@
                                disabled
 
                         >
-                        <label for="updated_callback_conn_id" class="label">{{ __('mis-connection.conn_id_label') }}</label>
+                        <label for="updated_callback_conn_id" class="label">{{ __('legal-entity-connection.conn_id_label') }}</label>
                     </div>
                 </div>
 
@@ -511,7 +511,7 @@
                             class="button-minor px-6"
 
                     >
-                        {{ __('mis-connection.btn_close') }}
+                        {{ __('legal-entity-connection.btn_close') }}
                     </button>
                 </div>
             </div>
@@ -531,7 +531,7 @@
                                disabled
 
                         >
-                        <label for="callback_client_id" class="label">{{ __('mis-connection.client_id_label_lower') }}</label>
+                        <label for="callback_client_id" class="label">{{ __('legal-entity-connection.client_id_label_lower') }}</label>
                     </div>
 
                     <div class="form-group group">
@@ -548,7 +548,7 @@
                                disabled
 
                         >
-                        <label for="callback_conn_id" class="label">{{ __('mis-connection.conn_id_label_lower') }}</label>
+                        <label for="callback_conn_id" class="label">{{ __('legal-entity-connection.conn_id_label_lower') }}</label>
                     </div>
 
                     <div class="form-group group">
@@ -563,7 +563,7 @@
                                value="{{ $connection['callback'] }}"
 
                         >
-                        <label for="callback_url_input" class="label">{{ __('mis-connection.callback_url_label') }}</label>
+                        <label for="callback_url_input" class="label">{{ __('legal-entity-connection.callback_url_label') }}</label>
                     </div>
                 </div>
 
@@ -575,7 +575,7 @@
                             class="button-minor px-6"
 
                     >
-                        {{ __('mis-connection.btn_back') }}
+                        {{ __('legal-entity-connection.btn_back') }}
                     </button>
                     <button type="button"
 
@@ -584,7 +584,7 @@
                             class="button-primary px-6"
 
                     >
-                        {{ __('mis-connection.btn_update') }}
+                        {{ __('legal-entity-connection.btn_update') }}
                     </button>
                 </div>
             </div>

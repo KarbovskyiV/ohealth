@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Livewire\MisConnection;
+namespace App\Livewire\LegalEntity\Connections;
 
 use Livewire\Component;
 use Livewire\Attributes\Title;
 
-class MisConnectionIndex extends Component
+class LegalEntityConnectionIndex extends Component
 {
     public bool $showSignatureModal = false;
     public array $form = [];
@@ -21,7 +21,7 @@ class MisConnectionIndex extends Component
         $this->showSignatureModal = false;
 
         session()->flash('success', 'Зв\'язок успішно встановлений!');
-        return redirect()->route('mis-ehealth-connections.show', [
+        return redirect()->route('legal-entity-connection.show', [
             'legalEntity' => $this->legalEntity ?? 1,
             'id' => 'conn-13-1312qe11'
         ]);
@@ -61,7 +61,7 @@ class MisConnectionIndex extends Component
             ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
         );
 
-        return view('livewire.mis-connection.mis-connection-index', [
+        return view('livewire.division.legal-entity-connection.legal-entity-connection-index', [
             'connections' => $paginator
         ]);
     }

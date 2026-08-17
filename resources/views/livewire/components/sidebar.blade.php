@@ -97,8 +97,8 @@
 
             @if (legalEntity() && Auth::user()->cannot('limitedAction', LegalEntity::class))
                     <li>
-                        <a href="{{ route('mis-ehealth-connections.index', [legalEntity()]) }}"
-                           class="menu-item-simple {{ request()->routeIs('mis-ehealth-connections.*') ? 'menu-item-active' : '' }}"
+                        <a href="{{ route('legal-entity-connection.index', [legalEntity()]) }}"
+                           class="menu-item-simple {{ request()->routeIs('legal-entity-connection.*') ? 'menu-item-active' : '' }}"
                         >
                             @icon('connection-two-way')
                             <span>{{ __('Зв\'язки МІС та СГуСОЗ') }}</span>

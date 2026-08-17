@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Livewire\MisConnection;
+namespace App\Livewire\LegalEntity\Connections;
 
 use Livewire\Component;
 use Livewire\Attributes\Title;
 
-class MisConnectionShow extends Component
+class LegalEntityConnectionShow extends Component
 {
     public string $connectionId;
     public array $connection;
@@ -32,6 +32,6 @@ class MisConnectionShow extends Component
     #[Title('Деталі зв\'язку')]
     public function render()
     {
-        return view('livewire.mis-connection.mis-connection-show');
+        return view('livewire.division.legal-entity-connection.legal-entity-connection-show');
     }
 }
