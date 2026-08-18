@@ -18,6 +18,7 @@
         ['id' => 'procedures', 'label' => __('patients.procedures'), 'icon' => 'settings', 'view' => 'livewire.encounter.parts.procedures', 'holdsCancellableRecords' => true],
         ['id' => 'diagnostic-reports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity', 'view' => 'livewire.encounter.parts.diagnostic-reports', 'holdsCancellableRecords' => true],
         ['id' => 'clinical-impressions', 'label' => __('patients.clinical_impressions'), 'icon' => 'check', 'view' => 'livewire.encounter.parts.clinical-impressions', 'holdsCancellableRecords' => true],
+        ['id' => 'devices', 'label' => __('patients.associated_medical_devices'), 'icon' => 'equipment', 'view' => 'livewire.encounter.parts.device', 'holdsCancellableRecords' => true],
     ];
 
     $footerItems = [];
