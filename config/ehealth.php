@@ -126,6 +126,7 @@ return [
             'education_degree' => ['EXPERT', 'MASTER', 'BACHELOR', 'JUNIOR_EXPERT'],
             'qualification_type' => ['REATTESTATION', 'SPECIALIZATION', 'STAZHUVANNYA', 'POSTGRADUATE'],
             'speciality_level' => ['FIRST', 'SECOND', 'HIGHEST', 'NOT_APPLICABLE'],
+            'speciality_qualification_type' => ['AWARDING', 'DEFENSE'],
         ],
         'ADMIN' => [
             'position' => [
