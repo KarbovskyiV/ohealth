@@ -20,6 +20,7 @@
         ['id' => 'clinical-impressions', 'label' => __('patients.clinical_impressions'), 'icon' => 'check', 'view' => 'livewire.encounter.parts.clinical-impressions', 'holdsCancellableRecords' => true],
         ['id' => 'devices', 'label' => __('devices.label'), 'icon' => 'equipment', 'view' => 'livewire.encounter.parts.devices', 'holdsCancellableRecords' => true],
         ['id' => 'device-association', 'label' => __('patients.medical_device_connections'), 'icon' => 'boxicons-plug-connect-filled', 'view' => 'livewire.encounter.parts.device-association', 'holdsCancellableRecords' => true],
+        ['id' => 'detected-issue', 'label' => __('patients.detected_medical_device_problems'), 'icon' => 'alert-octagon', 'view' => 'livewire.encounter.parts.detected-issue', 'holdsCancellableRecords' => true],
     ];
 
     $footerItems = [];
