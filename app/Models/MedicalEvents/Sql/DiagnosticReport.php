@@ -301,6 +301,27 @@ class DiagnosticReport extends Model
     }
 
     /**
+     * Limit diagnostic reports to the services allowed in the patient summary.
+     * The report stores its service as a reference, so the allowed service codes are resolved to ids first.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function allowedForSummary(Builder $query): Builder
+    {
+        $serviceIds = dictionary()->services()
+            ->flattened()
+            ->whereIn('code', config('ehealth.summary_diagnostic_reports_allowed'))
+            ->pluck('id');
+
+        return $query->whereHas(
+            'code',
+            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $serviceIds)
+        );
+    }
+
+    /**
      * Scope to eager load all diagnostic report relationships.
      */
     #[Scope]

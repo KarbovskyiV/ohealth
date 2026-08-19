@@ -39,7 +39,7 @@ class DiagnosticReport extends PatientApiBase
      * @param  array  $data
      * @return EHealthResponse|PromiseInterface
      * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
-     * 
+     *
      * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/diagnostic-report-data-package/cancel-diagnostic-report-package
      */
     public function cancel(string $uuid, array $data = []): PromiseInterface|EHealthResponse
@@ -108,6 +108,7 @@ class DiagnosticReport extends PatientApiBase
      */
     public function getSummary(string $patientId, array $query = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateDiagnosticReports(...));
         $this->setDefaultPageSize();
 
         $mergedQuery = array_merge($this->options['query'], $query ?? []);

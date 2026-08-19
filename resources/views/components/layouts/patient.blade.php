@@ -108,13 +108,6 @@
                         </a>
 
                         <a
-                            href="{{ route("$routePrefix.diagnoses", [legalEntity(), $routeParamKey => $recordId]) }}"
-                            class="summary-tab {{ request()->routeIs("$routePrefix.diagnoses") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                        >
-                            {{ __('patients.diagnoses') }}
-                        </a>
-
-                        <a
                             href="javascript:void(0)"
                             class="summary-tab summary-tab-inactive cursor-not-allowed opacity-60"
                         >

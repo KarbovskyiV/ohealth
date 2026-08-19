@@ -250,6 +250,24 @@ class Observation extends Model
     }
 
     /**
+     * Limit observations to the codes allowed in the patient summary.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function allowedForSummary(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'code.coding',
+            static fn (Builder $coding): Builder => $coding->whereIn(
+                'code',
+                config('ehealth.summary_observations_allowed')
+            )
+        );
+    }
+
+    /**
      * Scope to eager load all observation relationships.
      */
     #[Scope]

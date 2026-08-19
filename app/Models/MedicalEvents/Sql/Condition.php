@@ -224,6 +224,24 @@ class Condition extends Model
     }
 
     /**
+     * Limit conditions to the codes allowed in the patient summary.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function allowedForSummary(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'code.coding',
+            static fn (Builder $coding): Builder => $coding->whereIn(
+                'code',
+                config('ehealth.summary_conditions_allowed')
+            )
+        );
+    }
+
+    /**
      * Scope to eager load all condition relationships.
      */
     #[Scope]

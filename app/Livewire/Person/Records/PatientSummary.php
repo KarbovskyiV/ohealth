@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Person\Records;
 
 use App\Classes\eHealth\EHealth;
-use App\Core\Arr;
 use App\Enums\JobStatus;
 use App\Enums\Person\MergedPersonStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -26,6 +25,7 @@ use App\Models\MedicalEvents\Sql\Condition;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Episode;
+use App\Models\MedicalEvents\Sql\PersonCurrentDiagnosis;
 use App\Models\MedicalEvents\Sql\Immunization;
 use App\Models\MedicalEvents\Sql\Observation;
 use App\Models\MedicalEvents\Sql\Procedure;
@@ -60,6 +60,7 @@ class PatientSummary extends BasePatientComponent
         'clinicalImpressions' => self::SUMMARY_PAGE_SIZE,
         'immunizations' => self::SUMMARY_PAGE_SIZE,
         'observations' => self::SUMMARY_PAGE_SIZE,
+        'diagnoses' => self::SUMMARY_PAGE_SIZE,
         'conditions' => self::SUMMARY_PAGE_SIZE,
         'diagnosticReports' => self::SUMMARY_PAGE_SIZE,
         'procedures' => self::SUMMARY_PAGE_SIZE,
@@ -71,6 +72,7 @@ class PatientSummary extends BasePatientComponent
         'clinicalImpressions' => false,
         'immunizations' => false,
         'observations' => false,
+        'diagnoses' => false,
         'conditions' => false,
         'diagnosticReports' => false,
         'procedures' => false,
@@ -135,6 +137,7 @@ class PatientSummary extends BasePatientComponent
         'eHealth/body_sites',
         'eHealth/ICPC2/condition_codes',
         'eHealth/ICD10/condition_codes',
+        'eHealth/diagnosis_roles',
         'eHealth/condition_severities',
         'eHealth/diagnostic_report_categories',
         'eHealth/procedure_categories',
@@ -184,6 +187,7 @@ class PatientSummary extends BasePatientComponent
             'clinicalImpressions' => $this->getClinicalImpressions(),
             'immunizations' => $this->getImmunizations(),
             'observations' => $this->getObservations(),
+            'diagnoses' => $this->getDiagnoses(),
             'conditions' => $this->getConditions(),
             'diagnosticReports' => $this->getDiagnosticReports(),
             'procedures' => $this->getProcedures(),
@@ -443,10 +447,7 @@ class PatientSummary extends BasePatientComponent
         }
 
         try {
-            $response = EHealth::observation()->getBySearchParams(
-                $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
-            );
+            $response = EHealth::observation()->getSummary($this->uuid);
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing observations');
 
@@ -477,7 +478,7 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'observations',
-            Observation::forPatient($this->patient())->withAllRelations(),
+            Observation::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
             'observations'
         );
     }
@@ -486,19 +487,34 @@ class PatientSummary extends BasePatientComponent
     {
         try {
             $response = EHealth::patient()->getActiveDiagnoses($this->uuid);
-
-            // Refresh data for display
-            $this->diagnoses = Arr::toCamelCase($this->formatDatesForDisplay($response->getData()));
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when getting diagnoses');
 
             return;
         }
+
+        try {
+            $validatedData = $response->validate();
+            Repository::personCurrentDiagnosis()->sync($this->patient(), $validatedData);
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Error while synchronizing diagnoses');
+
+            return;
+        }
+
+        $this->resetSummarySection('diagnoses');
+        $this->getDiagnoses();
     }
 
     public function getDiagnoses(): void
     {
-        //
+        $this->setPaginatedRecords(
+            'diagnoses',
+            PersonCurrentDiagnosis::forPatient($this->patient())
+                ->allowedForSummary()
+                ->withAllRelations(),
+            'diagnoses'
+        );
     }
 
     public function syncConditions(): void
@@ -514,10 +530,7 @@ class PatientSummary extends BasePatientComponent
         }
 
         try {
-            $response = EHealth::condition()->getBySearchParams(
-                $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
-            );
+            $response = EHealth::condition()->getSummary($this->uuid);
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing conditions');
 
@@ -548,7 +561,7 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'conditions',
-            Condition::forPatient($this->patient())->withAllRelations(),
+            Condition::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
             'conditions',
             fn (array $conditions) => $this->populateIcd10Descriptions($conditions)
         );
@@ -567,10 +580,7 @@ class PatientSummary extends BasePatientComponent
         }
 
         try {
-            $response = EHealth::diagnosticReport()->getBySearchParams(
-                $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
-            );
+            $response = EHealth::diagnosticReport()->getSummary($this->uuid, );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing diagnostic reports');
 
@@ -601,17 +611,8 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'diagnosticReports',
-            DiagnosticReport::forPatient($this->patient())->withAllRelations(),
+            DiagnosticReport::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
             'diagnosticReports'
-        );
-    }
-
-    public function getProcedures(): void
-    {
-        $this->setPaginatedRecords(
-            'procedures',
-            Procedure::forPatient($this->patient())->withAllRelations(),
-            'procedures'
         );
     }
 
@@ -654,10 +655,7 @@ class PatientSummary extends BasePatientComponent
     public function syncProcedures(): void
     {
         try {
-            $response = EHealth::procedure()->getBySearchParams(
-                $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
-            );
+            $response = EHealth::procedure()->getSummary($this->uuid);
 
             Repository::procedure()->sync($this->patient(), $response->validate());
         } catch (EHealthException|EHealthConnectionException $exception) {
@@ -674,6 +672,15 @@ class PatientSummary extends BasePatientComponent
         $this->getProcedures();
 
         Session::flash('success', __('patients.messages.procedures_synced_successfully'));
+    }
+
+    public function getProcedures(): void
+    {
+        $this->setPaginatedRecords(
+            'procedures',
+            Procedure::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            'procedures'
+        );
     }
 
     /**

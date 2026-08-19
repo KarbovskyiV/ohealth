@@ -22,7 +22,6 @@ use App\Livewire\Person\Records\PatientCarePlans;
 use App\Livewire\Person\Records\PatientClinicalImpressions;
 use App\Livewire\Person\Records\PatientConditions;
 use App\Livewire\Person\Records\PatientData;
-use App\Livewire\Person\Records\PatientDiagnoses;
 use App\Livewire\Person\Records\PatientDiagnosticReports;
 use App\Livewire\Person\Records\PatientEncounters;
 use App\Livewire\Person\Records\PatientImmunizations;
@@ -88,7 +87,6 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
             Route::get('/{person}/observations', PatientObservations::class)->name('observations');
             Route::get('/{person}/immunizations', PatientImmunizations::class)->name('immunizations');
             Route::get('/{person}/conditions', PatientConditions::class)->name('conditions');
-            Route::get('/{person}/diagnoses', PatientDiagnoses::class)->name('diagnoses');
             Route::get('/{person}/diagnostic-reports', PatientDiagnosticReports::class)->name('diagnostic-reports');
             Route::get('/{person}/clinical-impressions', PatientClinicalImpressions::class)->name('clinical-impressions');
             Route::get('/{person}/encounters', PatientEncounters::class)->name('encounters');
@@ -149,7 +147,10 @@ Route::prefix('prepersons')
         Route::get('/{preperson}/edit', PrepersonEdit::class)->can('edit', 'preperson')->name('edit');
 
         Route::get('/{preperson}/patient-data', PrepersonData::class)->can('view', 'preperson')->name('patient-data');
-        Route::get('/{preperson}/summary', PatientSummary::class)->can('view', 'preperson')->name('summary');
+        Route::get('/{preperson}/summary', PatientSummary::class)
+            ->can('view', 'preperson')
+            ->can('viewSummary', 'preperson')
+            ->name('summary');
         Route::get('/{preperson}/episodes', EpisodeIndex::class)->can('view', 'preperson')->name('episodes');
         Route::get('/{preperson}/episodes/create', EpisodeCreate::class)
             ->can('view', 'preperson')
@@ -171,7 +172,6 @@ Route::prefix('prepersons')
             ->can('view', 'preperson')
             ->name('immunizations');
         Route::get('/{preperson}/conditions', PatientConditions::class)->can('view', 'preperson')->name('conditions');
-        Route::get('/{preperson}/diagnoses', PatientDiagnoses::class)->can('view', 'preperson')->name('diagnoses');
         Route::get('/{preperson}/diagnostic-reports', PatientDiagnosticReports::class)
             ->can('view', 'preperson')
             ->name('diagnostic-reports');
