@@ -359,6 +359,10 @@ class EncounterComponent extends Component
         'eHealth/procedure_outcomes',
         'eHealth/clinical_impression_patient_categories',
         'eHealth/cancellation_reasons',
+        'external_system',
+        'device_definition_classification_type',
+        'device_name_type',
+        'device_properties',
         'POSITION'
     ];
 
@@ -1083,6 +1087,20 @@ class EncounterComponent extends Component
         $ruleEngineRules = dictionary()->ruleEngineRules();
         $this->dictionaries['custom/rule_engine_rule_list'] = $ruleEngineRules->ruleList();
         $this->dictionaries['custom/rule_engine_details'] = $ruleEngineRules->details();
+
+        $this->dictionaries['custom/device_definitions'] = dictionary()->deviceDefinitions()
+            ->map(static fn (array $deviceDefinition): array => [
+                'id' => $deviceDefinition['id'],
+                'name' => $deviceDefinition['device_names'][0]['name'],
+                'typeCodes' => collect($deviceDefinition['classification_types'])
+                    ->where('system', 'device_definition_classification_type')
+                    ->pluck('code')
+                    ->map(static fn (mixed $code): string => (string) $code)
+                    ->values()
+                    ->all()
+            ])
+            ->values()
+            ->toArray();
     }
 
     /**
