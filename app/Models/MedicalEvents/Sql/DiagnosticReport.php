@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -199,9 +200,9 @@ class DiagnosticReport extends Model
         return $this->belongsTo(CodeableConcept::class, 'cancellation_reason_id');
     }
 
-    public function performer(): HasOne
+    public function performer(): HasMany
     {
-        return $this->hasOne(DiagnosticReportPerformer::class);
+        return $this->hasMany(DiagnosticReportPerformer::class);
     }
 
     public function managingOrganization(): BelongsTo

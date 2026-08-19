@@ -59,6 +59,12 @@ class DiagnosticReportMapper implements FhirMapperContract
             $result['effectivePeriod'] = $effectivePeriod;
         }
 
+        if (($data['referralType'] ?? null) === 'electronic' && !empty($data['basedOnIdentifier'])) {
+            $result['basedOn'] = FhirResource::make()
+                ->coding('eHealth/resources', 'service_request')
+                ->toIdentifier($data['basedOnIdentifier']);
+        }
+
         $paperReferral = PaperReferralMapper::toFhir($data);
         if ($paperReferral !== null) {
             $result['paperReferral'] = $paperReferral;
@@ -103,13 +109,20 @@ class DiagnosticReportMapper implements FhirMapperContract
         }
 
         if ($data['primarySource']) {
-            $result['performer'] = [
-                [
-                    'reference' => FhirResource::make()
-                        ->coding('eHealth/resources', 'employee')
-                        ->toIdentifier($data['performerEmployeeId']),
-                ],
-            ];
+            $result['performer'] = collect($data['performerEmployeeIds'] ?? [])
+                ->push($data['resultsInterpreterEmployeeId'] ?? null)
+                ->push($uuids['employee'])
+                ->filter()
+                ->unique()
+                ->map(
+                    static fn (string $employeeUuid): array => [
+                        'reference' => FhirResource::make()
+                            ->coding('eHealth/resources', 'employee')
+                            ->toIdentifier($employeeUuid),
+                    ]
+                )
+                ->values()
+                ->toArray();
         } else {
             $result['reportOrigin'] = FhirResource::make()
                 ->coding(
@@ -143,6 +156,7 @@ class DiagnosticReportMapper implements FhirMapperContract
     {
         $effectiveDateTime = data_get($data, 'effectiveDateTime');
         $effectivePeriodStartDate = data_get($data, 'effectivePeriodStartDate', '');
+        $resultsInterpreterEmployeeId = data_get($data, 'resultsInterpreter.reference.identifier.value', '');
 
         return [
             'uuid' => data_get($data, 'uuid'),
@@ -156,7 +170,14 @@ class DiagnosticReportMapper implements FhirMapperContract
             'conclusionCode' => data_get($data, 'conclusionCode.coding.0.code', ''),
             'conclusion' => data_get($data, 'conclusion', ''),
             'divisionId' => data_get($data, 'division.identifier.value', ''),
-            'performerEmployeeId' => data_get($data, 'performer.0.reference.identifier.value', data_get($data, 'performer.reference.identifier.value', '')),
+            'performerEmployeeIds' => collect(data_get($data, 'performer', []))
+                ->map(static fn (array $performer): ?string => data_get($performer, 'reference.identifier.value'))
+                ->filter()
+                ->reject(static fn (string $employeeId): bool => $employeeId === $resultsInterpreterEmployeeId)
+                ->unique()
+                ->values()
+                ->toArray(),
+            'basedOnIdentifier' => data_get($data, 'basedOn.identifier.value', ''),
             'usedReferences' => collect(data_get($data, 'usedReferences', []))
                 ->map(static fn (array $usedReference) => [
                     'id' => data_get($usedReference, 'identifier.value', ''),
@@ -164,7 +185,7 @@ class DiagnosticReportMapper implements FhirMapperContract
                 ->filter(static fn (array $usedReference) => !empty($usedReference['id']))
                 ->values()
                 ->toArray(),
-            'resultsInterpreterEmployeeId' => data_get($data, 'resultsInterpreter.reference.identifier.value', ''),
+            'resultsInterpreterEmployeeId' => $resultsInterpreterEmployeeId,
             'issuedDate' => data_get($data, 'issuedDate'),
             'issuedTime' => data_get($data, 'issuedTime'),
             'effectiveType' => match (true) {

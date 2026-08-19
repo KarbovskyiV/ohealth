@@ -17,6 +17,7 @@ use App\Rules\OnlyOnePrimaryDiagnosis;
 use App\Rules\PastDateTime;
 use App\Services\Dictionary\Mappers\ImmunizationDictionaryMapper;
 use App\Models\Equipment;
+use App\Models\Employee\Employee;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Facades\Auth;
@@ -537,6 +538,39 @@ class EncounterForm extends BaseForm
             ],
             'diagnosticReports.*.reportOriginText' => ['nullable', 'string'],
             ...$this->paperReferralRules('diagnosticReports.*'),
+            'diagnosticReports.*.isReferralAvailable' => [
+                'nullable',
+                'boolean',
+            ],
+
+            'diagnosticReports.*.referralType' => Rule::forEach(
+                function (mixed $value, string $attribute): array {
+                    $index = (int) explode('.', $attribute)[1];
+                    $diagnosticReport = $this->diagnosticReports[$index] ?? [];
+
+                    return [
+                        Rule::requiredIf(($diagnosticReport['isReferralAvailable'] ?? false) === true),
+                        'nullable',
+                        Rule::in(['electronic', 'paper']),
+                    ];
+                }
+            ),
+
+            'diagnosticReports.*.basedOnIdentifier' => Rule::forEach(
+                function (mixed $value, string $attribute): array {
+                    $index = (int) explode('.', $attribute)[1];
+                    $diagnosticReport = $this->diagnosticReports[$index] ?? [];
+                    $isElectronic = ($diagnosticReport['referralType'] ?? null) === 'electronic';
+                    $isPaper = ($diagnosticReport['referralType'] ?? null) === 'paper';
+
+                    return [
+                        Rule::requiredIf($isElectronic),
+                        Rule::prohibitedIf($isPaper),
+                        'nullable',
+                        'uuid',
+                    ];
+                }
+            ),
             'diagnosticReports.*.conclusionCode' => [
                 'nullable',
                 'string',
@@ -608,52 +642,58 @@ class EncounterForm extends BaseForm
                     data_get($this->encounter, 'divisionId'),
                 ]),
             ],
-            'diagnosticReports.*.performerEmployeeId' => Rule::forEach(
-                function (mixed $value, string $attribute): array {
-                    $index = (int) explode('.', $attribute)[1];
+            'diagnosticReports.*.performerEmployeeIds' => [
+                'nullable',
+                'array',
+                static function (
+                    string $attribute,
+                    mixed $value,
+                    Closure $fail
+                ): void {
+                    $employeeIds = array_values(array_filter((array) $value));
 
-                    $primarySource = data_get(
-                        $this->diagnosticReports[$index] ?? [],
-                        'primarySource',
-                        true
-                    );
+                    if (count($employeeIds) !== count(array_unique($employeeIds))) {
+                        $fail(__('validation.distinct', ['attribute' => __('validation.attributes.diagnosticReports.*.performerEmployeeIds.*'),]));
+                    }
+                },
+            ],
 
-                    $divisionUuid = data_get(
-                        $this->encounter,
-                        'divisionId'
-                    );
+            'diagnosticReports.*.performerEmployeeIds.*' => [
+                'required',
+                'uuid',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $employee = Employee::query()
+                        ->where('uuid', $value)
+                        ->first([
+                            'uuid',
+                            'legal_entity_id',
+                            'status',
+                            'employee_type',
+                        ]);
 
-                    return [
-                        Rule::exists('employees', 'uuid')->where(
-                            static function ($query) use ($divisionUuid): void {
-                                $query
-                                    ->where(
-                                        'legal_entity_id',
-                                        legalEntity()->id
-                                    )
-                                    ->where(
-                                        'status',
-                                        Status::APPROVED->value
-                                    )
-                                    ->where('is_active', true)
-                                    ->whereIn('employee_type', [
-                                        Role::DOCTOR->value,
-                                        Role::SPECIALIST->value,
-                                        Role::ASSISTANT->value,
-                                        Role::LABORANT->value,
-                                    ]);
+                    if ($employee === null) {
+                        $fail(__('validation.custom.diagnosticReport.performer.employee_not_found'));
 
-                                if (filled($divisionUuid)) {
-                                    $query->where(
-                                        'division_uuid',
-                                        $divisionUuid
-                                    );
-                                }
-                            }
-                        ),
-                    ];
-                }
-            ),
+                        return;
+                    }
+
+                    if ($employee->legalEntityId !== legalEntity()->id) {
+                        $fail(__('validation.custom.diagnosticReport.performer.employee_wrong_legal_entity', ['employee' => $value,]));
+
+                        return;
+                    }
+
+                    if ($employee->status !== Status::APPROVED) {
+                        $fail(__('validation.custom.diagnosticReport.performer.employee_invalid_status'));
+
+                        return;
+                    }
+
+                    if (!in_array($employee->employeeType, [Role::DOCTOR->value, Role::SPECIALIST->value, Role::ASSISTANT->value, Role::LABORANT->value,], true)) {
+                        $fail(__('validation.custom.diagnosticReport.performer.employee_invalid_type'));
+                    }
+                },
+            ],
             'diagnosticReports.*.resultsInterpreterEmployeeId'
                 => Rule::forEach(
                     function (
@@ -1553,10 +1593,21 @@ class EncounterForm extends BaseForm
             ->getEncounterWriterEmployee($this->encounter['classCode'] ?? null)
             ?->uuid : null;
 
-        $requiredParticipantUuids = collect($this->procedures ?? [])
-            ->concat($this->diagnosticReports ?? [])
-            ->filter(static fn (array $record): bool => ($record['primarySource'] ?? false) === true && !empty($record['performerEmployeeId']))
-            ->pluck('performerEmployeeId')
+        $procedurePerformerUuids = collect($this->procedures ?? [])
+            ->filter(static fn (array $procedure): bool => ($procedure['primarySource'] ?? false) === true&& !empty($procedure['performerEmployeeId']))
+            ->pluck('performerEmployeeId');
+
+        $diagnosticReportPerformerUuids = collect($this->diagnosticReports ?? [])
+            ->filter(static fn (array $diagnosticReport): bool => ($diagnosticReport['primarySource'] ?? false) === true)
+            ->flatMap(
+                static fn (array $diagnosticReport): array => array_filter([
+                    $diagnosticReport['resultsInterpreterEmployeeId'] ?? null,
+                    ...($diagnosticReport['performerEmployeeIds'] ?? []),
+                ])
+            );
+
+        $requiredParticipantUuids = $procedurePerformerUuids
+            ->merge($diagnosticReportPerformerUuids)
             ->when(
                 $encounterWriterEmployeeUuid !== null,
                 static fn ($participants) => $participants->push($encounterWriterEmployeeUuid)

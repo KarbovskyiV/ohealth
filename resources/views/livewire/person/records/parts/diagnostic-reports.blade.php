@@ -48,7 +48,7 @@
                         <div>
                             <div class="record-inner-label">{{ __('patients.performer') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($diagnosticReport, 'performer.displayValue', '-') }}
+                                {{ collect(data_get($diagnosticReport, 'performer', []))->pluck('reference.displayValue')->filter()->join(', ') ?: '-' }}
                             </div>
                         </div>
                         <div>
