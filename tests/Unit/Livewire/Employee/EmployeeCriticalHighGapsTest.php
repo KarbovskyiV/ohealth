@@ -138,4 +138,25 @@ class EmployeeCriticalHighGapsTest extends TestCase
         $this->assertFalse($component->isCorePositionDataLocked);
         $this->assertFalse($component->isPositionDataLocked);
     }
+
+    #[Test]
+    public function sign_success_flashes_and_redirects_to_employee_index(): void
+    {
+        $source = file_get_contents(app_path('Livewire/Employee/AbstractEmployeeFormManager.php'));
+
+        $this->assertNotFalse($source);
+        $this->assertStringContainsString("flashSuccess(__('employees.sign_success'))", $source);
+        $this->assertStringContainsString("redirectRoute('employee.index', [legalEntity()], navigate: true)", $source);
+        $this->assertStringNotContainsString("return redirect()->route('employee.index'", $source);
+    }
+
+    #[Test]
+    public function success_flash_banner_keeps_session_for_redirect_render(): void
+    {
+        $blade = file_get_contents(resource_path('views/livewire/components/x-message.blade.php'));
+
+        $this->assertNotFalse($blade);
+        $this->assertStringNotContainsString("session()->forget('success')", $blade);
+        $this->assertStringContainsString('border-green-200', $blade);
+    }
 }

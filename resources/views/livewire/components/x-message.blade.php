@@ -14,14 +14,10 @@
 
             @session('success')
                 <div role="alert"
-                    class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400"
+                    class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400 border border-green-200 dark:border-green-900"
                 >
                     <span class="font-medium whitespace-pre-line">{{ session('success') }}</span>
                 </div>
-
-                @php
-                    session()->forget('success');
-                @endphp
             @endsession
 
             @session('status')

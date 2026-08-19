@@ -26,8 +26,8 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -161,11 +161,12 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
 
             $this->createLocalUserForEmployeeRequest($requestToSign);
 
-            session()?->flash('success', __('employees.sign_success'));
             $this->resetSignatureFields();
+            $this->showSignatureModal = false;
+            $this->flashSuccess(__('employees.sign_success'));
             Log::info('Successfully signed and will redirect.');
 
-            return redirect()->route('employee.index', ['legalEntity' => legalEntity()->id]);
+            $this->redirectRoute('employee.index', [legalEntity()], navigate: true);
 
         } catch (Exception $e) {
             $this->handleGeneralException($e);
