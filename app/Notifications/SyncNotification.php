@@ -15,6 +15,8 @@ class SyncNotification extends Notification
     protected const array SYNC_ENTITIES = [
         'legators' => 'Синхронізація залежних закладів',
         'legal_entity' => 'Синхронізація даних медичного закладу',
+        'connection' => 'Синхронізація підключень СГуСОЗ',
+        'connection_client' => 'Синхронізація даних клієнтських підключень СГуСОЗ',
         'employee' => 'Синхронізація працівників',
         'employee_request' => 'Синхронізація заявок',
         'employee_request_full' => 'Планова актуалізація заявок',
@@ -99,7 +101,7 @@ class SyncNotification extends Notification
      */
     protected function formatMessage(): string
     {
-        $entity = data_get(self::SYNC_ENTITIES, rtrim($this->type, '_'), 'Синхронізація даних невідомого типу');
+        $entity = data_get(self::SYNC_ENTITIES, rtrim($this->type, '_'), 'Синхронізація даних');
         $action = data_get(self::SYNC_ACTIONS, $this->action, '');
 
         return "{$entity} {$action}.";

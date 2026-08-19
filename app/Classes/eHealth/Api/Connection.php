@@ -36,15 +36,36 @@ class Connection extends Request
     /**
      * Get client (legal entities) details by UUID.
      *
-     * @param  string  $uuid  The unique identifier of the client.
+     * @param  string  $clientId  The unique identifier of the client (uuid).
      * @return PromiseInterface|EHealthResponse
      * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
      */
-    public function getClientDetails(string $uuid): PromiseInterface|EHealthResponse
+    public function getClientDetails(string $clientId): PromiseInterface|EHealthResponse
     {
         $this->setValidator($this->validateClientDetails(...));
 
-        return parent::get(self::URL . '/' . $uuid);
+        return parent::get(self::URL . '/' . $clientId);
+    }
+
+    /**
+     * Get the list of client connections associated with the configured eHealth connection.
+     *
+     * @return PromiseInterface|EHealthResponse
+     *
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     */
+    public function getClientConnections(string $clientId, $query = null): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateClientConnections(...));
+
+        $this->setDefaultPageSize();
+
+        $mergedQuery = array_merge(
+            $this->options['query'] ?? [],
+            $query ?? []
+        );
+
+        return parent::get(self::URL . '/' . $clientId . '/connections', $mergedQuery);
     }
 
     /**
@@ -112,7 +133,7 @@ class Connection extends Request
     {
         return [
             'uuid' => 'required|uuid',
-            'client_type_uuid' => 'required|uuid',
+            'legal_entity_type_uuid' => 'required|uuid',
             'client_type_name' => 'nullable|string',
             'is_blocked' => 'nullable|boolean',
             'block_reason' => 'nullable|string',
@@ -122,6 +143,31 @@ class Connection extends Request
             'ehealth_inserted_at' => 'nullable|date',
             'ehealth_updated_at' => 'nullable|date'
         ];
+    }
+
+
+
+     protected function validateClientConnections(EHealthResponse $response): array
+    {
+        $data = $response->getData();
+
+        $replaced = self::replaceEHealthPropNames($data);
+
+        $validator = Validator::make($replaced, [
+            '*.uuid' => ['required', 'uuid'],
+            '*.client_uuid' => ['required', 'uuid'],
+            '*.consumer_uuid' => ['required', 'uuid'],
+            '*.redirect_uri' => ['required', 'string'],
+            '*.secret' => ['nullable', 'string'],
+            '*.ehealth_inserted_at' => 'nullable|date',
+            '*.ehealth_updated_at' => 'nullable|date'
+        ]);
+
+        if ($validator->fails()) {
+            Log::channel('e_health_errors')->error('Validation failed: ' . implode(', ', $validator->errors()->all()));
+        }
+
+        return $validator->validate();
     }
 
     /**
@@ -137,7 +183,7 @@ class Connection extends Request
                 'id' => 'uuid',
                 'user_id' => 'user_uuid',
                 'consumer_id' => 'consumer_uuid',
-                'client_id' => 'legal_entity_uuid',
+                'client_id' => 'client_uuid',
                 'legal_entity_id' => 'legal_entity_uuid',
                 'client_type_id' => 'legal_entity_type_uuid',
                 'inserted_at' => 'ehealth_inserted_at',

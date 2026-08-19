@@ -15,9 +15,10 @@ return new class extends Migration
     {
         Schema::create('clients', function (Blueprint $table) {
             $table->id();
+            $table->uuid()->nullable()->comment('Client UUID at the eHealth side');
             $table->foreignId('legal_entity_id')->constrained('legal_entities')->cascadeOnDelete();
             $table->uuid('user_uuid')->nullable();
-            $table->foreignId('legal_entity_type_id')->constrained('legal_entity_types')->cascadeOnDelete();
+            $table->foreignId('legal_entity_type_id')->nullable()->constrained('legal_entity_types')->cascadeOnDelete();
             $table->string('name')->nullable();
             $table->json('settings')->nullable();
             $table->boolean('is_blocked')->default(false);
@@ -27,6 +28,8 @@ return new class extends Migration
             $table->date('ehealth_updated_at')->nullable();
 
             $table->timestamps();
+
+            $table->unique('uuid', 'clients_unique');
         });
     }
 
