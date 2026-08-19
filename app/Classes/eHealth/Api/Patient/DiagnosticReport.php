@@ -183,6 +183,7 @@ class DiagnosticReport extends PatientApiBase
                 'effective_date_time' => ['nullable', 'date'],
                 'issued' => ['required', 'date'],
                 'primary_source' => ['required', 'boolean'],
+                'performer' => ['nullable', 'array'],
                 'conclusion' => ['nullable', 'string'],
                 'explanatory_letter' => ['nullable', 'string', 'max:255'],
                 'ehealth_inserted_at' => ['required', 'date'],
@@ -207,7 +208,7 @@ class DiagnosticReport extends PatientApiBase
             ValidationRuleBuilder::codeableConceptCollectionRules('category', true),
 
             // Performer relationships
-            ValidationRuleBuilder::referenceRules('performer'),
+            ValidationRuleBuilder::referenceRules('performer.*', true),
             ValidationRuleBuilder::referenceRules('results_interpreter'),
 
             // Special relationships

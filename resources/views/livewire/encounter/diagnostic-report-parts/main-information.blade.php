@@ -58,7 +58,6 @@
             <div class="form-row-3">
                 <div class="form-group group">
                     <input x-model="modalDiagnosticReport.isReferralAvailable"
-                           @click="modalDiagnosticReport.isReferralAvailable = !modalDiagnosticReport.isReferralAvailable"
                            type="checkbox"
                            name="isDiagnosticReferralAvailable"
                            id="isDiagnosticReferralAvailable"
@@ -92,18 +91,24 @@
                         {{-- Electronic referral --}}
                         <template x-if="modalDiagnosticReport.referralType === 'electronic'" x-transition>
                             <div class="form-group group">
-                                <input wire:model="form.encounter.episode.identifier.value"
-                                       type="text"
-                                       name="eReferralNumber"
-                                       id="eReferralNumber"
-                                       class="input-select peer"
-                                       placeholder=" "
-                                       required
-                                       autocomplete="off"
+                                <input
+                                    x-model="modalDiagnosticReport.basedOnIdentifier"
+                                    type="text"
+                                    name="basedOnIdentifier"
+                                    id="basedOnIdentifier"
+                                    class="input-select peer"
+                                    placeholder=" "
+                                    required
+                                    autocomplete="off"
                                 />
-                                <label for="eReferralNumber" class="label">
-                                    {{ __('forms.number') }}
+
+                                <label for="basedOnIdentifier" class="label">
+                                    {{ __('patients.electronic_referral_id') }}
                                 </label>
+
+                                @error($diagnosticReportErrorPath . '.basedOnIdentifier')
+                                    <p class="text-error">{{ $message }}</p>
+                                @enderror
                             </div>
                         </template>
                     </div>

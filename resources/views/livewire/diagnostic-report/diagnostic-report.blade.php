@@ -111,7 +111,13 @@
         <fieldset @disabled($isReadonly) @class(['pointer-events-none opacity-80' => $isReadonly])>
             @include('livewire.encounter.diagnostic-report-parts.main-information', ['context' => 'diagnostic-report'])
             @include('livewire.encounter.diagnostic-report-parts.additional-information', ['context' => 'diagnostic-report'])
-            @include('livewire.encounter.parts.observations', ['context' => 'diagnostic-report'])
+            <fieldset class="fieldset">
+                <legend class="legend">
+                    {{ __('patients.observations') }}
+                </legend>
+
+                @include('livewire.encounter.parts.observations', ['context' => 'diagnostic-report'])
+            </fieldset>
         </fieldset>
 
         <div class="flex gap-8">
@@ -176,6 +182,7 @@
 
             this.isReferralAvailable = false;
             this.referralType = '';
+            this.basedOnIdentifier = '';
 
             this.paperReferralRequisition = '';
             this.paperReferralRequesterEmployeeName = '';
@@ -193,7 +200,7 @@
             this.reportOriginText = '';
 
             this.divisionId = '';
-            this.performerEmployeeId = '';
+            this.performerEmployeeIds = [];
             this.resultsInterpreterEmployeeId = '';
             this.usedReferences = [];
 

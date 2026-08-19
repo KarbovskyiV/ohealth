@@ -112,6 +112,14 @@ class DiagnosticReportRepository extends BaseRepository
                     Repository::codeableConcept()->attach($division, $datum['division']);
                 }
 
+                $basedOn = null;
+
+                if (isset($datum['basedOn'])) {
+                    $basedOn = Repository::identifier()->store(data_get($datum, 'basedOn.identifier.value'));
+
+                    Repository::codeableConcept()->attach($basedOn, $datum['basedOn']);
+                }
+
                 $diagnosticReport = $this->model->create([
                     'uuid' => $datum['uuid'] ?? $datum['id'],
                     $ownerColumn => $ownerId,
@@ -132,6 +140,7 @@ class DiagnosticReportRepository extends BaseRepository
                     'report_origin_id' => isset($datum['reportOrigin'])
                         ? Repository::codeableConcept()->store($datum['reportOrigin'])->id
                         : null,
+                    'based_on_id' => $basedOn?->id,
                     'ehealth_inserted_at' => now(),
                     'ehealth_updated_at' => now(),
                 ]);
@@ -160,9 +169,7 @@ class DiagnosticReportRepository extends BaseRepository
                     ]);
                 }
 
-                $performerData = data_get($datum, 'performer.0') ?? data_get($datum, 'performer');
-
-                if (!empty($performerData)) {
+                foreach ($datum['performer'] ?? [] as $performerData) {
                     $reference = null;
 
                     if (isset($performerData['reference'])) {
@@ -432,7 +439,6 @@ class DiagnosticReportRepository extends BaseRepository
                     $ownerColumn => $ownerId,
                     'based_on_id' => $basedOn?->id,
                     'code_id' => $code->id,
-                    'effective_date_time' => $datum['effectiveDateTime'] ?? null,
                     'encounter_id' => $encounter?->id,
                     'division_id' => $division?->id,
                     'conclusion_code_id' => $conclusionCode?->id,
@@ -470,8 +476,7 @@ class DiagnosticReportRepository extends BaseRepository
 
                 Repository::period()->sync($diagnosticReport, $data['effective_period'] ?? [], 'effectivePeriod');
 
-                $performerData = data_get($data, 'performer.0') ?? ($data['performer'] ?? []);
-                $this->syncHasOneReference($diagnosticReport, 'performer', $performerData);
+                $this->syncPerformers($diagnosticReport, $data['performer'] ?? []);
                 $this->syncHasOneReference($diagnosticReport, 'resultsInterpreter', $data['results_interpreter'] ?? []);
 
                 $this->syncPivot(
@@ -486,6 +491,56 @@ class DiagnosticReportRepository extends BaseRepository
                 );
             }
         });
+    }
+
+    /**
+     * Sync diagnostic report performers.
+     *
+     * @param DiagnosticReport $diagnosticReport
+     * @param array $performers
+     * @return void
+     */
+    private function syncPerformers(
+        DiagnosticReport $diagnosticReport, 
+        array $performers
+    ): void {
+        $existingPerformers = $diagnosticReport
+            ->performer()
+            ->with('reference.type.coding')
+            ->get()
+            ->values();
+
+        foreach ($performers as $index => $performerData) {
+            $existing = $existingPerformers->get($index);
+            $referenceId = null;
+
+            if (isset($performerData['reference'])) {
+                $referenceValue = data_get($performerData, 'reference.identifier.value');
+
+                $performerData['reference']['display_value'] = data_get($performerData, 'reference.display_value') ?: $this->getEmployeeDisplayValue($referenceValue);
+
+                if ($existing?->reference) {
+                    $this->updateIdentifier($existing->reference, $performerData['reference']);
+                    $referenceId = $existing->reference->id;
+                } else {
+                    $reference = Repository::identifier()->store($referenceValue, data_get($performerData, 'reference.display_value'));
+                    Repository::codeableConcept()->attach($reference, $performerData['reference']);
+                    $referenceId = $reference->id;
+                }
+            }
+
+            $attributes = ['reference_id' => $referenceId, 'text' => $performerData['text'] ?? null,];
+
+            if ($existing) {
+                $existing->update($attributes);
+            } else {
+                $diagnosticReport->performer()->create($attributes);
+            }
+        }
+
+        $existingPerformers
+            ->slice(count($performers))
+            ->each(static fn ($performer) => $performer->delete());
     }
 
     /**

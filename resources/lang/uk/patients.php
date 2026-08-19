@@ -387,6 +387,9 @@ return [
     'diagnosis_performer' => 'виконавець діагнозу',
     'procedure_performer' => 'виконавець процедури',
     'diagnostic_report_performer' => 'виконавець діагностичного звіту',
+    'diagnostic_report_performers' => 'Виконавці діагностичного звіту',
+    'add_diagnostic_report_performer' => 'Додати виконавця',
+    'electronic_referral_id' => 'ID електронного направлення',
     'write_assignments_here' => 'Напишіть призначення тут',
     'add_body_part' => ' Додати частину тіла',
 

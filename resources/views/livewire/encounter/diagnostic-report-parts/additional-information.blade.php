@@ -3,6 +3,8 @@
         ?? (($context ?? null) === 'diagnostic-report'
             ? 'form.diagnosticReport'
             : 'form.diagnosticReports.*');
+    $isEncounterContext = $isEncounterContext ?? false;
+    $diagnosticReportEmployeeOptions = $isEncounterContext ? $diagnosticReportEmployees : $employees;
 @endphp
 <fieldset class="fieldset">
     <legend class="legend">
@@ -83,7 +85,6 @@
                 <select
                     x-model="modalDiagnosticReport.divisionId"
                     @change="
-                        modalDiagnosticReport.performerEmployeeId = '';
                         modalDiagnosticReport.usedReferences = [];
                     "
                     @if($isEncounterContext ?? false)
@@ -98,7 +99,6 @@
                                 modalDiagnosticReport.divisionId =
                                     encounterDivisionId;
 
-                                modalDiagnosticReport.performerEmployeeId = '';
                                 modalDiagnosticReport.usedReferences = [];
                             }
                         "
@@ -135,102 +135,133 @@
         </div>
     @endif
 
-    {{-- Performer --}}
+    {{-- Result interpreter --}}
+    <div class="form-row-2">
+        <div class="form-group group">
+            <label for="resultsInterpreter" class="mb-2 block text-sm font-medium text-gray-500 dark:text-gray-400">
+                {{ __('patients.the_doctor_who_interpreted_the_results') }}
+            </label>    
+
+            <select
+                x-model="modalDiagnosticReport.resultsInterpreterEmployeeId"
+                @change="
+                    modalDiagnosticReport.performerEmployeeIds = modalDiagnosticReport.performerEmployeeIds.filter(
+                            employeeId =>  String(employeeId) !== String(modalDiagnosticReport.resultsInterpreterEmployeeId)
+                        );
+                "
+                id="resultsInterpreter"
+                class="input-select peer"
+                :required="['diagnostic_procedure', 'imaging'].includes(modalDiagnosticReport.categoryCode)"
+            >
+                <option value="">{{ __('forms.select') }}</option>
+
+                @foreach($diagnosticReportEmployeeOptions as $employee)
+                    @if(in_array($employee['employeeType'], ['DOCTOR', 'SPECIALIST'], true))
+                        <option value="{{ $employee['uuid'] }}">
+                            {{ $employee['name'] }} — {{ $this->dictionaries['POSITION'][$employee['position']] ?? $employee['position'] }}
+                        </option>
+                    @endif
+                @endforeach
+            </select>
+
+            @error($diagnosticReportErrorPath . '.resultsInterpreterEmployeeId')
+                <p class="text-error">{{ $message }}</p>
+            @enderror
+        </div>
+    </div>
+
+    {{-- Performers --}}
     <div
         class="form-row-2"
         x-show="modalDiagnosticReport.primarySource === true"
         x-cloak
     >
         <div class="form-group group">
-            <select
-                x-model="modalDiagnosticReport.performerEmployeeId"
-                id="diagnosticReportPerformer"
-                class="input-select peer"
-                :required="modalDiagnosticReport.primarySource === true"
+            <div
+                x-show="String(modalDiagnosticReport.resultsInterpreterEmployeeId ?? '').trim()"
+                class="mb-5"
             >
-                <option value="">
-                    {{ __('forms.select') }}
-                    {{ mb_strtolower(__('patients.performer')) }}
-                    *
-                </option>
+                <label class="mb-2 block text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {{ ucfirst(__('patients.diagnostic_report_performer')) }}
+                </label>
 
-                <template
-                     x-for="
-                        employee in diagnosticReportEmployees.filter(
-                            employee =>
-                                !modalDiagnosticReport.divisionId
-                                || employee.divisionUuid
-                                    === modalDiagnosticReport.divisionId
-                        )
-                    "
-                    :key="employee.uuid"
+                <select
+                    x-model="modalDiagnosticReport.resultsInterpreterEmployeeId"
+                    class="input-select peer !cursor-not-allowed !text-gray-500 dark:!text-gray-400"
+                    disabled
                 >
-                    <option
-                        :value="employee.uuid"
-                        :selected="
-                            String(modalDiagnosticReport.performerEmployeeId)
-                                === String(employee.uuid)
-                        "
-                        x-text="
-                            `${employee.name} — ${
-                                $wire.dictionaries['POSITION'][employee.position]
-                                ?? employee.position
-                            }`
-                        "
-                    ></option>
-                </template>
-            </select>
+                    @foreach($diagnosticReportEmployeeOptions as $employee)
+                        @if(in_array($employee['employeeType'], ['DOCTOR', 'SPECIALIST'], true))
+                            <option value="{{ $employee['uuid'] }}">
+                                {{ $employee['name'] }} — {{ $this->dictionaries['POSITION'][$employee['position']] ?? $employee['position'] }}
+                            </option>
+                        @endif
+                    @endforeach
+                </select>
+            </div>
 
-            @error($diagnosticReportErrorPath . '.performerEmployeeId')
+            <template
+                x-for="(performerEmployeeId, index) in modalDiagnosticReport.performerEmployeeIds"
+                :key="index"
+            >
+                <div class="mb-5">
+                    <label class="mb-2 block text-sm font-medium text-gray-500 dark:text-gray-400">
+                        {{ ucfirst(__('patients.diagnostic_report_performer')) }}
+                    </label>
+
+                    <div class="flex items-center gap-4">
+                        <select
+                            x-model="modalDiagnosticReport.performerEmployeeIds[index]"
+                            class="input-select peer min-w-0 flex-1"
+                        >
+                            <option value="">
+                                {{ __('forms.select') }}
+                            </option>
+
+                            @foreach($diagnosticReportEmployeeOptions as $employee)
+                                <option
+                                    value="{{ $employee['uuid'] }}"
+                                    :disabled="
+                                        String('{{ $employee['uuid'] }}')
+                                            === String(modalDiagnosticReport.resultsInterpreterEmployeeId)
+                                        || modalDiagnosticReport.performerEmployeeIds.some(
+                                            (employeeId, performerIndex) =>
+                                                performerIndex !== index
+                                                && String(employeeId) === String('{{ $employee['uuid'] }}')
+                                        )
+                                    "
+                                >
+                                    {{ $employee['name'] }} — {{ $this->dictionaries['POSITION'][$employee['position']] ?? $employee['position'] }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        <button
+                            type="button"
+                            @click.prevent="modalDiagnosticReport.performerEmployeeIds.splice(index, 1)"
+                            class="shrink-0"
+                        >
+                            @icon('delete', 'w-5 h-5')
+                        </button>
+                    </div>
+                </div>
+            </template>
+
+            @error($diagnosticReportErrorPath . '.performerEmployeeIds')
                 <p class="text-error">{{ $message }}</p>
             @enderror
-        </div>
-    </div>
 
-    {{-- Result interpreter --}}
-    <div class="form-row-2">
-        <div class="form-group group">
-            <select
-                x-model="modalDiagnosticReport.resultsInterpreterEmployeeId"
-                id="resultsInterpreter"
-                class="input-select peer"
-                type="text"
-                :required="['diagnostic_procedure', 'imaging'].includes(modalDiagnosticReport.categoryCode)"
-            >
-                <option value="" selected>
-                    {{ __('forms.select') }} {{ mb_strtolower(__('patients.the_doctor_who_interpreted_the_results')) }}
-                </option>
-                <template
-                    x-for="
-                        employee in diagnosticReportEmployees.filter(
-                            employee => [
-                                'DOCTOR',
-                                'SPECIALIST'
-                            ].includes(employee.employeeType)
-                        )
-                    "
-                    :key="employee.uuid"
-                >
-                    <option
-                        :value="employee.uuid"
-                        :selected="
-                            String(modalDiagnosticReport.resultsInterpreterEmployeeId)
-                                === String(employee.uuid)
-                        "
-                        x-text="
-                            `${employee.name} — ${
-                                $wire.dictionaries['POSITION'][
-                                    employee.position
-                                ] ?? employee.position
-                            }`
-                        "
-                    ></option>
-                </template>
-            </select>
-
-            @error($diagnosticReportErrorPath . '.resultsInterpreterEmployeeId')
-            <p class="text-error">{{ $message }}</p>
+            @error($diagnosticReportErrorPath . '.performerEmployeeIds.*')
+                <p class="text-error">{{ $message }}</p>
             @enderror
+
+            <button
+                type="button"
+                @click.prevent="modalDiagnosticReport.performerEmployeeIds.push('')"
+                class="item-add mt-3"
+            >
+                {{ __('patients.add_diagnostic_report_performer') }}
+            </button>
         </div>
     </div>
 
@@ -240,7 +271,11 @@
             <div class="datepicker-wrapper">
                 <input
                     x-model="modalDiagnosticReport.issuedDate"
-                    @input="validateIssuedDateTime()"
+
+                    @if($isEncounterContext)
+                        @input="validateIssuedDateTime()"
+                    @endif
+
                     datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
                     type="text"
                     name="issuedDate"
@@ -265,9 +300,13 @@
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
                 <input
                     x-model="modalDiagnosticReport.issuedTime"
-                    @input="$event.target.blur(); validateIssuedDateTime()"
-                    :min="encounterPeriodStart"
-                    :max="encounterPeriodEnd"
+
+                    @if($isEncounterContext)
+                        @input="$event.target.blur(); validateIssuedDateTime()"
+                        :min="encounterPeriodStart"
+                        :max="encounterPeriodEnd"
+                    @endif
+
                     datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
                     type="time"
                     name="issuedTime"
@@ -281,9 +320,12 @@
             @error($diagnosticReportErrorPath . '.issuedTime')
             <p class="text-error">{{ $message }}</p>
             @enderror
-            <p x-show="issuedDateTimeInvalid" x-cloak class="text-error">
-                {{ __('patients.diagnostic_report_issued_outside_encounter_period') }}
-            </p>
+            
+            @if($isEncounterContext)
+                <p x-show="issuedDateTimeInvalid" x-cloak class="text-error">
+                    {{ __('patients.diagnostic_report_issued_outside_encounter_period') }}
+                </p>
+            @endif
         </div>
     </div>
 

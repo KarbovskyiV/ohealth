@@ -125,12 +125,10 @@
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
                         <input type="checkbox"
-                               class="default-checkbox w-5 h-5"
-                               :value="observation.uuid"
-                               x-model="selectedRecords"
-                               :disabled="!canCancelRecords
-                                   || !observation.uuid
-                                   || cancelledRecords.includes(observation.uuid)"
+                            class="default-checkbox w-5 h-5"
+                            :value="observation.uuid"
+                            x-model="selectedRecords"
+                            :disabled="!canCancelRecords || !observation.uuid || cancelledRecords.includes(observation.uuid)"
                         >
                     </div>
 
@@ -338,8 +336,8 @@
                     class="relative flex min-h-screen items-center justify-center p-4"
                 >
                     <div @click.stop
-                         x-trap.noscroll.inert="openModal"
-                         class="modal-content h-fit w-full lg:max-w-7xl"
+                        x-trap.noscroll.inert="openModal"
+                        class="modal-content h-fit w-full lg:max-w-7xl"
                     >
                         {{-- Title --}}
                         <h3 class="modal-header" :id="$id('modal-title')">{{ __('patients.observation') }}</h3>
