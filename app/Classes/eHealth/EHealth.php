@@ -46,6 +46,7 @@ use App\Classes\eHealth\Api\Preperson;
 use App\Classes\eHealth\Api\RuleEngineRules;
 use App\Classes\eHealth\Api\Service;
 use App\Classes\eHealth\Api\Verification;
+use App\Classes\eHealth\Api\Connection;
 
 final class EHealth
 {
@@ -258,5 +259,10 @@ final class EHealth
     public static function diagnosticReport(): DiagnosticReport
     {
         return app(DiagnosticReport::class);
+    }
+
+    public static function connection(): Connection
+    {
+        return app(Connection::class);
     }
 }

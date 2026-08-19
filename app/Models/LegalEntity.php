@@ -148,6 +148,16 @@ class LegalEntity extends Model
         return $this->hasMany(Division::class);
     }
 
+    public function clients(): HasMany
+    {
+        return $this->hasMany(Client::class);
+    }
+
+    public function connections(): HasMany
+    {
+        return $this->hasMany(Connection::class);
+    }
+
     public function contracts(): HasMany
     {
         return $this->hasMany(\App\Models\Contracts\Contract::class, 'legal_entity_id');

@@ -32,6 +32,6 @@ class LegalEntityConnectionShow extends Component
     #[Title('Деталі зв\'язку')]
     public function render()
     {
-        return view('livewire.division.legal-entity-connection.legal-entity-connection-show');
+        return view('livewire.legal-entity.connection.connection-show');
     }
 }
