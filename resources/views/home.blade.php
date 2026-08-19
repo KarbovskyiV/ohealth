@@ -38,7 +38,7 @@
     style="background-image: url('{{ Vite::asset('resources/images/BG-2.jpg') }}'); background-position: right top;"
 >
     <div
-        class="container mx-auto px-6 sm:px-12 lg:px-16 flex flex-col justify-center"
+        class="container mx-auto px-6 sm:px-12 lg:px-16 flex flex-col justify-center relative z-10"
         style="padding-top: 80px; padding-bottom: 140px;"
     >
         <div class="text-left w-full lg:w-1/2">
@@ -57,8 +57,18 @@
                 {{ trans('forms.for_your_institution') }}
             </p>
 
-            <ul style="display: flex; flex-direction: column; gap: 48px; width: 100%;">
-                <li class="flex items-center gap-5">
+            <style>
+                @media (max-width: 1023px) {
+                    .mobile-pill {
+                        background-color: rgba(232, 236, 246, 0.95); /* #E8ECF6 */
+                        padding: 16px;
+                        border-radius: 24px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                    }
+                }
+            </style>
+            <ul style="display: flex; flex-direction: column; gap: 24px; width: 100%;" class="lg:gap-[48px]">
+                <li class="flex items-center gap-5 mobile-pill">
                     <div
                         class="flex-shrink-0 rounded-full flex items-center justify-center text-white bg-[#104475]"
                         style="width: 64px; height: 64px; background-color: #104475;"
@@ -73,7 +83,7 @@
                         {{ trans('forms.data_security') }}
                     </span>
                 </li>
-                <li class="flex items-center gap-5">
+                <li class="flex items-center gap-5 mobile-pill">
                     <div
                         class="flex-shrink-0 rounded-full flex items-center justify-center text-white bg-[#104475]"
                         style="width: 64px; height: 64px; background-color: #104475;"
@@ -88,7 +98,7 @@
                         {{ trans('forms.payments_and_subscriptions') }}
                     </span>
                 </li>
-                <li class="flex items-center gap-5">
+                <li class="flex items-center gap-5 mobile-pill">
                     <div
                         class="flex-shrink-0 rounded-full flex items-center justify-center text-white bg-[#104475]"
                         style="width: 64px; height: 64px; background-color: #104475;"
@@ -103,7 +113,7 @@
                         {{ trans('forms.mis_providers') }}
                     </span>
                 </li>
-                <li class="flex items-center gap-5">
+                <li class="flex items-center gap-5 mobile-pill">
                     <div
                         class="flex-shrink-0 rounded-full flex items-center justify-center text-white bg-[#104475]"
                         style="width: 64px; height: 64px; background-color: #104475;"
@@ -481,77 +491,44 @@
                 ];
             @endphp
 
-            @foreach ($offers as $i => $offer)
-                <div
-                    class="flex justify-center lg:justify-start"
-                    style="grid-column: {{ $i + 1 }}; grid-row: 1;"
-                >
-                    <div
-                        class="overflow-hidden w-full"
-                        style="max-width: 385px; height: 125px; border-radius: 20px; border: 1px solid #ffffff;"
-                    >
-                        <img
-                            src="{{ Vite::asset('resources/images/' . $offer['image']) }}"
-                            alt="{{ trans($offer['imageAlt']) }}"
-                            class="w-full h-full object-cover"
-                        >
-                    </div>
-                </div>
-            @endforeach
+            <style>
+                @media (min-width: 1024px) {
+                    .custom-dev-col-1 { grid-column: 1; }
+                    .custom-dev-col-2 { grid-column: 2; }
+                    .custom-dev-col-3 { grid-column: 3; }
+                    .custom-dev-row-1 { grid-row: 1; }
+                    .custom-dev-row-2 { grid-row: 2; }
+                    .custom-dev-row-3 { grid-row: 3; }
+                }
+            </style>
 
             @foreach ($offers as $i => $offer)
-                <div
-                    class="flex items-start justify-center lg:justify-start gap-3"
-                    style="grid-column: {{ $i + 1 }}; grid-row: 2;"
-                >
-                    <img
-                        src="{{ Vite::asset('resources/images/502.png') }}"
-                        alt="{{ trans('forms.director_of_medical_institution') }}"
-                        class="rounded-full object-cover flex-shrink-0"
-                        style="width: 81px; height: 81px;"
-                    >
-                    <div
-                        class="bg-white p-4 text-black shadow-md w-full"
-                        style="max-width: 292px; border-radius: 0px 20px 20px 20px;"
-                    >
+                <div class="flex justify-center lg:justify-start custom-dev-col-{{ $i + 1 }} custom-dev-row-1">
+                    <div class="overflow-hidden w-full" style="max-width: 385px; height: 125px; border-radius: 20px; border: 1px solid #ffffff;">
+                        <img src="{{ Vite::asset('resources/images/' . $offer['image']) }}" alt="{{ trans($offer['imageAlt']) }}" class="w-full h-full object-cover">
+                    </div>
+                </div>
+
+                <div class="flex items-start justify-center lg:justify-start gap-3 custom-dev-col-{{ $i + 1 }} custom-dev-row-2">
+                    <img src="{{ Vite::asset('resources/images/502.png') }}" alt="{{ trans('forms.director_of_medical_institution') }}" class="rounded-full object-cover flex-shrink-0" style="width: 81px; height: 81px;">
+                    <div class="bg-white p-4 text-black shadow-md w-full" style="max-width: 292px; border-radius: 0px 20px 20px 20px;">
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="font-bold text-gray-900 text-[13px]">
-                                {{ trans('forms.director_of_medical_institution') }}
-                            </span>
+                            <span class="font-bold text-gray-900 text-[13px]">{{ trans('forms.director_of_medical_institution') }}</span>
                             <span class="text-gray-400 text-xs font-normal">11:46</span>
                         </div>
-                        <p class="text-[13px] leading-snug text-gray-800 font-normal">
-                            {!! trans($offer['question']) !!}
-                        </p>
+                        <p class="text-[13px] leading-snug text-gray-800 font-normal">{!! trans($offer['question']) !!}</p>
                     </div>
                 </div>
-            @endforeach
 
-            @foreach ($offers as $i => $offer)
-                <div
-                    class="flex items-end justify-center lg:justify-start gap-3"
-                    style="grid-column: {{ $i + 1 }}; grid-row: 3;"
-                >
-                    <div
-                        class="bg-white p-4 text-black shadow-md w-full"
-                        style="max-width: 292px; border-radius: 20px 0px 20px 20px;"
-                    >
+                <div class="flex items-end justify-center lg:justify-start gap-3 custom-dev-col-{{ $i + 1 }} custom-dev-row-3">
+                    <div class="bg-white p-4 text-black shadow-md w-full" style="max-width: 292px; border-radius: 20px 0px 20px 20px;">
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="font-bold text-[#104475] text-[13px]" style="color: #104475;">
-                                МІС Nation Health
-                            </span>
+                            <span class="font-bold text-[#104475] text-[13px]" style="color: #104475;">МІС Nation Health</span>
                             <span class="text-gray-400 text-xs font-normal">11:48</span>
                         </div>
-                        <p class="text-[13px] leading-snug text-gray-800 font-normal">
-                            {{ trans($offer['answer']) }}
-                        </p>
+                        <p class="text-[13px] leading-snug text-gray-800 font-normal">{{ trans($offer['answer']) }}</p>
                     </div>
-                    <img
-                        src="{{ Vite::asset('resources/images/logo-152x152.png') }}"
-                        alt="МІС Nation Health"
-                        class="rounded-full object-contain p-3 bg-white flex-shrink-0 shadow-md"
-                        style="width: 81px; height: 81px;"
-                    >
+                    <img src="{{ Vite::asset('resources/images/logo-152x152.png') }}" alt="МІС Nation Health" class="rounded-full object-contain p-3 bg-white flex-shrink-0 shadow-md" style="width: 81px; height: 81px;">
                 </div>
             @endforeach
 

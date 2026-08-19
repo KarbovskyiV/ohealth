@@ -30,7 +30,7 @@
 </head>
 <body id="body">
 <x-forms.loading :global="true" />
-<header id="header" class="logo bg-gray-800 py-1 px-3.5">
+<header id="header" class="logo bg-white py-1 px-3.5">
     <div class="lg:container mx-auto sm:w-full flex justify-between items-center">
         <!-- Left-aligned logo -->
         <div class="flex items-center">
@@ -111,7 +111,7 @@
     </div>
 
     <!-- Responsive menu (visible on small screens) -->
-    <div id="responsiveMenu" class="hidden lg:hidden bg-gray-800 pb-6">
+    <div id="responsiveMenu" class="hidden lg:hidden bg-white pb-6">
         <ul>
             <li class="py-2 px-4">
                 <a
