@@ -21,6 +21,7 @@
         ['id' => 'devices', 'label' => __('devices.label'), 'icon' => 'equipment', 'view' => 'livewire.encounter.parts.devices', 'holdsCancellableRecords' => true],
         ['id' => 'device-association', 'label' => __('patients.medical_device_connections'), 'icon' => 'boxicons-plug-connect-filled', 'view' => 'livewire.encounter.parts.device-association', 'holdsCancellableRecords' => true],
         ['id' => 'detected-issue', 'label' => __('patients.detected_medical_device_problems'), 'icon' => 'alert-octagon', 'view' => 'livewire.encounter.parts.detected-issue', 'holdsCancellableRecords' => true],
+        ['id' => 'device-dispense', 'label' => 'Видачі медичних виробів', 'icon' => 'solid-notes-medical', 'view' => 'livewire.encounter.parts.device-dispense', 'holdsCancellableRecords' => true],
     ];
 
     $footerItems = [];

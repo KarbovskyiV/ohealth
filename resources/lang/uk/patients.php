@@ -753,4 +753,13 @@ return [
     'broken' => 'Зламався',
     'breakdown_01_03_2025' => 'Поломка 01.03.2025',
     'record_in_medical_documentation' => 'Запис в медичній документації',
+    'dispense_medical_device' => 'Видати медичний виріб',
+    'new_medical_device_dispense' => 'Нова видача медичного виробу',
+    'medical_device_prescription_erequest' => 'Призначення на медичний виріб (е-запит)',
+    'procedure_link' => 'Посилання на процедуру',
+    'dispensing_employee' => 'Працівник, який здійснив видачу',
+    'dispensing_division' => 'МНП видачі',
+    'date_and_time_of_dispense' => 'Дата та час видачі',
+    'quantity_integer' => 'Кількість (ціле число)',
+    'specify_type_or_model_of_medical_device' => 'Вказати тип або конкретну модель медичного виробу',
 ];
