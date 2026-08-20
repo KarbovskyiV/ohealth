@@ -48,38 +48,33 @@
     ]"
 >
     <x-slot name="headerActions">
-        <div class="flex w-full justify-start lg:w-75">
-            @if ($canCancelRecords)
-                <div
-                    class="relative inline-block"
-                    x-data="{ openGroupActions: false }"
-                    @click.outside="openGroupActions = false"
-                >
-                    <button
-                        type="button"
-                        @click="openGroupActions = ! openGroupActions"
-                        class="button-primary-outline px-5 py-2.5 text-sm"
+        <div class="w-full lg:w-75 flex justify-start">
+            @if($canCancelRecords)
+                <div class="relative inline-block" x-data="{ openGroupActions: false }" @click.outside="openGroupActions = false">
+                    <button type="button"
+                            @click="openGroupActions = !openGroupActions"
+                            class="button-primary-outline px-5 py-2.5 text-sm"
                     >
                         {{ __('patients.group_actions') }}
                     </button>
 
-                    <div
-                        x-show="openGroupActions"
-                        x-transition
-                        x-cloak
-                        class="absolute top-full left-0 z-10 mt-2 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-700"
+                    <div x-show="openGroupActions"
+                         x-transition
+                         x-cloak
+                         class="absolute top-full left-0 z-10 mt-2 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-700"
                     >
                         <div class="py-1">
-                            <button
-                                type="button"
-                                @click="openGroupActions = false"
-                                wire:click="openRecordsCancellation"
-                                class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-600"
+                            <button type="button"
+                                    @click="openGroupActions = false"
+                                    wire:click="openRecordsCancellation"
+                                    class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-600"
                             >
                                 <span class="!text-red-500 dark:!text-red-400">
                                     @icon('close', 'w-4 h-4')
                                 </span>
-                                <span class="!text-red-500 dark:!text-red-400"> {{ __('forms.mark_as_error') }} </span>
+                                <span class="!text-red-500 dark:!text-red-400">
+                                    {{ __('forms.mark_as_error') }}
+                                </span>
                             </button>
                         </div>
                     </div>
@@ -94,6 +89,28 @@
             $initialActiveSections = isset($encounterId) ? [] : $allBlockIds;
         @endphp
         <div
+            @scroll-to-error.window="
+                setTimeout(() => {
+                    const errorElement = document.querySelector('.text-error, .is-invalid, [aria-invalid=\'true\']');
+                    if (! errorElement) return;
+                    const block = errorElement.closest('[id^=\'block-\']');
+                    if (block) {
+                        const sectionId = block.id.replace('block-', '');
+                        if (! activeSections.includes(sectionId)) {
+                            activeSections.push(sectionId);
+                        }
+                    }
+                    $nextTick(() => {
+                        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        const input =
+                            errorElement.previousElementSibling ||
+                            errorElement.closest('div')?.querySelector('input, select, textarea');
+                        if (input && typeof input.focus === 'function') {
+                            input.focus();
+                        }
+                    });
+                }, 50)
+            "
             x-data="{
                 activeSections: {!! $escapeForAlpineAttribute($initialActiveSections) !!},
                 typeCode: $wire.entangle('form.encounter.typeCode'),
@@ -217,9 +234,9 @@
                         .map(source => this.participantSourceLabels[source])
                         .filter(Boolean);
 
-                    return labels.length
-                        ? {!! $escapeForAlpineAttribute(__('patients.coauthor')) !!} + ` - ${labels.join(', ')}`
-                        : {!! $escapeForAlpineAttribute(__('patients.coauthor')) !!};
+                    const baseLabel = {!! $escapeForAlpineAttribute(__('patients.coauthor')) !!};
+
+                    return labels.length ? baseLabel + ' - ' + labels.join(', ') : baseLabel;
                 },
                 toggle(id) {
                     if (this.activeSections.includes(id)) {
@@ -326,7 +343,7 @@
                 @endif
 
                 <!-- Additional Actions -->
-                @if (isset($encounterId) && !$isReadonly)
+                @if (isset($encounterId))
                     <div class="mt-10 border-t border-gray-100 pt-10 dark:border-gray-700">
                         <h3 class="mb-6 text-[17px] font-bold text-gray-900 dark:text-gray-100">
                             {{ __('patients.additional_actions') }}
@@ -336,6 +353,7 @@
                             <fieldset class="fieldset-card p-5">
                                 <legend class="legend">{{ __('patients.prescriptions') }}</legend>
                                 <button
+                                    wire:click="openEncounterEPrescriptionDrawer"
                                     type="button"
                                     class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                 >
@@ -347,6 +365,7 @@
                             <fieldset class="fieldset-card p-5">
                                 <legend class="legend">{{ __('patients.referrals') }}</legend>
                                 <button
+                                    wire:click="openEncounterReferralDrawer"
                                     type="button"
                                     class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                 >
@@ -401,6 +420,25 @@
                             </button>
                         @endif
 
+                        @if ($this instanceof EncounterEdit)
+                            <button
+                                wire:click="openEncounterEPrescriptionDrawer"
+                                type="button"
+                                class="button-primary-outline flex items-center gap-2"
+                            >
+                                @icon('plus', 'w-4 h-4')
+                                <span>Додати рецепт</span>
+                            </button>
+                            <button
+                                wire:click="openEncounterReferralDrawer"
+                                type="button"
+                                class="button-primary-outline flex items-center gap-2"
+                            >
+                                @icon('plus', 'w-4 h-4')
+                                <span>Додати направлення</span>
+                            </button>
+                        @endif
+
                         @unless ($isReadonly)
                             <button
                                 wire:click.prevent="save"
@@ -411,7 +449,14 @@
                                 {{ __('forms.save') }}
                             </button>
 
-                            <button type="submit" @click="$wire.showSignatureModal = true" class="button-primary">
+                            <button
+                                type="submit"
+                                @click="
+                                    $wire.set('actionType', null);
+                                    $wire.showSignatureModal = true;
+                                "
+                                class="button-primary"
+                            >
                                 {{ __('forms.complete_the_interaction_and_sign') }}
                             </button>
                         @endunless
@@ -443,18 +488,23 @@
         </div>
     </div>
 
-    @unless ($isReadonly)
-        <x-signature-modal method="sign" />
-    @endunless
+    @if ($this instanceof EncounterEdit || !$isReadonly)
+        <x-signature-modal method="sign" :except-actions="['cancel_encounter']" />
+    @endif
 
     @if ($this instanceof EncounterEdit && $this->canBeCancelled)
         @include('livewire.encounter.encounter-cancellation', [
-                    'formPath' => 'cancellationForm',
-                    'description' => array_filter($this->selectedRecords)
-                        ? __('patients.messages.encounter_records_cancel_modal_description')
-                        : __('patients.messages.encounter_cancel_modal_description')
-                ])
+                                                                    'formPath' => 'cancellationForm',
+                                                                    'description' => array_filter($this->selectedRecords)
+                                                                        ? __('patients.messages.encounter_records_cancel_modal_description')
+                                                                        : __('patients.messages.encounter_cancel_modal_description')
+                                                                ])
     @endif
-    <livewire:components.x-message :key="time()" />
+
+    @if ($this instanceof EncounterEdit)
+        @include('livewire.encounter.parts.encounter-eprescription-drawer')
+        @include('livewire.encounter.parts.encounter-referral-drawer')
+    @endif
+    <livewire:components.x-message :listen-async="true" :key="time()" />
     <x-forms.loading />
 </x-layouts.patient>

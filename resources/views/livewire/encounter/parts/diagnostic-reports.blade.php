@@ -66,23 +66,15 @@
 
         syncDiagnosticReportParticipants() {
             const performers = this.diagnosticReports
-                .filter(diagnosticReport => diagnosticReport.primarySource === true)
-                .flatMap(
-                    diagnosticReport => [
-                            diagnosticReport.resultsInterpreterEmployeeId,
-                            ...(diagnosticReport.performerEmployeeIds ?? [])
-                        ]
-                            .filter(Boolean)
-                            .filter((employeeId, index, employeeIds) => employeeIds.findIndex(id => String(id) === String(employeeId)) === index)
-                            .map(employeeId => {
-                                const employee = this.diagnosticReportEmployees.find(employee => String(employee.uuid) === String(employeeId));
+                .filter(diagnosticReport => diagnosticReport.primarySource === true && diagnosticReport.performerEmployeeId)
+                .map(diagnosticReport => {
+                    const employee = this.diagnosticReportEmployees.find(employee => String(employee.uuid) === String(diagnosticReport.performerEmployeeId));
 
-                                return {
-                                    uuid: employeeId,
-                                    name: employee?.name || employeeId,
-                                };
-                            })
-                );
+                    return {
+                        uuid: diagnosticReport.performerEmployeeId,
+                        name: employee?.name || diagnosticReport.performerEmployeeId,
+                    };
+                });
 
             this.syncLocalEncounterParticipants('diagnosticReport', performers);
         },
@@ -415,8 +407,7 @@
                                 && String(modalDiagnosticReport.codeValue ?? '').trim()
                                 && (
                                     modalDiagnosticReport.primarySource === false
-                                    || String(modalDiagnosticReport.resultsInterpreterEmployeeId ?? '').trim()
-                                    || (modalDiagnosticReport.performerEmployeeIds ?? []).some(employeeId => String(employeeId ?? '').trim())
+                                    || String(modalDiagnosticReport.performerEmployeeId ?? '').trim()
                                 )
                             )"
                         >
@@ -460,8 +451,7 @@
             this.reportOriginCode = '';
             this.reportOriginText = '';
             this.divisionId = '';
-            this.performerEmployeeIds = [];
-            this.basedOnIdentifier = '';
+            this.performerEmployeeId = '';
             this.effectiveType = 'period';
             this.effectiveDate = '';
             this.effectiveTime = '';

@@ -13,6 +13,7 @@ use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Identifier;
 use App\Repositories\MedicalEvents\Repository;
+use App\Services\MedicalEvents\EncounterReferralDisplay;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
@@ -259,12 +260,14 @@ class PatientEncounters extends BasePatientComponent
             ->paginate(config('pagination.per_page'));
 
         $paginator->setCollection(
-            $paginator->getCollection()->map(function (Encounter $encounter) {
-                $data = Arr::toCamelCase($encounter->toArray());
-                $data['id'] = $encounter->id;
+            $this->hydrateEncounterReferralLabels(
+                $paginator->getCollection()->map(function (Encounter $encounter) {
+                    $data = Arr::toCamelCase($encounter->toArray());
+                    $data['id'] = $encounter->id;
 
-                return $data;
-            })
+                    return $data;
+                })
+            )
         );
 
         return $paginator;
@@ -307,9 +310,30 @@ class PatientEncounters extends BasePatientComponent
             $total = 0;
         }
 
-        return new LengthAwarePaginator(collect($encounters), $total, $perPage, $page, [
-            'path' => LengthAwarePaginator::resolveCurrentPath()
-        ]);
+        return new LengthAwarePaginator(
+            $this->hydrateEncounterReferralLabels(collect($encounters)),
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => LengthAwarePaginator::resolveCurrentPath()
+            ]
+        );
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $encounters
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    protected function hydrateEncounterReferralLabels(\Illuminate\Support\Collection $encounters): \Illuminate\Support\Collection
+    {
+        $requestNumbers = EncounterReferralDisplay::requestNumbersFor($encounters->all());
+
+        return $encounters->map(static function (array $encounter) use ($requestNumbers): array {
+            $encounter['referralDisplay'] = EncounterReferralDisplay::label($encounter, $requestNumbers);
+
+            return $encounter;
+        });
     }
 
     /**

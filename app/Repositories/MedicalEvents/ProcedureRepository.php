@@ -79,9 +79,10 @@ class ProcedureRepository extends BaseRepository
         return DB::transaction(function () use ($data, $ownerColumn, $ownerId) {
             foreach ($data as $datum) {
                 $basedOn = null;
-                if (isset($datum['basedOn'])) {
-                    $basedOn = Repository::identifier()->store($datum['basedOn']['identifier']['value']);
-                    Repository::codeableConcept()->attach($basedOn, $datum['basedOn']);
+                $basedOnData = data_get($datum, 'basedOn.0') ?? data_get($datum, 'basedOn');
+                if (!empty($basedOnData)) {
+                    $basedOn = Repository::identifier()->store($basedOnData['identifier']['value']);
+                    Repository::codeableConcept()->attach($basedOn, $basedOnData);
                 }
 
                 $codeValue = $datum['code']['identifier']['value'];

@@ -284,7 +284,6 @@ class Procedure extends Model
             static fn (Builder $identifier): Builder => $identifier->whereIn('value', $serviceIds)
         );
     }
-
     #[Scope]
     protected function withAllRelations(Builder $query): Builder
     {

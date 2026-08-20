@@ -5,18 +5,22 @@ declare(strict_types=1);
 namespace App\Livewire\Components;
 
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class FlashMessage extends Component
 {
+    #[Locked]
     public string $message = '';
 
+    #[Locked]
     public string $type = 'success';
 
+    #[Locked]
     public array $errors = [];
 
-    protected $listeners = ['flashMessage'];
-
+    #[On('flashMessage')]
     public function flashMessage($flash): void
     {
         $this->message = $flash['message'] ?? '';

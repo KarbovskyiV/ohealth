@@ -1,7 +1,9 @@
 @use('App\Models\Preperson')
 
 <fieldset class="fieldset">
-    <legend class="legend">{{ __('patients.patient_type') }}</legend>
+    <legend class="legend">
+        {{ __('patients.patient_type') }}
+    </legend>
 
     <div class="form-row-2">
         <div class="form-group">
@@ -17,7 +19,9 @@
                     <option value="preperson">{{ __('patients.unidentified') }}</option>
                 @endcan
             </select>
-            <label for="patientType" class="label"> {{ __('patients.patient_type') }} </label>
+            <label for="patientType" class="label">
+                {{ __('patients.patient_type') }}
+            </label>
         </div>
     </div>
 </fieldset>

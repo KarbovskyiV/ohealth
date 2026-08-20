@@ -89,7 +89,6 @@ class DiagnosticReportEdit extends DiagnosticReportComponent
                 ->values()
                 ->toArray();
         }
-
         $conclusionCode = data_get($diagnosticReportData, 'conclusionCode');
 
         if ($conclusionCode) {

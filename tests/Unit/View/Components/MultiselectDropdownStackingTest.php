@@ -17,12 +17,18 @@ class MultiselectDropdownStackingTest extends TestCase
 
         $this->assertNotFalse($blade);
         $this->assertNotFalse($css);
-        $this->assertStringContainsString("group.style.zIndex = open ? '50' : ''", $blade);
-        $this->assertStringContainsString('!bg-white', $blade);
+
+        // An open dropdown has to sit above its siblings and be opaque. Raising the group is
+        // done by the :has() rule rather than by setting style.zIndex from the component.
         $this->assertStringContainsString(
             '.form-group:has(.multiselect-dropdown:not([style*="display: none"]))',
             $css
         );
+        $this->assertMatchesRegularExpression(
+            '/\.form-group:has\(\.multiselect-dropdown:not\(\[style\*="display: none"\]\)\)\s*\{\s*z-index:\s*50;/',
+            $css
+        );
+        $this->assertStringContainsString('!bg-white', $blade);
         $this->assertStringContainsString('background-color: #ffffff !important', $css);
     }
 }

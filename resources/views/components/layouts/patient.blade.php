@@ -107,12 +107,21 @@
                             {{ __('patients.conditions') }}
                         </a>
 
-                        <a
-                            href="javascript:void(0)"
-                            class="summary-tab summary-tab-inactive cursor-not-allowed opacity-60"
-                        >
-                            {{ __('patients.prescriptions') }}
-                        </a>
+                        @if ($prepersonId)
+                            <a
+                                href="javascript:void(0)"
+                                class="summary-tab summary-tab-inactive cursor-not-allowed opacity-60"
+                            >
+                                {{ __('patients.prescriptions') }}
+                            </a>
+                        @else
+                            <a
+                                href="{{ route('persons.medication-requests', [legalEntity(), 'person' => $personId]) }}"
+                                class="summary-tab {{ request()->routeIs('persons.medication-requests') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                            >
+                                {{ __('patients.prescriptions') }}
+                            </a>
+                        @endif
 
                         <a
                             href="{{ route("$routePrefix.diagnostic-reports", [legalEntity(), $routeParamKey => $recordId]) }}"
@@ -137,12 +146,21 @@
                             {{ __('patients.medical_reports') }}
                         </a>
 
-                        <a
-                            href="javascript:void(0)"
-                            class="summary-tab summary-tab-inactive cursor-not-allowed opacity-60"
-                        >
-                            {{ __('patients.referrals') }}
-                        </a>
+                        @if ($prepersonId)
+                            <a
+                                href="javascript:void(0)"
+                                class="summary-tab summary-tab-inactive cursor-not-allowed opacity-60"
+                            >
+                                {{ __('patients.referrals') }}
+                            </a>
+                        @else
+                            <a
+                                href="{{ route('persons.referrals', [legalEntity(), 'person' => $personId]) }}"
+                                class="summary-tab {{ request()->routeIs('persons.referrals') ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                            >
+                                {{ __('patients.referrals') }}
+                            </a>
+                        @endif
 
                         @if ($prepersonId)
                             <a
@@ -182,5 +200,5 @@
     </x-header-navigation>
 
     {{ $slot }}
-    <livewire:components.x-message :key="time()" />
+    <livewire:components.x-message :listen-async="true" :key="time()" />
 </section>

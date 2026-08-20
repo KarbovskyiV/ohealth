@@ -59,7 +59,7 @@ class EHealthResponseException extends EHealthException
 
         if ($flashMessage === null && $this->response->status() === 409) {
             $raw = $this->response->json('error.message') ?? $this->getMessage();
-            $message = $this->translateConflictMessage($raw);
+            $message = $this->translateConflictMessage((string) $raw);
         }
 
         Session::flash('error', $message);
@@ -72,6 +72,10 @@ class EHealthResponseException extends EHealthException
     {
         if (preg_match('/^License with type (.+) is already present$/u', $message, $matches) === 1) {
             return __('errors.ehealth.messages.license_type_already_present', ['type' => $matches[1]]);
+        }
+        
+        if (str_contains($message, 'At least one of action references, diagnostic reports or procedures should reference the same service')) {
+            return __('errors.ehealth.messages.referral_service_mismatch');
         }
 
         return match ($message) {

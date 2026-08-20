@@ -121,7 +121,8 @@ class EncounterForm extends BaseForm
             'encounter.referralNumber' => [
                 Rule::requiredIf(($this->encounter['referralType'] ?? '') === 'electronic'),
                 'nullable',
-                'uuid'
+                'string',
+                'max:255'
             ],
             'encounter.paperReferral' => [
                 Rule::requiredIf(($this->encounter['referralType'] ?? '') === 'paper'),
@@ -1090,7 +1091,8 @@ class EncounterForm extends BaseForm
                     Rule::requiredIf($isElectronicReferral),
                     Rule::prohibitedIf($isPaperReferral),
                     'nullable',
-                    'uuid',
+                    'string',
+                    'max:255',
                 ];
             }),
 
@@ -1292,9 +1294,9 @@ class EncounterForm extends BaseForm
         $this->addPsychiatryEvidenceValidation($rules);
         $this->addEmployeeTypeConditionsValidation($rules);
         $this->addSpecialityConditionsValidation($rules);
-
         return $rules;
     }
+
 
     /**
      * @return array
@@ -1594,7 +1596,7 @@ class EncounterForm extends BaseForm
             ?->uuid : null;
 
         $procedurePerformerUuids = collect($this->procedures ?? [])
-            ->filter(static fn (array $procedure): bool => ($procedure['primarySource'] ?? false) === true&& !empty($procedure['performerEmployeeId']))
+            ->filter(static fn (array $procedure): bool => ($procedure['primarySource'] ?? false) === true && !empty($procedure['performerEmployeeId']))
             ->pluck('performerEmployeeId');
 
         $diagnosticReportPerformerUuids = collect($this->diagnosticReports ?? [])
