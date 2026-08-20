@@ -278,8 +278,8 @@ class HealthcareServiceForm extends Form
                         $during = $item['during'];
 
                         $item['during'] = [
-                            'start' => convertToISO8601("{$during['startDate']} {$during['startTime']}"),
-                            'end' => convertToISO8601("{$during['endDate']} {$during['endTime']}")
+                            'start' => convertToEHealthISO8601("{$during['startDate']} {$during['startTime']}"),
+                            'end' => convertToEHealthISO8601("{$during['endDate']} {$during['endTime']}")
                         ];
                     }
 
