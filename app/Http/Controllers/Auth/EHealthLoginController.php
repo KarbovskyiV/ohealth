@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use Closure;
+use Throwable;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\LegalEntity;
@@ -139,7 +140,19 @@ class EHealthLoginController extends Controller
 
         $user->syncPermissions($ehealthScopes);
 
-        EHealthUserLogin::dispatch($user, $legalEntity, $authUserUUID, $this->isFirstLogin, $loginedGuard);
+        try {
+            EHealthUserLogin::dispatch($user, $legalEntity, $authUserUUID, $ehealthScopes, $this->isFirstLogin, $loginedGuard);
+        } catch (Throwable $exception) {
+            $message = $exception->getMessage() ?: '';
+
+            Log::error('EHealth login post-auth listener failed', [
+                'user_id' => $user->id,
+                'legal_entity_id' => $legalEntity->id,
+                'exception' => $message,
+            ]);
+
+            return $this->breakAuth($message);
+        }
 
         $user->refresh();
 

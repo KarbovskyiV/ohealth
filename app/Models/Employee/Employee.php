@@ -208,11 +208,13 @@ class Employee extends BaseEmployee
      * Scope to find active OWNERS for a specific legal entity.
      */
     #[Scope]
-    public function activeOwners(Builder $query, int $legalEntityId): Builder
+    protected function activeOwners(Builder $query, int $legalEntityId): Builder
     {
-        return $query->whereLegalEntityId($legalEntityId)
-            ->whereEmployeeType(Role::OWNER)
-            ->active();
+        return $query->where('legal_entity_id', $legalEntityId)
+            ->where('employee_type', Role::OWNER)
+            ->where('status', Status::APPROVED)
+            ->where('is_active', true)
+            ->whereNotNull('user_id');
     }
 
     /**

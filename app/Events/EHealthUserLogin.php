@@ -31,6 +31,7 @@ class EHealthUserLogin
         public User $user,
         public LegalEntity $legalEntity,
         public string $authUserUUID,
+        public array $scopes,
         public bool $isFirstLogin = false,
         public string $guard = 'ehealth'
     ) {
