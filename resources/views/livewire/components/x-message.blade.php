@@ -18,6 +18,7 @@
                 >
                     <span class="font-medium whitespace-pre-line">{{ session('success') }}</span>
                 </div>
+                {{ session()->forget('success') }}
             @endsession
 
             @session('status')
