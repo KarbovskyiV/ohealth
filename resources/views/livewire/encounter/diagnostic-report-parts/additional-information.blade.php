@@ -135,8 +135,12 @@
         </div>
     @endif
 
-    {{-- Result interpreter --}}
-    <div class="form-row-2">
+    {{-- Performer --}}
+    <div
+        class="form-row-2"
+        x-show="modalDiagnosticReport.primarySource === true"
+        x-cloak
+    >
         <div class="form-group group">
             <label for="resultsInterpreter" class="mb-2 block text-sm font-medium text-gray-500 dark:text-gray-400">
                 {{ __('patients.the_doctor_who_interpreted_the_results') }}
@@ -164,7 +168,7 @@
                 @endforeach
             </select>
 
-            @error($diagnosticReportErrorPath . '.resultsInterpreterEmployeeId')
+            @error($diagnosticReportErrorPath . '.performerEmployeeId')
                 <p class="text-error">{{ $message }}</p>
             @enderror
         </div>

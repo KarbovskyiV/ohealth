@@ -25,6 +25,8 @@ use App\Livewire\Person\Records\PatientData;
 use App\Livewire\Person\Records\PatientDiagnosticReports;
 use App\Livewire\Person\Records\PatientEncounters;
 use App\Livewire\Person\Records\PatientImmunizations;
+use App\Livewire\Person\Records\PatientMedicationRequests;
+use App\Livewire\Person\Records\PatientReferrals;
 use App\Livewire\Person\Records\PatientObservations;
 use App\Livewire\Person\Records\PatientProcedures;
 use App\Livewire\Person\Records\PatientSummary;
@@ -84,6 +86,8 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
                 ->whereNumber('episode')
                 ->name('episodes.edit');
             Route::get('/{person}/care-plans', PatientCarePlans::class)->name('care-plans');
+            Route::get('/{person}/medication-requests', PatientMedicationRequests::class)->name('medication-requests');
+            Route::get('/{person}/referrals', PatientReferrals::class)->name('referrals');
             Route::get('/{person}/observations', PatientObservations::class)->name('observations');
             Route::get('/{person}/immunizations', PatientImmunizations::class)->name('immunizations');
             Route::get('/{person}/conditions', PatientConditions::class)->name('conditions');
@@ -114,7 +118,9 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
         Route::get('/{person}/encounter/{encounterId}', EncounterEdit::class)->name('edit');
     });
 
-    Route::get('/{personId}/care-plan/create', CarePlanCreate::class)->name('care-plan.create');
+    Route::get('/{personId}/care-plan/create', CarePlanCreate::class)
+        ->can('create', \App\Models\CarePlan::class)
+        ->name('care-plan.create');
 
     Route::whereNumber('person')->group(static function () {
         Route::get('{person}/diagnostic-report/create', DiagnosticReportCreate::class)

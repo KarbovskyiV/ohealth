@@ -67,7 +67,8 @@ class EncounterRepository extends BaseRepository
 
             if (isset($data['incomingReferral'])) {
                 $incomingReferral = Repository::identifier()->store(
-                    $data['incomingReferral']['identifier']['value']
+                    $data['incomingReferral']['identifier']['value'],
+                    $data['incomingReferral']['display_value'] ?? $data['incomingReferral']['displayValue'] ?? null
                 );
                 Repository::codeableConcept()->attach($incomingReferral, $data['incomingReferral']);
             }

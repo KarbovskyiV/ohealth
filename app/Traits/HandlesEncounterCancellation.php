@@ -122,6 +122,7 @@ trait HandlesEncounterCancellation
         }
 
         $this->showCancellationModal = false;
+        $this->actionType = 'cancel_encounter';
         $this->showSignatureModal = true;
     }
 
@@ -358,6 +359,7 @@ trait HandlesEncounterCancellation
     {
         $this->showCancellationModal = false;
         $this->showSignatureModal = false;
+        $this->actionType = null;
         $this->encounterCancellationForm()->resetCancellationFields();
         $this->form->resetSigningFields();
 

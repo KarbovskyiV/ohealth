@@ -96,16 +96,14 @@
             @endif
 
             @if (legalEntity() && Auth::user()->cannot('limitedAction', LegalEntity::class))
-                    <li>
-                        <a href="{{ route('legal-entity-connection.index', [legalEntity()]) }}"
-                           class="menu-item-simple {{ request()->routeIs('legal-entity-connection.*') ? 'menu-item-active' : '' }}"
-                        >
-                            @icon('connection-two-way')
-                            <span>{{ __('Зв\'язки МІС та СГуСОЗ') }}</span>
-                        </a>
-                    </li>
-
-
+                <li>
+                    <a href="{{ route('legal-entity-connection.index', [legalEntity()]) }}"
+                       class="menu-item-simple {{ request()->routeIs('legal-entity-connection.*') ? 'menu-item-active' : '' }}"
+                    >
+                        @icon('connection-two-way')
+                        <span>{{ __('Зв\'язки МІС та СГуСОЗ') }}</span>
+                    </a>
+                </li>
                 @can('viewAny', Division::class)
                     <li>
                         <a href="{{ route('division.index', [legalEntity()]) }}" class="menu-item-simple">
@@ -314,6 +312,28 @@
                         <span>{{ __('care-plan.care_plan') }}</span>
                     </a>
                 </li>
+
+                @if (legalEntity()->isPharmacy())
+                    <li>
+                        <a
+                            href="{{ route('medication-requests.index', [legalEntity()]) }}"
+                            class="menu-item-simple {{ request()->routeIs('medication-requests.*') ? 'menu-item-active' : '' }}"
+                        >
+                            @icon('medication-requests')
+                            <span>Електронні рецепти</span>
+                        </a>
+                    </li>
+                @else
+                    <li>
+                        <a
+                            href="{{ route('referrals.index', [legalEntity()]) }}"
+                            class="menu-item-simple {{ request()->routeIs('referrals.*') ? 'menu-item-active' : '' }}"
+                        >
+                            @icon('referrals')
+                            <span>Направлення</span>
+                        </a>
+                    </li>
+                @endif
 
                 @can('viewAny', Equipment::class)
                     <li>

@@ -682,7 +682,6 @@ class PatientSummary extends BasePatientComponent
             'procedures'
         );
     }
-
     /**
      * Fetch the prepersons merged into this person from eHealth.
      *

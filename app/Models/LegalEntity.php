@@ -173,6 +173,11 @@ class LegalEntity extends Model
         return $this->hasMany(License::class);
     }
 
+    public function carePlans(): HasMany
+    {
+        return $this->hasMany(CarePlan::class);
+    }
+
     public function equipments(): HasMany
     {
         return $this->hasMany(Equipment::class);
@@ -256,6 +261,14 @@ class LegalEntity extends Model
     public function byUuid(Builder $query, string $legalEntityUUID): void
     {
         $query->where('uuid', $legalEntityUUID);
+    }
+
+    /**
+     * Pharmacy legal entities dispense e-prescriptions; they do not issue referrals.
+     */
+    public function isPharmacy(): bool
+    {
+        return $this->type?->name === self::TYPE_PHARMACY;
     }
 
     /**

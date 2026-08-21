@@ -61,7 +61,6 @@ class EpisodeCreate extends BaseEpisodeComponent
         }
 
         logger()->debug('Job ID to further debug', $response->getData());
-
         // eHealth accepted the episode; only now persist it locally
         try {
             Repository::episode()->store($formattedData, $this->patient());

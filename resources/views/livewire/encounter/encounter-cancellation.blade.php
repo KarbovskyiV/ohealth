@@ -2,42 +2,46 @@
 
 <div x-data="{ showCancellationModal: $wire.entangle('showCancellationModal') }">
     <template x-teleport="body">
-        <div x-show="showCancellationModal"
-             x-cloak
-             role="dialog"
-             aria-modal="true"
-             class="modal"
-             @keydown.escape.prevent.stop="$wire.closeEncounterCancellationModal()"
+        <div
+            x-show="showCancellationModal"
+            x-cloak
+            role="dialog"
+            aria-modal="true"
+            class="modal"
+            @keydown.escape.prevent.stop="$wire.closeEncounterCancellationModal()"
         >
-            <div x-transition.opacity
-                 class="fixed inset-0 bg-black/30"
-                 @click="$wire.closeEncounterCancellationModal()"
+            <div
+                x-transition.opacity
+                class="fixed inset-0 bg-black/30"
+                @click="$wire.closeEncounterCancellationModal()"
             ></div>
 
             <div class="modal-wrapper">
-                <div class="modal-content w-full max-w-6xl mx-auto bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                     @click.stop
-                     x-transition
-                     x-trap.noscroll.inert="showCancellationModal"
+                <div
+                    class="modal-content mx-auto w-full max-w-6xl bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+                    @click.stop
+                    x-transition
+                    x-trap.noscroll.inert="showCancellationModal"
                 >
                     <div class="p-8 md:p-12">
-                        <h3 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 leading-tight max-w-5xl">
+                        <h3 class="max-w-5xl text-2xl leading-tight font-bold text-gray-900 md:text-3xl dark:text-gray-100">
                             {{ __('patients.messages.encounter_cancel_modal_title') }}
                         </h3>
 
-                        <p class="mt-12 text-xl md:text-2xl leading-relaxed text-gray-700 dark:text-gray-200 max-w-5xl">
+                        <p class="mt-12 max-w-5xl text-xl leading-relaxed text-gray-700 md:text-2xl dark:text-gray-200">
                             {{ $description ?? __('patients.messages.encounter_cancel_modal_description') }}
                         </p>
 
                         <div class="mt-12 max-w-5xl">
-                            <label for="encounterCancellationReason"
-                                   class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-4"
+                            <label
+                                for="encounterCancellationReason"
+                                class="mb-4 block text-sm font-medium text-gray-700 dark:text-gray-200"
                             >
                                 {{ __('patients.messages.encounter_cancel_reason_label') }} *
                             </label>
 
                             <select
-                                class="w-full border-0 border-b border-gray-300 dark:border-gray-600 bg-transparent px-1 py-3 text-lg text-gray-700 dark:text-gray-100 focus:border-blue-500 focus:ring-0"
+                                class="w-full border-0 border-b border-gray-300 bg-transparent px-1 py-3 text-lg text-gray-700 focus:border-blue-500 focus:ring-0 dark:border-gray-600 dark:text-gray-100"
                                 wire:model="{{ $formPath }}.cancellationReason"
                                 name="encounterCancellationReason"
                                 id="encounterCancellationReason"
@@ -46,10 +50,11 @@
                                     {{ __('patients.messages.encounter_cancel_reason_placeholder') }}
                                 </option>
 
-                                @foreach(data_get($this->dictionaries, 'eHealth/cancellation_reasons', []) as $code => $label)
-                                    <option value="{{ $code }}"
-                                            class="bg-white text-gray-900 dark:bg-gray-800 dark:text-white"
-                                            wire:key="encounter-cancel-reason-{{ $code }}"
+                                @foreach (data_get($this->dictionaries, 'eHealth/cancellation_reasons', []) as $code => $label)
+                                    <option
+                                        value="{{ $code }}"
+                                        class="bg-white text-gray-900 dark:bg-gray-800 dark:text-white"
+                                        wire:key="encounter-cancel-reason-{{ $code }}"
                                     >
                                         {{ $label }}
                                     </option>
@@ -62,8 +67,9 @@
                         </div>
 
                         <div class="mt-10 max-w-5xl">
-                            <label for="encounterExplanatoryLetter"
-                                   class="block text-base font-semibold text-gray-700 dark:text-gray-200 mb-4"
+                            <label
+                                for="encounterExplanatoryLetter"
+                                class="mb-4 block text-base font-semibold text-gray-700 dark:text-gray-200"
                             >
                                 {{ __('patients.messages.encounter_cancel_explanation_label') }} *
                             </label>
@@ -73,7 +79,7 @@
                                 id="encounterExplanatoryLetter"
                                 name="encounterExplanatoryLetter"
                                 maxlength="255"
-                                class="w-full min-h-48 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-5 py-4 text-lg text-gray-700 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
+                                class="min-h-48 w-full rounded-lg border border-gray-300 bg-white px-5 py-4 text-lg text-gray-700 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-400"
                                 placeholder="{{ __('forms.write_comment_here') }}"
                             ></textarea>
 
@@ -83,27 +89,27 @@
                         </div>
 
                         <div class="mt-16 flex flex-row items-center gap-8 text-gray-900 dark:text-gray-100">
-                            <button type="button"
-                                    wire:click="closeEncounterCancellationModal"
-                                    class="button-minor px-8"
+                            <button
+                                type="button"
+                                wire:click="closeEncounterCancellationModal"
+                                class="button-minor px-8"
                             >
                                 {{ __('forms.cancel') }}
                             </button>
 
-                            <button type="button"
-                                    wire:click="proceedToSignature"
-                                    wire:loading.attr="disabled"
-                                    wire:loading.class="opacity-50 cursor-not-allowed"
-                                    wire:target="proceedToSignature"
-                                    class="px-8 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors cursor-pointer"
+                            <button
+                                type="button"
+                                wire:click="proceedToSignature"
+                                wire:loading.attr="disabled"
+                                wire:loading.class="opacity-50 cursor-not-allowed"
+                                wire:target="proceedToSignature"
+                                class="cursor-pointer rounded-lg bg-red-600 px-8 py-3 font-semibold text-white transition-colors hover:bg-red-700"
                             >
                                 <span wire:loading.remove wire:target="proceedToSignature">
                                     {{ __('patients.messages.encounter_cancel_confirm_button') }}
                                 </span>
 
-                                <span wire:loading wire:target="proceedToSignature">
-                                    {{ __('forms.loading') }}
-                                </span>
+                                <span wire:loading wire:target="proceedToSignature"> {{ __('forms.loading') }} </span>
                             </button>
                         </div>
                     </div>
@@ -112,5 +118,5 @@
         </div>
     </template>
 
-    <x-signature-modal method="cancelSelectedEncounter"/>
+    <x-signature-modal method="cancelSelectedEncounter" :only-actions="['cancel_encounter']" />
 </div>

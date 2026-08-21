@@ -226,10 +226,12 @@
                 </fieldset>
             @endforeach
 
-            <div class="pagination">{{ $drugs->links() }}</div>
+            <div class="pagination">
+                {{ $drugs->links() }}
+            </div>
         </section>
     @endif
 
     <x-forms.loading />
-    <livewire:components.x-message :key="time()" />
+    <livewire:components.x-message :listen-async="true" :key="time()" />
 </div>

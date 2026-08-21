@@ -362,7 +362,7 @@
                                                 {{ __('patients.performer') }}
                                             </div>
                                             <div class="record-inner-value text-[14px] font-semibold wrap-break-word uppercase">
-                                                {{ collect(data_get($diagnosticReport, 'performer', []))->pluck('reference.displayValue')->filter()->join(', ') ?: '-' }}
+                                                {{ data_get($diagnosticReport, 'performer.reference.displayValue' ,'-') }}
                                             </div>
                                         </div>
                                         <div class="min-w-0">

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Encounter;
 
-use App\Classes\eHealth\Api\ServiceRequestApi;
+use App\Classes\eHealth\Api\ServiceRequest;
 use App\Classes\eHealth\EHealth;
 use App\Classes\eHealth\Exceptions\ApiException as eHealthApiException;
 use App\Core\Arr;
@@ -48,6 +48,8 @@ class EncounterComponent extends Component
     public Form $form;
 
     public bool $showSignatureModal = false;
+
+    public ?string $actionType = null;
 
     /**
      * Person ID (set when the patient is a person).
@@ -127,6 +129,8 @@ class EncounterComponent extends Component
      * @var string|null
      */
     public ?string $patientUuid = null;
+    public array $availableReferrals = [];
+    public bool $referralsLoaded = false;
 
     /**
      * Legal entity type of auth user.
@@ -397,6 +401,54 @@ class EncounterComponent extends Component
     }
 
     /**
+     * Fetch all in_progress referrals for the patient from eHealth.
+     * Called from mount() in EncounterCreate.
+     */
+    public function loadInProgressReferrals(): void
+    {
+        if ($this->referralsLoaded) {
+            return;
+        }
+
+        try {
+            $patient = $this->patient();
+            $patientUuid = $patient->uuid;
+
+            // searchForServiceRequestsByParams sends GET /api/service_requests
+            // The Request::sendRequest() already returns $data['data'] for successful responses
+            // so the result here IS the array of service requests directly
+            $items = \App\Classes\eHealth\EHealth::serviceRequest()->searchForServiceRequestsByParams([
+                'patient_id' => $patientUuid,
+                'status' => 'in_progress',
+            ])->getData();
+
+            // If the API returns a wrapped structure, unwrap it
+            if (isset($items['data'])) {
+                $items = $items['data'];
+            }
+
+            if (is_array($items)) {
+                $this->availableReferrals = collect($items)->map(function ($referral) {
+                    $codings = $referral['category']['coding'] ?? [];
+                    $category = $codings[0]['display'] ?? ($codings[0]['code'] ?? 'Направлення');
+                    $requisition = $referral['requisition'] ?? $referral['id'];
+
+                    return [
+                        'id' => $referral['id'],
+                        'requisition' => $requisition,
+                        'category' => $category,
+                    ];
+                })->values()->toArray();
+            }
+
+            $this->referralsLoaded = true;
+        } catch (\Throwable $e) {
+            logger()->error('loadInProgressReferrals failed: ' . $e->getMessage());
+            // Don't show an error toast — just silently leave the dropdown empty
+        }
+    }
+
+    /**
      * Search for referral number.
      *
      * @return void
@@ -405,7 +457,7 @@ class EncounterComponent extends Component
     public function searchForReferralNumber(): void
     {
         $buildSearchRequest = EncounterRequestApi::buildGetServiceRequestList($this->form->referralNumber);
-        ServiceRequestApi::searchForServiceRequestsByParams($buildSearchRequest);
+        \App\Classes\eHealth\EHealth::serviceRequest()->searchForServiceRequestsByParams($buildSearchRequest)->getData();
     }
 
     /**
@@ -452,6 +504,14 @@ class EncounterComponent extends Component
             : Person::with('names')->findOrFail($this->personId));
     }
 
+    /**
+     * Livewire AJAX does not remount the layout toast, so session flash alone is invisible.
+     */
+    protected function flashOutcome(string $type, string $message): void
+    {
+        session()->flash($type, $message);
+        $this->dispatch('flashMessage', ['message' => $message, 'type' => $type]);
+    }
     /**
      * Initialize the component data for the current patient.
      *
@@ -555,7 +615,7 @@ class EncounterComponent extends Component
     /**
      * Load the primary diagnosis from the selected episode.
      *
-     * @param  string|null  $episodeId  Episode UUID.
+     * @param string|null $episodeId Episode UUID.
      * @return void
      */
     public function updatedFormEpisodeId(?string $episodeId): void

@@ -300,6 +300,7 @@ class ProcedureComponent extends Component
             );
         } catch (CipherException|CipherConnectionException $exception) {
             $exception->handle('Error when signing procedure with Cipher');
+            Session::flash('error-modal', $exception->getMessage());
 
             return;
         }
@@ -330,10 +331,12 @@ class ProcedureComponent extends Component
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when signing procedure');
+            Session::flash('error-modal', $exception->getMessage());
 
             return;
         } catch (Throwable $exception) {
             $this->handleDatabaseErrors($exception, 'Error while saving procedure');
+            Session::flash('error-modal', $exception->getMessage());
 
             return;
         }

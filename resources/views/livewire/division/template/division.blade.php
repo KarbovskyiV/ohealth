@@ -15,7 +15,7 @@
 @endphp
 
 <div>
-    <livewire:components.x-message :key="now()->timestamp"/>
+    <livewire:components.x-message :listen-async="true" :key="now()->timestamp"/>
 
     <div
         x-data="{
@@ -26,7 +26,7 @@
             actionButtonText: ''
         }"
     >
-        <x-header-navigation x-data="{ showFilter: false }" class="items-start md:max-w-6xl pr-4">
+        <x-header-navigation x-data="{ showFilter: false }" class="items-start">
             <x-slot name='title'>
                 @yield('title')
             </x-slot>
