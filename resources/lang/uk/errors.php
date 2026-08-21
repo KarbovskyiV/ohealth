@@ -58,6 +58,10 @@ return [
             'authored_on_out_of_range' => 'Дата виписування поза допустимим діапазоном ЕСОЗ. Оновіть дати у формі направлення.',
             'medical_program_not_allowed' => 'не дозволена для цієї дії.',
             'untranslated_error_message' => ':message',
+            'license_type_already_present' => 'Ліцензія типу «:type» вже існує для цього закладу. Відредагуйте наявну додаткову ліцензію або синхронізуйте список з ЕСОЗ.',
+            'license_type_mismatch' => 'Тип закладу та тип ліцензії не співпадають.',
+            'license_expired' => 'Ліцензія втратила чинність.',
+            'no_active_primary_license' => 'Для закладу не знайдено активної основної ліцензії.',
             // Real newlines (not literal \n) so flash UI with whitespace-pre-line renders paragraphs.
             'party_not_verified' => <<<'TXT'
 Увага! Працівника не верифіковано, можливість роботи в ЕСОЗ тимчасово обмежена.

@@ -58,10 +58,28 @@ class EHealthResponseException extends EHealthException
         $message = $flashMessage ?? __('messages.ehealth_error', ['message' => $this->getMessage()]);
 
         if ($flashMessage === null && $this->response->status() === 409) {
-            $message = $this->response->json('error.message') ?? $this->getMessage();
+            $raw = $this->response->json('error.message') ?? $this->getMessage();
+            $message = $this->translateConflictMessage($raw);
         }
 
         Session::flash('error', $message);
+    }
+
+    /**
+     * Map known eHealth 409 conflict messages to Ukrainian copy.
+     */
+    protected function translateConflictMessage(string $message): string
+    {
+        if (preg_match('/^License with type (.+) is already present$/u', $message, $matches) === 1) {
+            return __('errors.ehealth.messages.license_type_already_present', ['type' => $matches[1]]);
+        }
+
+        return match ($message) {
+            'Legal entity type and license type mismatch' => __('errors.ehealth.messages.license_type_mismatch'),
+            'License is expired' => __('errors.ehealth.messages.license_expired'),
+            'No active primary license found for legal entity' => __('errors.ehealth.messages.no_active_primary_license'),
+            default => $message,
+        };
     }
 
     /**
