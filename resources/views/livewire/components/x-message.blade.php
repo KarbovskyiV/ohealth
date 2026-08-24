@@ -1,4 +1,4 @@
-<div x-data="message"
+<div x-data="message(@js((bool) (session('error') || session('success') || session('status') || session('info') || session('warning'))))"
     @if($listenAsync)
         @flash-message.window="handleFlash($event)"
         x-init="setupListeners()"
@@ -92,8 +92,8 @@
 
 <script>
     document.addEventListener('alpine:init', () => {
-        Alpine.data('message', () => ({
-            showAlertMessage: {{ (session('error') || session('success') || session('status') || session('info') || session('warning')) ? 'true' : 'false' }},
+        Alpine.data('message', (showAlertMessage = false) => ({
+            showAlertMessage,
             showDynamicMessage: false,
             dynamicText: '',
             dynamicType: 'success',
