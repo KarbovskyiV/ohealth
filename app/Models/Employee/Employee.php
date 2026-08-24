@@ -104,6 +104,19 @@ class Employee extends BaseEmployee
         return $query->whereEmployeeType(Role::DOCTOR);
     }
 
+    /**
+     * Scope to the employees that are approved and still working.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function active(Builder $query): Builder
+    {
+        return $query->whereStatus(Status::APPROVED)
+            ->whereIsActive(true);
+    }
+
     #[Scope]
     protected function forParty(Builder $query, int $partyId): Builder
     {
@@ -157,8 +170,7 @@ class Employee extends BaseEmployee
     protected function activeSpecialists(Builder $query, int $legalEntityId): Builder
     {
         return $query->whereLegalEntityId($legalEntityId)
-            ->whereStatus(Status::APPROVED)
-            ->whereIsActive(true)
+            ->active()
             ->whereHas('specialities', static function (Builder $query) {
                 $query->select('id')->whereSpecialityOfficio(true);
             })
@@ -170,8 +182,7 @@ class Employee extends BaseEmployee
     protected function activeRecorders(Builder $query, int $legalEntityId, bool $skipVerificationCheck = false): Builder
     {
         $query->whereLegalEntityId($legalEntityId)
-            ->whereStatus(Status::APPROVED)
-            ->whereIsActive(true);
+            ->active();
 
         if (!$skipVerificationCheck) {
             $query->whereHas(
@@ -189,8 +200,7 @@ class Employee extends BaseEmployee
     {
         return $query->whereLegalEntityId($legalEntityId)
             ->whereIn('employee_type', [Role::OWNER, Role::ADMIN])
-            ->whereStatus(Status::APPROVED)
-            ->whereIsActive(true)
+            ->active()
             ->with('party:id,first_name,last_name,second_name');
     }
 
@@ -200,10 +210,9 @@ class Employee extends BaseEmployee
     #[Scope]
     public function activeOwners(Builder $query, int $legalEntityId): Builder
     {
-        return $query->where('legal_entity_id', $legalEntityId)
-            ->where('employee_type', Role::OWNER)
-            ->where('status', Status::APPROVED)
-            ->where('is_active', true);
+        return $query->whereLegalEntityId($legalEntityId)
+            ->whereEmployeeType(Role::OWNER)
+            ->active();
     }
 
     /**

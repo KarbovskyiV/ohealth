@@ -210,7 +210,7 @@ class PersonComponent extends Component
 
         // Below the self-registration age a person cannot be a confidant (the remaining eligibility
         // rules — legal capacity, verification statuses, existing relationships — are enforced by eHealth)
-        if ($birthDate->age < Form::NO_SELF_REGISTRATION_AGE) {
+        if ($birthDate->age < config('ehealth.no_self_registration_age')) {
             $this->invalidPersonId = $personData['id'];
 
             return;
@@ -634,19 +634,17 @@ class PersonComponent extends Component
         }
 
         try {
-            $response = EHealth::personRequest()->resendAuthOtp($this->form->person['id']);
+            EHealth::personRequest()->resendAuthOtp($this->form->person['id']);
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when resending sms to person');
 
             return;
         }
 
-        if ($response->getData()['status'] === 'new') {
-            // Mark SMS as sent for this session (no expiration - persists until cache clear)
-            RateLimiter::hit($rateLimitKey);
+        // Mark SMS as sent for this session (no expiration - persists until cache clear)
+        RateLimiter::hit($rateLimitKey);
 
-            Session::flash('success', __('patients.messages.sms_sent_successfully'));
-        }
+        Session::flash('success', __('patients.messages.sms_sent_successfully'));
     }
 
     /**

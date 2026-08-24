@@ -13,7 +13,6 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
-use App\Livewire\Person\Forms\PersonForm;
 use App\Models\Person\Person;
 use App\Models\Relations\AuthenticationMethod as AuthenticationMethodModel;
 use App\Repositories\Repository;
@@ -118,7 +117,7 @@ trait InteractsWithAuthenticationMethods
                         return;
                     }
 
-                    if ($person->age <= PersonForm::NO_SELF_AUTH_AGE && in_array($value, [
+                    if ($person->age <= config('ehealth.no_self_auth_age') && in_array($value, [
                             AuthenticationMethod::OTP->value,
                             AuthenticationMethod::OFFLINE->value
                         ], true)) {

@@ -552,6 +552,7 @@ class Person extends Request
     {
         $data = $response->getData();
         $thirdPerson = AuthenticationMethod::THIRD_PERSON->value;
+        $notAvailable = AuthenticationMethod::NA->value;
 
         $replaced = self::replaceEHealthPropNames($data);
 
@@ -565,7 +566,7 @@ class Person extends Request
         });
 
         $validator = Validator::make($replaced, [
-            '*.uuid' => ['required', 'uuid'],
+            '*.uuid' => ["required_unless:*.type,$notAvailable", 'nullable', 'uuid'],
             '*.type' => ['required', 'string', Rule::in(AuthenticationMethod::values())],
             '*.alias' => ["required_if:*.type,$thirdPerson", 'nullable', 'string', 'max:255'],
             '*.ehealth_ended_at' => ['nullable', 'date'],

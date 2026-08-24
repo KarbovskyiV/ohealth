@@ -109,7 +109,8 @@ return [
     'authentication_method' => [
         'otp' => 'через СМС',
         'offline' => 'через документи',
-        'third_person' => 'через третю особу'
+        'third_person' => 'через третю особу',
+        'na' => 'відсутній'
     ],
     'documents' => [
         'UNZR' => 'УНЗР',

@@ -73,15 +73,18 @@ class DeclarationsSync extends EHealthJob
     /**
      * Get the next entity job to be scheduled after DeclarationSync completes.
      *
-     * If the job is standalone, returns a CompleteSync job for the current legal entity.
-     * Otherwise, returns a chain of DeclarationRequestsUpsert jobs for declaration requests with PARTIAL sync status.
+     * The list of the declaration requests is obtained first, so that the requests created outside of the MIS
+     * are stored before the chain of DeclarationRequestDetailsSync jobs is built.
      *
      * @return EHealthJob|null
      */
     protected function getNextEntityJob(): ?EHealthJob
     {
-        return $this->standalone
-            ? new CompleteSync($this->legalEntity, isFirstLogin: $this->isFirstLogin)
-            : $this->getDeclarationRequestsStartJob($this->legalEntity, $this->nextEntity);
+        return new DeclarationRequestsSync(
+            legalEntity: $this->legalEntity,
+            nextEntity: $this->nextEntity,
+            isFirstLogin: $this->isFirstLogin,
+            standalone: $this->standalone
+        );
     }
 }

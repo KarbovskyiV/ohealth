@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Core\Arr;
+use App\Enums\Declaration\RequestStatus;
 use App\Enums\JobStatus;
 use App\Enums\Status;
 use App\Models\DeclarationRequest;
@@ -22,6 +23,8 @@ use App\Models\ReorganizationEmployeeDeclaration;
 use BackedEnum;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\ItemNotFoundException;
 
 class DeclarationRequestRepository
 {
@@ -40,22 +43,37 @@ class DeclarationRequestRepository
     }
 
     /**
-     * Update previously created request.
+     * Store or update the requests obtained from the list of the legal entity requests.
      *
-     * @param  int  $id
-     * @param  array  $validatedData
+     * @param  array  $requests
      * @return void
      */
-    public function updateRequest(int $id, array $validatedData): void
+    public function storeMany(array $requests): void
     {
-        $validatedData = $this->mapUuidsToIds($validatedData);
-        DeclarationRequest::where('id', $id)->update($validatedData);
+        foreach ($requests as $request) {
+            $request['sync_status'] = JobStatus::PARTIAL->value;
+
+            try {
+                $request = $this->mapUuidsToIds($request, true);
+            } catch (ItemNotFoundException) {
+                // A request of a patient, an employee or a division that is not synced yet is stored by the next sync
+                Log::warning(
+                    'Declaration request ' . $request['id'] . ' is skipped: its related entities are not synced yet'
+                );
+
+                continue;
+            }
+
+            $request['uuid'] = Arr::pull($request, 'id');
+
+            DeclarationRequest::updateOrCreate(['uuid' => $request['uuid']], $request);
+        }
     }
 
     /**
      * Update records based on response from EHealth.
      *
-     * @param  int  $id
+     * @param  int|string  $id
      * @param  array  $responseData
      * @return void
      */
@@ -106,14 +124,32 @@ class DeclarationRequestRepository
     }
 
     /**
+     * Cancel the patient's other pending requests, which a newly created request supersedes.
+     *
+     * @param  int  $personId
+     * @param  int  $exceptId  ID of the just created request
+     * @return void
+     */
+    public function cancelPendingRequests(int $personId, int $exceptId): void
+    {
+        DeclarationRequest::wherePersonId($personId)
+            ->whereKeyNot($exceptId)
+            ->whereIn('status', [RequestStatus::NEW->value, RequestStatus::APPROVED->value])
+            ->update([
+                'status' => RequestStatus::CANCELLED->value,
+                'sync_status' => JobStatus::PARTIAL->value
+            ]);
+    }
+
+    /**
      * Update status and status reason after reject.
      *
      * @param  string  $uuid
      * @param  string  $status
-     * @param  string  $statusReason
+     * @param  string|null  $statusReason
      * @return void
      */
-    public function updateStatuses(string $uuid, string $status, string $statusReason): void
+    public function updateStatuses(string $uuid, string $status, ?string $statusReason): void
     {
         DeclarationRequest::where('uuid', $uuid)->update([
             'status' => $status,
