@@ -29,6 +29,7 @@ use App\Livewire\Person\Records\PatientMedicationRequests;
 use App\Livewire\Person\Records\PatientReferrals;
 use App\Livewire\Person\Records\PatientObservations;
 use App\Livewire\Person\Records\PatientProcedures;
+use App\Livewire\Person\Records\PatientDevices;
 use App\Livewire\Person\Records\PatientSummary;
 use App\Livewire\Person\Records\PatientVerification;
 use App\Livewire\Preperson\PrepersonData;
@@ -95,6 +96,7 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
             Route::get('/{person}/clinical-impressions', PatientClinicalImpressions::class)->name('clinical-impressions');
             Route::get('/{person}/encounters', PatientEncounters::class)->name('encounters');
             Route::get('/{person}/procedures', PatientProcedures::class)->name('procedures');
+            Route::get('/{person}/devices', PatientDevices::class)->name('devices');
         });
     });
 
@@ -186,6 +188,7 @@ Route::prefix('prepersons')
             ->name('clinical-impressions');
         Route::get('/{preperson}/encounters', PatientEncounters::class)->can('view', 'preperson')->name('encounters');
         Route::get('/{preperson}/procedures', PatientProcedures::class)->can('view', 'preperson')->name('procedures');
+        Route::get('/{preperson}/devices', PatientDevices::class)->can('view', 'preperson')->name('devices');
 
         Route::get('/{preperson}/encounter/create', EncounterCreate::class)
             ->can('view', 'preperson')
