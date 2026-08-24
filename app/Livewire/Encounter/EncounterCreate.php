@@ -383,6 +383,10 @@ class EncounterCreate extends EncounterComponent
                 }
             }
 
+            if (isset($formattedData['devices'])) {
+                Repository::device()->store($formattedData['devices'], $this->patient());
+            }
+
             if (isset($formattedData['clinicalImpressions'])) {
                 Repository::clinicalImpression()->store($formattedData['clinicalImpressions'], $this->patient());
 

@@ -9,6 +9,7 @@ use App\Repositories\MedicalEvents\ClinicalImpressionRepository;
 use App\Repositories\MedicalEvents\CodeableConceptRepository;
 use App\Repositories\MedicalEvents\CodingRepository;
 use App\Repositories\MedicalEvents\ConditionRepository;
+use App\Repositories\MedicalEvents\DeviceRepository;
 use App\Repositories\MedicalEvents\DeviceRequestRequestRepository;
 use App\Repositories\MedicalEvents\DiagnosticReportRepository;
 use App\Repositories\MedicalEvents\EncounterRepository;
@@ -44,6 +45,7 @@ class MedicalEventsDBServiceProvider extends ServiceProvider
         $this->bindRepository(DiagnosticReportRepository::class);
         $this->bindRepository(ObservationRepository::class);
         $this->bindRepository(ProcedureRepository::class);
+        $this->bindRepository(DeviceRepository::class);
         $this->bindRepository(PaperReferralRepository::class);
         $this->bindRepository(PeriodRepository::class);
         $this->bindRepository(ClinicalImpressionRepository::class);
@@ -104,6 +106,7 @@ class MedicalEventsDBServiceProvider extends ServiceProvider
             DiagnosticReportRepository::class,
             ObservationRepository::class,
             ProcedureRepository::class,
+            DeviceRepository::class,
             PaperReferralRepository::class,
             PeriodRepository::class,
             ClinicalImpressionRepository::class,
