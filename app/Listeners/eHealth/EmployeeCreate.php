@@ -160,7 +160,7 @@ class EmployeeCreate
 
                         // Just overcautiousness
                         if ($currentOwnerUser) {
-                            Repository::legalEntity()->setNewOwner($currentOwnerUser, $event->legalEntity);
+                            Repository::legalEntity()->disableOldOwner($currentOwnerUser, $event->legalEntity);
                         } else {
                              Log::error('[EmployeeCreate] User not found for current owner.', [
                                 'user_id' => $currOwner->userId,
@@ -168,11 +168,7 @@ class EmployeeCreate
                                 'employee_uuid' => $eHealthEmployee['uuid'] ?? null,
                             ]);
 
-                            throw new RuntimeException(
-                                "User not found for current owner with ID: {$currOwner->userId}. " .
-                                "Legal Entity UUID: {$event->legalEntity->uuid}. " .
-                                "Employee UUID: " . ($eHealthEmployee['uuid'] ?? 'null')
-                            );
+                            throw new RuntimeException( __('auth.login.error.owner_replacement.current_owner_user_not_found'));
                         }
                     }
                 }
