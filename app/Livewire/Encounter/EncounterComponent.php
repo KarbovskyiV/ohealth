@@ -1016,7 +1016,7 @@ class EncounterComponent extends Component
             ->flattenedChildValues()
             ->toArray();
         $this->dictionaries['eHealth/assistive_products'] = $basics->byName('eHealth/assistive_products')
-            ->flattenedChildValues(true, true)
+            ->flattenedChildValues(true)
             ->toArray();
         $this->dictionaries['custom/services'] = dictionary()->services()->flattened()->toArray();
 

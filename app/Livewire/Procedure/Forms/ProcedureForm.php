@@ -219,7 +219,7 @@ class ProcedureForm extends BaseForm
                 Rule::in(
                     dictionary()->basics()
                         ->byName('eHealth/assistive_products')
-                        ->flattenedChildValues(true, true)
+                        ->flattenedChildValues(true)
                         ->keys()
                         ->values()
                         ->toArray()
