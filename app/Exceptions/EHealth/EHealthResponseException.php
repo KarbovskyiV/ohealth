@@ -55,6 +55,12 @@ class EHealthResponseException extends EHealthException
             return;
         }
 
+        if ($this->isPartyDeceased()) {
+            Session::flash('error', __('errors.ehealth.messages.party_deceased'));
+
+            return;
+        }
+
         $message = $flashMessage ?? __('messages.ehealth_error', ['message' => $this->getMessage()]);
 
         if ($flashMessage === null && $this->response->status() === 409) {
@@ -73,7 +79,7 @@ class EHealthResponseException extends EHealthException
         if (preg_match('/^License with type (.+) is already present$/u', $message, $matches) === 1) {
             return __('errors.ehealth.messages.license_type_already_present', ['type' => $matches[1]]);
         }
-        
+
         if (str_contains($message, 'At least one of action references, diagnostic reports or procedures should reference the same service')) {
             return __('errors.ehealth.messages.referral_service_mismatch');
         }
@@ -94,6 +100,16 @@ class EHealthResponseException extends EHealthException
     {
         return $this->response->status() === 403
             && str_contains($this->response->json('error.message', ''), 'Party is not verified');
+    }
+
+    /**
+     * Returns true when the eHealth API denied the request because the
+     * employee's party is marked as deceased (BLOCK_DECEASED_PARTY_USERS=true).
+     */
+    public function isPartyDeceased(): bool
+    {
+        return $this->response->status() === 403
+            && str_contains($this->response->json('error.message', ''), 'Party is deceased');
     }
 
     /**

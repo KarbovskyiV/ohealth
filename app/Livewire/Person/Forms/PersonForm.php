@@ -23,9 +23,6 @@ use Illuminate\Validation\ValidationException;
 
 class PersonForm extends BaseForm
 {
-    public const int NO_SELF_AUTH_AGE = 14;
-    public const int NO_SELF_REGISTRATION_AGE = 16;
-    protected const int PERSON_FULL_LEGAL_CAPACITY_AGE = 18;
     private const string EXPIRATION_DATE_ISSUED_AT_CONDITIONAL_TYPE = 'PERMANENT_RESIDENCE_PERMIT';
     private const string EXPIRATION_DATE_ISSUED_AT_REQUIRED_FROM = '2018-06-01';
 
@@ -465,7 +462,7 @@ class PersonForm extends BaseForm
             return true;
         }
 
-        $documentType = $this->personAge < self::NO_SELF_AUTH_AGE
+        $documentType = $this->personAge < config('ehealth.no_self_auth_age')
             ? 'BIRTH_CERTIFICATE_FOREIGN'
             : 'PERMANENT_RESIDENCE_PERMIT';
 
@@ -746,7 +743,7 @@ class PersonForm extends BaseForm
         $personAge = CarbonImmutable::parse($this->person['birthDate'])->age;
 
         foreach ($this->person['confidantPerson']['documentsRelationship'] as $document) {
-            if ($personAge >= self::PERSON_FULL_LEGAL_CAPACITY_AGE &&
+            if ($personAge >= config('ehealth.person_full_legal_capacity_age') &&
                 in_array(
                     $document['type'],
                     ['BIRTH_CERTIFICATE', 'BIRTH_CERTIFICATE_FOREIGN'],
@@ -836,7 +833,7 @@ class PersonForm extends BaseForm
     }
 
     /**
-     * Do tax_id required if no_tax_id = false and persons age > NO_SELF_AUTH_AGE.
+     * Do tax_id required if no_tax_id = false and persons age is above the self-authentication age.
      *
      * @return void
      */
@@ -863,7 +860,7 @@ class PersonForm extends BaseForm
         if ($noTaxId === false && !$taxIdFilled && !empty($this->person['birthDate'])) {
             $personAge = CarbonImmutable::parse($this->person['birthDate'])->age;
 
-            if ($personAge > self::NO_SELF_AUTH_AGE) {
+            if ($personAge > config('ehealth.no_self_auth_age')) {
                 throw ValidationException::withMessages([
                     'person.taxId' => __('validation.custom.person.no_tax_id_false_requires_tax_id')
                 ]);
@@ -881,7 +878,6 @@ class PersonForm extends BaseForm
             ]);
         }
     }
-
 
     /**
      * The issuing_country field is driven by chart parameters per document type:
@@ -1055,14 +1051,16 @@ class PersonForm extends BaseForm
     private function validateNecessityOfConfidantPerson(): void
     {
         // Below the self-registration age a confidant person is mandatory
-        if ($this->personAge < self::NO_SELF_REGISTRATION_AGE && empty($this->person['confidantPerson']['personId'])) {
+        if ($this->personAge < config('ehealth.no_self_registration_age')
+            && empty($this->person['confidantPerson']['personId'])) {
             throw ValidationException::withMessages([
                 'person.confidantPerson' => __('validation.custom.person.confidant_person_required_for_children')
             ]);
         }
 
         // Between the self-registration age and the full legal capacity age
-        if ($this->personAge > self::NO_SELF_REGISTRATION_AGE && $this->personAge < self::PERSON_FULL_LEGAL_CAPACITY_AGE) {
+        if ($this->personAge > config('ehealth.no_self_registration_age')
+            && $this->personAge < config('ehealth.person_full_legal_capacity_age')) {
             $personLegalCapacityDocumentTypes = config('ehealth.person_legal_capacity_document_types');
             $hasLegalCapacityDocument = false;
 
@@ -1090,13 +1088,13 @@ class PersonForm extends BaseForm
     }
 
     /**
-     * Check that document types BIRTH_CERTIFICATE or BIRTH_CERTIFICATE_FOREIGN are submitted if person age < NO_SELF_AUTH_AGE.
+     * Check that document types BIRTH_CERTIFICATE or BIRTH_CERTIFICATE_FOREIGN are submitted if person age is below the self-authentication age.
      *
      * @return void
      */
     private function validateDocumentsForMinorPerson(): void
     {
-        if ($this->personAge < self::NO_SELF_AUTH_AGE) {
+        if ($this->personAge < config('ehealth.no_self_auth_age')) {
             $requiredDocumentTypes = ['BIRTH_CERTIFICATE', 'BIRTH_CERTIFICATE_FOREIGN'];
             $hasRequiredDocument = false;
 
@@ -1145,7 +1143,8 @@ class PersonForm extends BaseForm
 
         // Check document types from PERSON_LEGAL_CAPACITY_DOCUMENT_TYPES config parameter (that prove persons legal capacity) are not submitted
         // if persons age is less than no_self_registration_age global parameter or greater than person_full_legal_capacity_age global parameter
-        if ($this->personAge < self::NO_SELF_REGISTRATION_AGE || $this->personAge > self::PERSON_FULL_LEGAL_CAPACITY_AGE) {
+        if ($this->personAge < config('ehealth.no_self_registration_age')
+            || $this->personAge > config('ehealth.person_full_legal_capacity_age')) {
             foreach ($this->person['documents'] as $document) {
                 if (in_array($document['type'], $personLegalCapacityDocumentTypes, true)) {
                     $documentTypeName = __('patients.documents.' . $document['type']) ?: $document['type'];
@@ -1198,8 +1197,8 @@ class PersonForm extends BaseForm
             ]);
         }
 
-        // Check if person age < prm.global_parameters.no_self_auth_age every document type is in NO_SELF_AUTH_AGE_DOCUMENT_TYPES
-        if ($this->personAge < self::NO_SELF_AUTH_AGE) {
+        // Check if person age is below the self-authentication age every document type is in NO_SELF_AUTH_AGE_DOCUMENT_TYPES
+        if ($this->personAge < config('ehealth.no_self_auth_age')) {
             $invalidTypes = array_diff($submittedTypes, $noSelfAuthAgeDocumentTypes);
 
             if (!empty($invalidTypes)) {
@@ -1217,8 +1216,8 @@ class PersonForm extends BaseForm
             }
         }
 
-        // Check if person age > prm.global_parameters.no_self_auth_age check existence SELF_AUTH_AGE_DOCUMENT_TYPES
-        if ($this->personAge > self::NO_SELF_AUTH_AGE) {
+        // Check if person age is above the self-authentication age check existence SELF_AUTH_AGE_DOCUMENT_TYPES
+        if ($this->personAge > config('ehealth.no_self_auth_age')) {
             $hasSelfAuthType = (bool)array_intersect($submittedTypes, $selfAuthAgeDocumentTypes);
 
             if (!$hasSelfAuthType) {

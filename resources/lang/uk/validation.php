@@ -395,6 +395,7 @@ return [
         'password' => 'пароль',
         'keyContainerUpload' => 'контейнер ключа',
         'knedp' => 'КНЕДП',
+        'authorizeWith' => 'метод автентифікації',
         'Token' => 'токен CSRF',
         'edrpou' => 'ЄДРПОУ',
         'email' => 'E-mail',

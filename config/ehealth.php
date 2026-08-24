@@ -471,7 +471,6 @@ return [
     //
     'summary_procedures_allowed' => [],
 
-
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20213956636/DRAFT+Config+params+Legal+Entity+ENT-035
     'legal_entity_episode_types' => [
         'OUTPATIENT' => ['TREATMENT', 'PREVENTION', 'PALLIATIVE_CARE', 'DG', 'REHAB', 'CONDITIONING'],
@@ -506,19 +505,50 @@ return [
         'NATIONAL_ID', 'COMPLEMENTARY_PROTECTION_CERTIFICATE', 'PERMANENT_RESIDENCE_PERMIT', 'REFUGEE_CERTIFICATE',
         'TEMPORARY_CERTIFICATE', 'TEMPORARY_PASSPORT'
     ],
-    // PERSON_DOCUMENTS_USE_SPECIFIC_EXPIRATION_DATE / PERSON_DOCUMENTS_SPECIFIC_EXPIRATION_DATE — when enabled,
-    // a document expiration_date must be later than the specific date instead of just being in the future
-    'person_documents_use_specific_expiration_date' => true,
-    'person_documents_specific_expiration_date' => null,
-    // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/17999299028/Person+documents+configurable+parameters#Person-documents-configurable-parameters
-    'self_auth_age_document_types' => [
-        'COMPLEMENTARY_PROTECTION_CERTIFICATE', 'FOREIGN_DOCUMENT_OTHER', 'FOREIGN_PASSPORT', 'NATIONAL_ID',
-        'NO_CITIZENSHIP_CERTIFICATE', 'PASSPORT', 'PERMANENT_RESIDENCE_PERMIT', 'REFUGEE_CERTIFICATE',
-        'TEMPORARY_CERTIFICATE', 'TEMPORARY_PASSPORT'
+
+    // Config params Person Authentication Method
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20224540713/DRAFT+Config+params+Person+Authentication+Method+ENT-051
+    'no_self_auth_age' => 14,
+
+    // Config params Person
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20214317118/DRAFT+Config+params+Person+ENT-050
+    'adult_age' => 18,
+    'person_full_legal_capacity_age' => 18,
+
+    // Config params Person Request
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20229226509/DRAFT+Config+params+Person+Request+ENT-055
+    'no_self_registration_age' => 16,
+
+    // Config params Person Documents
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20236599297/DRAFT+Config+params+Person+Documents+ENT-053
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/19725978326/RCC_FOREIGN+Foreigners+registration+Charts+Configuration+Parameters_EN
+    'declaration_no_self_auth_age_document_types' => [
+        'BIRTH_CERTIFICATE', 'BIRTH_CERTIFICATE_FOREIGN', 'FOREIGN_PASSPORT'
     ],
+    'declaration_self_auth_age_document_types' => [
+        'PASSPORT', 'NATIONAL_ID', 'TEMPORARY_PASSPORT', 'PERMANENT_RESIDENCE_PERMIT', 'REFUGEE_CERTIFICATE',
+        'COMPLEMENTARY_PROTECTION_CERTIFICATE', 'FOREIGN_PASSPORT'
+    ],
+    'document_types_issuing_country_not_ua' => [
+        'FOREIGN_PASSPORT', 'FOREIGN_DOCUMENT_OTHER', 'BIRTH_CERTIFICATE_FOREIGN'
+    ],
+    'document_types_issuing_country_ua_only' => [
+        'BIRTH_CERTIFICATE', 'COMPLEMENTARY_PROTECTION_CERTIFICATE', 'NATIONAL_ID', 'PASSPORT',
+        'PERMANENT_RESIDENCE_PERMIT', 'REFUGEE_CERTIFICATE', 'TEMPORARY_PASSPORT', 'TEMPORARY_CERTIFICATE'
+    ],
+    'identity_document_types' => [
+        'BIRTH_CERTIFICATE', 'BIRTH_CERTIFICATE_FOREIGN', 'COMPLEMENTARY_PROTECTION_CERTIFICATE', 'NATIONAL_ID',
+        'PASSPORT', 'PERMANENT_RESIDENCE_PERMIT', 'REFUGEE_CERTIFICATE', 'TEMPORARY_CERTIFICATE', 'TEMPORARY_PASSPORT'
+    ],
+    'identity_document_types_foreign' => ['FOREIGN_PASSPORT', 'NO_CITIZENSHIP_CERTIFICATE', 'FOREIGN_DOCUMENT_OTHER'],
     'no_self_auth_age_document_types' => [
         'BIRTH_CERTIFICATE', 'BIRTH_CERTIFICATE_FOREIGN', 'FOREIGN_PASSPORT', 'FOREIGN_DOCUMENT_OTHER'
     ],
+    'permanent_residence_permit' => [],
+    // PERSON_DOCUMENTS_USE_SPECIFIC_EXPIRATION_DATE / PERSON_DOCUMENTS_SPECIFIC_EXPIRATION_DATE — when enabled,
+    // a document expiration_date must be later than the specific date instead of just being in the future
+    'person_documents_specific_expiration_date' => null,
+    'person_documents_use_specific_expiration_date' => true,
     'person_legal_capacity_document_types' => [
         'DIVORCE_CERTIFICATE', 'MARRIAGE_CERTIFICATE', 'STATE_REGISTER_EXTRACT', 'COURT_DECISION_LEGAL_CAPACITY',
         'COURT_DECISION_DIVORCE', 'GUARDIANSHIP_DECISION_LEGAL_CAPACITY', 'LEGAL_CAPACITY_DOCUMENT'
@@ -529,15 +559,24 @@ return [
         'PASSPORT', 'PERMANENT_RESIDENCE_PERMIT', 'REFUGEE_CERTIFICATE', 'TEMPORARY_CERTIFICATE', 'TEMPORARY_PASSPORT',
         'FOREIGN_PASSPORT', 'NO_CITIZENSHIP_CERTIFICATE', 'FOREIGN_DOCUMENT_OTHER'
     ],
-    'document_types_issuing_country_ua_only' => [
-        'BIRTH_CERTIFICATE', 'COMPLEMENTARY_PROTECTION_CERTIFICATE', 'NATIONAL_ID', 'PASSPORT',
-        'PERMANENT_RESIDENCE_PERMIT', 'REFUGEE_CERTIFICATE', 'TEMPORARY_PASSPORT', 'TEMPORARY_CERTIFICATE'
+    'self_auth_age_document_types' => [
+        'COMPLEMENTARY_PROTECTION_CERTIFICATE', 'FOREIGN_DOCUMENT_OTHER', 'FOREIGN_PASSPORT', 'NATIONAL_ID',
+        'NO_CITIZENSHIP_CERTIFICATE', 'PASSPORT', 'PERMANENT_RESIDENCE_PERMIT', 'REFUGEE_CERTIFICATE',
+        'TEMPORARY_CERTIFICATE', 'TEMPORARY_PASSPORT'
     ],
-    'document_types_issuing_country_not_ua' => [
-        'FOREIGN_PASSPORT', 'FOREIGN_DOCUMENT_OTHER', 'BIRTH_CERTIFICATE_FOREIGN'
-    ],
-    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20214317118/DRAFT+Config+params+Person+ENT-050#IDENTITY_DOCUMENT_TYPES_FOREIGN
-    'identity_document_types_foreign' => ['FOREIGN_PASSPORT', 'NO_CITIZENSHIP_CERTIFICATE', 'FOREIGN_DOCUMENT_OTHER'],
+
+    // Config params Declaration Request
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20224704618/DRAFT+Config+params+Declaration+Request+ENT-014
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/17570234464/DRAFT+REST+API+Create+Declaration+Request+V3+API-005-014-0001#Validate-Legal-Entity-Type
+    'declaration_request_legal_entity_types' => ['MSP', 'PRIMARY_CARE', 'MSP_PHARMACY', 'MSP_LIMITED'],
+
+    // Config params Declaration
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20223426657/DRAFT+Config+params+Declaration+ENT-013
+    'declaration_term' => 5400,
+    'family_doctor_declaration_limit' => 5400,
+    'pediatrician_declaration_limit' => 2700,
+    'therapist_declaration_limit' => 6000,
+
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20214317118/DRAFT+Config+params+Person+ENT-050#VALIDATE_PERSON_TAX_ID_UNIQUENESS
     'validate_person_tax_id_uniqueness' => true,
     'third_person_limit' => 150,
@@ -573,9 +612,6 @@ return [
     // TBD: values are not published yet.
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20233683284/DRAFT+Config+params+Preperson+ENT-057#PREPERSON_HEALTHCARE_SERVICES_SPECIALITY_TYPES
     'preperson_healthcare_services_speciality_types' => [],
-
-    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/17570234464/DRAFT+REST+API+Create+Declaration+Request+V3+API-005-014-0001#Validate-Legal-Entity-Type
-    'declaration_request_legal_entity_types' => ['MSP', 'PRIMARY_CARE', 'MSP_PHARMACY', 'MSP_LIMITED'],
 
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/18504778043/NEW+Equipment+dictionaries+and+configurable+parameters+OMB-126
     'equipment_types_with_required_serial_number' => ['Z1203010502'],

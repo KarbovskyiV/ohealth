@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Declaration;
 
+use App\Enums\Declaration\Channel;
 use App\Models\LegalEntity;
 use App\Models\DeclarationRequest;
 use App\Models\Person\Person;
@@ -31,5 +32,12 @@ class DeclarationEdit extends DeclarationComponent
         $this->declarationRequestUuid = $declarationRequest->uuid ?? '';
 
         $this->status = $declarationRequest->status;
+
+        // The patient has already signed the request created in their own cabinet
+        $this->isCreatedByPatient = $declarationRequest->channel === Channel::PIS->value;
+
+        if ($this->isCreatedByPatient) {
+            $this->isSigned = true;
+        }
     }
 }
