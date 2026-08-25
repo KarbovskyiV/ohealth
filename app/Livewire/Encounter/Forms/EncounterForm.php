@@ -1157,7 +1157,7 @@ class EncounterForm extends BaseForm
                 Rule::in(
                     dictionary()->basics()
                         ->byName('eHealth/assistive_products')
-                        ->flattenedChildValues(true, true)
+                        ->flattenedChildValues(true)
                         ->keys()
                         ->map(static fn (int|string $code) => (string)$code)
                         ->values()
