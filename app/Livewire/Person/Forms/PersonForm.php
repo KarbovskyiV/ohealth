@@ -62,7 +62,13 @@ class PersonForm extends BaseForm
 
     public array $addresses = [];
 
-    public bool $processDisclosureDataConsent = true;
+    /**
+     * Mark 'the patient was informed about the purpose and grounds of processing their personal data'. Starts
+     * unanswered, the user ticks it on the leaflet shown before the person request is sent.
+     *
+     * @var bool
+     */
+    public bool $processDisclosureDataConsent = false;
 
     /**
      * Mark 'information from the leaflet was communicated to the patient'
@@ -71,7 +77,7 @@ class PersonForm extends BaseForm
      */
     public bool $patientSigned = false;
 
-    public string $authorizeWith;
+    public ?string $authorizeWith = null;
 
     public int $verificationCode;
 
@@ -94,9 +100,9 @@ class PersonForm extends BaseForm
                 new InDictionary('DOCUMENT_RELATIONSHIP_TYPE')
             ],
             'person.confidantPerson.documentsRelationship.*.number' => ['required', 'string', 'max:255'],
-            'person.confidantPerson.documentsRelationship.*.issuedBy' => ['required', 'string', 'max:255'],
+            'person.confidantPerson.documentsRelationship.*.issuedBy' => ['nullable', 'string', 'max:255'],
             'person.confidantPerson.documentsRelationship.*.issuedAt' => [
-                'required',
+                'nullable',
                 'date',
                 'before_or_equal:today',
                 'after_or_equal:person.birthDate'
@@ -172,9 +178,9 @@ class PersonForm extends BaseForm
         $rules = [
             'person.names' => ['required', 'array', 'min:1'],
             'person.names.*.language' => ['required', 'distinct', new InDictionary('LANGUAGE')],
-            'person.names.*.noLastName' => ['boolean'],
-            'person.names.*.firstName' => ['required', 'min:3'],
-            'person.names.*.secondName' => ['nullable', 'min:3'],
+            'person.names.*.noLastName' => ['required', 'boolean'],
+            'person.names.*.firstName' => ['required', 'min:1', 'max:255'],
+            'person.names.*.secondName' => ['nullable', 'min:1', 'max:255'],
             'person.birthDate' => ['required', 'date_format:' . config('app.date_format')],
             'person.birthCountry' => ['required', 'string'],
             'person.birthSettlement' => ['required', 'string'],
@@ -229,6 +235,11 @@ class PersonForm extends BaseForm
                     )
             ],
 
+            'person.preferredWayCommunication' => [
+                'nullable',
+                new InDictionary('PREFERRED_WAY_COMMUNICATION')
+            ],
+
             'person.phones.*.type' => ['nullable', 'string', 'distinct', 'required_with:person.phones.*.number'],
             'person.phones.*.number' => [
                 'nullable',
@@ -267,9 +278,9 @@ class PersonForm extends BaseForm
                 }
             ],
 
-            'person.emergencyContact.firstName' => ['required', 'min:3'],
-            'person.emergencyContact.lastName' => ['required', 'min:3'],
-            'person.emergencyContact.secondName' => ['nullable', 'min:3'],
+            'person.emergencyContact.firstName' => ['required', 'min:1', 'max:255'],
+            'person.emergencyContact.lastName' => ['required', 'min:1', 'max:255'],
+            'person.emergencyContact.secondName' => ['nullable', 'min:1', 'max:255'],
             'person.emergencyContact.phones.*.type' => ['required', 'string', 'distinct'],
             'person.emergencyContact.phones.*.number' => ['required', 'string', 'regex:/^\+[0-9]{11,12}$/', 'distinct'],
 
@@ -419,6 +430,19 @@ class PersonForm extends BaseForm
     public function rulesForApprove(): array
     {
         return ['verificationCode' => ['required', 'numeric', 'digits:4']];
+    }
+
+    /**
+     * Rules for signing a person request, where the leaflet returned by the approval has to be marked as signed
+     * by the patient on top of the signing credentials.
+     *
+     * @return array
+     */
+    public function rulesForSignPersonRequest(): array
+    {
+        return array_merge($this->signingRules(), [
+            'patientSigned' => ['required', 'boolean:strict', Rule::in([true])]
+        ]);
     }
 
     public function rulesForFiles(): array
@@ -1006,7 +1030,7 @@ class PersonForm extends BaseForm
         foreach ($this->person['names'] ?? [] as $index => $name) {
             $rules["person.names.$index.lastName"] = filter_var($name['noLastName'] ?? false, FILTER_VALIDATE_BOOL)
                 ? ['prohibited']
-                : ['required', 'min:3'];
+                : ['required', 'min:1', 'max:255'];
         }
     }
 
@@ -1059,7 +1083,7 @@ class PersonForm extends BaseForm
         }
 
         // Between the self-registration age and the full legal capacity age
-        if ($this->personAge > config('ehealth.no_self_registration_age')
+        if ($this->personAge >= config('ehealth.no_self_registration_age')
             && $this->personAge < config('ehealth.person_full_legal_capacity_age')) {
             $personLegalCapacityDocumentTypes = config('ehealth.person_legal_capacity_document_types');
             $hasLegalCapacityDocument = false;

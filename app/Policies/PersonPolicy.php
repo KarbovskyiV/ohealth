@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\User\Role;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -14,7 +15,15 @@ class PersonPolicy
      */
     public function viewAny(User $user): Response
     {
-        if ($user->cannot('person:read')) {
+        // The scope alone is held by more roles than may search for a patient record
+        if ($user->cannot('person:read') || !$user->hasAllowedRole([
+            Role::DOCTOR,
+            Role::SPECIALIST,
+            Role::ASSISTANT,
+            Role::RECEPTIONIST,
+            Role::MED_ADMIN,
+            Role::MED_COORDINATOR
+        ])) {
             return Response::denyWithStatus(404);
         }
 
@@ -27,6 +36,18 @@ class PersonPolicy
     public function view(User $user): Response
     {
         if ($user->cannot('patient_summary:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Determine whether the user can view the persons merged into the patient.
+     */
+    public function viewMergedPersons(User $user): Response
+    {
+        if ($user->cannot('person:read')) {
             return Response::denyWithStatus(404);
         }
 

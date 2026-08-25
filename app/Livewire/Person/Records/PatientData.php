@@ -31,7 +31,7 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Repositories\MedicalEvents\Repository as MERepository;
 use App\Livewire\Person\Traits\InteractsWithAuthenticationMethods;
 use App\Livewire\Person\Traits\ManagesConfidantPersonRelationships;
-use App\Models\Relations\AuthenticationMethod as AuthenticationMethodModel;
+use App\Models\Relations\ConfidantPerson;
 
 class PatientData extends BasePatientComponent
 {
@@ -162,7 +162,7 @@ class PatientData extends BasePatientComponent
         $this->form->person = Arr::toCamelCase($patient->toArray());
         $this->confidantPersonRelationshipRequests = $this->loadConfidantPersonRelationshipRequests($patient);
         $this->form->uploadedDocuments = [];
-        $this->refreshAuthenticationMethods($patient);
+        $this->loadAuthenticationMethods($patient);
 
         if (($this->isSyncing = $patient->isSyncing)) {
             $existingApproval = Approval::getByModel($patient)
@@ -188,6 +188,12 @@ class PatientData extends BasePatientComponent
      */
     public function getConfidantPersons(): void
     {
+        if (Auth::user()->cannot('view', ConfidantPerson::class)) {
+            Session::flash('error', __('patients.policy.view_confidant'));
+
+            return;
+        }
+
         try {
             $response = EHealth::person()->getConfidantPersonRelationships($this->uuid);
 
@@ -227,46 +233,6 @@ class PatientData extends BasePatientComponent
         }
 
         Session::flash('success', __('patients.messages.files_uploaded_successfully'));
-    }
-
-    private function refreshAuthenticationMethods(Person $patient): void
-    {
-        $confidantPersons = $patient->confidantPersons->keyBy(
-            fn ($confidantPerson) => $confidantPerson->person->uuid
-        );
-
-        $this->authenticationMethods = $patient->authenticationMethods
-            ->map(function (AuthenticationMethodModel $authenticationMethod) use ($confidantPersons): array {
-                $method = Arr::toCamelCase($authenticationMethod->toArray());
-
-                if ($method['type'] !== AuthenticationMethod::THIRD_PERSON->value) {
-                    return $method;
-                }
-
-                $relationship = $confidantPersons->get($method['value']);
-
-                if ($relationship === null) {
-                    return $method;
-                }
-
-                $person = $relationship->person;
-                $method['confidantPerson'] = [
-                    'name' => $person->fullName,
-                    'taxId' => $person->taxId,
-                    'unzr' => $person->unzr,
-                    'documentsPerson' => $person->documents->toArray(),
-                    'phones' => $person->phones->first() === null
-                        ? null
-                        : ['number' => $person->phones->first()->number]
-                ];
-
-                return $method;
-            })
-            ->values()
-            ->toArray();
-
-        $this->phoneNumber = collect($this->authenticationMethods)
-            ->firstWhere('type', AuthenticationMethod::OTP->value)['phoneNumber'] ?? null;
     }
 
     /**

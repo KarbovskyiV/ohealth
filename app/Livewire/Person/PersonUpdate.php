@@ -6,7 +6,6 @@ namespace App\Livewire\Person;
 
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
-use App\Enums\Person\AuthenticationMethod;
 use App\Enums\Person\AuthStep;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
@@ -152,6 +151,9 @@ class PersonUpdate extends PersonComponent
         $this->uuid = $person->uuid;
         $this->baseMount();
 
+        // Updating a person sends the request straight from the form, it has no leaflet step to answer this on
+        $this->form->processDisclosureDataConsent = true;
+
         $this->form->person = Arr::toCamelCase(
             $person->load([
                 'names',
@@ -166,7 +168,6 @@ class PersonUpdate extends PersonComponent
                 'confidantPersons.person.documents'
             ])->toArray()
         );
-
 
         $uaOnlyTypes = config('ehealth.document_types_issuing_country_ua_only');
 
@@ -185,48 +186,10 @@ class PersonUpdate extends PersonComponent
             $this->form->person['emergencyContact']['phones'] = [['type' => null, 'number' => null]];
         }
 
-        $authenticationMethods = $person->authenticationMethods->toArray();
-
         // Initialize confidant person relationship requests for all cases
         $this->confidantPersonRelationshipRequests = $this->loadConfidantPersonRelationshipRequests($person);
 
-        if ($person->confidantPersons->isNotEmpty()) {
-            // Create a lookup map of confidant persons by their UUID
-            $confidantPersonsLookup = $person->confidantPersons->keyBy(function ($confidantPerson) {
-                return $confidantPerson->person->uuid;
-            });
-
-            $modifiedMethods = collect($authenticationMethods)->map(
-                function (array $method) use ($confidantPersonsLookup) {
-                    if ($method['type'] === AuthenticationMethod::THIRD_PERSON->value) {
-                        // Find the corresponding confidant person using the authentication method's 'value' field
-                        $confidantPersonRelation = $confidantPersonsLookup->get($method['value']);
-
-                        if ($confidantPersonRelation && $confidantPersonRelation->person) {
-                            $confidantPersonData = $confidantPersonRelation->person;
-                            $method['confidantPerson'] = [
-                                'name' => $confidantPersonData->fullName,
-                                'taxId' => $confidantPersonData->taxId,
-                                'unzr' => $confidantPersonData->unzr,
-                                'documentsPerson' => $confidantPersonData->documents->toArray(),
-                                'phones' => $confidantPersonData->phones->first() ?
-                                    ['number' => $confidantPersonData->phones->first()->number] : null
-                            ];
-                        }
-                    }
-
-                    return $method;
-                }
-            );
-
-            $this->authenticationMethods = $modifiedMethods->toArray();
-        } else {
-            $this->authenticationMethods = $authenticationMethods;
-            $this->phoneNumber = collect($authenticationMethods)
-                ->where('type', AuthenticationMethod::OTP->value)
-                ->pluck('phoneNumber')
-                ->first();
-        }
+        $this->loadAuthenticationMethods($person);
     }
 
     /**
@@ -234,7 +197,7 @@ class PersonUpdate extends PersonComponent
      *
      * @return void
      */
-    public function update(): void
+    public function update(?string $authorizeWith = null): void
     {
         if (Auth::user()->cannot('create', PersonRequest::class)) {
             Session::flash('error', __('patients.policy.update'));
@@ -242,7 +205,12 @@ class PersonUpdate extends PersonComponent
             return;
         }
 
-        $this->form->person['addresses'] = [$this->address]; // must be multiple
+        // The OTP method carries its own confirmation step, which fills the property in before getting here
+        if ($authorizeWith !== null) {
+            $this->form->authorizeWith = $authorizeWith;
+        }
+
+        $this->form->person['addresses'] = $this->addresses;
         $this->form->person['id'] = $this->uuid;
 
         try {
@@ -255,8 +223,6 @@ class PersonUpdate extends PersonComponent
 
             return;
         }
-
-        $validated = array_merge($validated, ['addresses' => $this->form->addresses]);
 
         try {
             // update

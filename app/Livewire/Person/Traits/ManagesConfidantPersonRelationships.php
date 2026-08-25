@@ -34,7 +34,7 @@ trait ManagesConfidantPersonRelationships
     {
         $birthDate = CarbonImmutable::parse($personData['birthDate']);
 
-        if ($birthDate->age < 18) {
+        if ($birthDate->age < config('ehealth.person_full_legal_capacity_age')) {
             $this->invalidPersonId = $personData['id'];
 
             return;
@@ -85,6 +85,12 @@ trait ManagesConfidantPersonRelationships
 
     public function syncConfidantPersons(): void
     {
+        if (Auth::user()->cannot('view', ConfidantPerson::class)) {
+            Session::flash('error', __('patients.policy.view_confidant'));
+
+            return;
+        }
+
         try {
             $response = EHealth::person()->getConfidantPersonRelationships($this->uuid);
         } catch (EHealthException|EHealthConnectionException $exception) {
@@ -93,20 +99,18 @@ trait ManagesConfidantPersonRelationships
             return;
         }
 
-        $confidantPersonsData = collect($response->getData())->map(function ($relationship) {
-            $person = $relationship['confidant_person'];
-            $person['documents'] = $relationship['confidant_person']['documents_person'];
-
-            return [
-                'person' => $person,
-                'documentsRelationship' => $relationship['documents_relationship'],
-                'activeTo' => convertToAppDateFormat($relationship['active_to'])
-            ];
-        })->toArray();
-
-        $this->form->person['confidantPersons'] = $confidantPersonsData;
-
         Repository::confidantPerson()->sync($response->getData(), $this->uuid);
+
+        $person = Person::whereUuid($this->uuid)
+            ->with([
+                'confidantPersons.person.names',
+                'confidantPersons.person.documents',
+                'confidantPersons.person.phones',
+                'confidantPersons.documentsRelationship'
+            ])
+            ->firstOrFail();
+
+        $this->form->person['confidantPersons'] = Arr::toCamelCase($person->confidantPersons->toArray());
 
         Session::flash('success', __('patients.messages.confidant_persons_synced'));
     }
@@ -309,6 +313,12 @@ trait ManagesConfidantPersonRelationships
 
     public function syncConfidantPersonRelationshipRequestsList(): void
     {
+        if (Auth::user()->cannot('viewRequests', ConfidantPerson::class)) {
+            Session::flash('error', __('patients.policy.view_confidant_requests'));
+
+            return;
+        }
+
         try {
             $response = EHealth::person()->getConfidantPersonRelationshipRequestsList($this->uuid);
         } catch (EHealthException|EHealthConnectionException $exception) {

@@ -517,7 +517,7 @@ return [
 
     // Config params Person Request
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20229226509/DRAFT+Config+params+Person+Request+ENT-055
-    'no_self_registration_age' => 16,
+    'no_self_registration_age' => 14,
 
     // Config params Person Documents
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20236599297/DRAFT+Config+params+Person+Documents+ENT-053
