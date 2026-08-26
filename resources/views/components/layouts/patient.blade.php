@@ -162,6 +162,13 @@
                             </a>
                         @endif
 
+                        <a
+                            href="{{ route("$routePrefix.device-associations", [legalEntity(), $routeParamKey => $recordId]) }}"
+                            class="summary-tab {{ request()->routeIs("$routePrefix.device-associations") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                        >
+                            {{ __('patients.device_associations') }}
+                        </a>
+
                         @if ($prepersonId)
                             <a
                                 href="javascript:void(0)"
