@@ -70,6 +70,18 @@ class ContractRepositoryTest extends TestCase
         ]);
     }
 
+    public function test_save_from_ehealth_persists_verified_status(): void
+    {
+        $eHealthData = array_merge($this->eHealthContractPayload(), ['status' => 'VERIFIED']);
+
+        $this->repository->saveFromEHealth($eHealthData);
+
+        $this->assertDatabaseHas('contracts', [
+            'uuid' => $eHealthData['id'],
+            'status' => 'VERIFIED',
+        ]);
+    }
+
     public function test_save_from_ehealth_binds_legal_entity_id(): void
     {
         $eHealthData = $this->eHealthContractPayload();
