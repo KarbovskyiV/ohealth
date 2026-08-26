@@ -81,7 +81,7 @@ class InDictionary implements ValidationRule
 
         // Fail validation if value not found in any dictionary
         if (!$isValid) {
-            $fail(__('Недопустиме значення :attribute'));
+            $fail(__('Недопустиме значення: ' . $value . ' для :attribute'));
         }
     }
 }
