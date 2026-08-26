@@ -242,7 +242,7 @@ class HealthcareService extends Request
             'not_available.*.during.start' => 'required_with:not_available.*.during|string',
             'not_available.*.during.end' => 'required_with:not_available.*.during|string',
             'providing_condition' => ['nullable', 'string', new InDictionary('PROVIDING_CONDITION')],
-            'speciality_type' => ['nullable', 'string', new InDictionary('SPECIALITY_TYPE')],
+            'speciality_type' => ['nullable', 'string'],
             'status' => 'required|string',
             'type' => 'nullable|array',
             'type.coding' => 'required_with:type|array',
