@@ -31,6 +31,7 @@ use App\Livewire\Person\Records\PatientObservations;
 use App\Livewire\Person\Records\PatientProcedures;
 use App\Livewire\Person\Records\PatientDevices;
 use App\Livewire\Person\Records\PatientDeviceAssociations;
+use App\Livewire\Person\Records\DeviceDispenses;
 use App\Livewire\Person\Records\PatientSummary;
 use App\Livewire\Person\Records\PatientVerification;
 use App\Livewire\Preperson\PrepersonData;
@@ -100,6 +101,7 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
             Route::get('/{person}/devices', PatientDevices::class)->name('devices');
             Route::get('/{person}/devices/{deviceId}', \App\Livewire\Person\Records\PatientDeviceView::class)->name('devices.view');
             Route::get('/{person}/device-associations', PatientDeviceAssociations::class)->name('device-associations');
+            Route::get('/{person}/device-dispenses', DeviceDispenses::class)->name('device-dispenses');
         });
     });
 
@@ -193,6 +195,7 @@ Route::prefix('prepersons')
         Route::get('/{preperson}/procedures', PatientProcedures::class)->can('view', 'preperson')->name('procedures');
         Route::get('/{preperson}/devices', PatientDevices::class)->can('view', 'preperson')->name('devices');
         Route::get('/{preperson}/device-associations', PatientDeviceAssociations::class)->can('view', 'preperson')->name('device-associations');
+        Route::get('/{preperson}/device-dispenses', DeviceDispenses::class)->can('view', 'preperson')->name('device-dispenses');
 
         Route::get('/{preperson}/encounter/create', EncounterCreate::class)
             ->can('view', 'preperson')
