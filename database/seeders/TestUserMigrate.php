@@ -135,7 +135,7 @@ class TestUserMigrate extends Seeder
                     ]),
                     'edr_verified' => null,
                     'edrpou' => '3139821559',
-                    'email' => 'vitaliybezsh@gmail.com',
+                    'email' => 'vitaliybezsh+fop@gmail.com',
                     'inserted_by' => '4261eacf-8008-4e62-899f-de1e2f7065f0',
                     'is_active' => true,
                     'nhs_comment' => '',
@@ -250,7 +250,7 @@ class TestUserMigrate extends Seeder
                 $ownerUserId = User::insertGetId(
                     [
                         'uuid' => '82d1f518-23c9-4c6c-868b-6f7ab26c6da8',
-                        'email' => 'vitaliybezsh@gmail.com',
+                        'email' => 'vitaliybezsh+fop@gmail.com',
                         'password' => Hash::make($password),
                         'email_verified_at' => new Carbon('2024-09-11T11:00:52.000000Z'),
                         'party_id' => $partyId,
@@ -317,7 +317,7 @@ class TestUserMigrate extends Seeder
                     'status' => 'APPROVED',
                     'employee_id' => $employeeId,
                     'legal_entity_id' => $legalEntityId,
-                    'email' => 'vitaliybezsh@gmail.com',
+                    'email' => 'vitaliybezsh+fop@gmail.com',
                     'division_id' => null,
                     'user_id' => $ownerUserId,
                     'party_id' => $partyId,
