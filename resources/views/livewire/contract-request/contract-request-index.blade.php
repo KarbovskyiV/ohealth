@@ -1,5 +1,5 @@
 @use('App\Models\Contracts\ContractRequest')
-@use('App\Enums\Contract\Status')
+@use('App\Enums\Contract\ContractRequestStatus')
 @use('App\Enums\Contract\Type')
 
 <div>
@@ -43,12 +43,13 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="form-group group relative w-full col-span-1">
                         @icon('search-outline', 'svg-input')
-                        <input wire:model.live.debounce.300ms="search"
+                        <input wire:model="search"
                                type="text"
                                id="contractRequestSearch"
                                placeholder=" "
                                class="input peer"
                                autocomplete="off"
+                               wire:keydown.enter="applyFilters"
                         />
                         <label for="contractRequestSearch" class="label">
                             {{ __('contracts.search_contract') }}
@@ -65,24 +66,24 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <x-forms.multiselect
-                        bind="statusFilter"
-                        :options="Status::options()"
+                        wire:key="contract-request-status-filter-{{ $filterVersion }}"
+                        bind="pendingStatusFilter"
+                        :options="ContractRequestStatus::options()"
                         label="{{ __('contracts.status_label') }}"
                         placeholder="{{ __('forms.all') }}"
-                        :live="true"
                     />
 
                     <x-forms.multiselect
-                        bind="typeFilter"
+                        wire:key="contract-request-type-filter-{{ $filterVersion }}"
+                        bind="pendingTypeFilter"
                         :options="Type::options()"
                         label="{{ __('contracts.type_label') }}"
                         placeholder="{{ __('forms.all') }}"
-                        :live="true"
                     />
                 </div>
 
                 <div class="mt-2 flex flex-col sm:flex-row gap-2 w-full">
-                    <button type="button" wire:click="search" class="flex items-center justify-center gap-2 button-primary w-full sm:w-auto">
+                    <button type="button" wire:click="applyFilters" class="flex items-center justify-center gap-2 button-primary w-full sm:w-auto">
                         @icon('search', 'w-4 h-4')
                         <span>{{ __('forms.search') }}</span>
                     </button>
