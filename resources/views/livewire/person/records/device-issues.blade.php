@@ -2,10 +2,17 @@
     :personId="$personId"
     :prepersonId="$prepersonId"
     :patientFullName="$patientFullName"
-    :activeTab="'devices'"
+    :activeTab="'device-issues'"
 >
     <x-slot name="headerActions">
         <div class="flex flex-wrap items-center gap-2">
+            <button
+                type="button"
+                class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
+            >
+                @icon('plus', 'w-4 h-4')
+                <span>{{ __('patients.starts_interacting') }}</span>
+            </button>
             <button
                 type="button"
                 class="button-primary-outline px-4 py-2 text-sm shadow-sm"
@@ -28,13 +35,13 @@
         <div class="mt-6 w-full" x-data="{ showAdditionalParams: false }">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
                 @icon('search-outline', 'w-4.5 h-4.5')
-                <p>{{ __('patients.search_medical_device') }}</p>
+                <p>{{ __('patients.search_detected_medical_device_problems') }}</p>
             </div>
 
             <div class="form-row-3 mb-6">
                 <div class="form-group group">
-                    <input type="text" class="input peer" wire:model.defer="filterName" placeholder=" " />
-                    <label class="label">{{ __('forms.name') }}</label>
+                    <input type="text" class="input peer" wire:model.defer="filterIssueId" placeholder=" " />
+                    <label class="label">{{ __('patients.medical_device_id') }}</label>
                 </div>
                 <div class="form-group group">
                     <input type="text" class="input peer" wire:model.defer="filterEncounterId" placeholder=" " />
@@ -64,7 +71,7 @@
                         wire:click="resetFilters"
                         class="button-primary-outline-red px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.reset_filters') }}
+                        Скинути фільтри
                     </button>
                     <button
                         type="button"
@@ -82,7 +89,7 @@
                         @click="openGroupActions = ! openGroupActions"
                         class="button-primary-outline px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.group_actions') }}
+                        Групові дії
                     </button>
 
                     <div
@@ -115,31 +122,11 @@
                     </div>
                     <div class="form-group group">
                         <input type="text" class="input peer" wire:model.defer="filterOrganization" placeholder=" " />
-                        <label class="label">{{ __('patients.sgusoz') }}</label>
-                    </div>
-                    <div class="form-group group">
-                        <select class="input-select peer w-full" wire:model.defer="filterType">
-                            <option value="">
-                                {{ __('forms.select') }} {{ mb_strtolower(__('patients.device_type')) }}
-                            </option>
-                            <option value="hysterocope">Гістероскоп</option>
-                        </select>
-                        <label class="label">{{ __('patients.device_type') }}</label>
-                    </div>
-                </div>
-
-                <div class="form-row-3 mb-6">
-                    <div class="form-group group">
-                        <input type="text" class="input peer" wire:model.defer="filterModel" placeholder=" " />
-                        <label class="label">{{ __('patients.medical_device_model') }}</label>
-                    </div>
-                    <div class="form-group group">
-                        <input type="text" class="input peer" wire:model.defer="filterManufacturer" placeholder=" " />
-                        <label class="label">{{ __('patients.device_manufacturer') }}</label>
+                        <label class="label">{{ __('devices.sgusoz') }}</label>
                     </div>
                     <div class="form-group group">
                         <select class="input-select peer w-full" wire:model.defer="filterPractitioner">
-                            <option value="">{{ __('forms.select') }} {{ mb_strtolower(__('forms.employee')) }}</option>
+                            <option value="">Сидоренко І.В.</option>
                             <option value="1">Сидоренко І.В.</option>
                         </select>
                         <label class="label">{{ __('forms.employee') }}</label>
@@ -148,24 +135,68 @@
 
                 <div class="form-row-3 mb-9">
                     <div class="form-group group">
+                        <div
+                            class="datepicker-wrapper"
+                            x-data="{
+                                from: $wire.entangle('filterDetectedAtFrom'),
+                                to: $wire.entangle('filterDetectedAtTo'),
+                                rangeText: '',
+                            }"
+                            x-init="
+                                if (from && to) rangeText = from + ' — ' + to;
+                                $watch('from', (val) => {
+                                    if (! val) {
+                                        rangeText = '';
+                                        const fp = $el.querySelector('input')._flatpickr;
+                                        if (fp) fp.clear();
+                                    }
+                                });
+                                $watch('to', (val) => {
+                                    if (! val) {
+                                        rangeText = '';
+                                        const fp = $el.querySelector('input')._flatpickr;
+                                        if (fp) fp.clear();
+                                    }
+                                });
+                            "
+                        >
+                            <input
+                                x-model="rangeText"
+                                @change="
+                                    const parts = $event.target.value.split(' — ');
+                                    if (parts.length === 2) {
+                                        from = parts[0];
+                                        to = parts[1];
+                                    } else if (! $event.target.value) {
+                                        from = '';
+                                        to = '';
+                                    }
+                                "
+                                type="text"
+                                class="daterangepicker-uk with-leading-icon input peer w-full"
+                                placeholder=" "
+                                autocomplete="off"
+                            />
+                            <label class="wrapped-label">{{ __('patients.date_and_time_of_problem_detection') }}</label>
+                        </div>
+                    </div>
+                    <div class="form-group group">
                         <div class="datepicker-wrapper">
                             <input
                                 wire:model.defer="filterCreatedAt"
                                 type="text"
-                                name="filterCreatedAt"
-                                id="filterCreatedAt"
                                 class="datepicker-input with-leading-icon input peer"
                                 placeholder=" "
                                 autocomplete="off"
                             />
-                            <label for="filterCreatedAt" class="wrapped-label">{{ __('patients.created') }}</label>
+                            <label class="wrapped-label">{{ __('patients.record_creation_date') }}</label>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="space-y-4">
-                @forelse ($devices as $device)
+                @forelse ($issues as $issue)
                     <div class="record-inner-card">
                         <div class="record-inner-header">
                             <div class="record-inner-checkbox-col">
@@ -173,16 +204,16 @@
                             </div>
 
                             <div class="record-inner-column flex-1">
-                                <div class="record-inner-label">{{ __('forms.name') }}</div>
+                                <div class="record-inner-label">{{ __('patients.medical_device_name') }}</div>
                                 <div class="record-inner-value text-[16px] font-bold text-gray-900 dark:text-gray-100">
-                                    {{ $device['name'] }}
+                                    {{ $issue['name'] }}
                                 </div>
                             </div>
 
                             <div class="record-inner-column-bordered w-full shrink-0 md:w-36">
                                 <div class="record-inner-label">{{ __('forms.status.label') }}</div>
                                 <div>
-                                    <span class="badge-green"> {{ $device['status'] }} </span>
+                                    <span class="badge-green"> {{ $issue['status'] }} </span>
                                 </div>
                             </div>
 
@@ -228,13 +259,14 @@
                                         :id="$id('dropdown-button')"
                                         class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
                                     >
-                                        <a
-                                            href="{{ route('persons.devices.view', [legalEntity(), 'person' => $personId, 'deviceId' => $device['id']]) }}"
+                                        <button
+                                            type="button"
+                                            @click="close($refs.button)"
                                             class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('eye', 'w-5 h-5 text-gray-500')
                                             {{ __('patients.view_details') }}
-                                        </a>
+                                        </button>
 
                                         <button
                                             type="button"
@@ -255,66 +287,51 @@
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.medical_device_model') }}
+                                                {{ __('patients.medical_device_id') }}
                                             </div>
                                             <div class="record-inner-value text-[14px] font-semibold">
-                                                {{ $device['model'] }}
+                                                {{ $issue['device_id'] }}
                                             </div>
                                         </div>
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.sgusoz') }}
+                                                {{ __('devices.sgusoz') }}
                                             </div>
                                             <div class="record-inner-value text-[14px] font-semibold">
-                                                {{ $device['organization'] }}
+                                                {{ $issue['organization'] }}
                                             </div>
                                         </div>
                                     </div>
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.device_type') }}
+                                                {{ __('patients.date_and_time_of_problem_detection') }}
                                             </div>
                                             <div class="record-inner-value text-[14px] font-semibold">
-                                                {{ $device['type'] }}
+                                                {{ $issue['detected_at'] }}
                                             </div>
                                         </div>
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.device_manufacturer') }}
+                                                Працівник
                                             </div>
                                             <div class="record-inner-value text-[14px] font-semibold">
-                                                {{ $device['manufacturer'] }}
+                                                {{ $issue['practitioner'] }}
                                             </div>
                                         </div>
                                     </div>
                                     <div class="min-w-0 space-y-2.5">
+                                        <div class="min-w-0"></div>
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('forms.employee') }}
+                                                {{ __('patients.record_creation_date') }}
                                             </div>
                                             <div class="record-inner-value text-[14px] font-semibold">
-                                                {{ $device['practitioner'] }}
-                                            </div>
-                                        </div>
-                                        <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.medical_device_serial_number') }}
-                                            </div>
-                                            <div class="record-inner-value text-[14px] font-semibold">
-                                                {{ $device['serial_number'] }}
+                                                {{ $issue['created_at'] }}
                                             </div>
                                         </div>
                                     </div>
                                     <div class="min-w-0 space-y-2.5">
-                                        <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.created') }}
-                                            </div>
-                                            <div class="record-inner-value text-[14px] font-semibold">
-                                                {{ $device['created_at'] }}
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -322,19 +339,19 @@
                             <div class="record-inner-id-col">
                                 <div class="min-w-0">
                                     <div class="record-inner-label text-[10px] uppercase">
-                                        {{ __('patients.device_id') }}
+                                        {{ __('patients.issue_id') }}
                                     </div>
-                                    <div class="record-inner-id-value">{{ $device['device_id'] }}</div>
+                                    <div class="record-inner-id-value">{{ $issue['issue_id'] }}</div>
                                 </div>
                                 <div class="min-w-0">
                                     <div class="record-inner-label text-[10px] uppercase">
                                         {{ __('patients.encounter_id') }}
                                     </div>
-                                    <div class="record-inner-id-value">{{ $device['encounter_id'] }}</div>
+                                    <div class="record-inner-id-value">{{ $issue['encounter_id'] }}</div>
                                 </div>
                                 <div class="min-w-0">
                                     <div class="record-inner-label text-[10px] uppercase">{{ __('episodes.id') }}</div>
-                                    <div class="record-inner-id-value">{{ $device['episode_id'] }}</div>
+                                    <div class="record-inner-id-value">{{ $issue['episode_id'] }}</div>
                                 </div>
                             </div>
                         </div>

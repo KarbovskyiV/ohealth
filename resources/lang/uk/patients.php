@@ -812,4 +812,8 @@ return [
     'related_prescription_episode' => 'Епізод пов\'язаного призначення',
     'care_plan_id' => 'ID плану лікування',
     'procedure_id' => 'ID процедури',
+    'device_issues' => 'Проблеми медичних виробів',
+    'search_detected_medical_device_problems' => 'Пошук проблем асоційованих медичних виробів',
+    'medical_device_name' => 'Назва виробу',
+    'issue_id' => 'ID проблеми',
 ];

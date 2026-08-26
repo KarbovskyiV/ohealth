@@ -217,6 +217,13 @@
                             {{ __('patients.device_dispenses') }}
                         </a>
 
+                        <a
+                            href="{{ route("$routePrefix.device-issues", [legalEntity(), $routeParamKey => $recordId]) }}"
+                            class="summary-tab {{ request()->routeIs("$routePrefix.device-issues") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                        >
+                            {{ __('patients.device_issues') }}
+                        </a>
+
                         <div class="flex-1"></div>
                     </div>
                 </div>
