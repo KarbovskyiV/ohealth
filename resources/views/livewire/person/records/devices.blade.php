@@ -228,14 +228,13 @@
                                         :id="$id('dropdown-button')"
                                         class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
                                     >
-                                        <button
-                                            type="button"
-                                            @click="close($refs.button)"
+                                        <a
+                                            href="{{ route('persons.devices.view', [legalEntity(), 'person' => $personId, 'deviceId' => $device['id']]) }}"
                                             class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('eye', 'w-5 h-5 text-gray-500')
                                             {{ __('patients.view_details') }}
-                                        </button>
+                                        </a>
 
                                         <button
                                             type="button"
