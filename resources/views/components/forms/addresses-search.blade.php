@@ -76,8 +76,8 @@
     x-init="init()"
     class="{{ $class }}"
 >
-    @if($divisionView)
-         {{-- COUNTRY --}}
+    @if ($divisionView)
+        {{-- COUNTRY --}}
         <div class="form-group group">
             <input
                 required
@@ -89,9 +89,7 @@
                 disabled
             />
 
-            <label for="addressCountry" class="label z-10">
-                {{ __('forms.country') }}
-            </label>
+            <label for="addressCountry" class="label z-10"> {{ __('forms.country') }} </label>
         </div>
 
         {{-- ADDRESS TYPE --}}
@@ -105,9 +103,7 @@
                 disabled
             />
 
-            <label for="addressType" class="label z-10">
-                {{ __('forms.address_type') }}
-            </label>
+            <label for="addressType" class="label z-10"> {{ __('forms.address_type') }} </label>
         </div>
 
         {{-- SETTLEMENT ID --}}
@@ -122,9 +118,7 @@
                 disabled
             />
 
-            <label for="addressSettlementId" class="label z-10">
-                {{ __('forms.settlement_id') }}
-            </label>
+            <label for="addressSettlementId" class="label z-10"> {{ __('forms.settlement_id') }} </label>
         </div>
     @endif
 
@@ -216,7 +210,8 @@
             autocomplete="off"
             aria-describedby="@error($property . '.region') addressRegionErrorHelp{{ $uid }} @enderror"
             class="input @error($property . '.region') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
-            :disabled="! address.area || address.area === 'М.КИЇВ' || readonly"
+            {{-- The registry holds no districts for Kyiv, so the field is filled by hand there instead of being closed --}}
+            :disabled="! address.area || readonly"
         />
 
         <div x-show="showTo" x-cloak>

@@ -23,8 +23,6 @@ use App\Models\ReorganizationEmployeeDeclaration;
 use BackedEnum;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\ItemNotFoundException;
 
 class DeclarationRequestRepository
 {
@@ -40,34 +38,6 @@ class DeclarationRequestRepository
         $validatedData = $this->mapUuidsToIds($validatedData);
 
         return DeclarationRequest::create($validatedData);
-    }
-
-    /**
-     * Store or update the requests obtained from the list of the legal entity requests.
-     *
-     * @param  array  $requests
-     * @return void
-     */
-    public function storeMany(array $requests): void
-    {
-        foreach ($requests as $request) {
-            $request['sync_status'] = JobStatus::PARTIAL->value;
-
-            try {
-                $request = $this->mapUuidsToIds($request, true);
-            } catch (ItemNotFoundException) {
-                // A request of a patient, an employee or a division that is not synced yet is stored by the next sync
-                Log::warning(
-                    'Declaration request ' . $request['id'] . ' is skipped: its related entities are not synced yet'
-                );
-
-                continue;
-            }
-
-            $request['uuid'] = Arr::pull($request, 'id');
-
-            DeclarationRequest::updateOrCreate(['uuid' => $request['uuid']], $request);
-        }
     }
 
     /**

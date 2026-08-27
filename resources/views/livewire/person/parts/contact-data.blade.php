@@ -93,5 +93,26 @@
                 <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
+
+        <div class="form-group">
+            <select
+                wire:model="form.person.preferredWayCommunication"
+                name="preferredWayCommunication"
+                id="preferredWayCommunication"
+                class="input-select peer @error('form.person.preferredWayCommunication') input-error @enderror"
+            >
+                <option value="" selected>{{ __('forms.select') }}</option>
+                @foreach ($this->dictionaries['PREFERRED_WAY_COMMUNICATION'] as $key => $wayCommunication)
+                    <option value="{{ $key }}">{{ $wayCommunication }}</option>
+                @endforeach
+            </select>
+            <label for="preferredWayCommunication" class="label">
+                {{ __('patients.preferred_way_communication') }}
+            </label>
+
+            @error('form.person.preferredWayCommunication')
+                <p class="text-error">{{ $message }}</p>
+            @enderror
+        </div>
     </div>
 </fieldset>

@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Classes\eHealth\EHealth;
 use App\Services\Dictionary\Collections\BasicDictionaryCollection;
+use Carbon\CarbonImmutable;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -33,6 +34,8 @@ class UpdateICD10TableJob implements ShouldQueue
                 ->asLargeDictionary()
                 ->toArray();
 
+            $now = CarbonImmutable::now();
+
             $data = [];
             foreach ($dictionary as $key => $value) {
                 $data[] = [
@@ -40,8 +43,8 @@ class UpdateICD10TableJob implements ShouldQueue
                     'description' => $value['description'],
                     'is_active' => $value['is_active'],
                     'child_values' => json_encode($value['child_values'], JSON_THROW_ON_ERROR),
-                    'created_at' => now(),
-                    'updated_at' => now()
+                    'created_at' => $now,
+                    'updated_at' => $now
                 ];
             }
 
@@ -56,9 +59,9 @@ class UpdateICD10TableJob implements ShouldQueue
             }
 
             Log::channel('task_scheduling')->info('Updating ICD-10 codes successfully ended.');
-        } catch (Exception $e) {
+        } catch (Exception $exception) {
             Log::channel('task_scheduling')->error('Error while updating ICD-10 codes.', [
-                'message' => $e->getMessage()
+                'message' => $exception->getMessage()
             ]);
         }
     }

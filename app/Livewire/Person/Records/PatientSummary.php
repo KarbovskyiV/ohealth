@@ -30,11 +30,13 @@ use App\Models\MedicalEvents\Sql\Immunization;
 use App\Models\MedicalEvents\Sql\Observation;
 use App\Models\MedicalEvents\Sql\Procedure;
 use App\Models\MergedPerson;
+use App\Models\Person\Person;
 use App\Repositories\MedicalEvents\Repository;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesSyncBatch;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use InvalidArgumentException;
 use Throwable;
@@ -689,6 +691,12 @@ class PatientSummary extends BasePatientComponent
      */
     public function searchMergedPersons(): void
     {
+        if (Auth::user()->cannot('viewMergedPersons', Person::class)) {
+            Session::flash('error', __('patients.policy.view_merged_persons'));
+
+            return;
+        }
+
         try {
             $response = EHealth::person()->searchPersonsMergedPersons($this->uuid);
             $mergedPersons = $response->map($response->validate(), $this->personId);

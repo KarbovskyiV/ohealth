@@ -212,10 +212,8 @@ class Person extends Request
         $this->setValidator($this->validateCreateConfidantRelationship(...));
 
         $payload = [
-            'confidant_person_relationship' => [
-                'id' => $relationshipId,
-                'documents_relationship' => $documentsRelationship
-            ]
+            'confidant_person_relationship' => ['id' => $relationshipId],
+            'documents_relationship' => $documentsRelationship
         ];
 
         if (!is_null($authorizeWith)) {
@@ -941,7 +939,8 @@ class Person extends Request
         $prefix = $isArray ? '*.' : '';
         $rules = [
             $prefix . 'uuid' => ['required', 'uuid'],
-            $prefix . 'action' => ['required', 'string'],
+            // The listing leaves the action out, while the answer to creating or deactivating a request carries it
+            $prefix . 'action' => [$isArray ? 'nullable' : 'required', 'string'],
             $prefix . 'status' => ['required', Rule::in(ConfidantPersonRelationshipRequestStatus::values())],
             $prefix . 'channel' => ['required', 'string']
         ];

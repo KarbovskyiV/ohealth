@@ -462,6 +462,11 @@ return [
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20215136310/DRAFT+Config+params+Diagnostic+Report+ENT-021
     'diagnostic_report_max_days_passed' => 90,
 
+    // The age limit, in days, of the medical event that serves as the evidence for an emergency contact request.
+    // The documented minimum is 0, which admits only the events created within the last day.
+    // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583402009/Medical+Events+Dictionaries+and+configurations#EMERGENCY_CONTACT_MEDICAL_EVENT_MAX_DAYS_PASSED
+    'emergency_contact_medical_event_max_days_passed' => 0,
+
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583403527/Transferred+Summary+Diagnostic+Reports#Configuration
     'summary_diagnostic_reports_allowed' => [
         '56010-00', '56010-02', '56001-00', '57001-00', '57001-01', '56301-01', '56801-00', '56401-00', '56619-00',
@@ -517,7 +522,7 @@ return [
 
     // Config params Person Request
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20229226509/DRAFT+Config+params+Person+Request+ENT-055
-    'no_self_registration_age' => 16,
+    'no_self_registration_age' => 14,
 
     // Config params Person Documents
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20236599297/DRAFT+Config+params+Person+Documents+ENT-053

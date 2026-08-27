@@ -157,6 +157,13 @@ class PersonComponent extends Component
     public ?string $invalidPersonId = null;
 
     /**
+     * Why the person found by the search may not be chosen as a legal representative.
+     *
+     * @var string|null
+     */
+    public ?string $invalidPersonReason = null;
+
+    /**
      * Data about new confidant person.
      *
      * @var array
@@ -184,7 +191,8 @@ class PersonComponent extends Component
         'LANGUAGE',
         'ISSUING_COUNTRY',
         'COUNTRY',
-        'ADDRESS_TYPE'
+        'ADDRESS_TYPE',
+        'PREFERRED_WAY_COMMUNICATION'
     ];
 
     public function baseMount(): void
@@ -206,17 +214,37 @@ class PersonComponent extends Component
      */
     public function chooseConfidantPerson(array $personData): void
     {
+        // Drop whatever the previously inspected person left behind, so that a rejection never shows next
+        // to the person the user is looking at now
+        $this->invalidPersonId = null;
+        $this->invalidPersonReason = null;
+        $this->selectedConfidantPersonId = null;
+
         $birthDate = CarbonImmutable::parse($personData['birthDate']);
 
-        // Below the self-registration age a person cannot be a confidant (the remaining eligibility
-        // rules — legal capacity, verification statuses, existing relationships — are enforced by eHealth)
-        if ($birthDate->age < config('ehealth.no_self_registration_age')) {
+        // Below the full legal capacity age a person cannot be a confidant (the remaining eligibility
+        // rules — legal capacity, verification statuses — are enforced by eHealth)
+        if ($birthDate->age < config('ehealth.person_full_legal_capacity_age')) {
             $this->invalidPersonId = $personData['id'];
+            $this->invalidPersonReason = __('patients.age_insufficient_for_confidant_person');
 
             return;
         }
 
-        $this->invalidPersonId = null;
+        try {
+            $relationships = EHealth::person()->getConfidantPersonRelationships($personData['id'])->validate();
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error when getting confidant person relationships of the chosen person');
+
+            return;
+        }
+
+        if (Person::isRepresentedByConfidant($relationships)) {
+            $this->invalidPersonId = $personData['id'];
+            $this->invalidPersonReason = __('patients.confidant_person_has_own_confidants');
+
+            return;
+        }
 
         $this->selectedConfidantPersonId = $personData['id'];
 
@@ -277,6 +305,37 @@ class PersonComponent extends Component
 
             return;
         }
+    }
+
+    /**
+     * Validate the filled in form and show the leaflet the patient has to be informed about. The person request
+     * is sent from that leaflet, once the user marks the information as communicated.
+     *
+     * @return void
+     */
+    public function openInformationMessageModal(): void
+    {
+        if (Auth::user()->cannot('create', PersonRequest::class)) {
+            Session::flash('error', __('patients.policy.create'));
+
+            return;
+        }
+
+        $this->form->person['addresses'] = $this->addresses;
+
+        try {
+            // The consent is the answer the leaflet collects, so it cannot be required to pass yet
+            $this->form->validate(Arr::except($this->form->rulesForCreate(), 'processDisclosureDataConsent'));
+            $this->formKey++;
+        } catch (ValidationException $exception) {
+            Session::flash('error', $exception->validator->errors()->first());
+            $this->setAddressAwareErrorBag($exception);
+            $this->formKey++;
+
+            return;
+        }
+
+        $this->showInformationMessageModal = true;
     }
 
     /**
@@ -342,17 +401,12 @@ class PersonComponent extends Component
         $this->form->person['id'] = $response->getData()['id'];
         $this->uploadedDocuments = $urgent['documents'] ?? [];
         $this->authenticationMethodCurrent = $urgent['authentication_method_current'] ?? [];
-        $this->showInformationMessageModal = true;
+        $this->showInformationMessageModal = false;
+        $this->viewState = 'new';
 
         if ($this->form->needsNhsVerification()) {
             Auth::user()->notify(new NhsVerificationNeededNotification());
         }
-    }
-
-    public function openNewState(): void
-    {
-        $this->showInformationMessageModal = false;
-        $this->viewState = 'new';
     }
 
     /**
@@ -371,7 +425,10 @@ class PersonComponent extends Component
         $this->form->person['addresses'] = $this->addresses;
 
         try {
-            $validated = $this->form->validate($this->form->rulesForCreate());
+            // A draft is not sent to eHealth yet, so the leaflet has not been shown for it either
+            $validated = $this->form->validate(
+                Arr::except($this->form->rulesForCreate(), 'processDisclosureDataConsent')
+            );
             $this->formKey++;
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
@@ -591,7 +648,10 @@ class PersonComponent extends Component
         }
 
         try {
-            $this->approvePersonRequest();
+            if (!$this->approvePersonRequest()) {
+                return;
+            }
+
             $this->showLeafletModal = true;
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when approving person request');
@@ -682,8 +742,10 @@ class PersonComponent extends Component
         }
 
         try {
-            $this->approvePersonRequest(['verification_code' => $validated['verificationCode']]);
-            Session::flash('success', __('patients.messages.person_request_approved'));
+            if (!$this->approvePersonRequest(['verification_code' => $validated['verificationCode']])) {
+                return;
+            }
+
             $this->showLeafletModal = true;
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when approving person request');
@@ -700,7 +762,6 @@ class PersonComponent extends Component
     public function openSignatureModal(): void
     {
         $this->showLeafletModal = false;
-        $this->form->patientSigned = true;
         $this->showSignatureModal = true;
     }
 
@@ -746,14 +807,14 @@ class PersonComponent extends Component
      */
     public function sign(): void
     {
-        if (Auth::user()->cannot('create', PersonRequest::class)) {
+        if (Auth::user()->cannot('sign', PersonRequest::class)) {
             Session::flash('error', __('patients.policy.sign'));
 
             return;
         }
 
         try {
-            $validated = $this->form->validate($this->form->signingRules());
+            $validated = $this->form->validate($this->form->rulesForSignPersonRequest());
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
@@ -914,10 +975,10 @@ class PersonComponent extends Component
      * Approve person request.
      *
      * @param  array  $requestData
-     * @return void
+     * @return bool
      * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
      */
-    private function approvePersonRequest(array $requestData = []): void
+    private function approvePersonRequest(array $requestData = []): bool
     {
         $response = EHealth::personRequest()->approve($this->form->person['id'], $requestData);
         $responseData = $response->getData();
@@ -927,9 +988,13 @@ class PersonComponent extends Component
         } catch (Exception $exception) {
             $this->handleDatabaseErrors($exception, 'Failed to update person request status');
 
-            return;
+            return false;
         }
 
         $this->leafletContent = $responseData['content'];
+
+        Session::flash('success', __('patients.messages.person_request_approved'));
+
+        return true;
     }
 }

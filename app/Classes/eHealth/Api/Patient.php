@@ -10,12 +10,47 @@ use App\Classes\eHealth\ValidationRuleBuilder;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
+use App\Rules\InDictionary;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Validator;
 
 class Patient extends Request
 {
     protected const string URL = '/api/patients';
+
+    /**
+     * Get the patient emergency contact, using a medical event as the evidence for the request.
+     *
+     * @param  string  $patientId
+     * @param  string  $medicalEventType  Either `conditions` or `diagnostic_reports`.
+     * @param  string  $medicalEventId
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://uaehealthapi.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/persons/get-person-emergency-contact
+     */
+    public function getPersonEmergencyContact(string $patientId, string $medicalEventType, string $medicalEventId): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateEmergencyContact(...));
+
+        return $this->get(self::URL . "/$patientId/$medicalEventType/$medicalEventId/emergency_contact");
+    }
+
+    /**
+     * Validate the emergency contact returned by eHealth.
+     *
+     * @param  EHealthResponse  $response
+     * @return array
+     */
+    protected function validateEmergencyContact(EHealthResponse $response): array
+    {
+        return Validator::make($response->getData(), [
+            'first_name' => ['required', 'string'],
+            'phones' => ['required', 'array'],
+            'phones.*.type' => ['required', new InDictionary('PHONE_TYPE')],
+            'phones.*.number' => ['required', 'string']
+        ])->validate();
+    }
 
     /**
      * Get the current diagnoses related only to active episodes.

@@ -44,13 +44,13 @@
         <div class="space-y-6 pl-3.5" wire:key="patients-{{ $paginatedPatients->total() }}">
             @forelse ($paginatedPatients->items() as $patient)
                 <fieldset
-                    wire:key="patient-{{ $patient['id'] }}"
+                    wire:key="patient-{{ $patient['source'] }}-{{ $patient['id'] }}"
                     class="shift-content mt-6 mb-16 max-w-6xl rounded-lg border border-gray-200 p-4 shadow sm:p-8 sm:pb-10 dark:border-gray-700 dark:bg-gray-800"
                 >
                     <legend class="legend flex flex-wrap items-center gap-3">
                         @foreach ($patient['names'] as $name)
                             <span
-                                wire:key="patient-{{ $patient['id'] }}-name-{{ $loop->index }}"
+                                wire:key="patient-{{ $patient['source'] }}-{{ $patient['id'] }}-name-{{ $loop->index }}"
                                 class="inline-flex items-center gap-2"
                             >
                                 <span>{{ ( ($name['lastName'] ?? '') . ' ' . $name['firstName'] . ' ' . ($name['secondName'] ?? '')) }}</span>
@@ -66,7 +66,7 @@
                             @if ($patient['birthDate'])
                                 <span class="flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-300">
                                     @icon('calendar-outline', 'w-5 h-5 text-gray-800 dark:text-white')
-                                    <span>{{ __('forms.birth_date_abbreviated') }} {{ $patient['birthDate'], '0' }}</span>
+                                    <span>{{ __('forms.birth_date_abbreviated') }} {{ $patient['birthDate'] }}</span>
                                 </span>
                             @endif
 
@@ -236,14 +236,18 @@
                                                     >
                                                         @icon('edit-user-outline', 'w-6 h-6 text-gray-800 dark:text-gray-200')
                                                     </a>
-                                                    <button
-                                                        wire:click="deleteDraft({{ $patient['id'] }})"
-                                                        class="inline-block cursor-pointer rounded-full p-1.5 text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                        title="{{ __('forms.delete') }}"
-                                                        type="button"
-                                                    >
-                                                        @icon('delete', 'w-5 h-5')
-                                                    </button>
+                                                    @if ($patient['status'] === Status::DRAFT->value)
+                                                        @can('create', PersonRequest::class)
+                                                            <button
+                                                                wire:click="deleteDraft({{ $patient['id'] }})"
+                                                                class="inline-block cursor-pointer rounded-full p-1.5 text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                                title="{{ __('forms.delete') }}"
+                                                                type="button"
+                                                            >
+                                                                @icon('delete', 'w-5 h-5')
+                                                            </button>
+                                                        @endcan
+                                                    @endif
                                                 </div>
                                             @else
                                                 <div
