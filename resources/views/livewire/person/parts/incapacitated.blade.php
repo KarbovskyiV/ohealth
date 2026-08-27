@@ -7,7 +7,7 @@
     class="fieldset"
     data-confidant-scope
     x-data="{
-              isIncapacitated: $wire.entangle('isIncapacitated'),
+              isIncapacitated: $wire.entangle('isIncapacitated').live,
               showSignatureModal: $wire.showSignatureModal,
               showConfidantPersonDrawer: @if($canManageConfidantRelationships) $wire.entangle('showConfidantPersonDrawer') @else false @endif,
               showDeactivateConfidantPersonDrawer: @if($canManageConfidantRelationships) $wire.entangle('showDeactivateConfidantPersonDrawer') @else false @endif,

@@ -36,7 +36,7 @@
                         ? 'approveSimplifiedDeclaration'
                         : (
                             $status === RequestStatus::NEW
-                        ? 'openMessageInformationModal'
+                        ? "\$set('showInformationMessageModal', true)"
                         : (
                             $status === RequestStatus::APPROVED
                         ? 'openSignatureModal'

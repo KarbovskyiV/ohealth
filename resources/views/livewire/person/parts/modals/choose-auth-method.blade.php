@@ -422,10 +422,29 @@
                         ];
                     @endphp
 
+                    @php
+                        // These steps list the documents the System returned for the current request. Livewire's
+                        // morph does not reach inside <template>, so their content would stay at whatever the page
+                        // was first rendered with — they are put straight into the modal instead
+                        $stepsFilledFromServer = [
+                            AuthStep::CHANGE_FROM_OFFLINE->value,
+                            AuthStep::UPDATE_ALIAS->value,
+                            AuthStep::ADD_NEW_BY_DOCUMENT->value
+                        ];
+                    @endphp
+
                     @foreach ($modalSteps as $step => $view)
-                        <template x-if="localStep === {{ $step }}">
-                            @include($view)
-                        </template>
+                        @if (in_array($step, $stepsFilledFromServer, true))
+                            @if ($authStep->value === $step)
+                                <div x-show="localStep === {{ $step }}" x-cloak>
+                                    @include($view)
+                                </div>
+                            @endif
+                        @else
+                            <template x-if="localStep === {{ $step }}">
+                                @include($view)
+                            </template>
+                        @endif
                     @endforeach
                 </div>
             </div>

@@ -17,7 +17,20 @@
             }
         },
     }"
-    x-effect="if (hasForeignDocument && noTaxId !== null) noTaxId = null;"
+    {{-- A foreign document leaves no tax number to refuse, so the flag follows the entered one: false when it is
+         filled, null when it is not --}}
+    x-effect="
+        if (hasForeignDocument) {
+            const flagForForeignDocument = $wire.form.person.taxId ? false : null;
+
+            if (noTaxId !== flagForForeignDocument) {
+                noTaxId = flagForForeignDocument;
+            }
+        } else if (noTaxId === null) {
+            {{-- Any other document requires the flag to be answered, and the checkbox already reads as unticked --}}
+            noTaxId = false;
+        }
+    "
 >
     <legend class="legend">{{ __('forms.rnokpp') }}/{{ __('forms.ipn') }}</legend>
 

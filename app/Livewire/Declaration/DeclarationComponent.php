@@ -98,7 +98,7 @@ abstract class DeclarationComponent extends Component
      *
      * @var array
      */
-    public array $uploadedDocuments;
+    public array $uploadedDocuments = [];
 
     /**
      * Data that we sign with Cipher and then send to EHealth
@@ -219,31 +219,6 @@ abstract class DeclarationComponent extends Component
     }
 
     /**
-     * Open the information message modal.
-     * This mostly need for approve newly created declaration request if previous approving was interrupted.
-     *
-     * If the person's authentication method is OFFLINE, populates
-     * $uploadedDocuments with the document data and the stored upload URL
-     * from the person's OFFLINE authentication method record.
-     *
-     * @return void
-     */
-    public function openMessageInformationModal(): void
-    {
-        $authMethodType = $this->authMethods[0]['type'] ?? null;
-
-        $declarationRequest = DeclarationRequest::findOrFail($this->declarationRequestId);
-
-        if ($authMethodType === AuthenticationMethod::OFFLINE->value) {
-            $this->uploadedDocuments[] = $declarationRequest?->person?->documents->toArray()[0] ?? [];
-            $this->uploadedDocuments[0]['url'] = $declarationRequest->person->authenticationMethods()
-                ->where('type', AuthenticationMethod::OFFLINE->value)->value('url');
-        }
-
-        $this->showInformationMessageModal = true;
-    }
-
-    /**
      * Create a validated application(declaration request).
      *
      * @return void
@@ -309,15 +284,10 @@ abstract class DeclarationComponent extends Component
         );
 
         if ($responseUrgent['authentication_method_current']['type'] === AuthenticationMethod::OFFLINE->value) {
-            if (isset($responseUrgent['documents'])) {
-                foreach ($responseUrgent['documents'] as $document) {
-                    $declarationRequest->person->authenticationMethods()
-                        ->where('type', AuthenticationMethod::OFFLINE->value)
-                        ->update(['url' => $document['url'] ?? null]);
-                }
-            }
+            $this->uploadedDocuments = $responseUrgent['documents'] ?? [];
 
-            $this->uploadedDocuments = $responseUrgent['documents'];
+            // The upload URLs come with this answer only, and the request is approved on the page opened next
+            $declarationRequest->update(['documents' => $this->uploadedDocuments]);
         }
 
         Session::flash('success', __('declarations.request_created'));

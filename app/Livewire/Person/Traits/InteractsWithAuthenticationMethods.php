@@ -557,18 +557,10 @@ trait InteractsWithAuthenticationMethods
 
             $this->requestId = $response->validate()['id'];
             $this->alias = $validated['authenticationMethod']['alias'];
-
-            try {
-                AuthenticationMethodModel::whereUuid($validated['authenticationMethod']['uuid'])
-                    ->update(['alias' => $validated['authenticationMethod']['alias']]);
-            } catch (Throwable $exception) {
-                $this->handleDatabaseErrors($exception, 'Failed to update authentication method type');
-
-                return;
-            }
+            // A method confirmed by documents is approved by uploading them, not by a code from an SMS
+            $this->uploadedDocuments = $response->getUrgent()['documents'] ?? [];
 
             $this->authStep = AuthStep::UPDATE_ALIAS;
-            Session::flash('success', __('patients.messages.method_name_updated'));
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when updating alias auth method');
         }

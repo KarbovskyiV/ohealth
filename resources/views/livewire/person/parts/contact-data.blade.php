@@ -102,8 +102,9 @@
                 class="input-select peer @error('form.person.preferredWayCommunication') input-error @enderror"
             >
                 <option value="" selected>{{ __('forms.select') }}</option>
+                {{-- The dictionary keys are uppercase, while the eHealth enum accepts only the lowercase form --}}
                 @foreach ($this->dictionaries['PREFERRED_WAY_COMMUNICATION'] as $key => $wayCommunication)
-                    <option value="{{ $key }}">{{ $wayCommunication }}</option>
+                    <option value="{{ strtolower($key) }}">{{ $wayCommunication }}</option>
                 @endforeach
             </select>
             <label for="preferredWayCommunication" class="label">

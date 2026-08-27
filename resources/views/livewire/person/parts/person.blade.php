@@ -209,11 +209,7 @@
                         <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
                             {{ __('forms.first_name') }} №<span x-text="index + 1"></span>
                         </h4>
-                        <button
-                            @click="names.splice(index, 1)"
-                            type="button"
-                            class="text-sm font-medium text-red-600 hover:text-red-800"
-                        >
+                        <button @click="names.splice(index, 1)" type="button" class="item-remove">
                             {{ __('patients.remove_name') }}
                         </button>
                     </div>
