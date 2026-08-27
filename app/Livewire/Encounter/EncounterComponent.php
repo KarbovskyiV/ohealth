@@ -36,9 +36,11 @@ use App\Services\MedicalEvents\Fhir;
 use App\Services\Dictionary\Mappers\ImmunizationDictionaryMapper;
 use App\Traits\FormTrait;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Carbon\CarbonImmutable;
 
 class EncounterComponent extends Component
 {
@@ -525,11 +527,17 @@ class EncounterComponent extends Component
     {
         $authUser = Auth::user();
 
-        $employees = $authUser->party->employees()
-            ->whereEmployeeType(Role::DOCTOR)
-            ->select(['uuid', 'position', 'party_id'])
-            ->with('party:id,last_name,first_name,second_name')
+        $employees = Employee::query()
             ->whereLegalEntityId(legalEntity()->id)
+            ->whereStatus(Status::APPROVED)
+            ->whereIn('employee_type', config('ehealth.encounter_package_allowed_encounter_participant_employee_types'))
+            ->select([
+                'uuid',
+                'position',
+                'party_id',
+                'employee_type',
+            ])
+            ->with('party:id,last_name,first_name,second_name')
             ->get();
         $this->employees = $employees->map(function (Employee $employee) {
             return [
@@ -543,12 +551,7 @@ class EncounterComponent extends Component
             ->whereLegalEntityId(legalEntity()->id)
             ->whereStatus(Status::APPROVED)
             ->whereIsActive(true)
-            ->whereIn('employee_type', [
-                Role::DOCTOR->value,
-                Role::SPECIALIST->value,
-                Role::ASSISTANT->value,
-                Role::LABORANT->value,
-            ])
+            ->whereIn('employee_type', config('ehealth.encounter_package_allowed_diagnostic_report_performer_employee_types', []))
             ->select([
                 'uuid',
                 'party_id',
@@ -571,11 +574,7 @@ class EncounterComponent extends Component
             ->toArray();
 
         $this->procedureEmployees = collect($this->diagnosticReportEmployees)
-            ->whereIn('employeeType', [
-                Role::DOCTOR->value,
-                Role::SPECIALIST->value,
-                Role::ASSISTANT->value,
-            ])
+            ->whereIn('employeeType', config('ehealth.encounter_package_allowed_procedure_performer_employee_types', []))
             ->values()
             ->toArray();
 
@@ -1144,6 +1143,316 @@ class EncounterComponent extends Component
         }
 
         return $result;
+    }
+
+    /**
+     * Validate encounter performer according to encounter date and package primary sources.
+     *
+     * @param  array  $package
+     * @return void
+     *
+     * @throws ValidationException
+     */
+    protected function validateEncounterPerformer(array $package): void
+    {
+        $periodEnd = CarbonImmutable::parse(data_get($package, 'encounter.period.end'));
+
+        $periodEndDate = $periodEnd->startOfDay();
+        $currentDate = CarbonImmutable::now($periodEnd->getTimezone())->startOfDay();
+
+        $hasPrimarySource = collect([
+            'conditions',
+            'immunizations',
+            'diagnostic_reports',
+            'observations',
+            'procedures',
+        ])->contains(
+            static fn (string $section): bool => collect($package[$section] ?? [])
+                ->contains(static fn (array $entity): bool => ($entity['primary_source'] ?? false) === true)
+        );
+
+        $performerUuid = data_get($package, 'encounter.performer.identifier.value');
+
+        $performer = Employee::query()
+            ->whereUuid($performerUuid)
+            ->first([
+                'uuid',
+                'party_id',
+                'legal_entity_id',
+            ]);
+
+        if ($performer === null || $performer->legalEntityId !== legalEntity()->id) {
+            throw ValidationException::withMessages([
+                'encounter.performer' => __('validation.custom.encounter.performer_wrong_legal_entity'), 
+            ]);
+        }
+
+        $performerMustBeCurrentUser = $periodEndDate->equalTo($currentDate) || ($periodEndDate->lessThan($currentDate) && $hasPrimarySource);
+
+        if ($performerMustBeCurrentUser && $performer->partyId !== Auth::user()->partyId) {
+            throw ValidationException::withMessages([
+                'encounter.performer' => __('validation.custom.encounter.performer_not_current_user'),
+            ]);
+        }
+    }
+
+    protected function validateDiagnosticReportPerformers(array $package): void
+    {
+        $allowedEmployeeTypes = config('ehealth.encounter_package_allowed_diagnostic_report_performer_employee_types', []);
+        $participantUuids = collect(data_get($package, 'encounter.participant', []))
+            ->filter(static fn (array $participant): bool => data_get($participant, 'identifier.type.coding.0.code') === 'employee')
+            ->pluck('identifier.value')
+            ->filter();
+
+        foreach ($package['diagnostic_reports'] ?? [] as $index => $diagnosticReport) {
+            if (($diagnosticReport['primary_source'] ?? false) !== true) {
+                continue;
+            }
+
+            $performers = $diagnosticReport['performer'] ?? null;
+
+            if (!is_array($performers) || $performers === [] || !array_is_list($performers)) {
+                throw ValidationException::withMessages([
+                    "diagnostic_reports.$index.performer" => __('validation.custom.diagnosticReport.performer.required'),
+                ]);
+            }
+
+            $uniquePerformers = [];
+
+            foreach ($performers as $performer) {
+                $type = data_get($performer, 'reference.identifier.type.coding.0.code');
+                $value = data_get($performer, 'reference.identifier.value');
+
+                if ($type !== 'employee') {
+                    throw ValidationException::withMessages([
+                        "diagnostic_reports.$index.performer" => __('validation.custom.diagnosticReport.performer.invalid_type'),
+                    ]);
+                }
+
+                $key = $type . ':' . $value;
+
+                if (isset($uniquePerformers[$key])) {
+                    throw ValidationException::withMessages([
+                        "diagnostic_reports.$index.performer" => __('validation.custom.diagnosticReport.performer.unique'),
+                    ]);
+                }
+
+                $uniquePerformers[$key] = true;
+
+                $employee = Employee::query()->whereUuid($value)->first([
+                    'uuid',
+                    'legal_entity_id',
+                    'status',
+                    'employee_type',
+                ]);
+
+                if ($employee === null) {
+                    throw ValidationException::withMessages([
+                        "diagnostic_reports.$index.performer" => __('validation.custom.diagnosticReport.performer.employee_not_found'),
+                    ]);
+                }
+
+                if ($employee->legalEntityId !== legalEntity()->id) {
+                    throw ValidationException::withMessages([
+                        "diagnostic_reports.$index.performer" => __('validation.custom.diagnosticReport.performer.employee_wrong_legal_entity', ['employee' => $value]),
+                    ]);
+                }
+
+                if ($employee->status !== Status::APPROVED) {
+                    throw ValidationException::withMessages([
+                        "diagnostic_reports.$index.performer" => __('validation.custom.diagnosticReport.performer.employee_invalid_status'),
+                    ]);
+                }
+
+                if (!in_array($employee->employeeType, $allowedEmployeeTypes, true)) {
+                    throw ValidationException::withMessages([
+                        "diagnostic_reports.$index.performer" => __('validation.custom.diagnosticReport.performer.employee_invalid_type'),
+                    ]);
+                }
+
+                if (!$participantUuids->contains($value)) {
+                    throw ValidationException::withMessages([
+                        "diagnostic_reports.$index.performer" => __('validation.custom.diagnosticReport.performer.employee_not_participant'),
+                    ]);
+                }
+            }
+        }
+    }
+
+    protected function validateProcedurePerformers(array $package): void
+    {
+        $allowedEmployeeTypes = config('ehealth.encounter_package_allowed_procedure_performer_employee_types', []);
+
+        $participantUuids = collect(data_get($package, 'encounter.participant', []))
+            ->filter(static fn (array $participant): bool => data_get($participant, 'identifier.type.coding.0.code') === 'employee')
+            ->pluck('identifier.value')
+            ->filter();
+
+        foreach ($package['procedures'] ?? [] as $index => $procedure) {
+            if (($procedure['primary_source'] ?? false) !== true) {
+                continue;
+            }
+
+            $performers = $procedure['performer'] ?? null;
+
+            if (!is_array($performers) || $performers === [] || !array_is_list($performers)) {
+                throw ValidationException::withMessages([
+                    "procedures.$index.performer" => __('validation.custom.encounter.procedures.performer_required'),
+                ]);
+            }
+
+            $uniquePerformers = [];
+
+            foreach ($performers as $performer) {
+                $type = data_get($performer, 'identifier.type.coding.0.code');
+                $value = data_get($performer, 'identifier.value');
+
+                if ($type !== 'employee') {
+                    throw ValidationException::withMessages([
+                        "procedures.$index.performer" => __('validation.custom.encounter.procedures.performer_invalid_type'),
+                    ]);
+                }
+
+                $key = $type . ':' . $value;
+
+                if (isset($uniquePerformers[$key])) {
+                    throw ValidationException::withMessages([
+                        "procedures.$index.performer" => __('validation.custom.encounter.procedures.performer_unique'),
+                    ]);
+                }
+
+                $uniquePerformers[$key] = true;
+
+                $employee = Employee::query()->whereUuid($value)->first([
+                    'uuid',
+                    'legal_entity_id',
+                    'status',
+                    'employee_type',
+                ]);
+
+                if ($employee === null) {
+                    throw ValidationException::withMessages([
+                        "procedures.$index.performer" => __('validation.custom.encounter.procedures.performer_employee_not_found'),
+                    ]);
+                }
+
+                if ($employee->legalEntityId !== legalEntity()->id) {
+                    throw ValidationException::withMessages([
+                        "procedures.$index.performer" => __('validation.custom.encounter.procedures.performer_wrong_legal_entity', ['employee' => $value]),
+                    ]);
+                }
+
+                if ($employee->status !== Status::APPROVED) {
+                    throw ValidationException::withMessages([
+                        "procedures.$index.performer" => __('validation.custom.encounter.procedures.performer_invalid_status'),
+                    ]);
+                }
+
+                if (!in_array($employee->employeeType, $allowedEmployeeTypes, true)) {
+                    throw ValidationException::withMessages([
+                        "procedures.$index.performer" => __('validation.custom.encounter.procedures.performer_employee_invalid_type'),
+                    ]);
+                }
+
+                if (!$participantUuids->contains($value)) {
+                    throw ValidationException::withMessages([
+                        "procedures.$index.performer" => __('validation.custom.encounter.procedures.performer_not_participant'),
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Validate observation performers in the prepared encounter package.
+     *
+     * @param  array  $package
+     * @return void
+     *
+     * @throws ValidationException
+     */
+    protected function validateObservationPerformers(array $package): void
+    {
+        $allowedEmployeeTypes = config('ehealth.encounter_package_allowed_observation_performer_employee_types', []);
+
+        $participantUuids = collect(data_get($package, 'encounter.participant', []))
+            ->filter(static fn (array $participant): bool => data_get($participant, 'identifier.type.coding.0.code') === 'employee')
+            ->map(static fn (array $participant): mixed => data_get($participant, 'identifier.value'))
+            ->filter();
+
+        foreach ($package['observations'] ?? [] as $index => $observation) {
+            if (($observation['primary_source'] ?? false) !== true) {
+                continue;
+            }
+
+            $performers = $observation['performer'] ?? null;
+
+            if (!is_array($performers) || $performers === [] || !array_is_list($performers)) {
+                throw ValidationException::withMessages([
+                    "observations.$index.performer" => __('validation.custom.encounter.observations.performer_required'),
+                ]);
+            }
+
+            $uniquePerformers = [];
+
+            foreach ($performers as $performer) {
+                $type = data_get($performer, 'identifier.type.coding.0.code');
+                $value = data_get($performer, 'identifier.value');
+
+                if ($type !== 'employee') {
+                    throw ValidationException::withMessages([
+                        "observations.$index.performer" => __('validation.custom.encounter.observations.performer_invalid_type'),
+                    ]);
+                }
+
+                $key = $type . ':' . $value;
+
+                if (isset($uniquePerformers[$key])) {
+                    throw ValidationException::withMessages([
+                        "observations.$index.performer" => __('validation.custom.encounter.observations.performer_unique'),
+                    ]);
+                }
+
+                $uniquePerformers[$key] = true;
+
+                $employee = Employee::query()->whereUuid($value)->first([
+                    'uuid',
+                    'legal_entity_id',
+                    'status',
+                    'employee_type',
+                ]);
+
+                if ($employee === null) {
+                    throw ValidationException::withMessages([
+                        "observations.$index.performer" => __('validation.custom.encounter.observations.performer_employee_not_found'),
+                    ]);
+                }
+
+                if ($employee->legalEntityId !== legalEntity()->id) {
+                    throw ValidationException::withMessages([
+                        "observations.$index.performer" => __('validation.custom.encounter.observations.performer_wrong_legal_entity', ['employee' => $value]),
+                    ]);
+                }
+
+                if ($employee->status !== Status::APPROVED) {
+                    throw ValidationException::withMessages([
+                        "observations.$index.performer" => __('validation.custom.encounter.observations.performer_invalid_status'),
+                    ]);
+                }
+
+                if (!in_array($employee->employeeType, $allowedEmployeeTypes, true)) {
+                    throw ValidationException::withMessages([
+                        "observations.$index.performer" => __('validation.custom.encounter.observations.performer_employee_invalid_type'),
+                    ]);
+                }
+
+                if (!$participantUuids->contains($value)) {
+                    throw ValidationException::withMessages([
+                        "observations.$index.performer" => __('validation.custom.encounter.observations.performer_not_participant'),
+                    ]);
+                }
+            }
+        }
     }
 
     /**

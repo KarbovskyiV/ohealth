@@ -410,6 +410,47 @@ return [
         'ASSISTANT' => ['intervention'],
         'MED_COORDINATOR' => ['service_delivery_location', 'virtual']
     ],
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20212351131/DRAFT+Config+params+Encounter+ENT-026#ENCOUNTER_PACKAGE_ALLOWED_ENCOUNTER_PARTICIPANT_EMPLOYEE_TYPES
+    'encounter_package_allowed_encounter_participant_employee_types' => [
+        'DOCTOR',
+        'SPECIALIST',
+        'ASSISTANT',
+        'MED_COORDINATOR',
+    ],
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20212351131/DRAFT+Config+params+Encounter+ENT-026#ENCOUNTER_PACKAGE_ALLOWED_CONDITION_ASSERTER_EMPLOYEE_TYPES
+    'encounter_package_allowed_condition_asserter_employee_types' => [
+        'DOCTOR',
+        'SPECIALIST',
+        'ASSISTANT',
+        'MED_COORDINATOR',
+    ],
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20212351131/DRAFT+Config+params+Encounter+ENT-026#ENCOUNTER_PACKAGE_ALLOWED_OBSERVATION_PERFORMER_EMPLOYEE_TYPES
+    'encounter_package_allowed_observation_performer_employee_types' => [
+        'DOCTOR',
+        'SPECIALIST',
+        'ASSISTANT',
+        'LABORANT',
+    ],
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20212351131/DRAFT+Config+params+Encounter+ENT-026#ENCOUNTER_PACKAGE_ALLOWED_PROCEDURE_PERFORMER_EMPLOYEE_TYPES
+    'encounter_package_allowed_procedure_performer_employee_types' => [
+        'DOCTOR',
+        'SPECIALIST',
+        'ASSISTANT',
+    ],
+    // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20212351131/DRAFT+Config+params+Encounter+ENT-026#ENCOUNTER_PACKAGE_ALLOWED_DIAGNOSTIC_REPORT_PERFORMER_EMPLOYEE_TYPES
+    'encounter_package_allowed_diagnostic_report_performer_employee_types' => [
+        'DOCTOR',
+        'SPECIALIST',
+        'ASSISTANT',
+        'MED_COORDINATOR',
+        'LABORANT',
+    ],
+    //
+    'encounter_type_concilium_encounter_participant_employee_types_allowed' => [
+        'SPECIALIST',
+    ],
+    //
+    'digital_signature_check_last_name_for_encounter_package' => true,
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583402009/Medical+Events+Dictionaries+and+configurations#encounter_class_encounter_types
     'encounter_class_encounter_types' => [
         'AMB' => ['service_delivery_location', 'virtual', 'patient_identity', 'field', 'home', 'intervention', 'concilium'],
