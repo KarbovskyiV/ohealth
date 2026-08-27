@@ -157,6 +157,13 @@ class PersonComponent extends Component
     public ?string $invalidPersonId = null;
 
     /**
+     * Why the person found by the search may not be chosen as a legal representative.
+     *
+     * @var string|null
+     */
+    public ?string $invalidPersonReason = null;
+
+    /**
      * Data about new confidant person.
      *
      * @var array
@@ -207,17 +214,37 @@ class PersonComponent extends Component
      */
     public function chooseConfidantPerson(array $personData): void
     {
+        // Drop whatever the previously inspected person left behind, so that a rejection never shows next
+        // to the person the user is looking at now
+        $this->invalidPersonId = null;
+        $this->invalidPersonReason = null;
+        $this->selectedConfidantPersonId = null;
+
         $birthDate = CarbonImmutable::parse($personData['birthDate']);
 
         // Below the full legal capacity age a person cannot be a confidant (the remaining eligibility
-        // rules — legal capacity, verification statuses, existing relationships — are enforced by eHealth)
+        // rules — legal capacity, verification statuses — are enforced by eHealth)
         if ($birthDate->age < config('ehealth.person_full_legal_capacity_age')) {
             $this->invalidPersonId = $personData['id'];
+            $this->invalidPersonReason = __('patients.age_insufficient_for_confidant_person');
 
             return;
         }
 
-        $this->invalidPersonId = null;
+        try {
+            $relationships = EHealth::person()->getConfidantPersonRelationships($personData['id'])->validate();
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error when getting confidant person relationships of the chosen person');
+
+            return;
+        }
+
+        if (Person::isRepresentedByConfidant($relationships)) {
+            $this->invalidPersonId = $personData['id'];
+            $this->invalidPersonReason = __('patients.confidant_person_has_own_confidants');
+
+            return;
+        }
 
         $this->selectedConfidantPersonId = $personData['id'];
 

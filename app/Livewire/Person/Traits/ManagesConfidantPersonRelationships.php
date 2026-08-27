@@ -32,15 +32,36 @@ trait ManagesConfidantPersonRelationships
 
     public function chooseConfidantPerson(array $personData): void
     {
+        // Drop whatever the previously inspected person left behind, so that a rejection or a failed
+        // eligibility check never shows next to the person the user is looking at now
+        $this->invalidPersonId = null;
+        $this->invalidPersonReason = null;
+        $this->selectedConfidantPersonId = null;
+
         $birthDate = CarbonImmutable::parse($personData['birthDate']);
 
         if ($birthDate->age < config('ehealth.person_full_legal_capacity_age')) {
             $this->invalidPersonId = $personData['id'];
+            $this->invalidPersonReason = __('patients.age_insufficient_for_confidant_person');
 
             return;
         }
 
-        $this->invalidPersonId = null;
+        try {
+            $relationships = EHealth::person()->getConfidantPersonRelationships($personData['id'])->validate();
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error when getting confidant person relationships of the chosen person');
+
+            return;
+        }
+
+        if (Person::isRepresentedByConfidant($relationships)) {
+            $this->invalidPersonId = $personData['id'];
+            $this->invalidPersonReason = __('patients.confidant_person_has_own_confidants');
+
+            return;
+        }
+
         $this->selectedConfidantPersonId = $personData['id'];
 
         $person = Person::whereUuid($personData['id'])->with(['documents', 'phones'])->first();
@@ -101,16 +122,7 @@ trait ManagesConfidantPersonRelationships
 
         Repository::confidantPerson()->sync($response->getData(), $this->uuid);
 
-        $person = Person::whereUuid($this->uuid)
-            ->with([
-                'confidantPersons.person.names',
-                'confidantPersons.person.documents',
-                'confidantPersons.person.phones',
-                'confidantPersons.documentsRelationship'
-            ])
-            ->firstOrFail();
-
-        $this->form->person['confidantPersons'] = Arr::toCamelCase($person->confidantPersons->toArray());
+        $this->reloadConfidantPersons();
 
         Session::flash('success', __('patients.messages.confidant_persons_synced'));
     }
@@ -221,9 +233,11 @@ trait ManagesConfidantPersonRelationships
             return;
         }
 
-        try {
-            $this->uploadDocuments();
+        if (!$this->uploadDocuments()) {
+            return;
+        }
 
+        try {
             $response = EHealth::person()->approveConfidantPersonRelationshipRequest(
                 $this->uuid,
                 $this->confidantPersonRelationshipRequestId,
@@ -298,7 +312,12 @@ trait ManagesConfidantPersonRelationships
                     $this->showTerminateModal = true;
                 }
 
-                Session::flash('success', __('patients.messages.new_confidant_person_added'));
+                $this->completeConfidantPersonRelationshipRequest();
+                $this->reloadConfidantPersons();
+
+                Session::flash('success', $this->authDrawerMode === self::AUTH_DRAWER_MODE_CREATE
+                    ? __('patients.messages.new_confidant_person_added')
+                    : __('patients.messages.confidant_person_relationship_deactivated'));
             } catch (Exception $exception) {
                 $this->handleDatabaseErrors($exception, 'Failed to create confidant person relationship');
 
@@ -309,6 +328,43 @@ trait ManagesConfidantPersonRelationships
 
             return;
         }
+    }
+
+    /**
+     * Re-read the confidant persons of the patient from the database, so that the table reflects a relationship
+     * that has just been created or ended.
+     *
+     * @return void
+     */
+    private function reloadConfidantPersons(): void
+    {
+        $person = Person::whereUuid($this->uuid)
+            ->with([
+                'confidantPersons.person.names',
+                'confidantPersons.person.documents',
+                'confidantPersons.person.phones',
+                'confidantPersons.documentsRelationship'
+            ])
+            ->firstOrFail();
+
+        $this->form->person['confidantPersons'] = Arr::toCamelCase($person->confidantPersons->toArray());
+    }
+
+    /**
+     * Mark the signed request as done and drop it from the list of requests still awaiting the user, which only
+     * holds the ones in the NEW status.
+     *
+     * @return void
+     */
+    private function completeConfidantPersonRelationshipRequest(): void
+    {
+        ConfidantPersonRelationshipRequest::whereUuid($this->confidantPersonRelationshipRequestId)
+            ->update(['status' => ConfidantPersonRelationshipRequestStatus::COMPLETED]);
+
+        $this->confidantPersonRelationshipRequests = array_values(array_filter(
+            $this->confidantPersonRelationshipRequests,
+            fn (array $request): bool => $request['uuid'] !== $this->confidantPersonRelationshipRequestId
+        ));
     }
 
     public function syncConfidantPersonRelationshipRequestsList(): void

@@ -36,7 +36,7 @@
             <div class="form-row-3 items-center mt-5">
                 <div class="form-group group relative">
                     <select class="input-select peer w-full">
-                        <option value="" selected>{{ __('forms.select') }}</option>
+                        <option value="" selected>{{ __('forms.empty') }}</option>
                         @foreach($mergedPersons as $externalId)
                             <option value="{{ $loop->index }}">
                                 {{ __('preperson.merged_patient', ['number' => $externalId]) }}
@@ -45,7 +45,7 @@
                     </select>
 
                     <label class="label">
-                        {{ __('preperson.electronic_medical_records') }}
+                        {{ __('preperson.merged_persons') }}
                     </label>
                 </div>
 

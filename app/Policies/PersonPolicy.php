@@ -55,11 +55,27 @@ class PersonPolicy
     }
 
     /**
+     * Determine whether the user can view the patient emergency contact.
+     */
+    public function viewEmergencyContact(User $user): Response
+    {
+        if ($user->cannot('person_emergency_contact:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Determine whether the user can sync the person data.
      */
     public function syncPersonData(User $user): Response
     {
-        if ($user->can('personal_data:read') && $user->can('confidant_person_relationship:read')) {
+        // The scopes alone are held by more roles than may look at the personal data of a patient
+        if ($user->can('personal_data:read')
+            && $user->can('confidant_person_relationship:read')
+            && $user->hasAllowedRole([Role::DOCTOR, Role::SPECIALIST])
+        ) {
             return Response::allow();
         }
 

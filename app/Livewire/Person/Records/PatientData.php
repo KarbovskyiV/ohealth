@@ -30,13 +30,14 @@ use App\Livewire\Person\Forms\PersonForm as Form;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Repositories\MedicalEvents\Repository as MERepository;
 use App\Livewire\Person\Traits\InteractsWithAuthenticationMethods;
+use App\Livewire\Person\Traits\InteractsWithEmergencyContact;
 use App\Livewire\Person\Traits\ManagesConfidantPersonRelationships;
-use App\Models\Relations\ConfidantPerson;
 
 class PatientData extends BasePatientComponent
 {
     use FormTrait;
     use InteractsWithAuthenticationMethods;
+    use InteractsWithEmergencyContact;
     use ManagesConfidantPersonRelationships;
     use WithFileUploads;
     use BatchLegalEntityQueries;
@@ -50,8 +51,6 @@ class PatientData extends BasePatientComponent
 
     public array $phones = [];
 
-    public array $confidantPersonRelationships = [];
-
     public bool $canManageConfidantRelationships = true;
 
     public bool $isIncapacitated = false;
@@ -61,6 +60,13 @@ class PatientData extends BasePatientComponent
     public ?string $selectedConfidantPersonId = null;
 
     public ?string $invalidPersonId = null;
+
+    /**
+     * Why the person found by the search may not be chosen as a legal representative.
+     *
+     * @var string|null
+     */
+    public ?string $invalidPersonReason = null;
 
     public array $newConfidantPerson = ['documentsRelationship' => []];
 
@@ -146,15 +152,17 @@ class PatientData extends BasePatientComponent
     {
         $this->getDictionary();
 
-        $patient = Person::with([
-            'names',
+        // The patient and its names are already read by the parent, only the rest of the card is missing
+        $patient = $this->patient()->load([
+            'addresses',
+            'documents',
             'phones',
             'authenticationMethods',
             'confidantPersons.person.names',
             'confidantPersons.person.documents',
             'confidantPersons.person.phones',
             'confidantPersons.documentsRelationship'
-        ])->whereId($this->personId)->firstOrFail();
+        ]);
 
         $this->firstName = $patient->primaryName?->firstName ?? '';
         $this->lastName = $patient->primaryName?->lastName ?? '';
@@ -182,35 +190,16 @@ class PatientData extends BasePatientComponent
     }
 
     /**
-     * Get patient confidant persons.
+     * Upload the scanned copies eHealth asked for and report whether every one of them reached the storage.
      *
-     * @return void
+     * @return bool
      */
-    public function getConfidantPersons(): void
-    {
-        if (Auth::user()->cannot('view', ConfidantPerson::class)) {
-            Session::flash('error', __('patients.policy.view_confidant'));
-
-            return;
-        }
-
-        try {
-            $response = EHealth::person()->getConfidantPersonRelationships($this->uuid);
-
-            $this->confidantPersonRelationships = Arr::toCamelCase($response->validate());
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error when getting confidant person relationships');
-
-            return;
-        }
-    }
-
-    protected function uploadDocuments(): void
+    protected function uploadDocuments(): bool
     {
         if (count($this->form->uploadedDocuments) !== count($this->uploadedDocuments)) {
             Session::flash('error', __('patients.messages.upload_all_files'));
 
-            return;
+            return false;
         }
 
         foreach ($this->form->uploadedDocuments as $key => $document) {
@@ -229,10 +218,12 @@ class PatientData extends BasePatientComponent
         if (in_array(false, $this->uploadedFiles, true)) {
             Session::flash('error', __('messages.database_error'));
 
-            return;
+            return false;
         }
 
         Session::flash('success', __('patients.messages.files_uploaded_successfully'));
+
+        return true;
     }
 
     /**
@@ -254,6 +245,12 @@ class PatientData extends BasePatientComponent
      */
     public function syncPersonDataFromEHealth(): void
     {
+        if (Auth::user()->cannot('syncPersonData', Person::class)) {
+            Session::flash('error', __('patients.policy.personal_data_update'));
+
+            return;
+        }
+
         $person = Person::find($this->personId);
 
         // Check if an Approval already exists for the current person and is in the APPROVED state

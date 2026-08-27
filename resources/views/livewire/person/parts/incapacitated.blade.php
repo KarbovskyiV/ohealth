@@ -5,7 +5,7 @@
 
 <fieldset
     class="fieldset"
-    data-fieldset="incapacitated"
+    data-confidant-scope
     x-data="{
               isIncapacitated: $wire.entangle('isIncapacitated'),
               showSignatureModal: $wire.showSignatureModal,

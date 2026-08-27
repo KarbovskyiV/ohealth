@@ -8,6 +8,11 @@
          documentRelationshipTypes: @js($this->dictionaries['DOCUMENT_RELATIONSHIP_TYPE']),
          documentTypes: @js($this->dictionaries['DOCUMENT_TYPE']),
          phoneTypes: @js($this->dictionaries['PHONE_TYPE']),
+         getParentData() {
+             const scope = document.querySelector('[data-confidant-scope]');
+
+             return scope ? Alpine.$data(scope) : null;
+         },
          get availableConfidantPersons() {
              // Filter out confidant persons who already have authentication methods
              const existingAuthPersonUuids = this.authenticationMethods
@@ -165,7 +170,22 @@
             {{ __('forms.back') }}
         </button>
 
-        <button type="button" @click="showAuthMethodModal = false" class="button-outline-primary">
+        <button
+            type="button"
+            @click="
+                showAuthMethodModal = false;
+
+                const parentData = getParentData();
+
+                if (parentData) {
+                    parentData.resetForm();
+                    parentData.resetSearchFilters();
+                    parentData.confidantPerson.documentsRelationship = [];
+                    parentData.showConfidantPersonDrawer = true;
+                }
+            "
+            class="button-outline-primary"
+        >
             {{ __('patients.new_confidant_person') }}
         </button>
     </div>

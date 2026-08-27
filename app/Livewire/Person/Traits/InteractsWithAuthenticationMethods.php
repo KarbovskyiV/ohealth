@@ -38,6 +38,7 @@ trait InteractsWithAuthenticationMethods
     {
         $person->loadMissing([
             'authenticationMethods',
+            'confidantPersons.person.names',
             'confidantPersons.person.documents',
             'confidantPersons.person.phones'
         ]);
@@ -315,12 +316,11 @@ trait InteractsWithAuthenticationMethods
      */
     public function approveCreatingOffline(): void
     {
-        if ($this->deniesManagingAuthMethods()) {
+        if ($this->deniesManagingAuthMethods() || !$this->uploadDocuments()) {
             return;
         }
 
         try {
-            $this->uploadDocuments();
             $response = EHealth::person()->approveAuthMethod($this->uuid, $this->requestId);
 
             try {
@@ -488,12 +488,11 @@ trait InteractsWithAuthenticationMethods
      */
     public function approveChangingType(): void
     {
-        if ($this->deniesManagingAuthMethods()) {
+        if ($this->deniesManagingAuthMethods() || !$this->uploadDocuments()) {
             return;
         }
 
         try {
-            $this->uploadDocuments();
             $response = EHealth::person()->approveAuthMethod($this->uuid, $this->requestId);
 
             try {
@@ -601,7 +600,10 @@ trait InteractsWithAuthenticationMethods
 
         try {
             if ($this->selectedAuthMethodType === AuthenticationMethod::OFFLINE->value) {
-                $this->uploadDocuments();
+                if (!$this->uploadDocuments()) {
+                    return;
+                }
+
                 EHealth::person()->approveAuthMethod($this->uuid, $this->requestId);
             } else {
                 $validated = $this->validate(['verificationCode' => ['required', 'digits:4']]);

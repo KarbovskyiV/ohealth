@@ -9,7 +9,7 @@
     x-transition:leave-start="translate-x-0"
     x-transition:leave-end="translate-x-full"
     x-cloak
-    class="fixed top-0 right-0 z-40 h-screen pt-20 p-4 overflow-y-auto transition-transform bg-white w-4/5 dark:bg-gray-800 shadow-2xl"
+    class="fixed top-0 right-0 z-40 h-screen w-4/5 overflow-y-auto bg-white p-4 pt-20 shadow-2xl transition-transform dark:bg-gray-800"
     x-data="{
         showResults: false,
         showDocumentDrawer: false,
@@ -17,7 +17,8 @@
     id="legal-representative-drawer"
     tabindex="-1"
 >
-    <h3 class="modal-header"
+    <h3
+        class="modal-header"
         x-text="isEditingLegalRep ? '{{ __('patients.edit_confidant_person') }}' : '{{ __('patients.add_confidant_person') }}'"
     ></h3>
 
@@ -28,10 +29,10 @@
         </div>
 
         @include('livewire.person.parts.search-filter', ['context' => 'create'])
-        <div class="mb-9 mt-6 flex gap-2">
+        <div class="mt-6 mb-9 flex gap-2">
             <button
                 type="button"
-                class="flex items-center gap-2 button-primary"
+                class="button-primary flex items-center gap-2"
                 @click="showResults = true"
                 wire:click.prevent="searchForPerson"
             >
@@ -41,7 +42,10 @@
             <button
                 type="button"
                 class="button-primary-outline-red"
-                @click="showResults = false; resetSearchFilters()"
+                @click="
+                    showResults = false;
+                    resetSearchFilters();
+                "
             >
                 {{ __('forms.reset_all_filters') }}
             </button>
@@ -49,44 +53,59 @@
     </div>
 
     {{-- Results of founded --}}
-    <div class="space-y-6 mt-6" wire:ignore x-show="showResults" x-transition x-cloak>
+    <div class="mt-6 space-y-6" wire:ignore x-show="showResults" x-transition x-cloak>
         <template x-for="patient in $wire.confidantPerson" :key="patient.id">
             <fieldset class="fieldset" :class="{ 'ring-2 ring-blue-500': selectedPatient?.id === patient.id }">
                 <legend class="legend">
                     <template x-for="(patientName, index) in patient.names" :key="index">
                         <span
                             class="block"
-                            x-text="`${patientName.lastName ?? ''} ${patientName.firstName} ${patientName.secondName ?? ''}`.trim()"
+                            x-text="
+                                `${patientName.lastName ?? ''} ${patientName.firstName} ${patientName.secondName ?? ''}`.trim()
+                            "
                         ></span>
                     </template>
                 </legend>
 
-                <div
-                    class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-700 pb-4">
-                    <div class="flex items-center flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500 mt-2">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
+                    <div class="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
                         <span class="flex items-center gap-1.5" x-show="patient.birthDate">
-                            <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true"
-                                 xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-                                 viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-width="2"
-                                      d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H8z" />
-                                <path stroke="currentColor" stroke-linecap="round" stroke-width="2"
-                                      d="M16 2v4M8 2v4M3 10h18" />
+                            <svg
+                                class="h-6 w-6 text-gray-800 dark:text-white"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke="currentColor"
+                                    stroke-linecap="round"
+                                    stroke-width="2"
+                                    d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H8z"
+                                />
+                                <path
+                                    stroke="currentColor"
+                                    stroke-linecap="round"
+                                    stroke-width="2"
+                                    d="M16 2v4M8 2v4M3 10h18"
+                                />
                             </svg>
                             <span x-text="patient.birthDate"></span>
                         </span>
 
-                        <span class="flex items-center gap-1.5 min-w-0" x-show="patient.phones?.[0]?.number">
+                        <span class="flex min-w-0 items-center gap-1.5" x-show="patient.phones?.[0]?.number">
                             @icon('tabler-phone', 'w-6 h-6 text-gray-800 dark:text-white')
                             <a
                                 :href="'tel:' + patient.phones?.[0]?.number"
-                                class="truncate hover:underline font-medium text-gray-900 dark:text-gray-200 text-base"
+                                class="truncate text-base font-medium text-gray-900 hover:underline dark:text-gray-200"
                                 x-text="patient.phones?.[0]?.number"
                             ></a>
                         </span>
 
                         <span class="flex items-center gap-1.5" x-show="patient.gender">
-                            @foreach(Gender::cases() as $gender)
+                            @foreach (Gender::cases() as $gender)
                                 <template x-if="patient.gender?.toUpperCase() === '{{ $gender->value }}'">
                                     <span class="flex items-center gap-1.5">
                                         @icon($gender->icon(), 'w-6 h-6 text-gray-800 dark:text-white')
@@ -107,37 +126,53 @@
                     </button>
                 </div>
 
-                <div class="flow-root mt-4">
+                <div class="mt-4 flow-root">
                     <div class="max-w-7xl">
                         <table class="table-input w-full table-auto">
                             <thead class="thead-input">
-                            <tr>
-                                <th scope="col" class="th-input">{{ __('forms.city') }}</th>
-                                <th scope="col" class="th-input">{{ __('forms.rnokpp') }}</th>
-                                <th scope="col" class="th-input">{{ __('forms.document_type') }}</th>
-                                <th scope="col" class="th-input">{{ __('forms.document_number') }}</th>
-                                <th scope="col" class="th-input">{{ __('forms.status.label') }}</th>
-                            </tr>
+                                <tr>
+                                    <th scope="col" class="th-input">{{ __('forms.city') }}</th>
+                                    <th scope="col" class="th-input">{{ __('forms.rnokpp') }}</th>
+                                    <th scope="col" class="th-input">{{ __('forms.document_type') }}</th>
+                                    <th scope="col" class="th-input">{{ __('forms.document_number') }}</th>
+                                    <th scope="col" class="th-input">{{ __('forms.status.label') }}</th>
+                                </tr>
                             </thead>
 
                             <tbody>
-                            <tr>
-                                <td class="td-input whitespace-nowrap overflow-hidden text-ellipsis align-top font-bold text-gray-900 dark:text-white"
-                                    x-text="patient.birthSettlement || '-'"
-                                ></td>
-                                <td class="td-input whitespace-nowrap overflow-hidden text-ellipsis align-top font-bold text-gray-900 dark:text-white"
-                                    x-text="patient.taxId || '-'"
-                                ></td>
-                                <td class="td-input whitespace-nowrap overflow-hidden text-ellipsis align-top font-bold text-gray-900 dark:text-white"
-                                    x-text="patient.documents?.map(patientDocument => $wire.dictionaries.DOCUMENT_TYPE[patientDocument.type] ?? patientDocument.type).join(', ') || '-'"
-                                ></td>
-                                <td class="td-input whitespace-nowrap overflow-hidden text-ellipsis align-top font-bold text-gray-900 dark:text-white"
-                                    x-text="patient.documents?.map(patientDocument => patientDocument.number).join(', ') || '-'"
-                                ></td>
-                                <td class="td-input whitespace-nowrap align-top">
-                                    <span class="badge-green">{{ __('patients.source.ehealth') }}</span>
-                                </td>
-                            </tr>
+                                <tr>
+                                    <td
+                                        class="td-input overflow-hidden align-top font-bold text-ellipsis whitespace-nowrap text-gray-900 dark:text-white"
+                                        x-text="patient.birthSettlement || '-'"
+                                    ></td>
+                                    <td
+                                        class="td-input overflow-hidden align-top font-bold text-ellipsis whitespace-nowrap text-gray-900 dark:text-white"
+                                        x-text="patient.taxId || '-'"
+                                    ></td>
+                                    <td
+                                        class="td-input overflow-hidden align-top font-bold text-ellipsis whitespace-nowrap text-gray-900 dark:text-white"
+                                        x-text="
+                                            patient.documents
+                                                ?.map(
+                                                    (patientDocument) =>
+                                                        $wire.dictionaries.DOCUMENT_TYPE[patientDocument.type] ??
+                                                        patientDocument.type,
+                                                )
+                                                .join(', ') || '-'
+                                        "
+                                    ></td>
+                                    <td
+                                        class="td-input overflow-hidden align-top font-bold text-ellipsis whitespace-nowrap text-gray-900 dark:text-white"
+                                        x-text="
+                                            patient.documents
+                                                ?.map((patientDocument) => patientDocument.number)
+                                                .join(', ') || '-'
+                                        "
+                                    ></td>
+                                    <td class="td-input align-top whitespace-nowrap">
+                                        <span class="badge-green">{{ __('patients.source.ehealth') }}</span>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -146,13 +181,11 @@
                 <div
                     x-show="$wire.invalidPersonId === patient.id"
                     x-cloak
-                    class="mt-4 p-4 rounded-lg bg-red-50 dark:bg-red-900/20"
+                    class="mt-4 rounded-lg bg-red-50 p-4 dark:bg-red-900/20"
                 >
                     <div class="flex items-center gap-2">
                         @icon('alert-circle', 'w-5 h-5 text-red-700 dark:text-red-400')
-                        <p class="font-semibold text-red-700 dark:text-red-400">
-                            {{ __('patients.age_insufficient_for_confidant_person') }}
-                        </p>
+                        <p class="font-semibold text-red-700 dark:text-red-400">{{ $invalidPersonReason }}</p>
                     </div>
                 </div>
             </fieldset>
@@ -169,7 +202,7 @@
     {{-- Drawer for adding documents that confirm confidant --}}
     @include('livewire.person.parts.drawers.add-documents-relationship')
 
-    <div class="flex gap-3 mt-6">
+    <div class="mt-6 flex gap-3">
         <button class="button-minor" type="button" @click="showConfidantPersonDrawer = false">
             {{ __('forms.cancel') }}
         </button>
@@ -182,7 +215,7 @@
             {{ __('forms.save') }}
         </button>
 
-        @if($canManageConfidantRelationships)
+        @if ($canManageConfidantRelationships)
             <button
                 type="button"
                 class="button-primary"
@@ -194,7 +227,10 @@
             <button
                 type="button"
                 class="button-primary"
-                @click="addConfidantPersonToForm(); showConfidantPersonDrawer = false"
+                @click="
+                    addConfidantPersonToForm();
+                    showConfidantPersonDrawer = false;
+                "
             >
                 {{ __('patients.add_confidant_person') }}
             </button>

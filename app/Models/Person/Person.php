@@ -13,6 +13,7 @@ use App\Models\Relations\ConfidantPerson;
 use App\Models\Relations\PersonName;
 use App\Models\Relations\PersonVerificationDetail;
 use App\Models\MedicalEvents\Sql\Approval;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -112,5 +113,29 @@ class Person extends BasePerson
     public function approvals(): MorphMany
     {
         return $this->morphMany(Approval::class, 'approvable');
+    }
+
+    /**
+     * Whether the confidant person relationships tell that the person is themselves represented on any basis
+     * other than a birth certificate. Being represented on such a basis bars the person from acting as a
+     * legal representative in turn.
+     *
+     * @param  array  $relationships  Relationships as the Get Confidant Person relationships method returns them
+     * @return bool
+     */
+    public static function isRepresentedByConfidant(array $relationships): bool
+    {
+        return collect($relationships)->contains(static function (array $relationship): bool {
+            $isActive = empty($relationship['active_to'])
+                || CarbonImmutable::parse($relationship['active_to'])->isFuture();
+
+            return $isActive && !collect($relationship['documents_relationship'] ?? [])->contains(
+                static fn (array $document): bool => in_array(
+                    $document['type'] ?? null,
+                    ['BIRTH_CERTIFICATE', 'BIRTH_CERTIFICATE_FOREIGN'],
+                    true
+                )
+            );
+        });
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Classes\eHealth\EHealth;
 use App\Services\Dictionary\Collections\BasicDictionaryCollection;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
@@ -28,10 +30,10 @@ return new class extends Migration
 
         try {
             $this->setData();
-        } catch (Exception $error) {
+        } catch (Exception $exception) {
             $this->down();
 
-            throw $error;
+            throw $exception;
         }
     }
 
@@ -57,6 +59,8 @@ return new class extends Migration
             ->asLargeDictionary()
             ->toArray();
 
+        $now = CarbonImmutable::now();
+
         $data = [];
 
         foreach ($dictionary as $key => $value) {
@@ -65,12 +69,11 @@ return new class extends Migration
                 'description' => $value['description'],
                 'is_active' => $value['is_active'],
                 'child_values' => json_encode($value['child_values'], JSON_THROW_ON_ERROR),
-                'created_at' => now(),
-                'updated_at' => now()
+                'created_at' => $now,
+                'updated_at' => $now
             ];
         }
 
-        // Insert data by chunks
         $chunks = array_chunk($data, self::CHUNK_SIZE);
 
         foreach ($chunks as $chunk) {

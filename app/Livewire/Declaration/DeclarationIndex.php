@@ -449,6 +449,13 @@ class DeclarationIndex extends Component
             }
         }
 
+        // The newest first. A declaration is dated by the moment eHealth created it, because the local timestamp
+        // only tells when the synchronisation brought it in and is the same for a whole batch of them.
+        $allItems = $allItems
+            ->sortByDesc(static fn (Declaration|DeclarationRequest $item): string
+                => (string) ($item->insertedAt ?? $item->createdAt))
+            ->values();
+
         // Pagination
         $perPage = config('pagination.per_page');
         $currentPage = LengthAwarePaginator::resolveCurrentPage();

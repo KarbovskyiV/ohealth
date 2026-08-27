@@ -271,12 +271,6 @@ abstract class DeclarationComponent extends Component
             return;
         }
 
-        if ($this->isNeedToPersonUpdate) {
-            $this->showUpdatePersonDataModal = true;
-
-            return;
-        }
-
         try {
             $response = EHealth::declarationRequest()->create(removeEmptyKeys(Arr::toSnakeCase($validated)));
         } catch (EHealthException|EHealthConnectionException $exception) {

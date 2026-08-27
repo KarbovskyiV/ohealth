@@ -2,6 +2,7 @@
 @use('App\Models\Relations\ConfidantPerson')
 @use('App\Models\Relations\AuthenticationMethod', 'AuthenticationMethodModel')
 @use('App\Enums\Person\AuthenticationMethod')
+@use('App\Enums\Person\AuthStep')
 @use('App\Enums\Person\Gender')
 
 <x-layouts.patient :personId="$personId" :patientFullName="$patientFullName" :activeTab="'patient-data'">
@@ -37,31 +38,15 @@
     </x-slot>
 
     @php
-        $patientModelForRelations = \App\Models\Person\Person::with(['addresses', 'documents'])->find($personId);
-        $patientAddresses = $patientModelForRelations ? $patientModelForRelations->addresses : collect();
-        $patientDocuments = $patientModelForRelations ? $patientModelForRelations->documents : collect();
-        $address = collect($patientAddresses)->firstWhere('type', 'RESIDENCE') ?: collect($patientAddresses)->first();
-        $address = $address ? \App\Core\Arr::toCamelCase($address->toArray()) : [];
-        $documentsList = $patientDocuments ? \App\Core\Arr::toCamelCase($patientDocuments->toArray()) : [];
+        $patientAddresses = collect($form->person['addresses'] ?? []);
+        $address = $patientAddresses->firstWhere('type', 'RESIDENCE') ?? $patientAddresses->first() ?? [];
+        $documentsList = $form->person['documents'] ?? [];
     @endphp
 
     <div
         class="breadcrumb-form shift-content px-4 pt-4 pb-10"
+        data-confidant-scope
         x-data="{
-             resetForm() {
-                 confidantPerson.documentsRelationship = [];
-             },
-             resetSearchFilters() {
-                 $wire.form.firstName = '';
-                 $wire.form.lastName = '';
-                 $wire.form.noLastName = false;
-                 $wire.form.birthDate = '';
-                 $wire.form.secondName = '';
-                 $wire.form.taxId = '';
-                 $wire.form.phoneNumber = '';
-                 $wire.form.documentType = '';
-                 $wire.form.documentNumber = '';
-             },
              showConfidantPersonDrawer: $wire.entangle('showConfidantPersonDrawer'),
              showDeactivateConfidantPersonDrawer: @if($canManageConfidantRelationships) $wire.entangle('showDeactivateConfidantPersonDrawer') @else false @endif,
              showDocumentDrawer: false,
@@ -71,7 +56,7 @@
              deactivateDocIndex: null,
              selectedPatient: null,
              confidantPerson: $wire.entangle('newConfidantPerson'),
-             confidantPersons: @if($canManageConfidantRelationships) $wire.entangle('confidantPersonRelationships') @else [] @endif,
+             confidantPersons: $wire.entangle('form.person.confidantPersons'),
              selectedConfidantIndex: null,
              documentRelationshipTypes: @js($this->dictionaries['DOCUMENT_RELATIONSHIP_TYPE']),
              documentTypes: @js($this->dictionaries['DOCUMENT_TYPE']),
@@ -88,6 +73,66 @@
              editingIndex: null,
              isEditingLegalRep: false,
              editingLegalRepIndex: null,
+             resetForm() {
+                 this.selectedPatient = null;
+                 this.newDocument = {
+                     type: '',
+                     typeLabel: '',
+                     number: '',
+                     issuedBy: '',
+                     issuedAt: '',
+                     expiryDate: ''
+                 };
+                 this.isEditing = false;
+                 this.editingIndex = null;
+                 this.isEditingLegalRep = false;
+                 this.editingLegalRepIndex = null;
+                 this.showDocumentDrawer = false;
+             },
+             resetSearchFilters() {
+                 this.selectedPatient = null;
+                 $wire.form.firstName = '';
+                 $wire.form.lastName = '';
+                 $wire.form.noLastName = false;
+                 $wire.form.birthDate = '';
+                 $wire.form.secondName = '';
+                 $wire.form.taxId = '';
+                 $wire.form.phoneNumber = '';
+                 $wire.form.documentType = '';
+                 $wire.form.documentNumber = '';
+                 $wire.confidantPerson = [];
+             },
+             editDocument(index) {
+                 if (! this.confidantPerson?.documentsRelationship) {
+                     return;
+                 }
+
+                 const relationshipDocument = this.confidantPerson.documentsRelationship[index];
+
+                 this.newDocument = {
+                     type: relationshipDocument.type,
+                     typeLabel: relationshipDocument.type,
+                     number: relationshipDocument.number,
+                     issuedBy: relationshipDocument.issuedBy,
+                     issuedAt: relationshipDocument.issuedAt,
+                     expiryDate: relationshipDocument.activeTo || ''
+                 };
+                 this.isEditing = true;
+                 this.editingIndex = index;
+                 this.showDocumentDrawer = true;
+             },
+             editLegalRepresentative(index) {
+                 this.isEditingLegalRep = true;
+                 this.editingLegalRepIndex = index;
+                 this.showConfidantPersonDrawer = true;
+             },
+             saveConfidantPerson() {
+                 if (this.isEditingLegalRep && this.editingLegalRepIndex !== null && this.selectedPatient) {
+                     this.showConfidantPersonDrawer = false;
+                     this.isEditingLegalRep = false;
+                     this.editingLegalRepIndex = null;
+                 }
+             },
              addNewConfidant() {
                  if (this.newDocument.type && this.newDocument.number && this.newDocument.issuedBy && this.newDocument.issuedAt) {
                      if (! this.confidantPerson.documentsRelationship) {
@@ -145,15 +190,17 @@
                 <div x-show="open" wire:ignore.self>
                     <div class="border-t border-gray-100 px-6 pt-6 pb-6 dark:border-gray-700">
                         <div class="mb-6 flex items-center justify-end">
-                            <button
-                                type="button"
-                                class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
-                                style="margin: 0 !important"
-                                wire:click.once="syncPersonDataFromEHealth()"
-                            >
-                                @icon('refresh', 'w-4 h-4')
-                                <span>{{ $isSyncing ? __('forms.sync_retry') : __('patients.sync_personal_data') }}</span>
-                            </button>
+                            @can('syncPersonData', Person::class)
+                                <button
+                                    type="button"
+                                    class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                    style="margin: 0 !important"
+                                    wire:click.once="syncPersonDataFromEHealth()"
+                                >
+                                    @icon('refresh', 'w-4 h-4')
+                                    <span>{{ $isSyncing ? __('forms.sync_retry') : __('patients.sync_personal_data') }}</span>
+                                </button>
+                            @endcan
                         </div>
 
                         @php
@@ -423,15 +470,17 @@
                 <div x-show="open" wire:ignore.self>
                     <div class="border-t border-gray-100 px-6 pt-6 pb-6 dark:border-gray-700">
                         <div class="mb-6 flex items-center justify-end">
-                            <button
-                                type="button"
-                                class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
-                                style="margin: 0 !important"
-                                wire:click.once="syncPersonDataFromEHealth()"
-                            >
-                                @icon('refresh', 'w-4 h-4')
-                                <span>{{ $isSyncing ? __('forms.sync_retry') : __('patients.sync_personal_data') }}</span>
-                            </button>
+                            @can('syncPersonData', Person::class)
+                                <button
+                                    type="button"
+                                    class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                    style="margin: 0 !important"
+                                    wire:click.once="syncPersonDataFromEHealth()"
+                                >
+                                    @icon('refresh', 'w-4 h-4')
+                                    <span>{{ $isSyncing ? __('forms.sync_retry') : __('patients.sync_personal_data') }}</span>
+                                </button>
+                            @endcan
                         </div>
 
                         @php
@@ -521,16 +570,30 @@
 
                 <div x-show="open" wire:ignore.self>
                     <div class="border-t border-gray-100 px-6 pt-6 pb-6 dark:border-gray-700">
-                        <div class="mb-6 flex items-center justify-end">
-                            <button
-                                type="button"
-                                class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
-                                style="margin: 0 !important"
-                                wire:click.once="syncPersonDataFromEHealth()"
-                            >
-                                @icon('refresh', 'w-4 h-4')
-                                <span>{{ $isSyncing ? __('forms.sync_retry') : __('patients.sync_personal_data') }}</span>
-                            </button>
+                        <div class="mb-6 flex items-center justify-end gap-4">
+                            @can('viewEmergencyContact', Person::class)
+                                <button
+                                    type="button"
+                                    class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                    style="margin: 0 !important"
+                                    wire:click.prevent="openEmergencyContactModal"
+                                >
+                                    @icon('phone', 'w-4 h-4')
+                                    <span>{{ __('patients.emergency_contact_request.get_contact') }}</span>
+                                </button>
+                            @endcan
+
+                            @can('syncPersonData', Person::class)
+                                <button
+                                    type="button"
+                                    class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                    style="margin: 0 !important"
+                                    wire:click.once="syncPersonDataFromEHealth()"
+                                >
+                                    @icon('refresh', 'w-4 h-4')
+                                    <span>{{ $isSyncing ? __('forms.sync_retry') : __('patients.sync_personal_data') }}</span>
+                                </button>
+                            @endcan
                         </div>
 
                         @php
@@ -605,7 +668,6 @@
                 >
                     <h2>
                         <button
-                            wire:click.once="getConfidantPersons"
                             type="button"
                             class="group flex w-full cursor-pointer items-center justify-between px-6 py-4 text-left"
                             @click="open = ! open"
@@ -651,17 +713,20 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if (!empty($confidantPersonRelationships))
-                                        @foreach ($confidantPersonRelationships as $key => $relationship)
+                                    @php
+                                        $confidantPersons = $form->person['confidantPersons'] ?? [];
+                                    @endphp
+                                    @if (!empty($confidantPersons))
+                                        @foreach ($confidantPersons as $key => $relationship)
                                             @php
-                                                $cp = $relationship['confidantPerson'] ?? [];
-                                                $cpPhones = $cp['phones'] ?? [];
-                                                $firstCpPhone = $cpPhones[0] ?? null;
+                                                $cp = $relationship['person'] ?? [];
+                                                $cpName = $cp['names'][0] ?? [];
+                                                $firstCpPhone = $cp['phones'][0] ?? null;
                                             @endphp
-                                            <tr>
+                                            <tr wire:key="confidant-{{ $key }}">
                                                 <td class="td-input align-top font-medium text-gray-900 dark:text-white">
                                                     <div>
-                                                        {{ $cp['lastName'] ?? '' }} {{ $cp['firstName'] ?? '' }} {{ $cp['secondName'] ?? '' }}
+                                                        {{ $cpName['lastName'] ?? '' }} {{ $cpName['firstName'] ?? '' }} {{ $cpName['secondName'] ?? '' }}
                                                     </div>
                                                     <div class="mt-1 text-xs font-normal text-gray-500">
                                                         {{ __('forms.gender') }} : {{ Gender::tryFrom($cp['gender'] ?? '')?->label() ?? '-' }}
@@ -718,10 +783,7 @@
                                                     @endif
                                                 </td>
                                                 <td class="td-input align-top">
-                                                    @php
-                                                        $isActive = empty($relationship['activeTo']) || \Carbon\Carbon::parse($relationship['activeTo'])->isFuture();
-                                                    @endphp
-                                                    @if ($isActive)
+                                                    @if ($relationship['isActive'])
                                                         <span class="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-200">
                                                             {{ __('patients.active_status') }}
                                                         </span>
@@ -751,10 +813,8 @@
                                                             class="absolute right-0 z-10 w-56 rounded border border-gray-200 bg-white whitespace-nowrap shadow-lg dark:border-gray-600 dark:bg-gray-700"
                                                         >
                                                             <div class="py-1">
-                                                                @php
-                                                                    $isActiveVal = empty($relationship['activeTo']) || \Carbon\Carbon::parse($relationship['activeTo'])->isFuture();
-                                                                @endphp
-                                                                @if ($isActiveVal)
+                                                                {{-- A relationship the eHealth id of which is not known locally cannot be deactivated there --}}
+                                                                @if ($relationship['isActive'] && !empty($relationship['uuid']))
                                                                     @can('create', ConfidantPerson::class)
                                                                         <button
                                                                             type="button"
@@ -853,7 +913,11 @@
                                                         </span>
                                                     </td>
                                                     <td class="td-input align-top font-medium text-gray-900 dark:text-white">
-                                                        {{ $req['action'] === 'INSERT' ? __('patients.activate_relationship') : __('patients.deactivate_relationship') }}
+                                                        @if (empty($req['action']))
+                                                            -
+                                                        @else
+                                                            {{ $req['action'] === 'INSERT' ? __('patients.activate_relationship') : __('patients.deactivate_relationship') }}
+                                                        @endif
                                                     </td>
                                                     <td class="td-input align-top font-medium text-gray-900 dark:text-white">
                                                         {{ $req['channel'] === 'MIS' ? __('patients.mis_system') : $req['channel'] }}
@@ -995,10 +1059,10 @@
                                                                 type="button"
                                                                 class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                                 @click.prevent="
-                                                                                $wire.selectAuthMethod('{{ $method['uuid'] }}', '{{ $method['type'] }}', 1); {{-- CHANGE_PHONE_INITIAL --}}
-                                                                                $wire.showAuthMethodModal = true;
-                                                                                openOptions = false;
-                                                                            "
+                                                                    $wire.set('showAuthMethodModal', true);
+                                                                    $wire.selectAuthMethod('{{ $method['uuid'] }}', '{{ $method['type'] }}', {{ AuthStep::CHANGE_PHONE_INITIAL }});
+                                                                    openOptions = false;
+                                                                "
                                                             >
                                                                 {{ __('patients.change_phone_number') }}
                                                             </button>
@@ -1007,8 +1071,8 @@
                                                                 type="button"
                                                                 class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                                 @click.prevent="
-                                                                    $wire.selectAuthMethod('{{ $method['uuid'] }}', '{{ $method['type'] }}', 1); {{-- CHANGE_PHONE_INITIAL --}}
-                                                                    $wire.showAuthMethodModal = true;
+                                                                    $wire.set('showAuthMethodModal', true);
+                                                                    $wire.selectAuthMethod('{{ $method['uuid'] }}', '{{ $method['type'] }}', {{ AuthStep::CHANGE_PHONE_INITIAL }});
                                                                     openOptions = false;
                                                                 "
                                                             >
@@ -1020,8 +1084,8 @@
                                                             type="button"
                                                             class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                             @click.prevent="
-                                                                $wire.selectAuthMethod('{{ $method['uuid'] }}', '{{ $method['type'] }}', 8); {{-- CHANGE_ALIAS --}}
-                                                                $wire.showAuthMethodModal = true;
+                                                                $wire.set('showAuthMethodModal', true);
+                                                                $wire.selectAuthMethod('{{ $method['uuid'] }}', '{{ $method['type'] }}', {{ AuthStep::CHANGE_ALIAS }});
                                                                 openOptions = false;
                                                             "
                                                         >
@@ -1032,8 +1096,11 @@
                                                             <button
                                                                 type="button"
                                                                 class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-600"
-                                                                wire:click.prevent="deactivateAuthMethod('{{ $method['uuid'] }}')"
-                                                                @click="openOptions = false"
+                                                                @click.prevent="
+                                                                    $wire.set('showAuthMethodModal', true);
+                                                                    $wire.deactivateAuthMethod('{{ $method['uuid'] }}');
+                                                                    openOptions = false;
+                                                                "
                                                             >
                                                                 {{ __('patients.deactivate_method') }}
                                                             </button>
@@ -1136,8 +1203,8 @@
                                         <button
                                             type="button"
                                             @click="
-                                                $wire.showAuthMethodModal = true;
-                                                $wire.authStep = 10;
+                                                $wire.set('authStep', {{ AuthStep::ADD_NEW_BY_SMS }});
+                                                $wire.set('showAuthMethodModal', true);
                                                 openAdd = false;
                                             "
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
@@ -1147,10 +1214,10 @@
 
                                         <button
                                             type="button"
-                                            wire:click.prevent="createOfflineAuthMethod"
                                             @click="
+                                                $wire.set('showAuthMethodModal', true);
+                                                $wire.createOfflineAuthMethod();
                                                 openAdd = false;
-                                                $wire.showAuthMethodModal = true;
                                             "
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
@@ -1161,8 +1228,8 @@
                                     <button
                                         type="button"
                                         @click="
-                                            $wire.showAuthMethodModal = true;
-                                            $wire.authStep = 13;
+                                            $wire.set('authStep', {{ AuthStep::ADD_NEW_BY_THIRD_PERSON }});
+                                            $wire.set('showAuthMethodModal', true);
                                             openAdd = false;
                                         "
                                         class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
@@ -1204,6 +1271,10 @@
 
         @if ($showConfirmationUpdateModal)
             @include('livewire.person.parts.modals.person-update-authentication')
+        @endif
+
+        @if ($showEmergencyContactModal)
+            @include('livewire.person.parts.modals.emergency-contact')
         @endif
     </div>
     <x-forms.loading />

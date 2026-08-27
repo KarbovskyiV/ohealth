@@ -133,12 +133,13 @@ abstract class BasePatientComponent extends Component
             return;
         }
 
-        $patient = Person::whereId($this->personId)
+        // Memoized the same way the preperson branch above does it, so that a component needing the patient
+        // itself does not read the row a second time
+        $patient = $this->patientModel = Person::whereId($this->personId)
             ->with([
                 'names',
                 'declarations' => fn (HasMany $declaration) => $declaration->active()->latest()->take(1)
             ])
-            ->select(['id', 'uuid'])
             ->firstOrFail();
 
         $this->patientFullName = $patient->fullName;

@@ -166,10 +166,18 @@ class Employee extends BaseEmployee
         return $query->whereIn('uuid', $uuids);
     }
 
+    /**
+     * Scope to the employees that may take part in providing a healthcare service.
+     *
+     * @param  Builder  $query
+     * @param  int  $legalEntityId
+     * @return Builder
+     */
     #[Scope]
     protected function activeSpecialists(Builder $query, int $legalEntityId): Builder
     {
         return $query->whereLegalEntityId($legalEntityId)
+            ->whereIn('employee_type', [Role::DOCTOR, Role::SPECIALIST, Role::ASSISTANT, Role::LABORANT])
             ->active()
             ->whereHas('specialities', static function (Builder $query) {
                 $query->select('id')->whereSpecialityOfficio(true);
