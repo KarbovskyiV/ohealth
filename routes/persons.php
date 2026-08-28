@@ -97,6 +97,7 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
             Route::get('/{person}/encounters', PatientEncounters::class)->name('encounters');
             Route::get('/{person}/procedures', PatientProcedures::class)->name('procedures');
             Route::get('/{person}/devices', PatientDevices::class)->name('devices');
+            Route::get('/{person}/devices/{deviceId}', \App\Livewire\Person\Records\PatientDeviceView::class)->name('devices.view');
         });
     });
 
