@@ -449,7 +449,15 @@ class PersonForm extends BaseForm
     public function rulesForCreateNewConfidantPersonRelationshipRequest(): array
     {
         return [
-            'confidantPersonId' => ['required', 'uuid'],
+            'confidantPersonId' => [
+                'required',
+                'uuid',
+                function (string $attribute, mixed $value, callable $fail): void {
+                    if ($this->hasLegalCapacityDocument()) {
+                        $fail(__('validation.custom.person.confidant_prohibited_for_legally_capable_person'));
+                    }
+                }
+            ],
             'documentsRelationship' => ['required', 'array'],
             'documentsRelationship.*.type' => ['required', new InDictionary('DOCUMENT_RELATIONSHIP_TYPE')],
             'documentsRelationship.*.number' => ['required', 'string', 'max:255'],
@@ -469,6 +477,20 @@ class PersonForm extends BaseForm
             'documents.*.issuedBy' => ['required', 'string', 'max:255'],
             'documents.*.issuedAt' => ['required', 'date_format:' . config('app.date_format')]
         ];
+    }
+
+    /**
+     * Check whether the patient holds a document proving their own legal capacity, which rules out
+     * being represented by a confidant person.
+     *
+     * @return bool
+     */
+    public function hasLegalCapacityDocument(): bool
+    {
+        return !empty(array_intersect(
+            array_column($this->person['documents'] ?? [], 'type'),
+            config('ehealth.person_legal_capacity_document_types')
+        ));
     }
 
     /**
