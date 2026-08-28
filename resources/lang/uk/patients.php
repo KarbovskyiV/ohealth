@@ -797,9 +797,10 @@ return [
     'date_and_time_of_dispense' => 'Дата та час видачі',
     'quantity_integer' => 'Кількість (ціле число)',
     'specify_type_or_model_of_medical_device' => 'Вказати тип або конкретну модель медичного виробу',
-
-
     'sgusoz' => 'СГуСОЗ',
     'medical_device_model' => 'Модель медичного виробу',
-
+    'device_associations_search' => 'Пошук відомостей про зв\'язки медичних виробів',
+    'association_date' => 'Дата встановлення або розірвання зв\'язку',
+    'association_id' => 'ID зв\'язку',
+    'device_associations' => 'Зв\'язки медичних виробів',
 ];
