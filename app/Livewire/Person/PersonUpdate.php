@@ -247,6 +247,7 @@ class PersonUpdate extends PersonComponent
         $this->uploadedDocuments = $urgent['documents'] ?? [];
         $this->authenticationMethodCurrent = $urgent['authentication_method_current'] ?? [];
         $this->viewState = 'new';
+        $this->showAuthMethodModal = false;
 
         if ($this->form->needsNhsVerification()) {
             Auth::user()->notify(new NhsVerificationNeededNotification());

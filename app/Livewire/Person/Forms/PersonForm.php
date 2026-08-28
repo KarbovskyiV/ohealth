@@ -41,7 +41,7 @@ class PersonForm extends BaseForm
     public array $person = [
         'names' => [
             [
-                'language' => null,
+                'language' => 'uk',
                 'noLastName' => false,
                 'lastName' => null,
                 'firstName' => null,
@@ -234,11 +234,7 @@ class PersonForm extends BaseForm
                         fn ($rule) => $rule->ignore($this->person['uuid'], 'uuid')
                     )
             ],
-
-            'person.preferredWayCommunication' => [
-                'nullable',
-                new InDictionary('PREFERRED_WAY_COMMUNICATION')
-            ],
+            'person.preferredWayCommunication' => ['nullable', Rule::in(['email', 'phone'])],
 
             'person.phones.*.type' => ['nullable', 'string', 'distinct', 'required_with:person.phones.*.number'],
             'person.phones.*.number' => [
@@ -891,11 +887,16 @@ class PersonForm extends BaseForm
             }
         }
 
-        $foreignTypes = config('ehealth.identity_document_types_foreign');
-        $submittedTypes = array_column($this->person['documents'] ?? [], 'type');
-        $hasForeignDocument = (bool)array_intersect($submittedTypes, $foreignTypes);
+        $hasForeignDocument = $this->hasForeignDocument();
 
-        // a non-foreign document requires a defined no_tax_id, a foreign one leaves it null
+        // a foreign document without a tax_id has nothing to refuse, so the flag stays undefined
+        if ($hasForeignDocument && !$taxIdFilled && $noTaxId !== null) {
+            throw ValidationException::withMessages([
+                'person.noTaxId' => __('validation.custom.person.no_tax_id_must_be_null_for_foreign')
+            ]);
+        }
+
+        // a non-foreign document requires a defined no_tax_id
         if (!$hasForeignDocument && $noTaxId === null) {
             throw ValidationException::withMessages([
                 'person.noTaxId' => __('validation.custom.person.no_tax_id_cannot_be_null')
@@ -941,9 +942,19 @@ class PersonForm extends BaseForm
             return;
         }
 
-        if (!empty(array_diff($submittedTypes, $foreignTypes))) {
+        $invalidTypes = array_diff($submittedTypes, $foreignTypes);
+
+        if (!empty($invalidTypes)) {
+            $translateTypes = static fn (array $types): string => implode(', ', array_map(
+                static fn (string $type): string => __('patients.documents.' . $type) ?: $type,
+                $types
+            ));
+
             throw ValidationException::withMessages([
-                'person.documents' => __('validation.custom.person.only_foreign_documents_allowed')
+                'person.documents' => __('validation.custom.person.only_foreign_documents_allowed', [
+                    'allowed_types' => $translateTypes($foreignTypes),
+                    'invalid_types' => $translateTypes($invalidTypes)
+                ])
             ]);
         }
     }

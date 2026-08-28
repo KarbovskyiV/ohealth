@@ -44,7 +44,7 @@ class DeclarationForm extends BaseForm
      */
     public bool $processDisclosureDataConsent = false;
 
-    public array $uploadedDocuments;
+    public array $uploadedDocuments = [];
 
     /**
      * List of rules for creating.

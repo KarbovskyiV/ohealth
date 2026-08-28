@@ -25,6 +25,9 @@ class DeclarationEdit extends DeclarationComponent
             $this->dataToBeSigned = $declarationRequest->dataToBeSigned;
         }
 
+        // Kept from the answer to creating the request, which is the only place the upload URLs come from
+        $this->uploadedDocuments = $declarationRequest->documents ?? [];
+
         // Set form data
         $this->form->employeeId = $declarationRequest->load('employee:id,uuid')->employee->uuid;
         $this->form->authorizeWith = $declarationRequest->authorizeWith;

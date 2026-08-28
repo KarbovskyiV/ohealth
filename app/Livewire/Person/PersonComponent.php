@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -198,11 +199,34 @@ class PersonComponent extends Component
     public function baseMount(): void
     {
         $this->getDictionary();
+    }
 
-        // Show only documents that are used to register person in the system.
-        $this->dictionaries['DOCUMENT_TYPE'] = array_intersect_key(
+    /**
+     * Document types a person is registered with.
+     *
+     * @return array
+     */
+    #[Computed]
+    public function documentTypes(): array
+    {
+        return array_intersect_key(
             $this->dictionaries['DOCUMENT_TYPE'],
             array_flip(config('ehealth.person_registration_document_types'))
+        );
+    }
+
+    /**
+     * Document types that prove legal capacity. They are offered only between the self-registration age and the
+     * full legal capacity age, which the document modal decides on its own from the entered birth date.
+     *
+     * @return array
+     */
+    #[Computed]
+    public function legalCapacityDocumentTypes(): array
+    {
+        return array_intersect_key(
+            $this->dictionaries['DOCUMENT_TYPE'],
+            array_flip(config('ehealth.person_legal_capacity_document_types'))
         );
     }
 
@@ -272,6 +296,25 @@ class PersonComponent extends Component
 
         $this->form->person['confidantPerson']['personId'] = '';
         $this->selectedConfidantPersonId = null;
+    }
+
+    /**
+     * Drop the legal representative once the patient is no longer marked as incapacitated, so that a confidant
+     * person hidden behind the unchecked box does not keep constraining the authentication method.
+     *
+     * @param  bool  $value
+     * @return void
+     */
+    public function updatedIsIncapacitated(bool $value): void
+    {
+        if ($value) {
+            return;
+        }
+
+        $this->removeConfidantPerson();
+
+        $this->form->person['confidantPerson']['documentsRelationship'] = [];
+        $this->newConfidantPerson = [];
     }
 
     /**

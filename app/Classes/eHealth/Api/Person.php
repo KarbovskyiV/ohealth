@@ -421,7 +421,7 @@ class Person extends Request
      */
     public function updateAuthMethod(string $id, string $authId, string $alias): PromiseInterface|EHealthResponse
     {
-        $this->setValidator($this->validateApproveAuthMethod(...));
+        $this->setValidator($this->validateCreateAuthMethod(...));
 
         $data = [
             'action' => AuthenticationMethodAction::UPDATE->value,
