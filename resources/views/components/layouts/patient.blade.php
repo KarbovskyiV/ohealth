@@ -208,6 +208,17 @@
 
                         <div class="flex-1"></div>
                     </div>
+
+                    <div class="summary-nav-row">
+                        <a
+                            href="{{ Route::has("$routePrefix.device-dispenses") ? route("$routePrefix.device-dispenses", [legalEntity(), $routeParamKey => $recordId]) : 'javascript:void(0)' }}"
+                            class="summary-tab {{ request()->routeIs("$routePrefix.device-dispenses") ? 'summary-tab-active' : 'summary-tab-inactive' }} {{ !Route::has("$routePrefix.device-dispenses") ? 'cursor-not-allowed opacity-60' : '' }}"
+                        >
+                            {{ __('patients.device_dispenses') }}
+                        </a>
+
+                        <div class="flex-1"></div>
+                    </div>
                 </div>
             </x-slot>
         @endif

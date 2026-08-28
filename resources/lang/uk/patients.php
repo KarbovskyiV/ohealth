@@ -803,4 +803,13 @@ return [
     'association_date' => 'Дата встановлення або розірвання зв\'язку',
     'association_id' => 'ID зв\'язку',
     'device_associations' => 'Зв\'язки медичних виробів',
+    'device_dispenses' => 'Видачі медичних виробів',
+    'search_device_dispenses' => 'Пошук видач медичних виробів',
+    'dispense_id' => 'ID видачі',
+    'related_prescription_episode_id' => 'ID епізоду пов\'язаного призначення',
+    'filter_dispense_date_range' => 'Дата видачі від - до',
+    'filter_created_at_range' => 'Дата створення запису від - до',
+    'related_prescription_episode' => 'Епізод пов\'язаного призначення',
+    'care_plan_id' => 'ID плану лікування',
+    'procedure_id' => 'ID процедури',
 ];
