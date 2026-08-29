@@ -118,11 +118,17 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('ehealth-declaration-get', function (object $job) {
-            return Limit::perMinute(config('ehealth.rate_limit.declaration'))->by($job->user->id);
+            return [
+                Limit::perMinute(config('ehealth.rate_limit.declaration.minute'))->by($job->user->id),
+                Limit::perHour(config('ehealth.rate_limit.declaration.hour'))->by($job->user->id),
+            ];
         });
 
         RateLimiter::for('ehealth-declaration-request-get', function (object $job) {
-            return Limit::perMinute(config('ehealth.rate_limit.declaration_request'))->by($job->user->id);
+            return [
+                Limit::perMinute(config('ehealth.rate_limit.declaration_request.minute'))->by($job->user->id),
+                Limit::perHour(config('ehealth.rate_limit.declaration_request.hour'))->by($job->user->id),
+            ];
         });
 
         RateLimiter::for(

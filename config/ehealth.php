@@ -100,8 +100,14 @@ return [
         'diagnostic_report' => 50,
         'employee_role' => 50,
         'party_request' => 30,
-        'declaration' => 10,
-        'declaration_request' => 20,
+        'declaration' => [
+            'minute' => 9,
+            'hour' => 99
+        ],
+        'declaration_request' => [
+            'minute' => 19,
+            'hour' => 149
+        ],
         'legal_entity_legators' => 2,
         'person_authentication_method' => 20,
         'remote_job' => 1399

@@ -90,7 +90,7 @@ class DeclarationRepository
         } catch (Exception $err) {
             Log::channel('db_errors')->error('Error storing declarations: ' . $err->getMessage());
 
-            session()->flash('error', 'Виникла помилка при збереженні декларацій');
+            session()->flash('error', __('Виникла помилка при збереженні декларацій: ') . $err->getMessage());
         }
     }
 
