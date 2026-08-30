@@ -96,17 +96,29 @@ trait InteractsWithAuthenticationMethods
     }
 
     /**
-     * Whether the patient can be given a method that authenticates them in person: a patient who already
-     * authenticates through a confidant keeps doing so.
+     * Whether the patient can be given a method that authenticates them in person: a patient who has a confidant,
+     * or who already authenticates through one, keeps being authenticated through that confidant.
      *
      * @return bool
      */
     public function canAddSelfAuthenticationMethod(): bool
     {
         return $this->canAddAuthenticationMethod()
+            && empty($this->form->person['confidantPersons'])
             && collect($this->authenticationMethods)
                 ->where('type', AuthenticationMethod::THIRD_PERSON->value)
                 ->isEmpty();
+    }
+
+    /**
+     * Whether the patient can be given a method that authenticates them through a confidant: a patient whose
+     * documents prove their own legal capacity acts on their own and cannot be represented by a confidant.
+     *
+     * @return bool
+     */
+    public function canAddThirdPersonAuthenticationMethod(): bool
+    {
+        return !$this->form->hasLegalCapacityDocument();
     }
 
     /**
@@ -221,6 +233,13 @@ trait InteractsWithAuthenticationMethods
 
                     $person = Person::whereUuid($this->uuid)->firstOrFail();
 
+                    if ($value === AuthenticationMethod::THIRD_PERSON->value
+                        && $this->form->hasLegalCapacityDocument()) {
+                        $fail(__('patients.errors.authMethod.no_third_person_for_legally_capable_person'));
+
+                        return;
+                    }
+
                     if ($value !== AuthenticationMethod::THIRD_PERSON->value && $person->confidantPersons()->exists()) {
                         $fail(__('patients.errors.authMethod.only_third_person_for_person_with_confidants'));
 
@@ -306,6 +325,8 @@ trait InteractsWithAuthenticationMethods
             $this->requestId = $response->validate()['id'];
             $this->uploadedDocuments = $response->validate()['documents'];
             $this->authStep = AuthStep::CHANGE_FROM_OFFLINE;
+            // The modal carries the document upload step, so it is opened once the request is actually created
+            $this->showAuthMethodModal = true;
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when creating auth method request');
         }
@@ -324,9 +345,10 @@ trait InteractsWithAuthenticationMethods
             $response = EHealth::person()->approveAuthMethod($this->uuid, $this->requestId);
 
             try {
-                Person::whereUuid($this->uuid)->firstOrFail()
-                    ->authenticationMethods()
-                    ->create($response->validate());
+                $person = Person::whereUuid($this->uuid)->firstOrFail();
+                $person->authenticationMethods()->create($response->validate());
+
+                $this->loadAuthenticationMethods($person);
             } catch (Throwable $exception) {
                 $this->handleDatabaseErrors($exception, 'Failed to create authentication method');
 
@@ -465,10 +487,12 @@ trait InteractsWithAuthenticationMethods
             EHealth::person()->approveAuthMethod($this->uuid, $this->requestId, Arr::toSnakeCase($validated));
 
             try {
-                Person::whereUuid($this->uuid)->firstOrFail()
-                    ->authenticationMethods()
+                $person = Person::whereUuid($this->uuid)->firstOrFail();
+                $person->authenticationMethods()
                     ->whereType(AuthenticationMethod::OTP)
                     ->update(['phone_number' => $this->form->phoneNumber]);
+
+                $this->loadAuthenticationMethods($person);
 
                 Session::flash('success', __('patients.messages.phone_number_changed'));
             } catch (Throwable $exception) {
@@ -496,10 +520,12 @@ trait InteractsWithAuthenticationMethods
             $response = EHealth::person()->approveAuthMethod($this->uuid, $this->requestId);
 
             try {
-                Person::whereUuid($this->uuid)->firstOrFail()
-                    ->authenticationMethods()
+                $person = Person::whereUuid($this->uuid)->firstOrFail();
+                $person->authenticationMethods()
                     ->whereType(AuthenticationMethod::OFFLINE)
                     ->update(['uuid' => $response->validate()['id'], 'type' => AuthenticationMethod::OTP]);
+
+                $this->loadAuthenticationMethods($person);
             } catch (Throwable $exception) {
                 $this->handleDatabaseErrors($exception, 'Failed to update authentication method type');
 
@@ -604,6 +630,8 @@ trait InteractsWithAuthenticationMethods
 
             try {
                 AuthenticationMethodModel::whereUuid($this->selectedAuthMethodUuid)->update(['alias' => $this->alias]);
+
+                $this->loadAuthenticationMethods(Person::whereUuid($this->uuid)->firstOrFail());
             } catch (Throwable $exception) {
                 $this->handleDatabaseErrors($exception, 'Failed to update authentication method alias');
 
@@ -712,6 +740,8 @@ trait InteractsWithAuthenticationMethods
             try {
                 AuthenticationMethodModel::whereUuid($this->selectedAuthMethodUuid)->delete();
 
+                $this->loadAuthenticationMethods(Person::whereUuid($this->uuid)->firstOrFail());
+
                 $this->showAuthMethodModal = false;
                 Session::flash('success', __('patients.messages.auth_method_deactivated'));
             } catch (Throwable $exception) {
@@ -745,9 +775,10 @@ trait InteractsWithAuthenticationMethods
             ];
 
             try {
-                Person::whereUuid($this->uuid)->firstOrFail()
-                    ->authenticationMethods()
-                    ->create($forCreate);
+                $person = Person::whereUuid($this->uuid)->firstOrFail();
+                $person->authenticationMethods()->create($forCreate);
+
+                $this->loadAuthenticationMethods($person);
 
                 Session::flash('success', __('patients.messages.new_auth_method_added'));
             } catch (Throwable $exception) {
@@ -771,6 +802,22 @@ trait InteractsWithAuthenticationMethods
     public function addAuthMethodFromRelation(string $alias): void
     {
         if ($this->deniesManagingAuthMethods()) {
+            return;
+        }
+
+        try {
+            Validator::make([
+                'action' => AuthenticationMethodAction::INSERT->value,
+                'authenticationMethod' => [
+                    'type' => AuthenticationMethod::THIRD_PERSON->value,
+                    'value' => $this->confidantPersonId,
+                    'alias' => $alias
+                ]
+            ], $this->rulesForInsert())->validate();
+        } catch (ValidationException $exception) {
+            Session::flash('error', $exception->validator->errors()->first());
+            $this->setErrorBag($exception->validator->getMessageBag());
+
             return;
         }
 

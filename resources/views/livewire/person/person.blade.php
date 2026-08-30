@@ -3,7 +3,9 @@
 
 <div x-data="{ patientType: $wire.entangle('patientType') }">
     <x-header-navigation class="breadcrumb-form">
-        <x-slot name="title">{{ __('patients.add_patient') }}</x-slot>
+        <x-slot name="title">
+            {{ $this instanceof PersonUpdate ? __('patients.update_patient') : __('patients.add_patient') }}
+        </x-slot>
     </x-header-navigation>
 
     @if ($viewState === 'default')

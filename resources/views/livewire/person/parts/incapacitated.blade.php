@@ -317,7 +317,7 @@
                                                     @if (!$canManageConfidantRelationships)
                                                         <button
                                                             type="button"
-                                                            class="flex w-full items-center gap-2 px-4 py-2 text-sm whitespace-nowrap text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                            class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-sm whitespace-nowrap text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                             @click="
                                                                 selectedConfidantIndex = confidantIndex;
                                                                 editLegalRepresentative(confidantIndex);
@@ -340,7 +340,7 @@
                                                     >
                                                         <button
                                                             type="button"
-                                                            class="flex w-full items-center gap-2 px-4 py-2 text-sm whitespace-nowrap text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                            class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-sm whitespace-nowrap text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                             @click.prevent="
                                                                 selectedConfidantIndex = confidantIndex;
                                                                 showDeactivateConfidantPersonDrawer = true;
@@ -462,7 +462,7 @@
                                                 <div class="py-1">
                                                     <button
                                                         type="button"
-                                                        class="flex w-full items-center gap-2 px-4 py-2 text-sm whitespace-nowrap text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                        class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-sm whitespace-nowrap text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                         @click="
                                                             editLegalRepresentative(docIndex);
                                                             openDropdown = false;
@@ -473,7 +473,7 @@
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        class="flex w-full items-center gap-2 px-4 py-2 text-sm whitespace-nowrap text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-600"
+                                                        class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-sm whitespace-nowrap text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-600"
                                                         @click="
                                                             confidantPerson.documentsRelationship.splice(docIndex, 1);
                                                             confidantPerson = { ...confidantPerson };
@@ -518,11 +518,14 @@
             @can('viewRequests', ConfidantPerson::class)
                 @include('livewire.person.parts.drawers.confidant-person-relationship-requests')
             @endcan
-            @include('livewire.person.parts.drawers.add-auth-verification')
-            @include('livewire.person.parts.modals.terminate-relationship')
-            @include('livewire.person.parts.drawers.deactivate-confidant-person')
         @endif
-
-        @include('livewire.person.parts.drawers.add-confidant-person')
     </div>
+
+    @if ($canManageConfidantRelationships)
+        @include('livewire.person.parts.drawers.add-auth-verification')
+        @include('livewire.person.parts.modals.terminate-relationship')
+        @include('livewire.person.parts.drawers.deactivate-confidant-person')
+    @endif
+
+    @include('livewire.person.parts.drawers.add-confidant-person')
 </fieldset>

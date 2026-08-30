@@ -664,7 +664,7 @@
             @can('view', ConfidantPerson::class)
                 <div
                     x-data="{ open: true }"
-                    class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                    class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
                 >
                     <h2>
                         <button
@@ -818,7 +818,7 @@
                                                                     @can('create', ConfidantPerson::class)
                                                                         <button
                                                                             type="button"
-                                                                            class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm whitespace-nowrap text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                                            class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm whitespace-nowrap text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                                             @click.prevent="
                                                                                 $wire.selectedConfidantPersonId = '{{ $cp['uuid'] ?? '' }}';
                                                                                 selectedConfidantIndex = '{{ $key }}';
@@ -848,19 +848,21 @@
                             </table>
 
                             @can('create', ConfidantPerson::class)
-                                <button
-                                    type="button"
-                                    @click="
-                                        resetForm();
-                                        resetSearchFilters();
-                                        confidantPerson.documentsRelationship = [];
-                                        showConfidantPersonDrawer = true;
-                                    "
-                                    class="mt-4 flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
-                                >
-                                    @icon('plus', 'w-4 h-4')
-                                    <span>{{ __('patients.add_confidant_person') }}</span>
-                                </button>
+                                @if (!$this->form->hasLegalCapacityDocument())
+                                    <button
+                                        type="button"
+                                        @click="
+                                            resetForm();
+                                            resetSearchFilters();
+                                            confidantPerson.documentsRelationship = [];
+                                            showConfidantPersonDrawer = true;
+                                        "
+                                        class="mt-4 flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                    >
+                                        @icon('plus', 'w-4 h-4')
+                                        <span>{{ __('patients.add_confidant_person') }}</span>
+                                    </button>
+                                @endif
                             @endcan
                         </div>
 
@@ -945,14 +947,14 @@
                                                                 <div class="py-1">
                                                                     <button
                                                                         type="button"
-                                                                        class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                                        class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                                         wire:click.prevent="approveFromRequest('{{ $req['uuid'] }}')"
                                                                     >
                                                                         {{ __('forms.confirm') }}
                                                                     </button>
                                                                     <button
                                                                         type="button"
-                                                                        class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-600"
+                                                                        class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-600"
                                                                         wire:click.prevent="deactivateConfidantPersonRelationshipRequest('{{ $req['uuid'] }}')"
                                                                     >
                                                                         {{ __('patients.cancel_request') }}
@@ -1057,7 +1059,7 @@
                                                         @if (($method['type'] ?? '') === 'OTP')
                                                             <button
                                                                 type="button"
-                                                                class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                                class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                                 @click.prevent="
                                                                     $wire.set('showAuthMethodModal', true);
                                                                     $wire.selectAuthMethod('{{ $method['uuid'] }}', '{{ $method['type'] }}', {{ AuthStep::CHANGE_PHONE_INITIAL }});
@@ -1069,7 +1071,7 @@
                                                         @elseif (($method['type'] ?? '') === 'OFFLINE')
                                                             <button
                                                                 type="button"
-                                                                class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                                class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                                 @click.prevent="
                                                                     $wire.set('showAuthMethodModal', true);
                                                                     $wire.selectAuthMethod('{{ $method['uuid'] }}', '{{ $method['type'] }}', {{ AuthStep::CHANGE_PHONE_INITIAL }});
@@ -1082,7 +1084,7 @@
 
                                                         <button
                                                             type="button"
-                                                            class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                            class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                             @click.prevent="
                                                                 $wire.set('showAuthMethodModal', true);
                                                                 $wire.selectAuthMethod('{{ $method['uuid'] }}', '{{ $method['type'] }}', {{ AuthStep::CHANGE_ALIAS }});
@@ -1092,10 +1094,10 @@
                                                             {{ __('patients.change_method_alias') }}
                                                         </button>
 
-                                                        @if (($method['type'] ?? '') === 'THIRD_PERSON')
+                                                        @if (($method['type'] ?? '') === 'THIRD_PERSON' && count($authenticationMethods) > 1)
                                                             <button
                                                                 type="button"
-                                                                class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-600"
+                                                                class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-600"
                                                                 @click.prevent="
                                                                     $wire.set('showAuthMethodModal', true);
                                                                     $wire.deactivateAuthMethod('{{ $method['uuid'] }}');
@@ -1183,14 +1185,16 @@
 
                     @can('update', AuthenticationMethodModel::class)
                         <div class="relative mt-4" x-data="{ openAdd: false }" @click.outside="openAdd = false">
-                            <button
-                                @click="openAdd = ! openAdd"
-                                type="button"
-                                class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
-                            >
-                                @icon('plus', 'w-4 h-4')
-                                <span>{{ __('patients.add_authentication_method') }}</span>
-                            </button>
+                            @if ($this->canAddSelfAuthenticationMethod() || $this->canAddThirdPersonAuthenticationMethod())
+                                <button
+                                    @click="openAdd = ! openAdd"
+                                    type="button"
+                                    class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                >
+                                    @icon('plus', 'w-4 h-4')
+                                    <span>{{ __('patients.add_authentication_method') }}</span>
+                                </button>
+                            @endif
 
                             <div
                                 x-show="openAdd"
@@ -1214,28 +1218,27 @@
 
                                         <button
                                             type="button"
-                                            @click="
-                                                $wire.set('showAuthMethodModal', true);
-                                                $wire.createOfflineAuthMethod();
-                                                openAdd = false;
-                                            "
+                                            wire:click.prevent="createOfflineAuthMethod"
+                                            @click="openAdd = false"
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             {{ __('patients.authentication_documents') }}
                                         </button>
                                     @endif
 
-                                    <button
-                                        type="button"
-                                        @click="
-                                            $wire.set('authStep', {{ AuthStep::ADD_NEW_BY_THIRD_PERSON }});
-                                            $wire.set('showAuthMethodModal', true);
-                                            openAdd = false;
-                                        "
-                                        class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                    >
-                                        {{ __('patients.authentication_third_person') }}
-                                    </button>
+                                    @if ($this->canAddThirdPersonAuthenticationMethod())
+                                        <button
+                                            type="button"
+                                            @click="
+                                                $wire.set('authStep', {{ AuthStep::ADD_NEW_BY_THIRD_PERSON }});
+                                                $wire.set('showAuthMethodModal', true);
+                                                openAdd = false;
+                                            "
+                                            class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                        >
+                                            {{ __('patients.authentication_third_person') }}
+                                        </button>
+                                    @endif
                                 </div>
                             </div>
                         </div>

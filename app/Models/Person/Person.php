@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\Person;
 
+use App\Enums\Person\AuthenticationMethod;
 use App\Models\ConfidantPersonRelationshipRequest;
 use App\Models\Declaration;
 use App\Models\Employee\Employee;
@@ -136,6 +137,25 @@ class Person extends BasePerson
                     true
                 )
             );
+        });
+    }
+
+    /**
+     * Whether the authentication methods hold an OTP method that is still active. A person without one cannot
+     * act as a legal representative.
+     *
+     * @param  array  $authenticationMethods  Methods as the Get Person authentication methods method returns them
+     * @return bool
+     */
+    public static function hasActiveOtpAuthenticationMethod(array $authenticationMethods): bool
+    {
+        return collect($authenticationMethods)->contains(static function (array $authenticationMethod): bool {
+            if (($authenticationMethod['type'] ?? null) !== AuthenticationMethod::OTP->value) {
+                return false;
+            }
+
+            return empty($authenticationMethod['ehealth_ended_at'])
+                || CarbonImmutable::parse($authenticationMethod['ehealth_ended_at'])->isFuture();
         });
     }
 }

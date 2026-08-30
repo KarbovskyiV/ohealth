@@ -62,6 +62,21 @@ trait ManagesConfidantPersonRelationships
             return;
         }
 
+        try {
+            $authenticationMethods = EHealth::person()->getAuthMethods($personData['id'])->validate();
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error when getting authentication methods of the chosen person');
+
+            return;
+        }
+
+        if (!Person::hasActiveOtpAuthenticationMethod($authenticationMethods)) {
+            $this->invalidPersonId = $personData['id'];
+            $this->invalidPersonReason = __('patients.confidant_person_has_no_otp_auth_method');
+
+            return;
+        }
+
         $this->selectedConfidantPersonId = $personData['id'];
 
         $person = Person::whereUuid($personData['id'])->with(['documents', 'phones'])->first();

@@ -31,9 +31,11 @@
                             <legend class="legend !mb-0">{{ __('patients.authentication_methods') }}</legend>
 
                             <div x-data="{ openAdd: false }" class="relative">
-                                <button @click="openAdd = ! openAdd" type="button" class="item-add">
-                                    <span>{{ __('patients.add_authentication_method') }}</span>
-                                </button>
+                                @if ($this->canAddSelfAuthenticationMethod() || $this->canAddThirdPersonAuthenticationMethod())
+                                    <button @click="openAdd = ! openAdd" type="button" class="item-add">
+                                        <span>{{ __('patients.add_authentication_method') }}</span>
+                                    </button>
+                                @endif
 
                                 <button type="button" class="button-sync" wire:click.prevent="syncAuthMethods">
                                     <span>{{ __('patients.sync_auth_methods') }}</span>
@@ -67,13 +69,15 @@
                                         </button>
                                     @endif
 
-                                    <button
-                                        type="button"
-                                        @click="localStep = {{ AuthStep::ADD_NEW_BY_THIRD_PERSON }}; openAdd = false"
-                                        class="w-full cursor-pointer rounded px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                                    >
-                                        {{ __('patients.authentication_third_person') }}
-                                    </button>
+                                    @if ($this->canAddThirdPersonAuthenticationMethod())
+                                        <button
+                                            type="button"
+                                            @click="localStep = {{ AuthStep::ADD_NEW_BY_THIRD_PERSON }}; openAdd = false"
+                                            class="w-full cursor-pointer rounded px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                                        >
+                                            {{ __('patients.authentication_third_person') }}
+                                        </button>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -156,7 +160,12 @@
                                                             {{ __('patients.change_method_alias') }}
                                                         </button>
 
-                                                        <template x-if="method.type === '{{ AuthenticationMethod::THIRD_PERSON->value }}'">
+                                                        <template
+                                                            x-if="
+                                                                method.type === '{{ AuthenticationMethod::THIRD_PERSON->value }}'
+                                                                    && authenticationMethods.length > 1
+                                                            "
+                                                        >
                                                             <button
                                                                 type="button"
                                                                 @click="open = false"
