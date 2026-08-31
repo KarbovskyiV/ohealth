@@ -162,7 +162,7 @@ class EncounterForm extends BaseForm
                 'array',
                 Rule::when(($this->encounter['typeCode'] ?? '') === 'concilium', ['min:2'])
             ],
-            'encounter.participant.*.uuid' => ['nullable', 'uuid'],
+            'encounter.participant.*.uuid' => ['nullable', 'uuid', 'distinct:strict',],
             'encounter.supportingInfo' => ['nullable', 'array'],
             'encounter.supportingInfo.*.uuid' => ['required_with:encounter.supportingInfo', 'uuid'],
             'encounter.supportingInfo.*.type' => [
@@ -694,7 +694,7 @@ class EncounterForm extends BaseForm
                         return;
                     }
 
-                    if (!in_array($employee->employeeType, [Role::DOCTOR->value, Role::SPECIALIST->value, Role::ASSISTANT->value, Role::LABORANT->value,], true)) {
+                    if (!in_array($employee->employeeType, config('ehealth.encounter_package_allowed_diagnostic_report_performer_employee_types', []), true)) {
                         $fail(__('validation.custom.diagnosticReport.performer.employee_invalid_type'));
                     }
                 },
@@ -978,11 +978,7 @@ class EncounterForm extends BaseForm
                                 ->where('legal_entity_id', legalEntity()->id)
                                 ->where('status', Status::APPROVED->value)
                                 ->where('is_active', true)
-                                ->whereIn('employee_type', [
-                                    Role::DOCTOR->value,
-                                    Role::SPECIALIST->value,
-                                    Role::ASSISTANT->value,
-                                ])
+                                ->whereIn('employee_type', config('ehealth.encounter_package_allowed_procedure_performer_employee_types', []))
                         ),
                     ];
                 }
@@ -1476,6 +1472,8 @@ class EncounterForm extends BaseForm
         $this->addAllowedEpisodeCareManagerEmployeeTypes($rules);
         $this->addAllowedConditionCodes($rules);
         $this->addPsychiatryEvidenceValidation($rules);
+        $this->addParticipantEmployeeValidation($rules);
+        $this->addConditionAsserterValidation($rules);
         $this->addEmployeeTypeConditionsValidation($rules);
         $this->addSpecialityConditionsValidation($rules);
         return $rules;
@@ -1496,6 +1494,7 @@ class EncounterForm extends BaseForm
             'encounter.actions.required_if' => __('validation.custom.encounter.actions.required_if'),
             'encounter.actions.prohibited_unless' => __('validation.custom.encounter.actions.prohibited_unless'),
             'encounter.participant.min' => __('validation.custom.encounter.participant.concilium_min'),
+            'encounter.participant.*.uuid.distinct' =>  __('validation.custom.encounter.participant.unique'),
         ];
     }
 
@@ -1587,6 +1586,70 @@ class EncounterForm extends BaseForm
 
             if (!$roleEncounterTypes->contains($value)) {
                 $fail(__('validation.custom.encounter.typeCode.employee_forbidden', ['value' => $value]));
+            }
+        };
+    }
+
+    /**
+     * Validate encounter participant employees.
+     *
+     * @param  array  $rules
+     * @return void
+     */
+    private function addParticipantEmployeeValidation(array &$rules): void
+    {
+        $rules['encounter.participant.*.uuid'][] = function (string $attribute, mixed $value, Closure $fail): void {
+            if (empty($value)) {
+                return;
+            }
+
+            $employee = Employee::query()
+                ->where('uuid', $value)
+                ->first([
+                    'uuid',
+                    'legal_entity_id',
+                    'status',
+                    'employee_type',
+                ]);
+
+            if ($employee === null) {
+                $fail(__('validation.custom.encounter.participant.employee_not_found'));
+
+                return;
+            }
+
+            if ($employee->legalEntityId !== legalEntity()->id) {
+                $fail(__('validation.custom.encounter.participant.employee_wrong_legal_entity', ['employee' => $value,]));
+
+                return;
+            }
+
+            if ($employee->status !== Status::APPROVED) {
+                $fail(__('validation.custom.encounter.participant.employee_invalid_status'));
+
+                return;
+            }
+
+            $allowedEmployeeTypes = config(
+                'ehealth.encounter_package_allowed_encounter_participant_employee_types'
+            );
+
+            if (!in_array($employee->employeeType, $allowedEmployeeTypes, true)) {
+                $fail(__('validation.custom.encounter.participant.employee_invalid_type'));
+
+                return;
+            }
+
+            $encounterType = $this->encounter['typeCode'] ?? null;
+
+            if ($encounterType === null) {
+                return;
+            }
+
+            $allowedEmployeeTypesForEncounter = config("ehealth.encounter_type_{$encounterType}_encounter_participant_employee_types_allowed", []);
+
+            if ($allowedEmployeeTypesForEncounter !== [] && !in_array($employee->employeeType, $allowedEmployeeTypesForEncounter, true)) {
+                $fail(__('validation.custom.encounter.participant.employee_type_forbidden_for_encounter', ['type' => $employee->employeeType,]));
             }
         };
     }
@@ -1772,12 +1835,8 @@ class EncounterForm extends BaseForm
 
     public function syncParticipants(): void
     {
-        $hasPrimarySourceCondition = collect($this->conditions ?? [])
-            ->contains(static fn (array $condition): bool => ($condition['primarySource'] ?? false) === true);
-
-        $encounterWriterEmployeeUuid = $hasPrimarySourceCondition ? Auth::user()
-            ->getEncounterWriterEmployee($this->encounter['classCode'] ?? null)
-            ?->uuid : null;
+        $encounterWriterEmployeeUuid = Auth::user()
+            ->getEncounterWriterEmployee($this->encounter['classCode'] ?? null)?->uuid;
 
         $procedurePerformerUuids = collect($this->procedures ?? [])
             ->filter(static fn (array $procedure): bool => ($procedure['primarySource'] ?? false) === true && !empty($procedure['performerEmployeeId']))
@@ -1849,6 +1908,51 @@ class EncounterForm extends BaseForm
     }
 
     /**
+     * Validate condition asserter employee.
+     *
+     * @param  array  $rules
+     * @return void
+     */
+    private function addConditionAsserterValidation(array &$rules): void
+    {
+        $rules['conditions.*'][] = function (
+            string $attribute,
+            mixed $value,
+            Closure $fail
+        ): void {
+            if (data_get($value, 'primarySource') !== true) {
+                return;
+            }
+
+            $asserter = Auth::user()->getEncounterWriterEmployee($this->encounter['classCode'] ?? null);
+
+            if ($asserter === null) {
+                $fail(__('validation.custom.conditions.asserter_employee_not_found'));
+
+                return;
+            }
+
+            $allowedEmployeeTypes = config('ehealth.encounter_package_allowed_condition_asserter_employee_types', []);
+
+            if (!in_array($asserter->employeeType, $allowedEmployeeTypes, true)) {
+                $fail(__('validation.custom.conditions.asserter_employee_invalid_type'));
+
+                return;
+            }
+
+            $participantUuids = collect(
+                $this->encounter['participant'] ?? []
+            )
+                ->pluck('uuid')
+                ->filter();
+
+            if (!$participantUuids->contains($asserter->uuid)) {
+                $fail(__('validation.custom.conditions.asserter_employee_not_participant'));
+            }
+        };
+    }
+
+    /**
      * Validate that ASSISTANT and MED_COORDINATOR employees only use their allowed condition codes.
      *
      * @param  array  $rules
@@ -1856,23 +1960,40 @@ class EncounterForm extends BaseForm
      */
     private function addEmployeeTypeConditionsValidation(array &$rules): void
     {
-        $employeeType = Auth::user()->getEncounterWriterEmployee()->employeeType;
-
-        $rules['conditions.*'][] = static function (string $attribute, mixed $value, Closure $fail) use (
-            $employeeType
+        $rules['conditions.*'][] = function (
+            string $attribute,
+            mixed $value,
+            Closure $fail
         ): void {
-            $allowedByCodeSystem = config("ehealth.employee_type_conditions_allowed.$employeeType");
-
-            if ($allowedByCodeSystem === null) {
+            if (data_get($value, 'primarySource') !== true) {
                 return;
             }
 
+            $asserter = Auth::user()->getEncounterWriterEmployee($this->encounter['classCode'] ?? null);
+
+            if ($asserter === null) {
+                return;
+            }
+
+            $employeeType = $asserter->employeeType;
+
+            if (in_array($employeeType, [Role::DOCTOR->value, Role::SPECIALIST->value,], true)) {
+                return;
+            }
+
+            if (!in_array($employeeType, [Role::ASSISTANT->value, Role::MED_COORDINATOR->value, ], true)) {
+                $fail(__('validation.custom.conditions.employee_type_code_forbidden', ['code' => data_get($value, 'codeCode'), ]));
+
+                return;
+            }
+
+            $allowedByCodeSystem = config("ehealth.employee_type_conditions_allowed.$employeeType", []);
             $codeSystem = data_get($value, 'codeSystem');
-            $allowedCodes = $allowedByCodeSystem[$codeSystem] ?? [];
             $codeCode = data_get($value, 'codeCode');
+            $allowedCodes = $allowedByCodeSystem[$codeSystem] ?? [];
 
             if (!in_array($codeCode, $allowedCodes, true)) {
-                $fail(__("validation.custom.conditions.employee_type_code_forbidden"));
+                $fail(__('validation.custom.conditions.employee_type_code_forbidden', ['code' => $codeCode, ]));
             }
         };
     }
@@ -1886,32 +2007,42 @@ class EncounterForm extends BaseForm
      */
     private function addSpecialityConditionsValidation(array &$rules): void
     {
-        $speciality = Auth::user()
-            ->getEncounterWriterEmployee()
-            ->loadMissing('specialities')
-            ->specialities
-            ->firstWhere('speciality_officio', true)
-            ->speciality;
-
-        $rules['conditions.*'][] = static function (string $attribute, mixed $value, Closure $fail) use (
-            $speciality
+        $rules['conditions.*'][] = function (
+            string $attribute,
+            mixed $value,
+            Closure $fail
         ): void {
+            if (data_get($value, 'primarySource') !== true) {
+                return;
+            }
+
             if (data_get($value, 'codeSystem') !== 'eHealth/ICD10_AM/condition_codes') {
                 return;
             }
 
-            if (!$speciality) {
+            $asserter = Auth::user()->getEncounterWriterEmployee($this->encounter['classCode'] ?? null);
+
+            if ($asserter === null) {
                 return;
             }
 
-            $allowedCodes = config("ehealth.icd10am_speciality_conditions_allowed.$speciality");
-            if ($allowedCodes === null) {
-                return;
-            }
+            $specialities = $asserter
+                ->loadMissing('specialities')
+                ->specialities
+                ->where('speciality_officio', true);
 
             $codeCode = data_get($value, 'codeCode');
-            if (!in_array($codeCode, $allowedCodes, true)) {
-                $fail(__('validation.custom.conditions.speciality_condition_code_forbidden', ['code' => $codeCode]));
+
+            $hasAllowedSpeciality = $specialities->contains(
+                static function ($speciality) use ($codeCode): bool {
+                    $allowedCodes = config("ehealth.icd10am_speciality_conditions_allowed.$speciality->speciality");
+
+                    return is_array($allowedCodes) && in_array($codeCode, $allowedCodes, true);
+                }
+            );
+
+            if (!$hasAllowedSpeciality) {
+                $fail(__('validation.custom.conditions.speciality_condition_code_forbidden', ['code' => $codeCode, ]));
             }
         };
     }

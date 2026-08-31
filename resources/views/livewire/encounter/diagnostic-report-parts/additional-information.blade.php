@@ -168,7 +168,7 @@
                 @endforeach
             </select>
 
-            @error($diagnosticReportErrorPath . '.performerEmployeeId')
+            @error($diagnosticReportErrorPath . '.resultsInterpreterEmployeeId')
                 <p class="text-error">{{ $message }}</p>
             @enderror
         </div>

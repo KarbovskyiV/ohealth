@@ -66,13 +66,22 @@
 
         syncDiagnosticReportParticipants() {
             const performers = this.diagnosticReports
-                .filter(diagnosticReport => diagnosticReport.primarySource === true && diagnosticReport.performerEmployeeId)
-                .map(diagnosticReport => {
-                    const employee = this.diagnosticReportEmployees.find(employee => String(employee.uuid) === String(diagnosticReport.performerEmployeeId));
+                .filter(diagnosticReport => diagnosticReport.primarySource === true)
+                .flatMap(diagnosticReport => [
+                    ...(Array.isArray(diagnosticReport.performerEmployeeIds)
+                        ? diagnosticReport.performerEmployeeIds
+                        : []),
+                    diagnosticReport.resultsInterpreterEmployeeId,
+                ])
+                .filter(Boolean)
+                .map(employeeId => {
+                    const employee = this.diagnosticReportEmployees.find(
+                        employee => String(employee.uuid) === String(employeeId)
+                    );
 
                     return {
-                        uuid: diagnosticReport.performerEmployeeId,
-                        name: employee?.name || diagnosticReport.performerEmployeeId,
+                        uuid: employeeId,
+                        name: employee?.name || employeeId,
                     };
                 });
 
@@ -405,10 +414,6 @@
                             :disabled="!(
                                 String(modalDiagnosticReport.categoryCode ?? '').trim()
                                 && String(modalDiagnosticReport.codeValue ?? '').trim()
-                                && (
-                                    modalDiagnosticReport.primarySource === false
-                                    || String(modalDiagnosticReport.performerEmployeeId ?? '').trim()
-                                )
                             )"
                         >
                             {{ __('forms.save') }}
@@ -451,7 +456,7 @@
             this.reportOriginCode = '';
             this.reportOriginText = '';
             this.divisionId = '';
-            this.performerEmployeeId = '';
+            this.performerEmployeeIds = [];
             this.effectiveType = 'period';
             this.effectiveDate = '';
             this.effectiveTime = '';
