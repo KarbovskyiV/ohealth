@@ -383,17 +383,23 @@ class DeclarationIndex extends Component
                 });
             }
 
-            // Search by first and last name
+            // Search by patient name
             if (!empty($this->searchByName)) {
-                $searchTerm = Str::lower(trim($this->searchByName));
+                $searchTerms = preg_split('/\s+/u', Str::lower(trim($this->searchByName)));
 
-                $allItems = $allItems->filter(function (DeclarationRequest|Declaration $item) use ($searchTerm) {
-                    $primaryName = $item->person?->primaryName;
-                    $last = Str::lower($primaryName?->lastName ?? '');
-                    $first = Str::lower($primaryName?->firstName ?? '');
+                $allItems = $allItems->filter(
+                    function (DeclarationRequest|Declaration $item) use ($searchTerms) {
+                        $fullName = Str::lower($item->person?->fullName ?? '');
 
-                    return Str::contains($last, $searchTerm) || Str::contains($first, $searchTerm);
-                });
+                        foreach ($searchTerms as $searchTerm) {
+                            if (!Str::contains($fullName, $searchTerm)) {
+                                return false;
+                            }
+                        }
+
+                        return true;
+                    }
+                );
             }
 
             // Search by declaration number
