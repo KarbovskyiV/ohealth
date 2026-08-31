@@ -9,6 +9,7 @@ use App\Classes\eHealth\EHealthResponse;
 use App\Core\Arr;
 use App\Enums\Person\AuthenticationMethod;
 use App\Enums\Person\AuthenticationMethodAction;
+use App\Enums\Person\ConfidantPersonRelationshipRequestAction;
 use App\Enums\Person\ConfidantPersonRelationshipRequestStatus;
 use App\Enums\Person\MergedPersonStatus;
 use App\Enums\Person\RelationType;
@@ -212,8 +213,10 @@ class Person extends Request
         $this->setValidator($this->validateCreateConfidantRelationship(...));
 
         $payload = [
-            'confidant_person_relationship' => ['id' => $relationshipId],
-            'documents_relationship' => $documentsRelationship
+            'confidant_person_relationship' => [
+                'id' => $relationshipId,
+                'documents_relationship' => $documentsRelationship
+            ]
         ];
 
         if (!is_null($authorizeWith)) {
@@ -304,6 +307,8 @@ class Person extends Request
         string $confidantPersonRelationshipRequestId,
         array $data = []
     ): PromiseInterface|EHealthResponse {
+        $this->setValidator($this->validateSignConfidantRelationship(...));
+
         return $this->patch(
             self::URL . "/$id/confidant_person_relationship_requests/$confidantPersonRelationshipRequestId/actions/sign",
             $data
@@ -711,6 +716,42 @@ class Person extends Request
         return $this->validateConfidantRelationshipData($response, false);
     }
 
+    /**
+     * Validate the answer to signing a confidant person relationship request. It carries the action the request
+     * was created with, and with it the part that belongs to that action: the confidant of a relationship that
+     * starts, the relationship itself of the one that ends.
+     *
+     * @param  EHealthResponse  $response
+     * @return array
+     */
+    protected function validateSignConfidantRelationship(EHealthResponse $response): array
+    {
+        $validator = Validator::make($response->getData(), [
+            'id' => ['required', 'uuid'],
+            'action' => ['required', Rule::in(ConfidantPersonRelationshipRequestAction::values())],
+            'status' => ['required', Rule::in(ConfidantPersonRelationshipRequestStatus::values())],
+            'channel' => ['required', 'string'],
+            'confidant_person_id' => [
+                'required_if:action,' . ConfidantPersonRelationshipRequestAction::INSERT->value,
+                'uuid'
+            ],
+            'confidant_person_relationship' => [
+                'required_if:action,' . ConfidantPersonRelationshipRequestAction::DEACTIVATE->value,
+                'array'
+            ],
+            'confidant_person_relationship.id' => [
+                'required_if:action,' . ConfidantPersonRelationshipRequestAction::DEACTIVATE->value,
+                'uuid'
+            ]
+        ]);
+
+        if ($validator->fails()) {
+            Log::channel('e_health_errors')->error('Validation failed: ' . implode(', ', $validator->errors()->all()));
+        }
+
+        return $validator->validate();
+    }
+
     protected function validateConfidantPersonRelationships(EHealthResponse $response): array
     {
         $replaced = self::replaceEHealthPropNames($response->getData());
@@ -734,6 +775,9 @@ class Person extends Request
             '*.documents_relationship' => ['nullable', 'array'],
             '*.documents_relationship.*.number' => ['nullable', 'string', 'max:255'],
             '*.documents_relationship.*.type' => ['nullable', new InDictionary('DOCUMENT_RELATIONSHIP_TYPE')],
+            '*.documents_relationship.*.issued_by' => ['nullable', 'string', 'max:255'],
+            '*.documents_relationship.*.issued_at' => ['nullable', 'date'],
+            '*.documents_relationship.*.active_to' => ['nullable', 'date'],
             '*.relationship_verification_details' => ['nullable', 'array'],
             '*.relationship_verification_details.verification_comment' => ['nullable', 'string'],
             '*.relationship_verification_details.verification_reason' => ['nullable', 'string', 'max:255'],

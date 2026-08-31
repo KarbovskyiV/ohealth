@@ -40,7 +40,7 @@
                     {{-- Warning Box --}}
                     <div role="alert" class="mb-6 rounded-lg p-4" style="background-color: #fffbe6">
                         <div class="flex items-start gap-3">
-                            <div class="mt-0.5 flex-shrink-0">
+                            <div class="mt-0.5 shrink-0">
                                 @icon('alert-circle', 'w-5 h-5 text-gray-600 dark:text-gray-400')
                             </div>
                             <div class="flex-1 text-sm text-gray-700 dark:text-gray-300">
@@ -50,32 +50,17 @@
                         </div>
                     </div>
 
-                    {{-- Action Buttons --}}
-                    <div class="flex justify-start gap-4">
+                    {{-- Action Button --}}
+                    <div class="flex justify-start">
                         <button
                             type="button"
                             @click="
                                 const parentData = getParentData();
                                 if (parentData) parentData.showTerminateModal = false;
                             "
-                            class="button-minor"
+                            class="button-primary"
                         >
-                            {{ __('forms.cancel') }}
-                        </button>
-
-                        <button
-                            type="button"
-                            @click="
-                                const parentData = getParentData();
-                                if (parentData) {
-                                    parentData.showTerminateModal = false;
-                                    parentData.showSignatureDrawer = false;
-                                    parentData.showAuthDrawer = false;
-                                }
-                            "
-                            class="button-outline-primary"
-                        >
-                            {{ __('patients.to_authentication_methods') }}
+                            {{ __('forms.close') }}
                         </button>
                     </div>
                 </div>

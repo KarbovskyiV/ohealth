@@ -455,6 +455,12 @@ class PersonForm extends BaseForm
                 function (string $attribute, mixed $value, callable $fail): void {
                     if ($this->hasLegalCapacityDocument()) {
                         $fail(__('validation.custom.person.confidant_prohibited_for_legally_capable_person'));
+
+                        return;
+                    }
+
+                    if ($this->isRepresentedBy($value)) {
+                        $fail(__('validation.custom.person.confidant_relationship_already_exists'));
                     }
                 }
             ],
@@ -477,6 +483,20 @@ class PersonForm extends BaseForm
             'documents.*.issuedBy' => ['required', 'string', 'max:255'],
             'documents.*.issuedAt' => ['required', 'date_format:' . config('app.date_format')]
         ];
+    }
+
+    /**
+     * Check whether the chosen confidant already represents the patient, which the registry answers with
+     * "Confidant person relationship already exists" instead of a second relationship between the two.
+     *
+     * @param  string  $confidantPersonId
+     * @return bool
+     */
+    public function isRepresentedBy(string $confidantPersonId): bool
+    {
+        return collect($this->person['confidantPersons'] ?? [])
+            ->contains(static fn (array $relationship): bool => ($relationship['isActive'] ?? false)
+                && ($relationship['person']['uuid'] ?? null) === $confidantPersonId);
     }
 
     /**

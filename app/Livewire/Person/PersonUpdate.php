@@ -137,13 +137,6 @@ class PersonUpdate extends PersonComponent
      */
     public bool $showTerminateModal = false;
 
-    /**
-     * Mode for the auth drawer - 'create' or 'deactivate'
-     *
-     * @var string|null
-     */
-    public ?string $authDrawerMode = null;
-
     public function mount(LegalEntity $legalEntity, Person $person): void
     {
         $this->canManageConfidantRelationships = true;
