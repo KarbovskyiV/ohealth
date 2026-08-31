@@ -18,6 +18,7 @@ use App\Enums\ResponseStatus;
 use App\Classes\eHealth\EHealth;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
+use App\Enums\Person\ApprovalStatus;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Database\Eloquent\Model;
@@ -197,7 +198,7 @@ trait HasApproval
         $approval = is_a($model, Approval::class)
             ? $model
             : Approval::getByModel($model)
-                ->whereStatus(Status::APPROVED->value)
+                ->whereStatus(ApprovalStatus::ACTIVE->value)
                 ->whereNotNull('uuid')
                 ->first();
 
@@ -241,7 +242,7 @@ trait HasApproval
         }
 
         $approval = Approval::getByModel($approvable)
-            ->whereStatus(Status::APPROVED->value)
+            ->whereStatus(ApprovalStatus::ACTIVE->value)
             ->first();
 
         if (!$approval) {
@@ -271,8 +272,6 @@ trait HasApproval
                 return false;
             }
         } else {
-            Session::flash('error', __('patients.errors.approval_verification_failed'));
-
             Log::error('Approval verification failed', [
                 'approval_uuid' => $approval->uuid,
                 'response_status' => $verifyResponse->getStatusCode(),

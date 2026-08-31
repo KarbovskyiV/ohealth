@@ -363,7 +363,7 @@ class PatientData extends BasePatientComponent
         if ($this->verifyApproval($person, $validated['verificationCode'])) {
             $this->syncPersonDataAfterGetApproval();
         } else {
-            Session::flash('error', __('patients.errors.approval_verification_failed').'.1');
+            Session::flash('error', __('patients.errors.approval_verification_failed'));
         }
     }
 
