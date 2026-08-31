@@ -112,8 +112,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="index-table-td">
-                                <x-nothing-found :description="null" />
+                            <td colspan="5" class="index-table-td !py-6 text-center text-gray-400">
+                                {{ __('patients.verification_empty_description') }}
                             </td>
                         </tr>
                     @endforelse

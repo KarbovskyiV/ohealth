@@ -253,6 +253,7 @@ return [
     'verification_reason_header' => 'ПРИЧИНА СТАТУСУ',
     'verification_comment_header' => 'КОМЕНТАР',
     'verification_recommendations_header' => 'РЕКОМЕНДАЦІЇ',
+    'verification_empty_description' => 'Дані про верифікацію відсутні. Натисніть «Синхронізувати дані з ЕСОЗ», щоб отримати результати перевірки персональних даних пацієнта.',
     'update_data' => 'Оновити дані',
     'update_verification_dracs_title' => 'Оновити статус верифікації пацієнта в ДРАЦС',
     'verification_reason_field' => 'Причина верифікації',
