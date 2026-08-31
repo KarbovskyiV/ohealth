@@ -169,18 +169,17 @@ class ConfidantPersonRepository
         );
 
         // Save documents relationship
-        if (!empty($responseData['documents_relationship'])) {
-            // Create new documents
-            foreach ($responseData['documents_relationship'] as $document) {
-                $confidantPersonRelation->documentsRelationship()->create([
+        $confidantPersonRelation->documentsRelationship()->createMany(
+            collect($responseData['documents_relationship'] ?? [])
+                ->map(static fn (array $document): array => [
                     'type' => $document['type'],
                     'number' => $document['number'],
                     'issued_by' => $document['issued_by'],
                     'issued_at' => $document['issued_at'],
                     'active_to' => $document['active_to'] ?? null
-                ]);
-            }
-        }
+                ])
+                ->all()
+        );
 
         return $confidantPersonRelation;
     }
@@ -219,7 +218,7 @@ class ConfidantPersonRepository
     /**
      * Sync confidant person relationships from API response.
      *
-     * @param  array  $responseData  The API response data containing confidant persons
+     * @param  array  $responseData  The validated relationships, whose own identifier arrives as uuid
      * @param  string  $subjectPersonUuid  The UUID of the person who needs confidants
      * @return Collection
      */
@@ -252,7 +251,7 @@ class ConfidantPersonRepository
 
             foreach ($relationships as $relationshipData) {
                 $confidantPersonRelation = ConfidantPerson::create([
-                    'uuid' => $relationshipData['id'] ?? null,
+                    'uuid' => $relationshipData['uuid'] ?? null,
                     'person_id' => $confidantPerson->id,
                     'subject_person_id' => $subjectPerson->id,
                     'active_to' => $relationshipData['active_to'] ?? null,
@@ -260,17 +259,17 @@ class ConfidantPersonRepository
                 ]);
 
                 // Add relationship documents for this specific relationship
-                if (!empty($relationshipData['documents_relationship'])) {
-                    foreach ($relationshipData['documents_relationship'] as $document) {
-                        $confidantPersonRelation->documentsRelationship()->create([
+                $confidantPersonRelation->documentsRelationship()->createMany(
+                    collect($relationshipData['documents_relationship'] ?? [])
+                        ->map(static fn (array $document): array => [
                             'type' => $document['type'],
                             'number' => $document['number'],
                             'issued_by' => $document['issued_by'] ?? null,
                             'issued_at' => $document['issued_at'] ?? null,
                             'active_to' => $document['active_to'] ?? null
-                        ]);
-                    }
-                }
+                        ])
+                        ->all()
+                );
 
                 $syncedConfidantPersons->push($confidantPersonRelation);
             }

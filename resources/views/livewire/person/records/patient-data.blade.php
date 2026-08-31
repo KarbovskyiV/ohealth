@@ -734,11 +734,9 @@
                                                     <div class="text-xs font-normal text-gray-500">
                                                         {{ __('forms.rnokpp') }}: {{ $cp['taxId'] ?? '-' }}
                                                     </div>
-                                                    @if (!empty($cp['unzr']))
-                                                        <div class="text-xs font-normal text-gray-500">
-                                                            {{ __('patients.unzr') }}: {{ $cp['unzr'] }}
-                                                        </div>
-                                                    @endif
+                                                    <div class="text-xs font-normal text-gray-500">
+                                                        {{ __('patients.unzr') }}: {{ $cp['unzr'] ?? '-' }}
+                                                    </div>
                                                 </td>
                                                 <td class="td-input align-top">
                                                     @if (!empty($cp['documents']))

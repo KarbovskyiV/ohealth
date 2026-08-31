@@ -197,6 +197,7 @@ return [
             'confidant_person_required_for_minor' => "Довірена особа є обов'язковою для неповнолітніх пацієнтів.",
             'confidant_person_must_be_capable' => 'Довіреною особою не може бути особа, яка має документ, що підтверджує її дієздатність.',
             'confidant_prohibited_for_legally_capable_person' => 'Пацієнт має документ, що підтверджує його дієздатність, тому додати йому законного представника неможливо.',
+            'confidant_relationship_already_exists' => "Ця особа вже є чинним законним представником пацієнта. Щоб оновити документи, спершу розірвіть наявний зв'язок.",
             'confidant_auth_method_must_be_third_person' => 'Для пацієнта з довіреною особою можна створити лише метод автентифікації через третю особу.',
             'confidant_must_be_third_person_value' => 'Метод автентифікації через третю особу має вказувати саме на обрану довірену особу.',
             'third_person_limit_exceeded' => 'Цю довірену особу вже призначено в системі понад :limit разів.',
@@ -498,7 +499,17 @@ return [
 
         'firstName' => "ім'я",
         'lastName' => 'прізвище',
+        'secondName' => 'по батькові',
+        'noLastName' => 'прізвище відсутнє',
         'birthDate' => 'дата народження',
+        'deathDate' => 'дата смерті',
+        'taxId' => 'РНОКПП',
+        'phoneNumber' => 'номер телефону',
+        'documentType' => 'тип документа',
+        'documentNumber' => 'серія/номер документа',
+        'code' => 'код підтвердження',
+        'processDisclosureDataConsent' => 'згода на обробку персональних даних',
+        'patientSigned' => "ознайомлення пацієнта з пам'яткою",
 
         'person' => [
             'firstName' => "ім'я",
@@ -525,6 +536,15 @@ return [
                 'secondName' => 'по батькові'
             ]
         ],
+        'person.preferredWayCommunication' => "бажаний спосіб зв'язку",
+
+        'person.names' => 'ПІБ пацієнта',
+        'person.names.*.language' => 'мова',
+        'person.names.*.noLastName' => 'прізвище відсутнє',
+        'person.names.*.lastName' => 'прізвище',
+        'person.names.*.firstName' => "ім'я",
+        'person.names.*.secondName' => 'по батькові',
+
         'person.documents' => 'документ, що засвідчує особу',
         'person.documents.*.issuedAt' => 'дата видачі документа',
         'person.documents.*.type' => 'тип документа',
@@ -537,19 +557,34 @@ return [
         'person.emergencyContact.phones.*.type' => 'тип телефону',
         'person.emergencyContact.phones.*.number' => 'номер телефону',
         'person.authenticationMethods' => 'методи автентифікації',
-        'person.authenticationMethods.*' => [
-            'type' => 'метод автентифікації',
-            'phoneNumber' => 'номер телефону',
-            'value' => 'законний представник пацієнта',
-            'alias' => 'роль'
-        ],
+        'person.authenticationMethods.*.type' => 'метод автентифікації',
+        'person.authenticationMethods.*.phoneNumber' => 'номер телефону',
+        'person.authenticationMethods.*.value' => 'законний представник пацієнта',
+        'person.authenticationMethods.*.alias' => 'роль',
 
+        'authenticationMethod.phoneNumber' => 'номер телефону',
+        'authenticationMethod.value' => 'законний представник пацієнта',
+        'authenticationMethod.alias' => 'роль',
+        'authenticationMethod.uuid' => 'метод автентифікації',
+
+        'person.confidantPerson' => 'законний представник',
+        'person.confidantPerson.personId' => 'законний представник',
         'person.confidantPerson.documentsRelationship' => 'документи, що підтверджують законність представництва',
         'person.confidantPerson.documentsRelationship.*.type' => 'тип документа',
         'person.confidantPerson.documentsRelationship.*.number' => 'серія/номер документа',
         'person.confidantPerson.documentsRelationship.*.issuedBy' => 'орган яким виданий документ',
         'person.confidantPerson.documentsRelationship.*.issuedAt' => 'дата видачі документа',
         'person.confidantPerson.documentsRelationship.*.activeTo' => 'дійсний до',
+
+        'confidantPersonId' => 'законний представник',
+        'confidantPersonRelationUuid' => 'законний представник',
+        'documentsRelationship' => 'документи, що підтверджують законність представництва',
+        'documentsRelationship.*.type' => 'тип документа',
+        'documentsRelationship.*.number' => 'серія/номер документа',
+        'documentsRelationship.*.issuedBy' => 'орган яким виданий документ',
+        'documentsRelationship.*.issuedAt' => 'дата видачі документа',
+        'documentsRelationship.*.activeTo' => 'дійсний до',
+        'documents' => 'документи',
 
         'authenticationMethod.type' => 'тип автентифікації',
 

@@ -117,8 +117,6 @@ class PatientData extends BasePatientComponent
 
     public bool $showTerminateModal = false;
 
-    public ?string $authDrawerMode = null;
-
     public bool $showSignatureModal = false;
 
     public bool $showAdditionalParams = false;
