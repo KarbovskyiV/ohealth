@@ -343,7 +343,7 @@ class EncounterCreate extends EncounterComponent
             logger()->error('Encounter submission unexpected error: ' . $exception->getMessage(), [
                 'trace' => $exception->getTraceAsString(),
             ]);
-            $errorMessage = __('patients.messages.unexpected_error') ?? 'Виникла непередбачувана помилка.';
+            $errorMessage = __('encounters.messages.unexpected_error');
             Session::flash('error', $errorMessage);
             $this->showSignatureModal = false;
             $this->dispatch('flashMessage', ['type' => 'error', 'message' => $errorMessage]);

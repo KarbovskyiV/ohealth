@@ -200,7 +200,7 @@
                                 <textarea
                                     class="textarea"
                                     rows="4"
-                                    placeholder="{{ __('patients.text_for_input') }}"
+                                    placeholder="{{ __('encounters.text_for_input') }}"
                                 ></textarea>
                             </div>
                         </div>
@@ -237,7 +237,7 @@
                             <div class="form-group group">
                                 <select class="input-select peer" required>
                                     <option value="" disabled selected hidden></option>
-                                    <option value="1" selected>{{ __('patients.source_link_medical_record') }}</option>
+                                    <option value="1" selected>{{ __('patients.record_in_medical_documentation') }}</option>
                                 </select>
                                 <label class="label">{{ __('patients.source_link') }}</label>
                             </div>

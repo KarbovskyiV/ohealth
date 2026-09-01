@@ -551,7 +551,7 @@ trait InteractsWithAuthenticationMethods
         // Renaming a method that authenticates through a confidant needs that relationship to still stand
         if ($this->selectedAuthMethodType === AuthenticationMethod::THIRD_PERSON->value
             && !$this->hasActiveConfidantRelationship($this->selectedAuthMethodUuid)) {
-            Session::flash('error', __('patients.errors.authMethod.confidant_relationship_required'));
+            Session::flash('error', __('patients.errors.confidant_relationship_required'));
 
             $this->showAuthMethodModal = false;
             $this->showConfidantPersonDrawer = true;

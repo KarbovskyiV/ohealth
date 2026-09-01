@@ -232,7 +232,7 @@
                             <textarea
                                 class="textarea"
                                 rows="4"
-                                placeholder="{{ __('patients.text_for_input') }}"
+                                placeholder="{{ __('encounters.text_for_input') }}"
                             ></textarea>
                         </div>
                     </div>

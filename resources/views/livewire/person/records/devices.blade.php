@@ -299,7 +299,7 @@
                                         </div>
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.medical_device_serial_number') }}
+                                                {{ __('devices.serial_number') }}
                                             </div>
                                             <div class="record-inner-value text-[14px] font-semibold">
                                                 {{ $device['serial_number'] }}

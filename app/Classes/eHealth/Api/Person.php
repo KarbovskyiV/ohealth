@@ -31,6 +31,23 @@ class Person extends Request
     protected const string URL_V2 = '/api/v2/persons';
 
     /**
+     * Registries a person is verified against, mapped to the extra field each of them reports.
+     *
+     * @var array
+     */
+    protected const array VERIFICATION_SOURCES = [
+        'drfo' => 'result',
+        'dracs_death' => 'verification_comment',
+        'dracs_birth' => 'verification_comment',
+        'dracs_name_change' => 'verification_comment',
+        'nhs' => 'verification_comment',
+        'mvs_passport' => 'status',
+        'dms_passport' => 'status',
+        'unzr' => 'status',
+        'legal_capacity' => null
+    ];
+
+    /**
      * Search for a person by parameters.
      *
      * Pass no_last_name to look for a person who has no last name: it sends an empty last_name, which the API
@@ -137,6 +154,29 @@ class Person extends Request
         $this->setValidator($this->validatePersonVerificationDetails(...));
 
         return $this->get(self::URL . "/$id/verification");
+    }
+
+    /**
+     * Get cumulative and per-stream verification statuses of the persons who have an active declaration
+     * with the given employee.
+     *
+     * @param  string  $employeeId
+     * @param  array  $query  status, verification_status, page, page_size
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://uaehealthapi.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/persons/get-persons-verification-statuses-list
+     */
+    public function getPersonsVerificationStatuses(
+        string $employeeId,
+        array $query = []
+    ): PromiseInterface|EHealthResponse {
+        $this->setValidator($this->validatePersonsVerificationStatuses(...));
+        $this->setDefaultPageSize();
+
+        $statusesQuery = array_merge($this->options['query'], $query, ['employee_id' => $employeeId]);
+
+        return $this->get(self::URL . '/verifications', $statusesQuery);
     }
 
     /**
@@ -594,76 +634,71 @@ class Person extends Request
         return $validator->validate();
     }
 
+    /**
+     * Rules of the per-registry verification results, shared by the single person and the list endpoints.
+     *
+     * Only the fields the application stores are listed, so that validation strips the rest of the payload.
+     *
+     * @param  string  $prefix  Where the details sit in the payload, e.g. 'details' or '*.details'
+     * @return array
+     */
+    protected function personVerificationDetailsRules(string $prefix): array
+    {
+        $rules = [$prefix => ['required', 'array']];
+
+        foreach (self::VERIFICATION_SOURCES as $source => $extraField) {
+            $rules["$prefix.$source"] = ['present', 'array'];
+            $rules["$prefix.$source.verification_status"] = [
+                'required',
+                new InDictionary('PERSON_VERIFICATION_STATUSES')
+            ];
+            $rules["$prefix.$source.verification_reason"] = [
+                'required',
+                new InDictionary('PERSON_VERIFICATION_STATUS_REASONS')
+            ];
+
+            if ($extraField === null) {
+                continue;
+            }
+
+            $rules["$prefix.$source.$extraField"] = match ($extraField) {
+                'verification_comment' => ['nullable', 'string'],
+                'status' => ['nullable', 'numeric', new InDictionary('EIS_MVS_STATUS')],
+                'result' => ['nullable', 'numeric', new InDictionary('DRFO_RESULT')]
+            };
+        }
+
+        return $rules;
+    }
+
     protected function validatePersonVerificationDetails(EHealthResponse $response): array
     {
         $validator = Validator::make($response->getData(), [
             'verification_status' => ['required', new InDictionary('PERSON_VERIFICATION_STATUSES')],
-            'details' => ['required', 'array'],
-            'details.drfo' => ['present', 'array'],
-            'details.drfo.verification_status' => ['required', new InDictionary('PERSON_VERIFICATION_STATUSES')],
-            'details.drfo.verification_reason' => ['required', new InDictionary('PERSON_VERIFICATION_STATUS_REASONS')],
-            'details.drfo.result' => ['nullable', 'numeric', new InDictionary('DRFO_RESULT')],
-            'details.dracs_birth' => ['present', 'array'],
-            'details.dracs_birth.verification_status' => ['required', new InDictionary('PERSON_VERIFICATION_STATUSES')],
-            'details.dracs_birth.verification_reason' => [
-                'required',
-                new InDictionary('PERSON_VERIFICATION_STATUS_REASONS')
-            ],
-            'details.dracs_birth.verification_comment' => ['nullable', 'string'],
-            'details.dracs_death' => ['present', 'array'],
-            'details.dracs_death.verification_status' => ['required', new InDictionary('PERSON_VERIFICATION_STATUSES')],
-            'details.dracs_death.verification_reason' => [
-                'required',
-                new InDictionary('PERSON_VERIFICATION_STATUS_REASONS')
-            ],
-            'details.dracs_death.verification_comment' => ['nullable', 'string'],
-            'details.dracs_name_change' => ['present', 'array'],
-            'details.dracs_name_change.verification_status' => [
-                'required',
-                new InDictionary('PERSON_VERIFICATION_STATUSES')
-            ],
-            'details.dracs_name_change.verification_reason' => [
-                'required',
-                new InDictionary('PERSON_VERIFICATION_STATUS_REASONS')
-            ],
-            'details.dracs_name_change.verification_comment' => ['nullable', 'string'],
-            'details.legal_capacity' => ['present', 'array'],
-            'details.legal_capacity.verification_status' => [
-                'required',
-                new InDictionary('PERSON_VERIFICATION_STATUSES')
-            ],
-            'details.legal_capacity.verification_reason' => [
-                'required',
-                new InDictionary('PERSON_VERIFICATION_STATUS_REASONS')
-            ],
-            'details.mvs_passport' => ['present', 'array'],
-            'details.mvs_passport.verification_status' => [
-                'required',
-                new InDictionary('PERSON_VERIFICATION_STATUSES')
-            ],
-            'details.mvs_passport.verification_reason' => [
-                'required',
-                new InDictionary('PERSON_VERIFICATION_STATUS_REASONS')
-            ],
-            'details.mvs_passport.status' => ['nullable', 'numeric', new InDictionary('EIS_MVS_STATUS')],
-            'details.dms_passport' => ['present', 'array'],
-            'details.dms_passport.verification_status' => [
-                'required',
-                new InDictionary('PERSON_VERIFICATION_STATUSES')
-            ],
-            'details.dms_passport.verification_reason' => [
-                'required',
-                new InDictionary('PERSON_VERIFICATION_STATUS_REASONS')
-            ],
-            'details.dms_passport.status' => ['nullable', 'numeric', new InDictionary('EIS_MVS_STATUS')],
-            'details.nhs' => ['present', 'array'],
-            'details.nhs.verification_status' => ['required', new InDictionary('PERSON_VERIFICATION_STATUSES')],
-            'details.nhs.verification_reason' => ['required', new InDictionary('PERSON_VERIFICATION_STATUS_REASONS')],
-            'details.nhs.verification_comment' => ['nullable', 'string'],
-            'details.unzr' => ['present', 'array'],
-            'details.unzr.verification_status' => ['required', new InDictionary('PERSON_VERIFICATION_STATUSES')],
-            'details.unzr.verification_reason' => ['required', new InDictionary('PERSON_VERIFICATION_STATUS_REASONS')],
-            'details.unzr.status' => ['nullable', 'numeric', new InDictionary('EIS_MVS_STATUS')]
+            ...$this->personVerificationDetailsRules('details')
+        ]);
+
+        if ($validator->fails()) {
+            Log::channel('e_health_errors')->error('Validation failed: ' . implode(', ', $validator->errors()->all()));
+        }
+
+        return $validator->validate();
+    }
+
+    /**
+     * @param  EHealthResponse  $response
+     * @return array
+     */
+    protected function validatePersonsVerificationStatuses(EHealthResponse $response): array
+    {
+        $validator = Validator::make($response->getData(), [
+            '*.person_id' => ['required', 'uuid'],
+            '*.person_status' => ['required', 'string', 'max:255'],
+            '*.person_updated_at' => ['nullable', 'date'],
+            '*.declaration_number' => ['nullable', 'string', 'max:255'],
+            '*.declaration_status' => ['nullable', 'string', 'max:255'],
+            '*.verification_status' => ['required', new InDictionary('PERSON_VERIFICATION_STATUSES')],
+            ...$this->personVerificationDetailsRules('*.details')
         ]);
 
         if ($validator->fails()) {
@@ -831,13 +866,23 @@ class Person extends Request
             'confidant_person.*.unzr' => ['nullable', 'string', 'max:255'],
             'confidant_person.*.preferred_way_communication' => ['nullable', 'string', 'max:255'],
             'confidant_person.*.documents_person' => ['required', 'array', 'min:1'],
-            'confidant_person.*.documents_person.*.type' => ['required', 'string', 'nullable', new InDictionary('DOCUMENT_TYPE')],
+            'confidant_person.*.documents_person.*.type' => [
+                'required',
+                'string',
+                'nullable',
+                new InDictionary('DOCUMENT_TYPE')
+            ],
             'confidant_person.*.documents_person.*.number' => ['required', 'string'],
             'confidant_person.*.documents_person.*.issued_by' => ['nullable', 'string'],
             'confidant_person.*.documents_person.*.issued_at' => ['nullable', 'date_format:Y-m-d'],
             'confidant_person.*.documents_person.*.expiration_date' => ['nullable', 'date_format:Y-m-d'],
             'confidant_person.*.documents_relationship' => ['required', 'array', 'min:1'],
-            'confidant_person.*.documents_relationship.*.type' => ['required', 'string', 'nullable', new InDictionary('DOCUMENT_TYPE')],
+            'confidant_person.*.documents_relationship.*.type' => [
+                'required',
+                'string',
+                'nullable',
+                new InDictionary('DOCUMENT_TYPE')
+            ],
             'confidant_person.*.documents_relationship.*.number' => ['required', 'string'],
             'confidant_person.*.documents_relationship.*.issued_by' => ['nullable', 'string'],
             'confidant_person.*.documents_relationship.*.issued_at' => ['nullable', 'date_format:Y-m-d'],
@@ -855,10 +900,24 @@ class Person extends Request
             'confidant_person_relationship.*.documents_relationship.*.active_to' => ['nullable', 'date_format:Y-m-d'],
             'confidant_person_relationship.*.documents_relationship.*.record_type' => ['required', 'string'],
             'confidant_person_relationship.*.documents_relationship.*.number' => ['required', 'string'],
-            'confidant_person_relationship.*.documents_relationship.*.type' => ['required', 'string', 'nullable', new InDictionary('DOCUMENT_TYPE')],
-            'confidant_person_relationship.*.relationship_verification_details.verification_status' => ['required', 'string'],
-            'confidant_person_relationship.*.relationship_verification_details.verification_reason' => ['required', 'string'],
-            'confidant_person_relationship.*.relationship_verification_details.verification_comment' => ['required', 'string'],
+            'confidant_person_relationship.*.documents_relationship.*.type' => [
+                'required',
+                'string',
+                'nullable',
+                new InDictionary('DOCUMENT_TYPE')
+            ],
+            'confidant_person_relationship.*.relationship_verification_details.verification_status' => [
+                'required',
+                'string'
+            ],
+            'confidant_person_relationship.*.relationship_verification_details.verification_reason' => [
+                'required',
+                'string'
+            ],
+            'confidant_person_relationship.*.relationship_verification_details.verification_comment' => [
+                'required',
+                'string'
+            ],
             'confidant_person_relationship.*.confidant_person.person_id' => ['required', 'uuid'],
             'confidant_person_relationship.*.confidant_person.name' => ['required', 'string', 'max:255'],
             'confidant_person_relationship.*.confidant_person.gender' => ['nullable', new InDictionary('GENDER')],
@@ -866,11 +925,22 @@ class Person extends Request
             'confidant_person_relationship.*.confidant_person.no_tax_id' => ['required', 'boolean:strict'],
             'confidant_person_relationship.*.confidant_person.unzr' => ['nullable', 'string', 'max:255'],
             'confidant_person_relationship.*.confidant_person.documents_person' => ['nullable', 'array', 'min:1'],
-            'confidant_person_relationship.*.confidant_person.documents_person.*.type' => ['required', 'string', 'nullable', new InDictionary('DOCUMENT_TYPE')],
+            'confidant_person_relationship.*.confidant_person.documents_person.*.type' => [
+                'required',
+                'string',
+                'nullable',
+                new InDictionary(
+                    'DOCUMENT_TYPE'
+                )
+            ],
             'confidant_person_relationship.*.confidant_person.documents_person.*.number' => ['required', 'string'],
             'confidant_person_relationship.*.confidant_person.phones' => ['nullable', 'array'],
             'confidant_person_relationship.*.confidant_person.phones.*.number' => ['required', 'string', 'max:255'],
-            'confidant_person_relationship.*.confidant_person.phones.*.type' => ['required', 'string', new InDictionary('PHONE_TYPE')],
+            'confidant_person_relationship.*.confidant_person.phones.*.type' => [
+                'required',
+                'string',
+                new InDictionary('PHONE_TYPE')
+            ],
 
             'death_date' => ['nullable', 'date'],
 
@@ -959,8 +1029,10 @@ class Person extends Request
      *
      * @see REST API Get Medication Request Printout Form [API-005-043-0008]
      */
-    public function getMedicationRequestPrintoutForm(string $personId, string $medicationRequestId): PromiseInterface|EHealthResponse
-    {
+    public function getMedicationRequestPrintoutForm(
+        string $personId,
+        string $medicationRequestId
+    ): PromiseInterface|EHealthResponse {
         return $this->get(self::URL . "/{$personId}/medication_requests/{$medicationRequestId}/printout_form");
     }
 

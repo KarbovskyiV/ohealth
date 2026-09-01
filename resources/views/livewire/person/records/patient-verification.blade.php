@@ -52,11 +52,11 @@
                 </div>
                 <div class="space-y-1 text-sm leading-relaxed">
                     <h4 class="font-bold text-red-700 dark:text-red-400">
-                        {{ __('patients.verification_warning_banner_title') }}
+                        {{ __('patient-verifications.warning_banner_title') }}
                     </h4>
-                    <p class="text-red-600 dark:text-red-300">{{ __('patients.verification_warning_banner_text') }}</p>
+                    <p class="text-red-600 dark:text-red-300">{{ __('patient-verifications.warning_banner_text') }}</p>
                     <p class="text-red-600 dark:text-red-300">
-                        {{ __('patients.verification_warning_banner_notice') }}
+                        {{ __('patient-verifications.warning_banner_notice') }}
                     </p>
                 </div>
             </div>
@@ -67,18 +67,18 @@
             <table class="index-table">
                 <thead class="index-table-thead">
                     <tr>
-                        <th class="index-table-th w-[20%] uppercase">{{ __('patients.verification_direction') }}</th>
+                        <th class="index-table-th w-[20%] uppercase">{{ __('patient-verifications.direction') }}</th>
                         <th class="index-table-th w-[15%] whitespace-nowrap uppercase">
-                            {{ __('patients.verification_status_header') }}
+                            {{ __('patient-verifications.status_header') }}
                         </th>
                         <th class="index-table-th w-[15%] uppercase">
-                            {{ __('patients.verification_reason_header') }}
+                            {{ __('patient-verifications.reason_header') }}
                         </th>
                         <th class="index-table-th w-[10%] uppercase">
-                            {{ __('patients.verification_comment_header') }}
+                            {{ __('patient-verifications.comment_header') }}
                         </th>
                         <th class="index-table-th w-[40%] uppercase">
-                            {{ __('patients.verification_recommendations_header') }}
+                            {{ __('patient-verifications.recommendations_header') }}
                         </th>
                     </tr>
                 </thead>
@@ -86,7 +86,7 @@
                     @forelse ($this->verificationDetails as $detail)
                         <tr class="index-table-tr" wire:key="verification-row-{{ $detail->source->value }}">
                             <td class="index-table-td align-top font-semibold text-gray-900 dark:text-white">
-                                {{ __('patients.verification_sources.' . $detail->source->value) }}
+                                {{ __('patient-verifications.sources.' . $detail->source->value) }}
                             </td>
                             <td class="index-table-td align-top whitespace-nowrap">
                                 <span class="{{ $detail->verificationStatus->color() }} inline-block whitespace-nowrap">
@@ -103,7 +103,7 @@
                                 {{
                                     $detail->verificationStatus === VerificationStatus::NOT_VERIFIED
                                     ? __(
-                                        'patients.verification_recommendations.' . $detail->source->value,
+                                        'patient-verifications.recommendations.' . $detail->source->value,
                                         ['comment' => $detail->verificationComment ?? '-']
                                     )
                                     : '-'
@@ -113,7 +113,7 @@
                     @empty
                         <tr>
                             <td colspan="5" class="index-table-td !py-6 text-center text-gray-400">
-                                {{ __('patients.verification_empty_description') }}
+                                {{ __('patient-verifications.empty_description') }}
                             </td>
                         </tr>
                     @endforelse
@@ -129,7 +129,7 @@
                     @click="showUpdateModal = true"
                     class="button-primary-outline inline-flex items-center gap-2"
                 >
-                    {{ __('patients.update_data') }}
+                    {{ __('patient-verifications.update_data') }}
                 </button>
             </div>
         @endcan
@@ -172,7 +172,7 @@
                 >
                     {{-- Title --}}
                     <h3 class="mb-8 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white" id="modal-title">
-                        {{ __('patients.update_verification_dracs_title') }}
+                        {{ __('patient-verifications.update_dracs_title') }}
                     </h3>
 
                     {{-- Form --}}
@@ -192,7 +192,7 @@
                                     class="w-full cursor-pointer border-0 bg-transparent p-0 py-1.5 text-sm font-normal text-gray-900 focus:outline-none dark:text-white"
                                 >
                                     <option value="VERIFIED" class="dark:bg-gray-800">
-                                        {{ __('patients.status.verified') }}
+                                        {{ __('patient-verifications.statuses.verified') }}
                                     </option>
                                 </select>
                             </div>
@@ -208,7 +208,7 @@
                                 for="modal-reason"
                                 class="block text-xs font-normal text-gray-500 dark:text-gray-400"
                             >
-                                {{ __('patients.verification_reason_field') }}
+                                {{ __('patient-verifications.reason_field') }}
                             </label>
                             <div class="border-b border-gray-300 focus-within:border-blue-600 dark:border-gray-600">
                                 <select
@@ -243,7 +243,7 @@
                                     for="modal-death-date"
                                     class="block text-xs font-normal text-gray-500 dark:text-gray-400"
                                 >
-                                    {{ __('patients.death_date') }}
+                                    {{ __('patient-verifications.death_date') }}
                                 </label>
                                 <div class="datepicker-wrapper">
                                     <input
@@ -275,7 +275,7 @@
                                 wire:model="form.verificationComment"
                                 rows="5"
                                 class="w-full resize-none rounded-lg border border-gray-200 bg-transparent p-4 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-700 dark:text-white"
-                                placeholder="{{ __('patients.comment_death_confirmed') }}"
+                                placeholder="{{ __('patient-verifications.comment_death_confirmed') }}"
                             ></textarea>
 
                             @error('form.verificationComment')
@@ -302,7 +302,7 @@
                                 class="rounded-md bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                             >
                                 <span wire:loading.remove wire:target="confirmDeathVerification">
-                                    {{ __('patients.update_data_in_ehealth') }}
+                                    {{ __('patient-verifications.update_data_in_ehealth') }}
                                 </span>
                                 <span wire:loading wire:target="confirmDeathVerification">
                                     {{ __('forms.loading') }}
