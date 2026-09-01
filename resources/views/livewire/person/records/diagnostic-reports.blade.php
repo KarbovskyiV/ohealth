@@ -42,7 +42,7 @@
         <div class="mt-6 w-full" x-data="{ showAdditionalParams: $wire.entangle('showAdditionalParams') }">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
                 @icon('search-outline', 'w-4.5 h-4.5')
-                <p>{{ __('patients.diagnostic_reports_search') }}</p>
+                <p>{{ __('diagnostic-reports.search') }}</p>
             </div>
 
             <div class="form-row-3 mb-6">

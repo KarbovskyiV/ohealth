@@ -70,7 +70,7 @@
                     wire:target="searchForPatient"
                 >
                     @icon('search', 'w-4 h-4')
-                    <span>{{ __('patients.search') ?? __('care-plan.search') ?? 'Пошук' }}</span>
+                    <span>{{ __('care-plan.search') }}</span>
                 </button>
             </div>
 

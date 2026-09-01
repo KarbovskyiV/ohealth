@@ -299,7 +299,7 @@
                                                                 @click="openInteractionDropdown = false"
                                                             >
                                                                 @icon('activity', 'w-4 h-4 text-gray-400')
-                                                                {{ __('patients.create_diagnostic_report') }}
+                                                                {{ __('diagnostic-reports.create') }}
                                                             </a>
                                                         @endcan
 
@@ -310,7 +310,7 @@
                                                                 @click="openInteractionDropdown = false"
                                                             >
                                                                 @icon('settings', 'w-4 h-4 text-gray-400')
-                                                                {{ __('patients.create_procedure') }}
+                                                                {{ __('procedures.create') }}
                                                             </a>
                                                         @endcan
 

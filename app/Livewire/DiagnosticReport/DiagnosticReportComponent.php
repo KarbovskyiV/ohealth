@@ -399,7 +399,7 @@ abstract class DiagnosticReportComponent extends Component
             return;
         }
 
-        Session::flash('success', __('patients.messages.diagnostic_report_draft_saved'));
+        Session::flash('success', __('diagnostic-reports.messages.draft_saved'));
 
         if ($this->prepersonId !== null) {
             $this->redirectRoute(
@@ -459,7 +459,7 @@ abstract class DiagnosticReportComponent extends Component
 
             $diagnosticReportId = $this->persist($formattedData);
 
-            Session::flash('success', __('patients.messages.diagnostic_report_create_request_sent'));
+            Session::flash('success', __('diagnostic-reports.messages.create_request_sent'));
 
             if ($this->prepersonId !== null) {
                 $this->redirectRoute(

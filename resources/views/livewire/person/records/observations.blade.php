@@ -35,7 +35,7 @@
         <div class="mt-6 w-full" x-data="{ showAdditionalParams: $wire.entangle('showAdditionalParams') }">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
                 @icon('search-outline', 'w-4.5 h-4.5')
-                <p>{{ __('patients.observations') }}</p>
+                <p>{{ __('observations.plural') }}</p>
             </div>
 
             <div
@@ -214,7 +214,7 @@
                         bind="filterEncounterId"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('patients.encounter')"
+                        :label="__('encounters.label')"
                     />
 
                     <x-forms.combobox
@@ -222,7 +222,7 @@
                         bind="filterDiagnosticReportId"
                         bindValue="uuid"
                         bindParam="displayValue"
-                        :label="__('patients.diagnostic_report')"
+                        :label="__('diagnostic-reports.label')"
                     />
 
                     <x-forms.combobox
@@ -349,7 +349,7 @@
                                             </div>
                                         </div>
                                         <div>
-                                            <div class="record-inner-label">{{ __('patients.value') }}</div>
+                                            <div class="record-inner-label">{{ __('observations.value') }}</div>
                                             <div class="record-inner-value">
                                                 {{ $this->displayObservationValue($observation) }}
                                             </div>
@@ -370,7 +370,9 @@
 
                                     <div class="grid grid-cols-2 gap-2 overflow-hidden lg:grid-cols-5 xl:gap-4">
                                         <div>
-                                            <div class="record-inner-label">{{ __('patients.interpretation') }}</div>
+                                            <div class="record-inner-label">
+                                                {{ __('observations.interpretation') }}
+                                            </div>
                                             <div class="record-inner-value">
                                                 {{ $this->dictionaryLabel($observation, 'interpretation') }}
                                             </div>

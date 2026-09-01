@@ -164,7 +164,7 @@
                             <option value="" disabled selected hidden></option>
                             <option value="1" selected>Процедура 12.02.2026</option>
                         </select>
-                        <label class="label">{{ __('patients.procedure_link') }}</label>
+                        <label class="label">{{ __('procedures.link') }}</label>
                     </div>
                 </div>
 

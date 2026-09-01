@@ -211,7 +211,7 @@ class PatientDiagnosticReports extends BasePatientComponent
             $this->dispatchRemainingPages('diagnostic_report');
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_DIAGNOSTIC_REPORT);
-            Session::flash('success', __('patients.messages.diagnostic_reports_synced_successfully'));
+            Session::flash('success', __('diagnostic-reports.messages.synced_successfully'));
         }
 
         $this->loadFilterOptions();
@@ -281,7 +281,7 @@ class PatientDiagnosticReports extends BasePatientComponent
     public function proceedToSignature(): void
     {
         if ($this->cancellingDiagnosticReportId === null) {
-            Session::flash('error', __('patients.messages.diagnostic_report_not_found'));
+            Session::flash('error', __('diagnostic-reports.messages.not_found'));
 
             return;
         }
@@ -318,7 +318,7 @@ class PatientDiagnosticReports extends BasePatientComponent
     public function cancelSelectedDiagnosticReport(): void
     {
         if ($this->cancellingDiagnosticReportId === null) {
-            Session::flash('error', __('patients.messages.diagnostic_report_not_found'));
+            Session::flash('error', __('diagnostic-reports.messages.not_found'));
 
             return;
         }
@@ -355,7 +355,7 @@ class PatientDiagnosticReports extends BasePatientComponent
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle(
                 'Error while building diagnostic report cancellation package',
-                __('patients.messages.diagnostic_report_cancel_package_prepare_error')
+                __('diagnostic-reports.messages.cancel_package_prepare_error')
             );
 
             return;
@@ -372,7 +372,7 @@ class PatientDiagnosticReports extends BasePatientComponent
         } catch (CipherException|CipherConnectionException $exception) {
             $exception->handle(
                 'Error while signing diagnostic report cancellation package',
-                __('patients.messages.diagnostic_report_cancel_package_sign_error')
+                __('diagnostic-reports.messages.cancel_package_sign_error')
             );
 
             return;
@@ -400,7 +400,7 @@ class PatientDiagnosticReports extends BasePatientComponent
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle(
                 'Error while sending diagnostic report cancellation package',
-                __('patients.messages.diagnostic_report_cancel_package_request_error')
+                __('diagnostic-reports.messages.cancel_package_request_error')
             );
 
             return;
@@ -408,7 +408,7 @@ class PatientDiagnosticReports extends BasePatientComponent
             $this->handleDatabaseErrors(
                 $exception,
                 'Error while saving diagnostic report cancellation status',
-                __('patients.messages.diagnostic_report_cancel_package_save_error')
+                __('diagnostic-reports.messages.cancel_package_save_error')
             );
 
             return;
@@ -416,13 +416,13 @@ class PatientDiagnosticReports extends BasePatientComponent
 
         $this->resetCancellationState();
 
-        Session::flash('success', __('patients.messages.diagnostic_report_cancel_request_sent'));
+        Session::flash('success', __('diagnostic-reports.messages.cancel_request_sent'));
     }
 
     private function findDiagnosticReportForAction(string $diagnosticReportUuid): ?DiagnosticReport
     {
         if (blank($diagnosticReportUuid)) {
-            Session::flash('error', __('patients.messages.diagnostic_report_not_found'));
+            Session::flash('error', __('diagnostic-reports.messages.not_found'));
 
             return null;
         }
@@ -430,7 +430,7 @@ class PatientDiagnosticReports extends BasePatientComponent
         try {
             return Repository::diagnosticReport()->findByUuid($diagnosticReportUuid);
         } catch (ModelNotFoundException) {
-            Session::flash('error', __('patients.messages.diagnostic_report_not_found_in_db'));
+            Session::flash('error', __('diagnostic-reports.messages.not_found_in_db'));
 
             return null;
         }
@@ -439,25 +439,25 @@ class PatientDiagnosticReports extends BasePatientComponent
     private function getCancellationForbiddenMessage(DiagnosticReport $diagnosticReport): ?string
     {
         if ($diagnosticReport->status === DiagnosticReportStatus::ENTERED_IN_ERROR) {
-            return __('patients.messages.diagnostic_report_already_entered_in_error');
+            return __('diagnostic-reports.messages.already_entered_in_error');
         }
 
         if ($diagnosticReport->status !== DiagnosticReportStatus::FINAL) {
-            return __('patients.messages.only_final_diagnostic_report_can_be_cancelled');
+            return __('diagnostic-reports.messages.only_final_can_be_cancelled');
         }
 
         $currentEmployeeUuid = Auth::user()?->getDiagnosticReportWriterEmployee()?->uuid;
 
         if (!$currentEmployeeUuid || $diagnosticReport->recordedBy?->value !== $currentEmployeeUuid) {
-            return __('patients.messages.diagnostic_report_created_by_another_employee_cannot_be_cancelled');
+            return __('diagnostic-reports.messages.created_by_another_employee_cannot_be_cancelled');
         }
 
         if ($diagnosticReport->encounter_id !== null) {
-            return __('patients.messages.diagnostic_report_with_encounter_cannot_be_cancelled');
+            return __('diagnostic-reports.messages.with_encounter_cannot_be_cancelled');
         }
 
         if (Auth::user()?->cannot('cancel', $diagnosticReport)) {
-            return __('patients.policy.cancel_diagnostic_report');
+            return __('diagnostic-reports.policy.cancel');
         }
 
         return null;

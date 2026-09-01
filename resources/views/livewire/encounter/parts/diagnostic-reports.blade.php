@@ -1,9 +1,7 @@
 <div
     class="p-4 sm:p-8"
     id="diagnostic-reports-section"
-    x-on:encounter-division-changed.window="
-        divisionId = $event.detail.divisionId
-    "
+    x-on:encounter-division-changed.window="divisionId = $event.detail.divisionId"
     x-data="{
          diagnosticReports: $wire.entangle('form.diagnosticReports'),
          selectedRecords: $wire.entangle('selectedRecords.diagnosticReports'),
@@ -25,14 +23,14 @@
         issuedDateTimeInvalid: false,
 
         parseDateTime(date, time) {
-            if (!date || !time) {
+            if (! date || ! time) {
                 return null;
             }
 
             const [day, month, year] = date.split('.').map(Number);
             const [hours, minutes] = time.split(':').map(Number);
 
-            if (![day, month, year, hours, minutes].every(Number.isFinite)) {
+            if (! [day, month, year, hours, minutes].every(Number.isFinite)) {
                 return null;
             }
 
@@ -55,13 +53,13 @@
                 this.encounterPeriodEnd
             );
 
-            this.issuedDateTimeInvalid = !issued
-                || !encounterStart
-                || !encounterEnd
+            this.issuedDateTimeInvalid = ! issued
+                || ! encounterStart
+                || ! encounterEnd
                 || issued < encounterStart
                 || issued > encounterEnd;
 
-            return !this.issuedDateTimeInvalid;
+            return ! this.issuedDateTimeInvalid;
         },
 
         syncDiagnosticReportParticipants() {
@@ -176,34 +174,36 @@
         }
      }"
 >
-
     {{-- Show saved data in table --}}
     <div class="space-y-4">
         <template x-for="(diagnosticReport, index) in diagnosticReports" :key="index">
             <div class="record-inner-card">
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
-                        <input type="checkbox"
-                               class="default-checkbox w-5 h-5"
-                               :value="diagnosticReport.uuid"
-                               x-model="selectedRecords"
-                               :disabled="!canCancelRecords
-                                   || !diagnosticReport.uuid
-                                   || cancelledRecords.includes(diagnosticReport.uuid)"
-                        >
+                        <input
+                            type="checkbox"
+                            class="default-checkbox h-5 w-5"
+                            :value="diagnosticReport.uuid"
+                            x-model="selectedRecords"
+                            :disabled="! canCancelRecords ||
+                            ! diagnosticReport.uuid ||
+                            cancelledRecords.includes(diagnosticReport.uuid)"
+                        />
                     </div>
 
                     <template x-if="cancelledRecords.includes(diagnosticReport.uuid)">
-                        <span class="record-inner-badge-error">
-                            {{ __('patients.status.entered_in_error') }}
-                        </span>
+                        <span class="record-inner-badge-error"> {{ __('patients.status.entered_in_error') }} </span>
                     </template>
 
                     <div class="record-inner-column flex-1">
-                        <div class="record-inner-label">{{ __('patients.diagnostic_report') }}</div>
+                        <div class="record-inner-label">{{ __('diagnostic-reports.label') }}</div>
                         <div
                             class="record-inner-value text-[16px]"
-                            x-text="Object.values(servicesDictionary).find(service => service.id === diagnosticReport.codeValue)?.name || ''"
+                            x-text="
+                                Object.values(servicesDictionary).find(
+                                    (service) => service.id === diagnosticReport.codeValue,
+                                )?.name || ''
+                            "
                         ></div>
                     </div>
 
@@ -213,34 +213,32 @@
                                 openDropdown: false,
                                 toggle() {
                                     if (this.openDropdown) {
-                                        return this.close()
+                                        return this.close();
                                     }
 
-                                    this.$refs.button.focus()
+                                    this.$refs.button.focus();
 
-                                    this.openDropdown = true
+                                    this.openDropdown = true;
                                 },
                                 close(focusAfter) {
-                                    if (!this.openDropdown) return
+                                    if (! this.openDropdown) return;
 
-                                    this.openDropdown = false
+                                    this.openDropdown = false;
 
-                                    focusAfter && focusAfter.focus()
-                                }
+                                    focusAfter && focusAfter.focus();
+                                },
                             }"
                             @keydown.escape.prevent.stop="close($refs.button)"
-                            @focusin.window="$refs.panel && !$refs.panel.contains($event.target) && close()"
+                            @focusin.window="$refs.panel && ! $refs.panel.contains($event.target) && close()"
                             x-id="['dropdown-button']"
                             class="relative"
                         >
-                            @if($isReadonly)
+                            @if ($isReadonly)
                                 <a
                                     href="#"
                                     @click.prevent="
                                         item = index;
-                                        modalDiagnosticReport = JSON.parse(
-                                            JSON.stringify(diagnosticReports[index])
-                                        );
+                                        modalDiagnosticReport = JSON.parse(JSON.stringify(diagnosticReports[index]));
                                         newDiagnosticReport = false;
                                         openDiagnosticReportDrawer = true;
                                     "
@@ -248,9 +246,7 @@
                                     title="{{ __('forms.view') }}"
                                 >
                                     @icon('eye', 'w-6 h-6')
-                                    <span class="sr-only">
-                                        {{ __('forms.view') }}
-                                    </span>
+                                    <span class="sr-only"> {{ __('forms.view') }} </span>
                                 </a>
                             @else
                                 {{-- Dropdown Button --}}
@@ -262,11 +258,19 @@
                                     type="button"
                                     class="record-inner-action-btn cursor-pointer"
                                 >
-                                    <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
-                                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                                    <svg
+                                        class="h-6 w-6 text-gray-800 dark:text-gray-200"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        fill="none"
                                         viewBox="0 0 24 24"
                                     >
-                                        <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
+                                        <path
+                                            stroke="currentColor"
+                                            stroke-linecap="square"
+                                            stroke-linejoin="round"
                                             stroke-width="2"
                                             d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
                                         />
@@ -320,7 +324,7 @@
 
                 <div class="record-inner-body">
                     <div class="record-inner-grid-container">
-                        <div class="grid grid-cols-2 xl:grid-cols-3 gap-y-4 gap-x-4 w-full">
+                        <div class="grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-3">
                             <div>
                                 <div class="record-inner-label">{{ __('forms.category') }}</div>
                                 <div
@@ -347,21 +351,21 @@
     </div>
 
     <div
-        x-show="!divisionId"
+        x-show="! divisionId"
         x-cloak
-        class="flex items-center gap-3 p-5 my-5 bg-[#e8f1fc] dark:bg-blue-950/40 border border-[#d2e4f9] dark:border-blue-900 rounded-xl"
+        class="my-5 flex items-center gap-3 rounded-xl border border-[#d2e4f9] bg-[#e8f1fc] p-5 dark:border-blue-900 dark:bg-blue-950/40"
     >
         <span class="shrink-0 text-[#2563eb] dark:text-[#60a5fa]">
             @icon('info-circle', 'w-5 h-5')
         </span>
 
         <p class="text-sm font-semibold text-[#2563eb] dark:text-[#60a5fa]">
-            {{ __('patients.select_division_to_create_diagnostic_report') }}
+            {{ __('diagnostic-reports.select_division_to_create') }}
         </p>
     </div>
 
     {{-- Button to trigger the drawer --}}
-    @unless($isReadonly)
+    @unless ($isReadonly)
         <button
             x-show="divisionId"
             x-cloak
@@ -378,16 +382,14 @@
     @endunless
 
     <x-dialog-drawer x-model="openDiagnosticReportDrawer" maxWidth="4/5" wire:ignore>
-        <x-slot name="title">
-            {{ __('patients.diagnostic_report') }}
-        </x-slot>
+        <x-slot name="title">{{ __('diagnostic-reports.label') }}</x-slot>
 
         <form>
             <fieldset
                 @disabled($isReadonly)
                 @class([
-                    'pointer-event-none' => $isReadonly
-                ])
+                                    'pointer-event-none' => $isReadonly
+                                ])
             >
                 @include('livewire.encounter.diagnostic-report-parts.main-information')
                 @include('livewire.encounter.diagnostic-report-parts.additional-information', ['context' => 'diagnostic-report', 'isEncounterContext' => true])
@@ -397,23 +399,23 @@
                         {{ $isReadonly ? __('forms.close') : __('forms.cancel') }}
                     </button>
 
-                    @unless($isReadonly)
+                    @unless ($isReadonly)
                         <button
                             @click.prevent="
-                                if (!validateIssuedDateTime()) {
+                                if (! validateIssuedDateTime()) {
                                     return;
                                 }
 
                                 newDiagnosticReport !== false
                                     ? diagnosticReports.push(modalDiagnosticReport)
-                                    : diagnosticReports[item] = modalDiagnosticReport;
+                                    : (diagnosticReports[item] = modalDiagnosticReport);
                                 syncDiagnosticReportParticipants();
                                 openDiagnosticReportDrawer = false;
                             "
                             class="button-primary"
-                            :disabled="!(
-                                String(modalDiagnosticReport.categoryCode ?? '').trim()
-                                && String(modalDiagnosticReport.codeValue ?? '').trim()
+                            :disabled="! (
+                                String(modalDiagnosticReport.categoryCode ?? '').trim() &&
+                                String(modalDiagnosticReport.codeValue ?? '').trim()
                             )"
                         >
                             {{ __('forms.save') }}

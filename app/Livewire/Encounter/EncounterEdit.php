@@ -186,7 +186,7 @@ class EncounterEdit extends EncounterComponent
             return null;
         }
 
-        Session::flash('success', __('patients.messages.encounter_updated'));
+        Session::flash('success', __('encounters.messages.updated'));
 
         // Sections with no records stay out of the package, the same way the create flow signs it
         return array_filter([
@@ -225,7 +225,7 @@ class EncounterEdit extends EncounterComponent
         }
 
         if (Auth::user()->cannot('create', Encounter::class)) {
-            $message = __('patients.policy.create_encounter');
+            $message = __('encounters.policy.create');
             Session::flash('error', $message);
             $this->showSignatureModal = false;
             $this->dispatch('flashMessage', ['type' => 'error', 'message' => $message]);
@@ -293,7 +293,6 @@ class EncounterEdit extends EncounterComponent
                 ],
                 'signed_data' => $signedContent->getBase64Data()
             ]);
-
 
             $jobId = $resp->getData()['job_id'] ?? null;
             if (!$jobId && isset($resp->getData()['links'][0]['href'])) {
@@ -399,7 +398,7 @@ class EncounterEdit extends EncounterComponent
     public function openRecordsCancellation(): void
     {
         if ($this->selectedCancellationRecords() === []) {
-            Session::flash('error', __('patients.messages.encounter_cancel_records_not_picked'));
+            Session::flash('error', __('encounters.messages.cancel_records_not_picked'));
 
             return;
         }

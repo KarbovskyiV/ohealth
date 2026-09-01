@@ -90,21 +90,21 @@
                             href="{{ route("$routePrefix.observations", [legalEntity(), $routeParamKey => $recordId]) }}"
                             class="summary-tab {{ request()->routeIs("$routePrefix.observations") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                         >
-                            {{ __('patients.observation') }}
+                            {{ __('observations.label') }}
                         </a>
 
                         <a
                             href="{{ route("$routePrefix.immunizations", [legalEntity(), $routeParamKey => $recordId]) }}"
                             class="summary-tab {{ request()->routeIs("$routePrefix.immunization") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                         >
-                            {{ __('patients.immunizations') }}
+                            {{ __('immunizations.plural') }}
                         </a>
 
                         <a
                             href="{{ route("$routePrefix.conditions", [legalEntity(), $routeParamKey => $recordId]) }}"
                             class="summary-tab {{ request()->routeIs("$routePrefix.condition") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                         >
-                            {{ __('patients.conditions') }}
+                            {{ __('conditions.plural') }}
                         </a>
 
                         @if ($prepersonId)
@@ -127,7 +127,7 @@
                             href="{{ route("$routePrefix.diagnostic-reports", [legalEntity(), $routeParamKey => $recordId]) }}"
                             class="summary-tab {{ request()->routeIs("$routePrefix.diagnostic-reports") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                         >
-                            {{ __('patients.diagnostic_reports') }}
+                            {{ __('diagnostic-reports.plural') }}
                         </a>
                     </div>
 
@@ -136,7 +136,7 @@
                             href="{{ route("$routePrefix.clinical-impressions", [legalEntity(), $routeParamKey => $recordId]) }}"
                             class="summary-tab {{ request()->routeIs("$routePrefix.clinical-impressions") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                         >
-                            {{ __('patients.clinical_impressions') }}
+                            {{ __('clinical-impressions.plural') }}
                         </a>
 
                         <a
@@ -189,14 +189,14 @@
                             href="{{ route("$routePrefix.encounters", [legalEntity(), $routeParamKey => $recordId]) }}"
                             class="summary-tab {{ request()->routeIs("$routePrefix.encounters") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                         >
-                            {{ __('patients.encounters') }}
+                            {{ __('encounters.plural') }}
                         </a>
 
                         <a
                             href="{{ route("$routePrefix.procedures", [legalEntity(), $routeParamKey => $recordId]) }}"
                             class="summary-tab {{ request()->routeIs("$routePrefix.procedures") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                         >
-                            {{ __('patients.procedures') }}
+                            {{ __('procedures.plural') }}
                         </a>
 
                         <a

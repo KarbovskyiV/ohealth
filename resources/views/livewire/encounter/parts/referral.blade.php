@@ -21,7 +21,7 @@
                     class="default-checkbox mb-1"
                 />
                 <label class="default-p font-medium" for="isReferralAvailable">
-                    {{ __('patients.referral_available') }}
+                    {{ __('encounters.referral_available') }}
                 </label>
             </div>
         </div>
@@ -31,10 +31,10 @@
                 <div class="form-group group">
                     <select x-model="referralType" id="referralType" class="input-select peer">
                         <option value="" selected>{{ __('forms.select') }}</option>
-                        <option value="electronic">{{ __('patients.electronic_referral') }}</option>
-                        <option value="paper">{{ __('patients.paper_referral') }}</option>
+                        <option value="electronic">{{ __('encounters.electronic_referral') }}</option>
+                        <option value="paper">{{ __('encounters.paper_referral') }}</option>
                     </select>
-                    <label for="referralType" class="label"> {{ __('patients.referral_type') }} </label>
+                    <label for="referralType" class="label"> {{ __('encounters.referral_type') }} </label>
                 </div>
             </div>
 
@@ -51,7 +51,9 @@
                                 x-mask="****-****-****-****"
                                 x-on:input="$el.value = $el.value.toUpperCase()"
                             />
-                            <label for="requisitionNumber" class="label"> {{ __('patients.referral_number') }} </label>
+                            <label for="requisitionNumber" class="label">
+                                {{ __('encounters.referral_number') }}
+                            </label>
                             <div class="absolute inset-y-0 end-0 flex items-center">
                                 <button
                                     type="button"
@@ -83,7 +85,7 @@
                                     required
                                 />
                                 <label for="paperReferralNumber" class="label required">
-                                    {{ __('patients.referral_number') }}
+                                    {{ __('encounters.referral_number') }}
                                 </label>
                                 <div class="absolute inset-y-0 end-0 flex items-center">
                                     <button
@@ -111,7 +113,7 @@
                                     required
                                 />
                                 <label for="paperReferralAuthor" class="label required">
-                                    {{ __('patients.paper_referral_author') }}
+                                    {{ __('encounters.paper_referral_author') }}
                                 </label>
                                 <div class="absolute inset-y-0 end-0 flex items-center">
                                     <button
@@ -141,7 +143,7 @@
                                     required
                                 />
                                 <label for="paperReferralEdrpou" class="label required">
-                                    {{ __('patients.paper_referral_edrpou_short') }}
+                                    {{ __('encounters.paper_referral_edrpou_short') }}
                                 </label>
                                 <div class="absolute inset-y-0 end-0 flex items-center">
                                     <button
@@ -170,7 +172,7 @@
                                     placeholder=" "
                                 />
                                 <label for="paperReferralInstitutionName" class="label">
-                                    {{ __('patients.paper_referral_institution_short') }}
+                                    {{ __('encounters.paper_referral_institution_short') }}
                                 </label>
                                 <div class="absolute inset-y-0 end-0 flex items-center">
                                     <button
@@ -201,7 +203,7 @@
                                     required
                                 />
                                 <label for="paperReferralDate" class="wrapped-label required">
-                                    {{ __('patients.paper_referral_date') }}
+                                    {{ __('encounters.paper_referral_date') }}
                                 </label>
                             </div>
                             @error('form.encounter.paperReferral.serviceRequestDate')
@@ -219,7 +221,7 @@
                                     placeholder=" "
                                 />
                                 <label for="paperReferralNotes" class="label">
-                                    {{ __('patients.paper_referral_notes') }}
+                                    {{ __('encounters.paper_referral_notes') }}
                                 </label>
                                 <div class="absolute inset-y-0 end-0 flex items-center">
                                     <button

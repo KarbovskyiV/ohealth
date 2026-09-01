@@ -53,7 +53,7 @@
 
                 <div class="record-inner-id-col">
                     <div class="min-w-0">
-                        <div class="record-inner-label">{{ __('patients.condition') }}</div>
+                        <div class="record-inner-label">{{ __('conditions.label') }}</div>
                         <div class="record-inner-id-value">
                             {{ data_get($diagnosis, 'condition.identifier.value', '-') }}
                         </div>

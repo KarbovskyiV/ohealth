@@ -224,7 +224,7 @@ class PatientProcedures extends BasePatientComponent
             $this->dispatchRemainingPages('procedure');
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_PROCEDURE);
-            Session::flash('success', __('patients.messages.procedure_synced_successfully'));
+            Session::flash('success', __('procedures.messages.synced_successfully'));
         }
 
         $this->loadFilterOptions();
@@ -286,7 +286,7 @@ class PatientProcedures extends BasePatientComponent
     public function proceedToSignature(): void
     {
         if ($this->procedureUuid === null) {
-            Session::flash('error', __('patients.messages.procedure_not_found'));
+            Session::flash('error', __('procedures.messages.not_found'));
 
             return;
         }
@@ -323,7 +323,7 @@ class PatientProcedures extends BasePatientComponent
     public function cancelSelectedProcedure(): void
     {
         if ($this->procedureUuid === null) {
-            Session::flash('error', __('patients.messages.procedure_not_found'));
+            Session::flash('error', __('procedures.messages.not_found'));
 
             return;
         }
@@ -360,7 +360,7 @@ class PatientProcedures extends BasePatientComponent
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle(
                 'Error while building procedure cancellation package',
-                __('patients.messages.procedure_cancel_package_prepare_error')
+                __('procedures.messages.cancel_package_prepare_error')
             );
 
             return;
@@ -377,7 +377,7 @@ class PatientProcedures extends BasePatientComponent
         } catch (CipherException|CipherConnectionException $exception) {
             $exception->handle(
                 'Error while signing procedure cancellation package',
-                __('patients.messages.procedure_cancel_package_sign_error')
+                __('procedures.messages.cancel_package_sign_error')
             );
 
             return;
@@ -405,7 +405,7 @@ class PatientProcedures extends BasePatientComponent
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle(
                 'Error while sending procedure cancellation package',
-                __('patients.messages.procedure_cancel_package_request_error')
+                __('procedures.messages.cancel_package_request_error')
             );
 
             return;
@@ -413,7 +413,7 @@ class PatientProcedures extends BasePatientComponent
             $this->handleDatabaseErrors(
                 $exception,
                 'Error while saving procedure cancellation status',
-                __('patients.messages.procedure_cancel_package_save_error')
+                __('procedures.messages.cancel_package_save_error')
             );
 
             return;
@@ -421,13 +421,13 @@ class PatientProcedures extends BasePatientComponent
 
         $this->resetCancellationState();
 
-        Session::flash('success', __('patients.messages.procedure_cancel_request_sent'));
+        Session::flash('success', __('procedures.messages.cancel_request_sent'));
     }
 
     private function findProcedureForAction(string $procedureUuid): ?Procedure
     {
         if (blank($procedureUuid)) {
-            Session::flash('error', __('patients.messages.procedure_not_found'));
+            Session::flash('error', __('procedures.messages.not_found'));
 
             return null;
         }
@@ -435,7 +435,7 @@ class PatientProcedures extends BasePatientComponent
         try {
             return Repository::procedure()->findByUuid($procedureUuid);
         } catch (ModelNotFoundException) {
-            Session::flash('error', __('patients.messages.procedure_not_found_in_db'));
+            Session::flash('error', __('procedures.messages.not_found_in_db'));
 
             return null;
         }
@@ -444,15 +444,15 @@ class PatientProcedures extends BasePatientComponent
     private function getCancellationForbiddenMessage(Procedure $procedure): ?string
     {
         if ($procedure->status === ProcedureStatus::ENTERED_IN_ERROR->value) {
-            return __('patients.messages.procedure_already_entered_in_error');
+            return __('procedures.messages.already_entered_in_error');
         }
 
         if ($procedure->encounter_id !== null) {
-            return __('patients.messages.procedure_with_encounter_cannot_be_cancelled_separately');
+            return __('procedures.messages.with_encounter_cannot_be_cancelled_separately');
         }
 
         if (Auth::user()?->cannot('cancel', $procedure)) {
-            return __('patients.policy.cancel_procedure');
+            return __('procedures.policy.cancel');
         }
 
         return null;

@@ -120,7 +120,7 @@
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.clinical_impression_conclusion') }}</div>
+                            <div class="record-inner-label">{{ __('clinical-impressions.conclusion') }}</div>
                             <div class="record-inner-value">{{ data_get($clinicalImpression, 'summary', '-') }}</div>
                         </div>
                     </div>

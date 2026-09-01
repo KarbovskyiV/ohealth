@@ -35,7 +35,7 @@
         <div class="mt-6 w-full" x-data="{ showAdditionalParams: $wire.entangle('showAdditionalParams') }">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
                 @icon('search-outline', 'w-4.5 h-4.5')
-                <p>{{ __('patients.immunization_search') }}</p>
+                <p>{{ __('immunizations.search') }}</p>
             </div>
 
             <div class="form-row-3 mb-6" x-data="{ filterCode: $wire.entangle('filterCode') }">
@@ -170,7 +170,7 @@
                         bind="filterEncounterId"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('patients.encounters')"
+                        :label="__('encounters.plural')"
                     />
                 </div>
             </div>
@@ -184,7 +184,7 @@
                             </div>
 
                             <div class="record-inner-column flex-1 !pl-4">
-                                <div class="record-inner-label">{{ __('patients.vaccine') }}</div>
+                                <div class="record-inner-label">{{ __('immunizations.vaccine') }}</div>
 
                                 <div class="record-inner-value text-[17px] font-semibold text-gray-900 dark:text-gray-100">
                                     {{ $this->dictionaryLabel($immunization, 'vaccineCode') }}
@@ -280,7 +280,7 @@
 
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px]">
-                                                {{ __('patients.manufacturer_and_lot_number') }}
+                                                {{ __('immunizations.manufacturer_and_lot_number') }}
                                             </div>
 
                                             <div class="record-inner-value text-[14px] font-semibold wrap-break-word">
@@ -301,7 +301,9 @@
 
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px]">{{ __('patients.route') }}</div>
+                                            <div class="record-inner-label text-[10px]">
+                                                {{ __('immunizations.route') }}
+                                            </div>
 
                                             <div class="record-inner-value text-[14px] font-semibold wrap-break-word">
                                                 {{ $this->dictionaryLabel($immunization, 'route') }}
@@ -342,7 +344,7 @@
 
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px]">
-                                                {{ __('patients.was_performed') }}
+                                                {{ __('immunizations.was_performed') }}
                                             </div>
 
                                             <div class="record-inner-value text-[14px] font-semibold">
@@ -354,7 +356,7 @@
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px]">
-                                                {{ __('patients.reactions') }}
+                                                {{ __('immunizations.reactions') }}
                                             </div>
 
                                             <div class="record-inner-value text-[14px]">
@@ -364,7 +366,7 @@
 
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px]">
-                                                {{ __('patients.date_time_performed') }}
+                                                {{ __('immunizations.date_time_performed') }}
                                             </div>
 
                                             <div class="record-inner-value text-[14px] font-semibold">
@@ -376,7 +378,7 @@
 
                                 <div class="mt-4 border-t border-gray-100 pt-4 dark:border-gray-700/50">
                                     <div class="record-inner-label mb-2 font-bold text-gray-900 dark:text-gray-100">
-                                        {{ __('patients.vaccination_protocol') }}:
+                                        {{ __('immunizations.vaccination_protocol') }}:
                                     </div>
 
                                     @php($protocol = data_get($immunization, 'vaccinationProtocols.0'))
@@ -387,7 +389,7 @@
                                                 <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gray-400"></span>
                                                 <div class="min-w-0">
                                                     <div class="mb-0 text-[10px] text-gray-500 dark:text-gray-400">
-                                                        {{ __('patients.target_diseases') }}:
+                                                        {{ __('immunizations.target_diseases') }}:
                                                     </div>
                                                     <div class="font-semibold wrap-break-word text-gray-800 dark:text-gray-200">
                                                         {{ $this->dictionaryLabel($protocol, 'targetDiseases.0') }}
@@ -399,7 +401,7 @@
                                                 <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gray-400"></span>
                                                 <div class="min-w-0">
                                                     <div class="mb-0 text-[10px] text-gray-500 dark:text-gray-400">
-                                                        {{ __('patients.protocol_author') }}:
+                                                        {{ __('immunizations.protocol_author') }}:
                                                     </div>
                                                     <div class="text-[11px] font-semibold tracking-wide wrap-break-word text-gray-800 uppercase dark:text-gray-200">
                                                         {{ $this->dictionaryLabel($protocol, 'authority') }}
@@ -413,7 +415,7 @@
                                                 <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gray-400"></span>
                                                 <div class="min-w-0">
                                                     <div class="mb-0 text-[10px] text-gray-500 dark:text-gray-400">
-                                                        {{ __('patients.dose_sequence') }}:
+                                                        {{ __('immunizations.dose_sequence') }}:
                                                     </div>
                                                     <div class="font-semibold text-gray-800 dark:text-gray-200">
                                                         {{ data_get($protocol, 'doseSequence') ?? '-' }}
@@ -425,7 +427,7 @@
                                                 <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gray-400"></span>
                                                 <div class="min-w-0">
                                                     <div class="mb-0 text-[10px] text-gray-500 dark:text-gray-400">
-                                                        {{ __('patients.immunization_series') }}:
+                                                        {{ __('immunizations.series') }}:
                                                     </div>
                                                     <div class="font-semibold text-gray-800 dark:text-gray-200">
                                                         {{ data_get($protocol, 'series') ?? '-' }}
@@ -439,7 +441,7 @@
                                                 <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gray-400"></span>
                                                 <div class="min-w-0">
                                                     <div class="mb-0 text-[10px] text-gray-500 dark:text-gray-400">
-                                                        {{ __('patients.series_of_doses_by_protocol') }}:
+                                                        {{ __('immunizations.series_of_doses_by_protocol') }}:
                                                     </div>
                                                     <div class="font-semibold text-gray-800 dark:text-gray-200">
                                                         {{ data_get($protocol, 'seriesDoses') ?? '-' }}
@@ -451,7 +453,7 @@
                                                 <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gray-400"></span>
                                                 <div class="min-w-0">
                                                     <div class="mb-0 text-[10px] text-gray-500 dark:text-gray-400">
-                                                        {{ __('patients.protocol_description') }}:
+                                                        {{ __('immunizations.protocol_description') }}:
                                                     </div>
                                                     <div class="font-semibold wrap-break-word text-gray-800 dark:text-gray-200">
                                                         {{ data_get($protocol, 'description') ?? '-' }}

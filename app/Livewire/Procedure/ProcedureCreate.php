@@ -25,13 +25,13 @@ class ProcedureCreate extends ProcedureComponent
     public function save(array $procedureData): void
     {
         if (Auth::user()->cannot('create', Procedure::class)) {
-            Session::flash('error', __('patients.policy.create_procedure'));
+            Session::flash('error', __('procedures.policy.create'));
 
             return;
         }
 
         if (!Auth::user()->getProcedureWriterEmployee()) {
-            Session::flash('error', __('patients.messages.procedure_writer_employee_not_found'));
+            Session::flash('error', __('procedures.messages.writer_employee_not_found'));
 
             return;
         }
@@ -48,13 +48,13 @@ class ProcedureCreate extends ProcedureComponent
     public function sign(): void
     {
         if (Auth::user()->cannot('create', Procedure::class)) {
-            Session::flash('error', __('patients.policy.create_procedure'));
+            Session::flash('error', __('procedures.policy.create'));
 
             return;
         }
 
         if (!Auth::user()->getProcedureWriterEmployee()) {
-            Session::flash('error', __('patients.messages.procedure_writer_employee_not_found'));
+            Session::flash('error', __('procedures.messages.writer_employee_not_found'));
 
             return;
         }
