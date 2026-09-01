@@ -819,4 +819,7 @@ return [
     'search_detected_medical_device_problems' => 'Пошук проблем асоційованих медичних виробів',
     'medical_device_name' => 'Назва виробу',
     'issue_id' => 'ID проблеми',
+    'patient_verifications' => 'Верифікації пацієнтів',
+    'ukrainian' => 'Українська',
+    'my_patients' => 'Мої пацієнти',
 ];
