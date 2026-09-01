@@ -205,6 +205,7 @@ return [
     'employees' => 'Працівники',
     'employee' => 'Працівник',
     'employee_search' => 'Пошук працівника',
+    'employee_id' => 'Ідентифікатор працівника',
     'new_employee' => 'Новий працівник',
     'add_employee' => 'Додати працівника',
     'edit_employee' => 'Зміна даних працівника',

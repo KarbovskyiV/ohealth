@@ -293,6 +293,52 @@
                     </li>
                 @endif
 
+                <li x-data="{ open: false }" class="space-y-2">
+                    <button
+                        @click="open = ! open"
+                        type="button"
+                        class="menu-item"
+                        aria-controls="dropdown-my-patients"
+                        :aria-expanded="open"
+                    >
+                        @icon('fluent-patient')
+                        <span>{{ __('patients.my_patients') }}</span>
+
+                        <svg
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                            xmlns="http://www.w3.org/2000/svg"
+                            :class="{ 'rotate-180': open, 'rotate-0': ! open }"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                clip-rule="evenodd"
+                            ></path>
+                        </svg>
+                    </button>
+
+                    <ul
+                        id="dropdown-my-patients"
+                        x-cloak
+                        class="space-y-2 py-2"
+                        x-show="open"
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="transform opacity-0 scale-95"
+                        x-transition:enter-end="transform opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-75"
+                        x-transition:leave-start="transform opacity-100 scale-100"
+                        x-transition:leave-end="transform opacity-0 scale-95"
+                    >
+                        <li>
+                            <a href="{{ route('persons.verifications', [legalEntity()]) }}" class="submenu-item">
+                                @icon('verifications')
+                                <span>{{ __('forms.verifications') }}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
                 @if (Auth::user()->can('viewAny', Preperson::class))
                     <li>
                         <a

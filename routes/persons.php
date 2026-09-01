@@ -35,6 +35,7 @@ use App\Livewire\Person\Records\DeviceDispenses;
 use App\Livewire\Person\Records\PatientDeviceIssues;
 use App\Livewire\Person\Records\PatientSummary;
 use App\Livewire\Person\Records\PatientVerification;
+use App\Livewire\Person\PatientVerifications;
 use App\Livewire\Preperson\PrepersonData;
 use App\Livewire\Preperson\PrepersonEdit;
 use App\Livewire\Preperson\PrepersonIndex;
@@ -152,6 +153,8 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
             ->name('procedure.edit')
             ->whereNumber('procedureId');
     });
+
+    Route::get('/verifications', PatientVerifications::class)->name('persons.verifications');
 });
 
 Route::prefix('prepersons')
