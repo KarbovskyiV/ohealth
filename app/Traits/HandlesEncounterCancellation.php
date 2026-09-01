@@ -69,7 +69,7 @@ trait HandlesEncounterCancellation
         }
 
         if (Auth::user()->cannot('cancel', $encounter)) {
-            Session::flash('error', __('patients.policy.cancel_encounter'));
+            Session::flash('error', __('encounters.policy.cancel'));
 
             return;
         }
@@ -104,7 +104,7 @@ trait HandlesEncounterCancellation
         }
 
         if (Auth::user()->cannot('cancel', $encounter)) {
-            Session::flash('error', __('patients.policy.cancel_encounter'));
+            Session::flash('error', __('encounters.policy.cancel'));
 
             return;
         }
@@ -154,7 +154,7 @@ trait HandlesEncounterCancellation
         }
 
         if (Auth::user()->cannot('cancel', $encounter)) {
-            Session::flash('error', __('patients.policy.cancel_encounter'));
+            Session::flash('error', __('encounters.policy.cancel'));
 
             return;
         }
@@ -179,7 +179,7 @@ trait HandlesEncounterCancellation
             $this->handleDatabaseErrors(
                 $exception,
                 'Error while building encounter cancellation package',
-                __('patients.messages.encounter_cancel_package_prepare_error')
+                __('encounters.messages.cancel_package_prepare_error')
             );
 
             return;
@@ -196,7 +196,7 @@ trait HandlesEncounterCancellation
         } catch (CipherException|CipherConnectionException $exception) {
             $exception->handle(
                 'Error while signing encounter cancellation package',
-                __('patients.messages.encounter_cancel_package_sign_error')
+                __('encounters.messages.cancel_package_sign_error')
             );
 
             return;
@@ -212,7 +212,7 @@ trait HandlesEncounterCancellation
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle(
                 'Error while sending encounter cancellation package',
-                __('patients.messages.encounter_cancel_package_request_error')
+                __('encounters.messages.cancel_package_request_error')
             );
 
             return;
@@ -247,7 +247,7 @@ trait HandlesEncounterCancellation
             $this->handleDatabaseErrors(
                 $exception,
                 'Error while saving encounter cancellation status',
-                __('patients.messages.encounter_cancel_package_save_error')
+                __('encounters.messages.cancel_package_save_error')
             );
 
             return;
@@ -256,8 +256,8 @@ trait HandlesEncounterCancellation
         $this->resetCancellationState();
 
         Session::flash('success', __($selectedRecords === []
-            ? 'patients.messages.encounter_cancel_request_sent'
-            : 'patients.messages.encounter_records_cancel_request_sent'));
+            ? 'encounters.messages.cancel_request_sent'
+            : 'encounters.messages.records_cancel_request_sent'));
 
         $this->afterEncounterCancelled();
     }
@@ -273,7 +273,7 @@ trait HandlesEncounterCancellation
         $encounter = Encounter::forPatient($this->patient())->whereUuid($id)->first();
 
         if ($encounter === null) {
-            Session::flash('error', __('patients.messages.encounter_not_found_in_db'));
+            Session::flash('error', __('encounters.messages.not_found_in_db'));
         }
 
         return $encounter;

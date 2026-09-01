@@ -2,7 +2,7 @@
     use App\Livewire\Encounter\EncounterEdit;
 
     $patientName = $patientFullName ?? __('forms.patient');
-    $title = __('patients.encounter') . ' - ' . $patientName;
+    $title = __('encounters.label') . ' - ' . $patientName;
     $isReadonly = $this instanceof EncounterEdit && $this->isReadonly;
     $canCancelRecords = $this instanceof EncounterEdit && $this->canBeCancelled;
 
@@ -10,14 +10,14 @@
         ['id' => 'referral', 'label' => __('patients.referrals'), 'icon' => 'arrow-right', 'view' => 'livewire.encounter.parts.referral'],
         ['id' => 'main-data', 'label' => __('forms.main_information'), 'icon' => 'pie-chart', 'view' => 'livewire.encounter.parts.main-data'],
         ['id' => 'conditions', 'label' => __('patients.diagnoses'), 'icon' => 'file', 'view' => 'livewire.encounter.parts.conditions'],
-        ['id' => 'reasons', 'label' => __('patients.reasons_for_visit'), 'icon' => 'person', 'view' => 'livewire.encounter.parts.reasons'],
+        ['id' => 'reasons', 'label' => __('encounters.reasons_for_visit'), 'icon' => 'person', 'view' => 'livewire.encounter.parts.reasons'],
         ['id' => 'actions', 'label' => __('forms.actions'), 'icon' => 'check-box', 'view' => 'livewire.encounter.parts.actions'],
-        ['id' => 'additional-data', 'label' => __('patients.additional_data'), 'icon' => 'Edit3', 'view' => 'livewire.encounter.parts.additional-data'],
-        ['id' => 'observations', 'label' => __('patients.observation'), 'icon' => 'heart', 'view' => 'livewire.encounter.parts.observations', 'holdsCancellableRecords' => true],
-        ['id' => 'immunizations', 'label' => __('patients.immunizations'), 'icon' => 'shield', 'view' => 'livewire.encounter.parts.immunizations', 'holdsCancellableRecords' => true],
-        ['id' => 'procedures', 'label' => __('patients.procedures'), 'icon' => 'settings', 'view' => 'livewire.encounter.parts.procedures', 'holdsCancellableRecords' => true],
-        ['id' => 'diagnostic-reports', 'label' => __('patients.diagnostic_reports'), 'icon' => 'activity', 'view' => 'livewire.encounter.parts.diagnostic-reports', 'holdsCancellableRecords' => true],
-        ['id' => 'clinical-impressions', 'label' => __('patients.clinical_impressions'), 'icon' => 'check', 'view' => 'livewire.encounter.parts.clinical-impressions', 'holdsCancellableRecords' => true],
+        ['id' => 'additional-data', 'label' => __('encounters.additional_data'), 'icon' => 'Edit3', 'view' => 'livewire.encounter.parts.additional-data'],
+        ['id' => 'observations', 'label' => __('observations.label'), 'icon' => 'heart', 'view' => 'livewire.encounter.parts.observations', 'holdsCancellableRecords' => true],
+        ['id' => 'immunizations', 'label' => __('immunizations.plural'), 'icon' => 'shield', 'view' => 'livewire.encounter.parts.immunizations', 'holdsCancellableRecords' => true],
+        ['id' => 'procedures', 'label' => __('procedures.plural'), 'icon' => 'settings', 'view' => 'livewire.encounter.parts.procedures', 'holdsCancellableRecords' => true],
+        ['id' => 'diagnostic-reports', 'label' => __('diagnostic-reports.plural'), 'icon' => 'activity', 'view' => 'livewire.encounter.parts.diagnostic-reports', 'holdsCancellableRecords' => true],
+        ['id' => 'clinical-impressions', 'label' => __('clinical-impressions.plural'), 'icon' => 'check', 'view' => 'livewire.encounter.parts.clinical-impressions', 'holdsCancellableRecords' => true],
         ['id' => 'devices', 'label' => __('devices.label'), 'icon' => 'equipment', 'view' => 'livewire.encounter.parts.devices', 'holdsCancellableRecords' => true],
         ['id' => 'device-association', 'label' => __('patients.medical_device_connections'), 'icon' => 'boxicons-plug-connect-filled', 'view' => 'livewire.encounter.parts.device-association', 'holdsCancellableRecords' => true],
         ['id' => 'detected-issue', 'label' => __('patients.detected_medical_device_problems'), 'icon' => 'alert-octagon', 'view' => 'livewire.encounter.parts.detected-issue', 'holdsCancellableRecords' => true],
@@ -50,33 +50,38 @@
     ]"
 >
     <x-slot name="headerActions">
-        <div class="w-full lg:w-75 flex justify-start">
-            @if($canCancelRecords)
-                <div class="relative inline-block" x-data="{ openGroupActions: false }" @click.outside="openGroupActions = false">
-                    <button type="button"
-                            @click="openGroupActions = !openGroupActions"
-                            class="button-primary-outline px-5 py-2.5 text-sm"
+        <div class="flex w-full justify-start lg:w-75">
+            @if ($canCancelRecords)
+                <div
+                    class="relative inline-block"
+                    x-data="{ openGroupActions: false }"
+                    @click.outside="openGroupActions = false"
+                >
+                    <button
+                        type="button"
+                        @click="openGroupActions = ! openGroupActions"
+                        class="button-primary-outline px-5 py-2.5 text-sm"
                     >
                         {{ __('patients.group_actions') }}
                     </button>
 
-                    <div x-show="openGroupActions"
-                         x-transition
-                         x-cloak
-                         class="absolute top-full left-0 z-10 mt-2 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-700"
+                    <div
+                        x-show="openGroupActions"
+                        x-transition
+                        x-cloak
+                        class="absolute top-full left-0 z-10 mt-2 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-700"
                     >
                         <div class="py-1">
-                            <button type="button"
-                                    @click="openGroupActions = false"
-                                    wire:click="openRecordsCancellation"
-                                    class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-600"
+                            <button
+                                type="button"
+                                @click="openGroupActions = false"
+                                wire:click="openRecordsCancellation"
+                                class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-600"
                             >
                                 <span class="!text-red-500 dark:!text-red-400">
                                     @icon('close', 'w-4 h-4')
                                 </span>
-                                <span class="!text-red-500 dark:!text-red-400">
-                                    {{ __('forms.mark_as_error') }}
-                                </span>
+                                <span class="!text-red-500 dark:!text-red-400"> {{ __('forms.mark_as_error') }} </span>
                             </button>
                         </div>
                     </div>
@@ -133,8 +138,8 @@
 
                 participantSourceLabels: {
                     diagnosis: {!! $escapeForAlpineAttribute(__('patients.diagnosis_performer')) !!},
-                    procedure: {!! $escapeForAlpineAttribute(__('patients.procedure_performer')) !!},
-                    diagnosticReport: {!! $escapeForAlpineAttribute(__('patients.diagnostic_report_performer')) !!},
+                    procedure: {!! $escapeForAlpineAttribute(__('procedures.performer')) !!},
+                    diagnosticReport: {!! $escapeForAlpineAttribute(__('diagnostic-reports.performer')) !!},
                     participantEmployeeNames: {!! $escapeForAlpineAttribute($participantEmployeeNames) !!},
                 },
 
@@ -236,7 +241,7 @@
                         .map(source => this.participantSourceLabels[source])
                         .filter(Boolean);
 
-                    const baseLabel = {!! $escapeForAlpineAttribute(__('patients.coauthor')) !!};
+                    const baseLabel = {!! $escapeForAlpineAttribute(__('encounters.coauthor')) !!};
 
                     return labels.length ? baseLabel + ' - ' + labels.join(', ') : baseLabel;
                 },
@@ -265,10 +270,10 @@
                                 </span>
                                 <div class="flex-1 space-y-1">
                                     <h4 class="text-sm font-bold text-[#1e40af] dark:text-[#93c5fd]">
-                                        {{ __('patients.preperson_observations_alert_title') }}
+                                        {{ __('observations.preperson_alert_title') }}
                                     </h4>
                                     <p class="text-xs text-[#2563eb] dark:text-[#60a5fa]">
-                                        {{ __('patients.preperson_observations_alert_text') }}
+                                        {{ __('observations.preperson_alert_text') }}
                                     </p>
                                 </div>
                             </div>
@@ -348,7 +353,7 @@
                 @if (isset($encounterId))
                     <div class="mt-10 border-t border-gray-100 pt-10 dark:border-gray-700">
                         <h3 class="mb-6 text-[17px] font-bold text-gray-900 dark:text-gray-100">
-                            {{ __('patients.additional_actions') }}
+                            {{ __('encounters.additional_actions') }}
                         </h3>
 
                         <div class="space-y-6">
@@ -360,7 +365,7 @@
                                     class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                 >
                                     @icon('plus', 'w-4 h-4')
-                                    <span>{{ __('patients.add_prescription') }}</span>
+                                    <span>{{ __('encounters.add_prescription') }}</span>
                                 </button>
                             </fieldset>
 
@@ -372,7 +377,7 @@
                                     class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                 >
                                     @icon('plus', 'w-4 h-4')
-                                    <span>{{ __('patients.add_referral') }}</span>
+                                    <span>{{ __('encounters.add_referral') }}</span>
                                 </button>
                             </fieldset>
 
@@ -383,7 +388,7 @@
                                     class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                 >
                                     @icon('plus', 'w-4 h-4')
-                                    <span>{{ __('patients.add_medical_report') }}</span>
+                                    <span>{{ __('encounters.add_medical_report') }}</span>
                                 </button>
                             </fieldset>
 
@@ -394,7 +399,7 @@
                                     class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                 >
                                     @icon('plus', 'w-4 h-4')
-                                    <span>{{ __('patients.add_care_plan') }}</span>
+                                    <span>{{ __('encounters.add_care_plan') }}</span>
                                 </a>
                             </fieldset>
                         </div>
@@ -418,7 +423,7 @@
                                 type="button"
                                 class="button-primary-outline-red"
                             >
-                                {{ __('patients.records_entered_in_error') }}
+                                {{ __('encounters.records_entered_in_error') }}
                             </button>
                         @endif
 
@@ -496,11 +501,11 @@
 
     @if ($this instanceof EncounterEdit && $this->canBeCancelled)
         @include('livewire.encounter.encounter-cancellation', [
-            'formPath' => 'cancellationForm',
-            'description' => array_filter($this->selectedRecords)
-                ? __('patients.messages.encounter_records_cancel_modal_description')
-                : __('patients.messages.encounter_cancel_modal_description')
-        ])
+                    'formPath' => 'cancellationForm',
+                    'description' => array_filter($this->selectedRecords)
+                        ? __('encounters.messages.records_cancel_modal_description')
+                        : __('encounters.messages.cancel_modal_description')
+                ])
     @endif
 
     @if ($this instanceof EncounterEdit)

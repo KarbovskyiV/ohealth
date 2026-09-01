@@ -131,7 +131,7 @@ class EncounterCreate extends EncounterComponent
     public function save(): void
     {
         if (Auth::user()->cannot('create', Encounter::class)) {
-            $message = __('patients.policy.create_encounter');
+            $message = __('encounters.policy.create');
             Session::flash('error', $message);
             $this->dispatch('flashMessage', ['type' => 'error', 'message' => $message]);
 
@@ -169,7 +169,7 @@ class EncounterCreate extends EncounterComponent
             return;
         }
 
-        Session::flash('success', __('patients.messages.encounter_created'));
+        Session::flash('success', __('encounters.messages.created'));
 
         if ($this->prepersonId !== null) {
             $this->redirectRoute(
@@ -192,7 +192,7 @@ class EncounterCreate extends EncounterComponent
     public function sign(): void
     {
         if (Auth::user()->cannot('create', Encounter::class)) {
-            $message = __('patients.policy.create_encounter');
+            $message = __('encounters.policy.create');
             Session::flash('error', $message);
             $this->showSignatureModal = false;
             $this->dispatch('flashMessage', ['type' => 'error', 'message' => $message]);

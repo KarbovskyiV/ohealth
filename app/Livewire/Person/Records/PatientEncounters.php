@@ -144,7 +144,7 @@ class PatientEncounters extends BasePatientComponent
             $this->dispatchRemainingPages('encounter');
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_ENCOUNTER);
-            Session::flash('success', __('patients.messages.encounters_synced_successfully'));
+            Session::flash('success', __('encounters.messages.synced_successfully'));
         }
 
         $this->loadFilterOptions();

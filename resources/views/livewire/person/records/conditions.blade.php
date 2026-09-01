@@ -38,7 +38,7 @@
         <div class="mt-6 w-full" x-data="{ showAdditionalParams: $wire.entangle('showAdditionalParams') }">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
                 @icon('search-outline', 'w-4.5 h-4.5')
-                <p>{{ __('patients.condition_search') }}</p>
+                <p>{{ __('conditions.search') }}</p>
             </div>
 
             <div
@@ -176,7 +176,7 @@
                         bind="filterEncounterId"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('patients.encounters')"
+                        :label="__('encounters.plural')"
                     />
 
                     <x-forms.combobox
@@ -231,7 +231,7 @@
                                 autocomplete="off"
                             />
 
-                            <label class="wrapped-label"> {{ __('patients.filter_onset_date_range') }} </label>
+                            <label class="wrapped-label"> {{ __('conditions.filter_onset_date_range') }} </label>
                         </div>
                     </div>
                 </div>
@@ -351,7 +351,7 @@
                                         </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('patients.condition') }}</div>
+                                        <div class="record-inner-label">{{ __('conditions.label') }}</div>
                                         <div class="record-inner-value text-[14px] wrap-break-word">
                                             {{ $this->dictionaryLabel($condition, 'severity') ?? '-' }}
                                         </div>
@@ -383,12 +383,12 @@
                                 <!-- Evidence Section -->
                                 <div class="mt-4 border-t border-gray-100 pt-4 dark:border-gray-700/50">
                                     <div class="record-inner-label mb-2 font-semibold text-gray-700 uppercase dark:text-gray-300">
-                                        {{ __('patients.evidence') }}
+                                        {{ __('conditions.evidence') }}
                                     </div>
                                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                         <div class="min-w-0">
                                             <div class="mb-1 text-[11px] text-gray-400 uppercase">
-                                                {{ __('patients.conditions') }}
+                                                {{ __('conditions.plural') }}
                                             </div>
                                             <div class="text-sm font-medium text-gray-800 dark:text-gray-200">
                                                 @forelse (data_get($condition, 'evidences', []) as $evidence)
@@ -406,7 +406,7 @@
                                         </div>
                                         <div class="min-w-0">
                                             <div class="mb-1 text-[11px] text-gray-400 uppercase">
-                                                {{ __('patients.evidence_observations') }}
+                                                {{ __('conditions.evidence_observations') }}
                                             </div>
                                             <div class="text-sm leading-relaxed font-medium wrap-break-word text-gray-800 dark:text-gray-200">
                                                 @forelse (data_get($condition, 'evidences', []) as $evidence)

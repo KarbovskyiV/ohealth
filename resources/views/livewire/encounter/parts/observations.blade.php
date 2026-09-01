@@ -37,7 +37,7 @@
         reactionHasSearched: false,
 
         reactionImmunizationName(immunization) {
-            if (!immunization) {
+            if (! immunization) {
                 return '—';
             }
 
@@ -51,7 +51,7 @@
             const unique = new Map();
 
             items.forEach(immunization => {
-                if (!immunization?.uuid || immunization.notGiven === true || immunization.status === 'entered_in_error') {
+                if (! immunization?.uuid || immunization.notGiven === true || immunization.status === 'entered_in_error') {
                     return;
                 }
 
@@ -79,7 +79,7 @@
         },
 
         loadReactionImmunizations() {
-            if (!this.reactionEpisodeId) {
+            if (! this.reactionEpisodeId) {
                 this.reactionImmunizations = [];
                 this.reactionHasSearched = false;
 
@@ -118,26 +118,24 @@
         }
     }"
 >
-
     <div class="space-y-4">
         <template x-for="(observation, index) in observations" :key="index">
             <div class="record-inner-card">
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
-                        <input type="checkbox"
-                               class="default-checkbox w-5 h-5"
-                               :value="observation.uuid"
-                               x-model="selectedRecords"
-                               :disabled="!canCancelRecords
-                                   || !observation.uuid
-                                   || cancelledRecords.includes(observation.uuid)"
-                        >
+                        <input
+                            type="checkbox"
+                            class="default-checkbox h-5 w-5"
+                            :value="observation.uuid"
+                            x-model="selectedRecords"
+                            :disabled="! canCancelRecords ||
+                            ! observation.uuid ||
+                            cancelledRecords.includes(observation.uuid)"
+                        />
                     </div>
 
                     <template x-if="cancelledRecords.includes(observation.uuid)">
-                        <span class="record-inner-badge-error">
-                            {{ __('patients.status.entered_in_error') }}
-                        </span>
+                        <span class="record-inner-badge-error"> {{ __('patients.status.entered_in_error') }} </span>
                     </template>
 
                     <div class="record-inner-column flex-1">
@@ -167,36 +165,32 @@
                                     this.openDropdown = true;
                                 },
                                 close(focusAfter) {
-                                    if (!this.openDropdown) return;
+                                    if (! this.openDropdown) return;
 
                                     this.openDropdown = false;
 
                                     focusAfter && focusAfter.focus();
-                                }
+                                },
                             }"
                             @keydown.escape.prevent.stop="close($refs.button)"
-                            @focusin.window="$refs.panel && !$refs.panel.contains($event.target) && close()"
+                            @focusin.window="$refs.panel && ! $refs.panel.contains($event.target) && close()"
                             x-id="['dropdown-button']"
                             class="relative"
                         >
-                            @if($isReadonly)
+                            @if ($isReadonly)
                                 <a
                                     href="#"
                                     @click.prevent="
                                         openModal = true;
                                         item = index;
-                                        modalObservation = JSON.parse(
-                                            JSON.stringify(observations[index])
-                                        );
+                                        modalObservation = JSON.parse(JSON.stringify(observations[index]));
                                         newObservation = false;
                                     "
                                     class="record-inner-action-btn cursor-pointer"
                                     title="{{ __('forms.view') }}"
                                 >
                                     @icon('eye', 'w-6 h-6')
-                                    <span class="sr-only">
-                                        {{ __('forms.view') }}
-                                    </span>
+                                    <span class="sr-only"> {{ __('forms.view') }} </span>
                                 </a>
                             @else
                                 {{-- Dropdown Button --}}
@@ -208,11 +202,19 @@
                                     type="button"
                                     class="record-inner-action-btn cursor-pointer"
                                 >
-                                    <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" aria-hidden="true"
-                                        xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                                    <svg
+                                        class="h-6 w-6 text-gray-800 dark:text-gray-200"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        fill="none"
                                         viewBox="0 0 24 24"
                                     >
-                                        <path stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"
+                                        <path
+                                            stroke="currentColor"
+                                            stroke-linecap="square"
+                                            stroke-linejoin="round"
                                             stroke-width="2"
                                             d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
                                         />
@@ -244,7 +246,10 @@
 
                                         <button
                                             class="dropdown-delete"
-                                            @click.prevent="observations.splice(index, 1); close($refs.button)"
+                                            @click.prevent="
+                                                observations.splice(index, 1);
+                                                close($refs.button);
+                                            "
                                         >
                                             {{ __('forms.delete') }}
                                         </button>
@@ -257,7 +262,7 @@
 
                 <div class="record-inner-body">
                     <div class="record-inner-grid-container">
-                        <div class="grid grid-cols-2 xl:grid-cols-3 gap-y-4 gap-x-4 w-full">
+                        <div class="grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-3">
                             <div>
                                 <div class="record-inner-label">{{ __('forms.category') }}</div>
                                 <div
@@ -270,7 +275,7 @@
                                 ></div>
                             </div>
                             <div>
-                                <div class="record-inner-label">{{ __('patients.value') }}</div>
+                                <div class="record-inner-label">{{ __('observations.value') }}</div>
                                 <div
                                     class="record-inner-subvalue"
                                     x-text="
@@ -301,7 +306,7 @@
 
     <div>
         {{-- Button to trigger the modal --}}
-        @unless($isReadonly)
+        @unless ($isReadonly)
             <button
                 @click.prevent="
                     openModal = true;
@@ -315,7 +320,8 @@
         @endunless
 
         {{-- Modal --}}
-        <template x-teleport="body"> {{-- This moves the modal at the end of the body tag --}}
+        <template x-teleport="body">
+            {{-- This moves the modal at the end of the body tag --}}
             <div
                 x-show="openModal"
                 style="display: none"
@@ -323,10 +329,10 @@
                 role="dialog"
                 aria-modal="true"
                 x-id="['modal-title']"
-                :aria-labelledby="$id('modal-title')" {{-- This associates the modal with unique ID --}}
+                :aria-labelledby="$id('modal-title')"
+                {{-- This associates the modal with unique ID --}}
                 class="modal"
             >
-
                 {{-- Overlay --}}
                 <div x-show="openModal" x-transition.opacity class="fixed inset-0 bg-black/25"></div>
 
@@ -337,25 +343,22 @@
                     @click="openModal = false"
                     class="relative flex min-h-screen items-center justify-center p-4"
                 >
-                    <div @click.stop
-                         x-trap.noscroll.inert="openModal"
-                         class="modal-content h-fit w-full lg:max-w-7xl"
-                    >
+                    <div @click.stop x-trap.noscroll.inert="openModal" class="modal-content h-fit w-full lg:max-w-7xl">
                         {{-- Title --}}
-                        <h3 class="modal-header" :id="$id('modal-title')">{{ __('patients.observation') }}</h3>
+                        <h3 class="modal-header" :id="$id('modal-title')">{{ __('observations.label') }}</h3>
 
                         {{-- Content --}}
                         <form>
                             <fieldset
                                 @disabled($isReadonly)
                                 @class([
-                                    'pointer-event-none' => $isReadonly
-                                ])
+                                                                    'pointer-event-none' => $isReadonly
+                                                                ])
                             >
                                 @include('livewire.encounter.observation-parts.coding-system')
                                 @include('livewire.encounter.observation-parts.main-information')
                                 @include('livewire.encounter.observation-parts.additional-information')
-                                @if($isEncounterContext)
+                                @if ($isEncounterContext)
                                     @include('livewire.encounter.observation-parts.reaction-on')
                                 @endif
 
@@ -364,60 +367,60 @@
                                         {{ $isReadonly ? __('forms.close') : __('forms.cancel') }}
                                     </button>
 
-                                    @unless($isReadonly)
-                                        <button @click.prevent="
-                                                    const selectedValueType = valueMap[modalObservation.codeCode]?.[1];
+                                    @unless ($isReadonly)
+                                        <button
+                                            @click.prevent="
+                                                const selectedValueType = valueMap[modalObservation.codeCode]?.[1];
 
-                                                    const fieldsToDelete = [
-                                                        'valueQuantity',
-                                                        'valueCodeableConcept',
-                                                        'valueString',
-                                                        'valueBoolean',
-                                                        'valueDateTime'
-                                                    ];
+                                                const fieldsToDelete = [
+                                                    'valueQuantity',
+                                                    'valueCodeableConcept',
+                                                    'valueString',
+                                                    'valueBoolean',
+                                                    'valueDateTime',
+                                                ];
 
-                                                    fieldsToDelete.forEach(field => {
-                                                        if (field !== selectedValueType) {
-                                                            if (field === 'valueQuantity') {
-                                                                modalObservation.valueQuantityValue = '';
-                                                                modalObservation.valueQuantityComparator = '';
-                                                                modalObservation.valueQuantityUnit = '';
-                                                                modalObservation.valueQuantitySystem = '';
-                                                                modalObservation.valueQuantityCode = '';
-                                                            } else if (field === 'valueDateTime') {
-                                                                delete modalObservation.valueDate;
-                                                                delete modalObservation.valueTime;
-                                                            } else {
-                                                                delete modalObservation[field];
-                                                            }
+                                                fieldsToDelete.forEach((field) => {
+                                                    if (field !== selectedValueType) {
+                                                        if (field === 'valueQuantity') {
+                                                            modalObservation.valueQuantityValue = '';
+                                                            modalObservation.valueQuantityComparator = '';
+                                                            modalObservation.valueQuantityUnit = '';
+                                                            modalObservation.valueQuantitySystem = '';
+                                                            modalObservation.valueQuantityCode = '';
+                                                        } else if (field === 'valueDateTime') {
+                                                            delete modalObservation.valueDate;
+                                                            delete modalObservation.valueTime;
+                                                        } else {
+                                                            delete modalObservation[field];
                                                         }
-                                                    });
+                                                    }
+                                                });
 
-                                                    modalObservation.dictionaryName = $wire.observationValueMap[modalObservation.codeCode]?.[0];
+                                                modalObservation.dictionaryName =
+                                                    $wire.observationValueMap[modalObservation.codeCode]?.[0];
 
-                                                    newObservation !== false
-                                                        ? observations.push(modalObservation)
-                                                        : observations[item] = modalObservation;
+                                                newObservation !== false
+                                                    ? observations.push(modalObservation)
+                                                    : (observations[item] = modalObservation);
 
-                                                    showDuplicateCodeWarning = false;
-                                                    openModal = false;
-                                                "
-                                                class="button-primary"
-                                                :disabled="!(
-                                                    modalObservation.issuedDate.trim() &&
-                                                    modalObservation.issuedTime.trim() &&
-                                                    modalObservation.categoryCode.trim() &&
-                                                    modalObservation.codeCode.trim()
-                                                )"
+                                                showDuplicateCodeWarning = false;
+                                                openModal = false;
+                                            "
+                                            class="button-primary"
+                                            :disabled="! (
+                                                modalObservation.issuedDate.trim() &&
+                                                modalObservation.issuedTime.trim() &&
+                                                modalObservation.categoryCode.trim() &&
+                                                modalObservation.codeCode.trim()
+                                            )"
                                         >
                                             {{ __('forms.save') }}
                                         </button>
                                     @endunless
                                 </div>
                                 <template x-if="showDuplicateCodeWarning">
-                                    <p class="text-error text-right">
-                                        {!! __('patients.duplicate_code_warning') !!}
-                                    </p>
+                                    <p class="text-error text-right">{!! __('patients.duplicate_code_warning') !!}</p>
                                 </template>
                             </fieldset>
                         </form>
@@ -461,8 +464,8 @@
                 codeSystem: 'eHealth/ICF/qualifiers',
                 valueCode: '',
                 valueSystem: '',
-                interpretationCode: ''
-            }
+                interpretationCode: '',
+            },
         ];
 
         constructor(obj = null) {
@@ -472,7 +475,7 @@
             const formattedTime = now.toLocaleTimeString('uk-UA', {
                 hour: '2-digit',
                 minute: '2-digit',
-                hour12: false
+                hour12: false,
             });
 
             this.issuedDate = formattedDate;

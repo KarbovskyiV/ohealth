@@ -254,7 +254,7 @@ class ProcedureComponent extends Component
             return;
         }
 
-        Session::flash('success', __('patients.messages.procedure_saved'));
+        Session::flash('success', __('procedures.messages.saved'));
 
         if ($this->prepersonId !== null) {
             $this->redirectRoute(
@@ -312,7 +312,7 @@ class ProcedureComponent extends Component
 
             $procedureId = $this->persist($formattedData);
 
-            Session::flash('success', __('patients.messages.procedure_create_request_sent'));
+            Session::flash('success', __('procedures.messages.create_request_sent'));
 
             if ($this->prepersonId !== null) {
                 $this->redirectRoute(

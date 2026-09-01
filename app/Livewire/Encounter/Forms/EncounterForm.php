@@ -779,7 +779,7 @@ class EncounterForm extends BaseForm
                             }
 
                             if ($issued->lessThan($encounterStart) || $issued->greaterThan($encounterEnd)) {
-                                $fail(__('patients.diagnostic_report_issued_outside_encounter_period'));
+                                $fail(__('diagnostic-reports.issued_outside_encounter_period'));
 
                                 return;
                             }
@@ -1476,9 +1476,9 @@ class EncounterForm extends BaseForm
         $this->addConditionAsserterValidation($rules);
         $this->addEmployeeTypeConditionsValidation($rules);
         $this->addSpecialityConditionsValidation($rules);
+
         return $rules;
     }
-
 
     /**
      * @return array
@@ -1494,7 +1494,7 @@ class EncounterForm extends BaseForm
             'encounter.actions.required_if' => __('validation.custom.encounter.actions.required_if'),
             'encounter.actions.prohibited_unless' => __('validation.custom.encounter.actions.prohibited_unless'),
             'encounter.participant.min' => __('validation.custom.encounter.participant.concilium_min'),
-            'encounter.participant.*.uuid.distinct' =>  __('validation.custom.encounter.participant.unique'),
+            'encounter.participant.*.uuid.distinct' => __('validation.custom.encounter.participant.unique'),
         ];
     }
 

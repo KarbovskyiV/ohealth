@@ -35,7 +35,7 @@
         <div class="mt-6 w-full" x-data="{ showAdditionalParams: $wire.entangle('showAdditionalParams') }">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
                 @icon('search-outline', 'w-4.5 h-4.5')
-                <p>{{ __('patients.clinical_impression_search') }}</p>
+                <p>{{ __('clinical-impressions.search') }}</p>
             </div>
 
             <div class="form-row-3 mb-6" x-data="{ filterCode: $wire.entangle('filterCode') }">
@@ -112,7 +112,7 @@
                         bind="filterEncounterId"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('patients.encounters')"
+                        :label="__('encounters.plural')"
                     />
 
                     <x-forms.combobox
@@ -184,7 +184,9 @@
                                 autocomplete="off"
                             />
 
-                            <label class="wrapped-label"> {{ __('patients.filter_effective_date_range') }} </label>
+                            <label class="wrapped-label">
+                                {{ __('clinical-impressions.filter_effective_date_range') }}
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -308,7 +310,7 @@
                                     </div>
                                     <div>
                                         <div class="record-inner-label">
-                                            {{ __('patients.clinical_impression_conclusion') }}
+                                            {{ __('clinical-impressions.conclusion') }}
                                         </div>
                                         <div class="record-inner-value">
                                             {{ data_get($clinicalImpression, 'summary') ?? '-' }}

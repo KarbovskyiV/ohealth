@@ -322,7 +322,7 @@ class PatientSummary extends BasePatientComponent
             $this->dispatchRemainingPages(self::ENTITY_TYPE_ENCOUNTER);
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_ENCOUNTER);
-            Session::flash('success', __('patients.messages.encounters_synced_successfully'));
+            Session::flash('success', __('encounters.messages.synced_successfully'));
         }
 
         $this->resetSummarySection('encounters');
@@ -372,7 +372,7 @@ class PatientSummary extends BasePatientComponent
             $this->dispatchRemainingPages(self::ENTITY_TYPE_CLINICAL_IMPRESSION);
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_CLINICAL_IMPRESSION);
-            Session::flash('success', __('patients.messages.clinical_impressions_synced_successfully'));
+            Session::flash('success', __('clinical-impressions.messages.synced_successfully'));
         }
 
         $this->resetSummarySection('clinicalImpressions');
@@ -469,7 +469,7 @@ class PatientSummary extends BasePatientComponent
             $this->dispatchRemainingPages(self::ENTITY_TYPE_OBSERVATION);
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_OBSERVATION);
-            Session::flash('success', __('patients.messages.observations_synced_successfully'));
+            Session::flash('success', __('observations.messages.synced_successfully'));
         }
 
         $this->resetSummarySection('observations');
@@ -552,7 +552,7 @@ class PatientSummary extends BasePatientComponent
             $this->dispatchRemainingPages(self::ENTITY_TYPE_CONDITION);
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_CONDITION);
-            Session::flash('success', __('patients.messages.conditions_synced_successfully'));
+            Session::flash('success', __('conditions.messages.synced_successfully'));
         }
 
         $this->resetSummarySection('conditions');
@@ -602,7 +602,7 @@ class PatientSummary extends BasePatientComponent
             $this->dispatchRemainingPages(self::ENTITY_TYPE_DIAGNOSTIC_REPORT);
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_DIAGNOSTIC_REPORT);
-            Session::flash('success', __('patients.messages.diagnostic_reports_synced_successfully'));
+            Session::flash('success', __('diagnostic-reports.messages.synced_successfully'));
         }
 
         $this->resetSummarySection('diagnosticReports');
@@ -673,7 +673,7 @@ class PatientSummary extends BasePatientComponent
         $this->resetSummarySection('procedures');
         $this->getProcedures();
 
-        Session::flash('success', __('patients.messages.procedures_synced_successfully'));
+        Session::flash('success', __('procedures.messages.synced_successfully'));
     }
 
     public function getProcedures(): void
