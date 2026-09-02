@@ -40,7 +40,7 @@
                 <div class="form-row-4 mb-4">
                     <div class="form-group">
                         <select
-                            wire:model="employeeId"
+                            wire:model="filterEmployeeId"
                             id="filterEmployeeId"
                             class="input-select peer"
                         >
@@ -52,14 +52,14 @@
                             @endforeach
                         </select>
                         <label for="filterEmployeeId" class="label"> {{ __('forms.employee_id') }} </label>
-                        @error('employeeId')
+                        @error('filterEmployeeId')
                             <p class="text-error">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <div class="form-group">
                         <select
-                            wire:model="verificationStatus"
+                            wire:model="filterVerificationStatus"
                             id="filterVerificationStatus"
                             class="input-select peer"
                         >
@@ -71,14 +71,14 @@
                         <label for="filterVerificationStatus" class="label">
                             {{ __('patients.verification_status') }}
                         </label>
-                        @error('verificationStatus')
+                        @error('filterVerificationStatus')
                             <p class="text-error">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <div class="form-group">
                         <select
-                            wire:model="status"
+                            wire:model="filterStatus"
                             id="filterStatus"
                             class="input-select peer"
                         >
@@ -88,14 +88,14 @@
                             @endforeach
                         </select>
                         <label for="filterStatus" class="label"> {{ __('forms.status.label') }} </label>
-                        @error('status')
+                        @error('filterStatus')
                             <p class="text-error">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <div class="form-group">
                         <select
-                            wire:model="dracsDeathStatus"
+                            wire:model="filterDracsDeathStatus"
                             id="filterDracsDeathStatus"
                             class="input-select peer"
                         >
@@ -107,7 +107,7 @@
                         <label for="filterDracsDeathStatus" class="label">
                             {{ __('patient-verifications.dracs_death_status') }}
                         </label>
-                        @error('dracsDeathStatus')
+                        @error('filterDracsDeathStatus')
                             <p class="text-error">{{ $message }}</p>
                         @enderror
                     </div>

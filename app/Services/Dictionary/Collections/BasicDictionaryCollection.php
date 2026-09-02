@@ -13,11 +13,15 @@ class BasicDictionaryCollection extends Collection
      * Get dictionary values by dictionary name.
      * Searches for a specific dictionary by name and returns its values.
      *
+     * Pass false to keep the deactivated values as well. That is needed wherever an already stored code has to be resolved or validated,
+     * because it may have been deactivated in eHealth after the record was created.
+     *
      * @param  string  $name  Dictionary name to search for
+     * @param  bool  $onlyActive  Keep only the values still offered for selection
      * @return self Collection containing dictionary values
      * @throws InvalidArgumentException When dictionary name is not found
      */
-    public function byName(string $name): self
+    public function byName(string $name, bool $onlyActive = true): self
     {
         $dictionary = $this->firstWhere('name', $name);
 
@@ -25,7 +29,9 @@ class BasicDictionaryCollection extends Collection
             throw new InvalidArgumentException("Dictionary '{$name}' not found");
         }
 
-        return new self($dictionary['values'] ?? []);
+        $values = new self($dictionary['values'] ?? []);
+
+        return $onlyActive ? $values->onlyActive() : $values;
     }
 
     /**
@@ -39,19 +45,26 @@ class BasicDictionaryCollection extends Collection
     {
         return collect($names)
             ->mapWithKeys(fn (string $name) => [
-                $name => $this->byName($name)->onlyActive()->asCodeDescription()
+                $name => $this->byName($name)->asCodeDescription()
             ])
             ->filter(fn (Collection $dictionary) => $dictionary->isNotEmpty());
     }
 
     /**
-     * Keep only the values that are still offered for selection.
+     * Keep only the values that are still offered for selection, nested child values included.
      *
      * @return self
      */
     public function onlyActive(): self
     {
-        return $this->filter(static fn (array $value): bool => $value['is_active'] ?? true);
+        return $this->filter(static fn (array $value): bool => $value['is_active'] ?? true)
+            ->map(static function (array $value): array {
+                if (!empty($value['child_values'])) {
+                    $value['child_values'] = new self($value['child_values'])->onlyActive()->all();
+                }
+
+                return $value;
+            });
     }
 
     /**

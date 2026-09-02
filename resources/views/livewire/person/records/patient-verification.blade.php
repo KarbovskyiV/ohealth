@@ -299,7 +299,7 @@
                                 wire:target="confirmDeathVerification"
                                 wire:loading.attr="disabled"
                                 wire:loading.class="opacity-50 cursor-not-allowed"
-                                class="rounded-md bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                class="button-primary px-6 py-2.5 shadow-sm transition-colors"
                             >
                                 <span wire:loading.remove wire:target="confirmDeathVerification">
                                     {{ __('patient-verifications.update_data_in_ehealth') }}

@@ -60,7 +60,10 @@ class PersonVerificationDetailPolicy
             return Response::denyWithStatus(404);
         }
 
-        $employee = $user->activeDoctorEmployee();
+        $employee = $user->employees()
+            ->whereLegalEntityId(legalEntity()->id)
+            ->whereEmployeeType(Role::DOCTOR)
+            ->first();
 
         if ($employee === null) {
             return Response::denyWithStatus(404);

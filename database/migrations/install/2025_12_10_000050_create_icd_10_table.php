@@ -55,7 +55,7 @@ return new class extends Migration
         $response = EHealth::dictionary()->getMany(['name' => 'eHealth/ICD10_AM/condition_codes']);
 
         $dictionary = BasicDictionaryCollection::make($response->getData())
-            ->byName('eHealth/ICD10_AM/condition_codes')
+            ->byName('eHealth/ICD10_AM/condition_codes', false)
             ->asLargeDictionary()
             ->toArray();
 

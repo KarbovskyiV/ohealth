@@ -39,18 +39,18 @@ class PatientVerifications extends Component
         'nhs' => 'nhs'
     ];
 
-    public string $employeeId = '';
+    public string $filterEmployeeId = '';
 
-    public string $verificationStatus = '';
+    public string $filterVerificationStatus = '';
 
-    public string $status = '';
+    public string $filterStatus = '';
 
     /**
      * Narrows the result down to a single verification stream, which eHealth itself cannot filter by.
      *
      * @var string
      */
-    public string $dracsDeathStatus = '';
+    public string $filterDracsDeathStatus = '';
 
     /**
      * Employees of the current legal entity the verifications can be filtered by.
@@ -85,6 +85,7 @@ class PatientVerifications extends Component
                 'name' => $employee->fullName,
                 'position' => $employee->position
             ])
+            ->sortBy('name')
             ->values()
             ->toArray();
     }
@@ -106,10 +107,10 @@ class PatientVerifications extends Component
     public function resetFilters(): void
     {
         $this->reset([
-            'employeeId',
-            'verificationStatus',
-            'status',
-            'dracsDeathStatus',
+            'filterEmployeeId',
+            'filterVerificationStatus',
+            'filterStatus',
+            'filterDracsDeathStatus',
             'isSearching'
         ]);
 
@@ -125,10 +126,10 @@ class PatientVerifications extends Component
     protected function validationAttributes(): array
     {
         return [
-            'employeeId' => __('forms.employee_id'),
-            'verificationStatus' => __('patients.verification_status'),
-            'status' => __('forms.status.label'),
-            'dracsDeathStatus' => __('patient-verifications.dracs_death_status')
+            'filterEmployeeId' => __('forms.employee_id'),
+            'filterVerificationStatus' => __('patients.verification_status'),
+            'filterStatus' => __('forms.status.label'),
+            'filterDracsDeathStatus' => __('patient-verifications.dracs_death_status')
         ];
     }
 
@@ -140,7 +141,7 @@ class PatientVerifications extends Component
     protected function messages(): array
     {
         return [
-            'employeeId.exists' => __('patient-verifications.errors.employee_not_found')
+            'filterEmployeeId.exists' => __('patient-verifications.errors.employee_not_found')
         ];
     }
 
@@ -152,15 +153,15 @@ class PatientVerifications extends Component
     protected function filterValidationRules(): array
     {
         return [
-            'employeeId' => [
+            'filterEmployeeId' => [
                 'bail',
                 'required',
                 'uuid',
                 Rule::exists('employees', 'uuid')->where('legal_entity_id', legalEntity()->id)
             ],
-            'verificationStatus' => ['nullable', new InDictionary('PERSON_VERIFICATION_STATUSES')],
-            'status' => ['nullable', new InDictionary('PERSON_STATUSES')],
-            'dracsDeathStatus' => ['nullable', new InDictionary('PERSON_VERIFICATION_STATUSES')]
+            'filterVerificationStatus' => ['nullable', new InDictionary('PERSON_VERIFICATION_STATUSES')],
+            'filterStatus' => ['nullable', new InDictionary('PERSON_STATUSES')],
+            'filterDracsDeathStatus' => ['nullable', new InDictionary('PERSON_VERIFICATION_STATUSES')]
         ];
     }
 
@@ -176,7 +177,7 @@ class PatientVerifications extends Component
         $page = (int) $this->getPage();
 
         try {
-            [$verifications, $total] = $this->dracsDeathStatus === ''
+            [$verifications, $total] = $this->filterDracsDeathStatus === ''
                 ? $this->fetchPage($page, $perPage)
                 : $this->fetchNarrowedByDracsDeath($page, $perPage);
         } catch (EHealthException|EHealthConnectionException $exception) {
@@ -201,7 +202,7 @@ class PatientVerifications extends Component
     private function fetchPage(int $page, int $perPage): array
     {
         $response = EHealth::person()->getPersonsVerificationStatuses(
-            $this->employeeId,
+            $this->filterEmployeeId,
             $this->searchQuery(['page' => $page, 'page_size' => $perPage])
         );
 
@@ -226,7 +227,7 @@ class PatientVerifications extends Component
 
         do {
             $response = EHealth::person()->getPersonsVerificationStatuses(
-                $this->employeeId,
+                $this->filterEmployeeId,
                 $this->searchQuery([
                     'page' => $eHealthPage,
                     'page_size' => config('ehealth.api.page_size')
@@ -234,7 +235,7 @@ class PatientVerifications extends Component
             );
 
             foreach (Arr::toCamelCase($response->validate()) as $verification) {
-                if ($verification['details']['dracsDeath']['verificationStatus'] === $this->dracsDeathStatus) {
+                if ($verification['details']['dracsDeath']['verificationStatus'] === $this->filterDracsDeathStatus) {
                     $matching[] = $verification;
                 }
             }
@@ -254,8 +255,8 @@ class PatientVerifications extends Component
     private function searchQuery(array $paging): array
     {
         return array_filter([
-            'status' => $this->status ?: null,
-            'verification_status' => $this->verificationStatus ?: null,
+            'status' => $this->filterStatus ?: null,
+            'verification_status' => $this->filterVerificationStatus ?: null,
             ...$paging
         ]);
     }
