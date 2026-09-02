@@ -71,6 +71,11 @@ final class Repository
         return app(DeviceRepository::class);
     }
 
+    public static function deviceAssociation(): DeviceAssociationRepository
+    {
+        return app(DeviceAssociationRepository::class);
+    }
+
     public static function clinicalImpression(): ClinicalImpressionRepository
     {
         return app(ClinicalImpressionRepository::class);

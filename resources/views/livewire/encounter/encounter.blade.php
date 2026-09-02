@@ -19,7 +19,7 @@
         ['id' => 'diagnostic-reports', 'label' => __('diagnostic-reports.plural'), 'icon' => 'activity', 'view' => 'livewire.encounter.parts.diagnostic-reports', 'holdsCancellableRecords' => true],
         ['id' => 'clinical-impressions', 'label' => __('clinical-impressions.plural'), 'icon' => 'check', 'view' => 'livewire.encounter.parts.clinical-impressions', 'holdsCancellableRecords' => true],
         ['id' => 'devices', 'label' => __('devices.label'), 'icon' => 'equipment', 'view' => 'livewire.encounter.parts.devices', 'holdsCancellableRecords' => true],
-        ['id' => 'device-association', 'label' => __('patients.medical_device_connections'), 'icon' => 'boxicons-plug-connect-filled', 'view' => 'livewire.encounter.parts.device-association', 'holdsCancellableRecords' => true],
+        ['id' => 'device-association', 'label' => __('device-associations.label'), 'icon' => 'boxicons-plug-connect-filled', 'view' => 'livewire.encounter.parts.device-association', 'holdsCancellableRecords' => true],
         ['id' => 'detected-issue', 'label' => __('patients.detected_medical_device_problems'), 'icon' => 'alert-octagon', 'view' => 'livewire.encounter.parts.detected-issue', 'holdsCancellableRecords' => true],
         ['id' => 'device-dispense', 'label' => 'Видачі медичних виробів', 'icon' => 'solid-notes-medical', 'view' => 'livewire.encounter.parts.device-dispense', 'holdsCancellableRecords' => true],
     ];
@@ -98,7 +98,7 @@
         <div
             @scroll-to-error.window="
                 setTimeout(() => {
-                    const errorElement = document.querySelector('.text-error, .is-invalid, [aria-invalid=\'true\']');
+                    const errorElement = $el.querySelector('.text-error, .is-invalid, [aria-invalid=\'true\']');
                     if (! errorElement) return;
                     const block = errorElement.closest('[id^=\'block-\']');
                     if (block) {
@@ -501,11 +501,11 @@
 
     @if ($this instanceof EncounterEdit && $this->canBeCancelled)
         @include('livewire.encounter.encounter-cancellation', [
-                    'formPath' => 'cancellationForm',
-                    'description' => array_filter($this->selectedRecords)
-                        ? __('encounters.messages.records_cancel_modal_description')
-                        : __('encounters.messages.cancel_modal_description')
-                ])
+                                    'formPath' => 'cancellationForm',
+                                    'description' => array_filter($this->selectedRecords)
+                                        ? __('encounters.messages.records_cancel_modal_description')
+                                        : __('encounters.messages.cancel_modal_description')
+                                ])
     @endif
 
     @if ($this instanceof EncounterEdit)

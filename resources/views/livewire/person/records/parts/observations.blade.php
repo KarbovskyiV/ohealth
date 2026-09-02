@@ -47,7 +47,7 @@
                 <div class="record-inner-grid-container">
                     <div class="[&>div]:min-w-0 [&_.record-inner-subvalue]:break-words grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-5">
                         <div>
-                            <div class="record-inner-label">{{ __('patients.information_source') }}</div>
+                            <div class="record-inner-label">{{ __('medical-events.information_source') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($this->dictionaries, 'eHealth/report_origins.' . data_get($observation, 'reportOrigin.coding.0.code'), '-') }}
                             </div>

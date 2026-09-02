@@ -61,7 +61,7 @@
                             <div class="record-inner-subvalue">-</div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.performer') }}</div>
+                            <div class="record-inner-label">{{ __('medical-events.performer') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($immunization, 'performer.displayValue', '-') }}
                             </div>

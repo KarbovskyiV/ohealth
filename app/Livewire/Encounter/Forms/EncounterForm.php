@@ -6,6 +6,7 @@ namespace App\Livewire\Encounter\Forms;
 
 use App\Core\BaseForm;
 use App\Enums\Device\Status as DeviceStatus;
+use App\Enums\DeviceAssociation\Status as DeviceAssociationStatus;
 use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\Equipment\Status as EquipmentStatus;
 use App\Enums\Person\ConditionVerificationStatus;
@@ -425,7 +426,7 @@ class EncounterForm extends BaseForm
                             }
 
                             if (isset($usedTargetDiseaseCodes[$targetDiseaseCode])) {
-                                $fail(__('validation.duplicate_target_disease_in_protocol'));
+                                $fail(__('immunizations.duplicate_target_disease_in_protocol'));
 
                                 return;
                             }
@@ -487,7 +488,7 @@ class EncounterForm extends BaseForm
                         ->isTargetDiseaseAllowed($vaccineCode, $value);
 
                     if (!$isAllowed) {
-                        $fail(__('validation.vaccine_target_disease_mismatch'));
+                        $fail(__('immunizations.vaccine_target_disease_mismatch'));
                     }
                 },
             ],
@@ -1202,7 +1203,7 @@ class EncounterForm extends BaseForm
                         ->exists();
 
                     if (!$belongsToDivision) {
-                        $fail('Обладнання не належить вибраному підрозділу процедури.');
+                        $fail(__('equipments.validation.not_belongs_to_division'));
                     }
                 },
             ],
@@ -1274,6 +1275,27 @@ class EncounterForm extends BaseForm
                 static function (string $attribute, mixed $value, Closure $fail): void {
                     if ($value && Auth::user()->cannot('create', Device::class)) {
                         $fail(__('patients.policy.create_device'));
+                    }
+                }
+            ],
+            'devices.*' => [
+                'array',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    // A device is registered to be worn or implanted, so the package says which of the two it is
+                    $isAssociated = collect($this->component->deviceAssociationForm->deviceAssociations)->contains(
+                        static fn (array $association): bool => ($association['deviceId'] ?? '') === ($value['uuid'] ?? '')
+                            && in_array(
+                                $association['status'] ?? '',
+                                [
+                                    DeviceAssociationStatus::IMPLANTED->value,
+                                    DeviceAssociationStatus::ATTACHED->value
+                                ],
+                                true
+                            )
+                    );
+
+                    if (!$isAssociated) {
+                        $fail(__('validation.custom.devices.association_required'));
                     }
                 }
             ],
@@ -1419,17 +1441,9 @@ class EncounterForm extends BaseForm
                     }
 
                     $deviceDefinition = dictionary()->deviceDefinitions()->firstWhere('id', $value);
-
-                    // The dictionary only holds active definitions, so an inactive one reads as unknown here
-                    if ($deviceDefinition === null) {
-                        $fail(__('validation.custom.devices.definition_not_found'));
-
-                        return;
-                    }
-
                     $typeCode = $this->devices[(int) explode('.', $attribute)[1]]['typeCode'] ?? '';
 
-                    $matchesType = collect($deviceDefinition['classification_types'])->contains(
+                    $matchesType = collect($deviceDefinition['classification_types'] ?? [])->contains(
                         static fn (array $classificationType): bool => $classificationType['system'] === 'device_definition_classification_type'
                             && (string) $classificationType['code'] === $typeCode
                     );
@@ -1461,7 +1475,7 @@ class EncounterForm extends BaseForm
                     'string',
                     'max:255'
                 ];
-            }),
+            })
         ];
 
         $this->addAllowedEncounterClasses($rules);

@@ -342,7 +342,7 @@
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.performer') }}
+                                                {{ __('medical-events.performer') }}
                                             </div>
                                             <div class="record-inner-value text-[14px] font-semibold break-words uppercase">
                                                 {{ data_get($procedure, 'performer.displayValue', '-') }}

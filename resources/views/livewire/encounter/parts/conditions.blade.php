@@ -361,12 +361,7 @@
 
             {{-- Content --}}
             <form class="space-y-6">
-                <fieldset
-                    @disabled($isReadonly)
-                    @class([
-                                            'pointer-events-none' => $isReadonly
-                                        ])
-                >
+                <fieldset @disabled($isReadonly) @class(['pointer-events-none' => $isReadonly])>
                     <div class="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2">
                         <div>
                             <label
@@ -405,8 +400,7 @@
                                         ICD-10 AM
                                     </option>
                                 </select>
-                                @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
-                                                                dark:text-gray-500 pointer-events-none')
+                                @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
                             </div>
 
                             <button
@@ -439,8 +433,7 @@
                                         id="conditionReasonCode"
                                         class="input w-full"
                                     />
-                                    @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
-                                                                        dark:text-gray-500 pointer-events-none')
+                                    @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
                                 </div>
                             </div>
 
@@ -588,8 +581,7 @@
                                         <option value="{{ $key }}">{{ $verificationStatus }}</option>
                                     @endforeach
                                 </select>
-                                @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
-                                                                dark:text-gray-500 pointer-events-none')
+                                @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
                             </div>
                         </div>
 
@@ -660,7 +652,7 @@
                                 />
                             </div>
                             <p class="text-error mt-1 text-xs" x-show="conditionOnsetAfterEncounterEnd()" x-cloak>
-                                {{ __('validation.condition_onset_after_encounter_end') }}
+                                {{ __('conditions.onset_after_encounter_end') }}
                             </p>
                         </div>
 
@@ -710,7 +702,7 @@
                                 x-show="conditionAssertedOutsideEncounterPeriod()"
                                 x-cloak
                             >
-                                {{ __('validation.condition_asserted_outside_encounter_period') }}
+                                {{ __('conditions.asserted_outside_encounter_period') }}
                             </p>
                         </div>
 
@@ -733,8 +725,7 @@
                                                     <option value="{{ $key }}">{{ $bodySiteName }}</option>
                                                 @endforeach
                                             </select>
-                                            @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2
-                                                                                        text-gray-400 dark:text-gray-500 pointer-events-none')
+                                            @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
                                         </div>
                                     </div>
                                     <div class="flex h-10 items-center">
@@ -792,8 +783,7 @@
                                         <option value="{{ $key }}">{{ $conditionSeverity }}</option>
                                     @endforeach
                                 </select>
-                                @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
-                                                                dark:text-gray-500 pointer-events-none')
+                                @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
                             </div>
                         </div>
 
@@ -814,8 +804,7 @@
                                         <option value="{{ $i }}">{{ $i }}</option>
                                     @endfor
                                 </select>
-                                @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
-                                                                dark:text-gray-500 pointer-events-none')
+                                @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
                             </div>
                         </div>
                     </div>
@@ -845,7 +834,7 @@
                                 for="performer"
                                 class="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-300"
                             >
-                                {{ __('patients.performer') }}
+                                {{ __('medical-events.performer') }}
                             </label>
                         </div>
 
@@ -867,7 +856,7 @@
                                 for="otherSource"
                                 class="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-300"
                             >
-                                {{ __('patients.other_source') }}
+                                {{ __('medical-events.other_source') }}
                             </label>
                         </div>
                     </div>
@@ -890,7 +879,7 @@
                                 for="reportOrigin"
                                 class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
                             >
-                                {{ __('patients.information_source') }}
+                                {{ __('medical-events.information_source') }}
                             </label>
                             <div class="relative">
                                 <select

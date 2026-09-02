@@ -350,10 +350,10 @@
                                     ></div>
                                 </div>
                                 <div>
-                                    <div class="record-inner-label">{{ __('patients.performer') }}</div>
+                                    <div class="record-inner-label">{{ __('medical-events.performer') }}</div>
                                     <div
                                         class="record-inner-subvalue"
-                                        x-text="immunization.primarySource ? '{{ __('patients.performer') }}' : '{{ __('forms.patient') }}'"
+                                        x-text="immunization.primarySource ? '{{ __('medical-events.performer') }}' : '{{ __('forms.patient') }}'"
                                     ></div>
                                 </div>
                                 <div>
@@ -519,8 +519,8 @@
                             <fieldset
                                 @disabled($isReadonly)
                                 @class([
-                                                                    'pointer-events-none' => $isReadonly
-                                                                ])
+                                                                                                    'pointer-events-none' => $isReadonly
+                                                                                                ])
                             >
                                 @include('livewire.encounter.immunization-parts.data')
                                 @include('livewire.encounter.immunization-parts.vaccine-search')

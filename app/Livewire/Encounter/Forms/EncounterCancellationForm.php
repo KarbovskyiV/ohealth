@@ -59,12 +59,4 @@ class EncounterCancellationForm extends BaseForm
             'explanatoryLetter' => __('encounters.messages.cancel_explanation_label')
         ];
     }
-
-    /**
-     * @return array
-     */
-    protected function rules(): array
-    {
-        return $this->cancellationRules();
-    }
 }

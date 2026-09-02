@@ -12,7 +12,7 @@
     @if ($isEncounterContext ?? false)
         {{-- Information source (doctor or patient) --}}
         <div class="mb-8 flex gap-20">
-            <h2 class="default-p font-bold">{{ __('patients.information_source') }}</h2>
+            <h2 class="default-p font-bold">{{ __('medical-events.information_source') }}</h2>
             {{-- Doctor --}}
             <div class="flex items-center">
                 <input
@@ -25,7 +25,7 @@
                     :checked="modalDiagnosticReport.primarySource === true"
                 />
                 <label for="performer" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                    {{ __('patients.performer') }}
+                    {{ __('medical-events.performer') }}
                 </label>
             </div>
 
@@ -50,7 +50,7 @@
         <div x-show="modalDiagnosticReport.primarySource === false" x-transition>
             <div class="form-row-3">
                 <div>
-                    <label for="reportOrigin" class="label-modal"> {{ __('patients.source_link') }} </label>
+                    <label for="reportOrigin" class="label-modal"> {{ __('medical-events.source_link') }} </label>
                     <select
                         x-model="modalDiagnosticReport.reportOriginCode"
                         class="input-select peer"
@@ -406,10 +406,7 @@
                             {{ __('diagnostic-reports.effective_period_start') }}
                         </label>
 
-                        @error(
-                            $diagnosticReportErrorPath
-                                                . '.effectivePeriodStartDate'
-)
+                        @error($diagnosticReportErrorPath . '.effectivePeriodStartDate')
                             <p class="text-error">{{ $message }}</p>
                         @enderror
                     </div>
@@ -420,10 +417,7 @@
                     onclick="document.getElementById('effectivePeriodStartTime').showPicker()"
                 >
                     <div class="relative flex items-center">
-                        @icon(
-                            'mingcute-time-fill',
-                            'svg-input left-2.5'
-)
+                        @icon('mingcute-time-fill', 'svg-input left-2.5')
 
                         <input
                             x-model="modalDiagnosticReport.effectivePeriodStartTime"
@@ -437,10 +431,7 @@
                         />
                     </div>
 
-                    @error(
-                        $diagnosticReportErrorPath
-                                        . '.effectivePeriodStartTime'
-)
+                    @error($diagnosticReportErrorPath . '.effectivePeriodStartTime')
                         <p class="text-error">{{ $message }}</p>
                     @enderror
                 </div>
@@ -465,10 +456,7 @@
                             {{ __('diagnostic-reports.effective_period_end') }}
                         </label>
 
-                        @error(
-                            $diagnosticReportErrorPath
-                                                . '.effectivePeriodEndDate'
-)
+                        @error($diagnosticReportErrorPath . '.effectivePeriodEndDate')
                             <p class="text-error">{{ $message }}</p>
                         @enderror
                     </div>
@@ -479,10 +467,7 @@
                     onclick="document.getElementById('effectivePeriodEndTime').showPicker()"
                 >
                     <div class="relative flex items-center">
-                        @icon(
-                            'mingcute-time-fill',
-                            'svg-input left-2.5'
-)
+                        @icon('mingcute-time-fill', 'svg-input left-2.5')
 
                         <input
                             x-model="modalDiagnosticReport.effectivePeriodEndTime"
@@ -496,10 +481,7 @@
                         />
                     </div>
 
-                    @error(
-                        $diagnosticReportErrorPath
-                                        . '.effectivePeriodEndTime'
-)
+                    @error($diagnosticReportErrorPath . '.effectivePeriodEndTime')
                         <p class="text-error">{{ $message }}</p>
                     @enderror
                 </div>
@@ -525,16 +507,8 @@
                                     </div>
                                 </template>
 
-                                @foreach (
-                                    $equipmentOptionsByDivision as $divisionUuid => $options
-)
-                                    <div
-                                        x-show="
-                                            modalDiagnosticReport.divisionId
-                                                === @js($divisionUuid)
-                                        "
-                                        x-cloak
-                                    >
+                                @foreach ($equipmentOptionsByDivision as $divisionUuid => $options)
+                                    <div x-show="modalDiagnosticReport.divisionId === @js($divisionUuid)" x-cloak>
                                         <x-forms.combobox
                                             class="w-full"
                                             model="usedReference"

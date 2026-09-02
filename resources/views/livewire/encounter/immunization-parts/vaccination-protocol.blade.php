@@ -315,7 +315,7 @@
                                                     )
                                                 "
                                             >
-                                                {{ __('validation.vaccine_target_disease_mismatch') }}
+                                                {{ __('immunizations.vaccine_target_disease_mismatch') }}
                                             </p>
 
                                             <p
@@ -328,7 +328,7 @@
                                                     )
                                                 "
                                             >
-                                                {{ __('validation.duplicate_target_disease_in_protocol') }}
+                                                {{ __('immunizations.duplicate_target_disease_in_protocol') }}
                                             </p>
                                         </div>
 
