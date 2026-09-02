@@ -166,8 +166,12 @@ class EHealthLoginController extends Controller
         if ($legalEntity) {
             Log::info(__('auth.login.success.user_auth', [], 'en'), ['User ID' => $user->id]);
 
-            // Respect EHealth scopes
-            $user->syncPermissions($ehealthScopes);
+            $user->syncPermissions(
+                collect($ehealthScopes)
+                    ->merge($user->getPermissionsViaRoles()->pluck('name'))
+                    ->unique()
+                    ->all()
+            );
 
             return Redirect::route('dashboard', [$legalEntity])->with(
                 'success',
