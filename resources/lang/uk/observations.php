@@ -17,8 +17,6 @@ return [
     'label' => 'Спостереження',
     'plural' => 'Обстеження',
     'medical_label' => 'Медичне обстеження',
-
-    // Main information
     'value' => 'Значення',
     'components' => 'Компоненти',
     'extent_or_magnitude_of_impairment' => 'Обсяг або величина порушення',
@@ -28,15 +26,17 @@ return [
     'capacity' => 'Здатність',
     'barrier_or_facilitator' => 'Величина та вид впливу',
     'interpretation' => 'Інтерпретація',
-
-    // Additional information
     'method' => 'Метод спостереження',
     'interpretation_of_observation' => 'Інтерпретація спостереження',
     'date_and_time_of_receiving_the_indicators' => 'Дата та час отримання показників',
     'getting_indicators' => 'Отримання показників',
-
     'preperson_alert_title' => 'Обов’язкові спостереження для неідентифікованого пацієнта',
     'preperson_alert_text' => 'Стать, зріст тіла, вага тіла',
+
+    'status' => [
+        'valid' => 'Дійсний',
+        'entered_in_error' => 'Внесений помилково'
+    ],
 
     'messages' => [
         'synced_successfully' => 'Обстеження успішно синхронізовані',

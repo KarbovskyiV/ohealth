@@ -101,7 +101,7 @@
                         </div>
                         <div>
                             <div class="record-inner-label">{{ __('forms.status.label') }}</div>
-                            <div class="record-inner-subvalue">{{ __('patients.status_valid') }}</div>
+                            <div class="record-inner-subvalue">{{ __('forms.status.active') }}</div>
                         </div>
                         <div>
                             <div class="record-inner-label">
@@ -143,12 +143,7 @@
         <x-slot name="title">{{ __('patients.new_detected_medical_device_problem') }}</x-slot>
 
         <form>
-            <fieldset
-                @disabled($isReadonly ?? false)
-                @class([
-                                                                                    'pointer-event-none' => $isReadonly ?? false
-                                                                                ])
-            >
+            <fieldset @disabled($isReadonly ?? false) @class(['pointer-event-none' => $isReadonly ?? false])>
                 <fieldset class="fieldset">
                     <legend class="legend">{{ __('forms.main_information') }}</legend>
 

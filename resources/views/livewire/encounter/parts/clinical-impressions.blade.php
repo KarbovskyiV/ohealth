@@ -2,7 +2,7 @@
     class="p-4 sm:p-8"
     id="clinical-impressions-section"
     x-data="{
-         clinicalImpressions: $wire.entangle('form.clinicalImpressions'),
+         clinicalImpressions: $wire.entangle('clinicalImpressionForm.clinicalImpressions'),
          selectedRecords: $wire.entangle('selectedRecords.clinicalImpressions'),
          cancelledRecords: $wire.cancelledRecords.clinicalImpressions,
          canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
@@ -30,7 +30,9 @@
                     </div>
 
                     <template x-if="cancelledRecords.includes(clinicalImpression.uuid)">
-                        <span class="record-inner-badge-error"> {{ __('patients.status.entered_in_error') }} </span>
+                        <span class="record-inner-badge-error">
+                            {{ __('clinical-impressions.status.entered_in_error') }}
+                        </span>
                     </template>
 
                     <div class="record-inner-column flex-1">
@@ -203,12 +205,7 @@
             <x-slot name="title">{{ __('clinical-impressions.label') }}</x-slot>
 
             <form>
-                <fieldset
-                    @disabled($isReadonly)
-                    @class([
-                                            'pointer-event-none' => $isReadonly
-                                        ])
-                >
+                <fieldset @disabled($isReadonly) @class(['pointer-event-none' => $isReadonly])>
                     @include('livewire.encounter.clinical-impression-parts.main-information')
                     @include('livewire.encounter.clinical-impression-parts.problems')
                     @include('livewire.encounter.clinical-impression-parts.findings')

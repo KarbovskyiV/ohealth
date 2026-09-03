@@ -229,12 +229,9 @@
         <x-slot name="title">{{ __('devices.new') }}</x-slot>
 
         <form>
-            <fieldset
-                @disabled($isReadonly ?? false)
-                @class(['pointer-event-none' => $isReadonly ?? false])
-            >
+            <fieldset @disabled($isReadonly ?? false) @class(['pointer-event-none' => $isReadonly ?? false])>
                 <fieldset class="fieldset">
-                    <legend class="legend">{{ __('patients.main_info') }}</legend>
+                    <legend class="legend">{{ __('forms.main_information') }}</legend>
 
                     <div class="form-row-2">
                         <div class="form-group group">
@@ -314,10 +311,10 @@
                             <select x-model="modalDevice.status" id="deviceStatus" class="input-select peer" required>
                                 <option value="" selected>{{ __('forms.select') }}</option>
                                 <option value="{{ DeviceStatus::ACTIVE->value }}">
-                                    {{ __('patients.status.active') }}
+                                    {{ __('devices.status.active') }}
                                 </option>
                                 <option value="{{ DeviceStatus::INACTIVE->value }}">
-                                    {{ __('patients.status.inactive') }}
+                                    {{ __('devices.status.inactive') }}
                                 </option>
                             </select>
                             <label for="deviceStatus" class="label">{{ __('forms.status.label') }}</label>

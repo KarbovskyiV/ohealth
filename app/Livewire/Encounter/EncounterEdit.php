@@ -91,7 +91,7 @@ class EncounterEdit extends EncounterComponent
         $this->form->procedures = $package['procedures'];
         $this->deviceForm->devices = $package['devices'];
         $this->deviceAssociationForm->deviceAssociations = $package['deviceAssociations'];
-        $this->form->clinicalImpressions = $package['clinicalImpressions'];
+        $this->clinicalImpressionForm->clinicalImpressions = $package['clinicalImpressions'];
 
         $this->episodeType = 'existing';
         $this->form->episode = array_merge(

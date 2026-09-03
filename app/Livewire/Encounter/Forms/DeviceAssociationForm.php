@@ -107,14 +107,9 @@ class DeviceAssociationForm extends Form
      */
     public function validationAttributes(): array
     {
-        return [
-            'deviceAssociations.*.status' => __('device-associations.status'),
-            'deviceAssociations.*.associationDate' => __('device-associations.association_date_short'),
-            'deviceAssociations.*.bodySiteCode' => __('device-associations.body_site'),
-            'deviceAssociations.*.bodySiteText' => __('device-associations.body_site_comment'),
-            'deviceAssociations.*.deviceId' => __('device-associations.device'),
-            'deviceAssociations.*.reportOriginCode' => __('medical-events.source_link')
-        ];
+        return collect(__('device-associations.attributes'))
+            ->mapWithKeys(static fn (string $name, string $field): array => ["deviceAssociations.*.$field" => $name])
+            ->all();
     }
 
     /**

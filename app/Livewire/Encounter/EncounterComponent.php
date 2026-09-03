@@ -17,6 +17,7 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
+use App\Livewire\Encounter\Forms\ClinicalImpressionForm;
 use App\Livewire\Encounter\Forms\DeviceAssociationForm;
 use App\Livewire\Encounter\Forms\DeviceForm;
 use App\Livewire\Encounter\Forms\EncounterForm as Form;
@@ -53,6 +54,8 @@ class EncounterComponent extends Component
     public DeviceAssociationForm $deviceAssociationForm;
 
     public DeviceForm $deviceForm;
+
+    public ClinicalImpressionForm $clinicalImpressionForm;
 
     public bool $showSignatureModal = false;
 

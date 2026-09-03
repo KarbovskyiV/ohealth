@@ -13,7 +13,7 @@ return [
     'new' => 'Новий епізод',
     'name' => 'Назва епізоду',
     'type' => 'Тип епізоду',
-    'status' => 'Статус епізоду',
+    'episode_status' => 'Статус епізоду',
     'created_by_doctor' => 'ПІБ лікаря, що створив епізод',
     'id' => 'ID епізоду',
     'context_id' => 'ID контекстного епізоду',
@@ -62,6 +62,13 @@ return [
     'diagnosis_history_title' => 'Історія діагнозів',
     'diagnosis_history_empty' => 'Історія змін основного діагнозу відсутня.',
     'diagnosis_date' => 'Дата створення діагнозу',
+
+    'status' => [
+        'draft' => 'Чернетка',
+        'active' => 'Діючий',
+        'closed' => 'Завершений',
+        'entered_in_error' => 'Внесений помилково'
+    ],
 
     'messages' => [
         'synced_successfully' => 'Епізоди успішно синхронізовані',

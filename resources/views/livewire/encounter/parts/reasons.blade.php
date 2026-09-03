@@ -20,7 +20,7 @@
                     </div>
 
                     <div class="record-inner-column flex-1">
-                        <div class="record-inner-label">{{ __('patients.code_and_name') }}</div>
+                        <div class="record-inner-label">{{ __('medical-events.code_and_name') }}</div>
                         <div
                             class="record-inner-value text-[16px]"
                             x-text="`${reason.code} - ${dictionary[reason.code]}`"
@@ -193,12 +193,7 @@
 
                         {{-- Content --}}
                         <form>
-                            <fieldset
-                                @disabled($isReadonly)
-                                @class([
-                                                                    'pointer-events-none' => $isReadonly
-                                                                ])
-                            >
+                            <fieldset @disabled($isReadonly) @class(['pointer-events-none' => $isReadonly])>
                                 <div class="form-row-modal">
                                     <div>
                                         <label for="reasonCode" class="label-modal">

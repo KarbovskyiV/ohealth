@@ -192,7 +192,9 @@
                     </div>
 
                     <template x-if="cancelledRecords.includes(diagnosticReport.uuid)">
-                        <span class="record-inner-badge-error"> {{ __('patients.status.entered_in_error') }} </span>
+                        <span class="record-inner-badge-error">
+                            {{ __('diagnostic-reports.status.entered_in_error') }}
+                        </span>
                     </template>
 
                     <div class="record-inner-column flex-1">
@@ -385,12 +387,7 @@
         <x-slot name="title">{{ __('diagnostic-reports.label') }}</x-slot>
 
         <form>
-            <fieldset
-                @disabled($isReadonly)
-                @class([
-                                    'pointer-event-none' => $isReadonly
-                                ])
-            >
+            <fieldset @disabled($isReadonly) @class(['pointer-event-none' => $isReadonly])>
                 @include('livewire.encounter.diagnostic-report-parts.main-information')
                 @include('livewire.encounter.diagnostic-report-parts.additional-information', ['context' => 'diagnostic-report', 'isEncounterContext' => true])
 

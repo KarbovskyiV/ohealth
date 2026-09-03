@@ -40,7 +40,7 @@
                     const vaccineDiseases = Array.isArray(vaccine.targetDiseases) ? vaccine.targetDiseases : [];
                     const matchesName = name === '' || this.normalizeSearchValue(vaccine.name).includes(name);
                     const matchesCode = code === '' || this.normalizeSearchValue(vaccine.code).includes(code);
-                    const matchesDisease = disease === '' || vaccineDiseases.some(targetDisease => 
+                    const matchesDisease = disease === '' || vaccineDiseases.some(targetDisease =>
                         this.normalizeSearchValue(targetDisease.code).includes(disease) || this.normalizeSearchValue(targetDisease.name).includes(disease));
 
                     return matchesName && matchesCode && matchesDisease;
@@ -142,7 +142,9 @@
                     </div>
 
                     <template x-if="cancelledRecords.includes(immunization.uuid)">
-                        <span class="record-inner-badge-error"> {{ __('patients.status.entered_in_error') }} </span>
+                        <span class="record-inner-badge-error">
+                            {{ __('immunizations.status.entered_in_error') }}
+                        </span>
                     </template>
 
                     <div class="record-inner-column flex-1">
@@ -516,12 +518,7 @@
 
                         {{-- Content --}}
                         <form>
-                            <fieldset
-                                @disabled($isReadonly)
-                                @class([
-                                                                                                    'pointer-events-none' => $isReadonly
-                                                                                                ])
-                            >
+                            <fieldset @disabled($isReadonly) @class(['pointer-events-none' => $isReadonly])>
                                 @include('livewire.encounter.immunization-parts.data')
                                 @include('livewire.encounter.immunization-parts.vaccine-search')
                                 @include('livewire.encounter.immunization-parts.information-about')

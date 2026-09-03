@@ -19,11 +19,7 @@ return [
     'create' => 'Створити процедуру',
     'search' => 'Пошук процедури',
     'link' => 'Посилання на процедуру',
-
-    // Main information
     'outcome_result' => 'Результат проведення',
-
-    // Additional information
     'performer' => 'виконавець процедури',
     'doctor_who_performed' => 'Лікар, що виконав',
     'performed_date_time' => 'Вказати дату та час проведення',
@@ -34,6 +30,12 @@ return [
     'rehabilitation_aids' => 'Допоміжні засоби реабілітації',
     'complications' => 'Ускладнення, що виникли під час процедури',
     'used_reference_id' => 'ID використаного обладнання',
+
+    'status' => [
+        'completed' => 'Завершений',
+        'not_done' => 'Не виконана',
+        'entered_in_error' => 'Внесений помилково'
+    ],
 
     'policy' => [
         'create' => 'У вас немає дозволу на створення процедури.',

@@ -14,7 +14,7 @@
                 </div>
 
                 <div class="record-inner-column flex-1">
-                    <div class="record-inner-label">{{ __('patients.code_and_name') }}</div>
+                    <div class="record-inner-label">{{ __('medical-events.code_and_name') }}</div>
                     <div class="record-inner-value text-[16px]">
                         {{ data_get($diagnosticReport, 'code.displayValue') }}
                     </div>
@@ -64,7 +64,7 @@
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.conclusion') }}</div>
+                            <div class="record-inner-label">{{ __('medical-events.conclusion') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($diagnosticReport, 'conclusion', '-') }}
                             </div>

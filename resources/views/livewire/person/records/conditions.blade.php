@@ -250,7 +250,7 @@
                                 $conditionCode = data_get($condition, 'code.coding.0.code');
                             @endphp
                             <div class="record-inner-column flex-1">
-                                <div class="record-inner-label">{{ __('patients.code_and_name') }}</div>
+                                <div class="record-inner-label">{{ __('medical-events.code_and_name') }}</div>
                                 <div class="record-inner-value text-[16px]">
                                     {{ $conditionCode }} - {{ $this->dictionaries[$conditionCodeSystem][$conditionCode] }}
                                 </div>
@@ -319,7 +319,7 @@
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                            {{ __('patients.status.entered_in_error') }}
+                                            {{ __('conditions.status.entered_in_error') }}
                                         </button>
                                     </div>
                                 </div>

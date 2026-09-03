@@ -144,7 +144,7 @@
                     <div class="record-inner-grid-container">
                         <div class="grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-4">
                             <div>
-                                <div class="record-inner-label">{{ __('device-associations.status') }}</div>
+                                <div class="record-inner-label">{{ __('device-associations.association_status') }}</div>
                                 <div
                                     class="record-inner-subvalue"
                                     x-text="statusesDictionary[deviceAssociation.status] || '-'"
@@ -214,12 +214,9 @@
         <x-slot name="title">{{ __('device-associations.new') }}</x-slot>
 
         <form>
-            <fieldset
-                @disabled($isReadonly ?? false)
-                @class(['pointer-event-none' => $isReadonly ?? false])
-            >
+            <fieldset @disabled($isReadonly ?? false) @class(['pointer-event-none' => $isReadonly ?? false])>
                 <fieldset class="fieldset">
-                    <legend class="legend">{{ __('patients.main_info') }}</legend>
+                    <legend class="legend">{{ __('forms.main_information') }}</legend>
 
                     <div class="form-row-2">
                         <div class="form-group group">
@@ -252,7 +249,7 @@
                                 @endforeach
                             </select>
                             <label for="deviceAssociationStatus" class="label">
-                                {{ __('device-associations.status') }}
+                                {{ __('device-associations.association_status') }}
                             </label>
                         </div>
                     </div>
