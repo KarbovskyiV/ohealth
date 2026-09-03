@@ -89,7 +89,7 @@ class EncounterEdit extends EncounterComponent
         $this->form->diagnosticReports = $package['diagnosticReports'];
         $this->form->observations = $package['observations'];
         $this->form->procedures = $package['procedures'];
-        $this->form->devices = $package['devices'];
+        $this->deviceForm->devices = $package['devices'];
         $this->deviceAssociationForm->deviceAssociations = $package['deviceAssociations'];
         $this->form->clinicalImpressions = $package['clinicalImpressions'];
 

@@ -6,7 +6,7 @@
     class="p-4 sm:p-8"
     id="devices-section"
     x-data="{
-        devices: $wire.entangle('form.devices'),
+        devices: $wire.entangle('deviceForm.devices'),
         deviceTypesDictionary: $wire.dictionaries['device_definition_classification_type'],
         deviceDefinitions: $wire.dictionaries['custom/device_definitions'],
         modalDevice: new Device(),
@@ -231,9 +231,7 @@
         <form>
             <fieldset
                 @disabled($isReadonly ?? false)
-                @class([
-                                    'pointer-event-none' => $isReadonly ?? false
-                                ])
+                @class(['pointer-event-none' => $isReadonly ?? false])
             >
                 <fieldset class="fieldset">
                     <legend class="legend">{{ __('patients.main_info') }}</legend>
