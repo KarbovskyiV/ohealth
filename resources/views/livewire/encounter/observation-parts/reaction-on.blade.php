@@ -84,7 +84,7 @@
             />
 
             <label for="reactionMedicalRecordType" class="label">
-                {{ mb_ucfirst(__('patients.medical_records_type')) }}
+                {{ mb_ucfirst(__('medical-events.medical_records_type')) }}
             </label>
         </div>
 
@@ -99,7 +99,7 @@
 
                 @foreach ($this->episodes as $episode)
                     <option value="{{ data_get($episode, 'uuid') }}">
-                        {{ data_get($episode, 'name') }} ({{ mb_strtolower(__('patients.status.active')) }}) від {{ convertToAppDateFormat(data_get($episode, 'period.start')) }}
+                        {{ data_get($episode, 'name') }} ({{ mb_strtolower(__('episodes.status.active')) }}) від {{ convertToAppDateFormat(data_get($episode, 'period.start')) }}
                     </option>
                 @endforeach
             </select>

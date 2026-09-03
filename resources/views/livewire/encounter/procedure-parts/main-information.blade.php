@@ -22,17 +22,17 @@
                     required
                 >
                     <option value="">{{ __('forms.select') }} {{ mb_strtolower(__('forms.status.label')) }} *</option>
-                    <option value="completed">{{ __('patients.status.completed') }}</option>
+                    <option value="completed">{{ __('procedures.status.completed') }}</option>
 
                     @if (in_array(($context ?? null), ['encounter', 'procedure'], true))
                         <option value="{{ ProcedureStatus::NOT_DONE->value }}">
-                            {{ __('patients.status.not_done') }}
+                            {{ __('procedures.status.not_done') }}
                         </option>
                     @endif
 
                     @if (data_get($this->form, 'procedure.status') === ProcedureStatus::ENTERED_IN_ERROR->value)
                         <option value="{{ ProcedureStatus::ENTERED_IN_ERROR->value }}">
-                            {{ __('patients.status.entered_in_error') }}
+                            {{ __('procedures.status.entered_in_error') }}
                         </option>
                     @endif
                 </select>

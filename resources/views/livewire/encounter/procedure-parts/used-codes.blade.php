@@ -20,7 +20,7 @@
             <thead class="thead-input">
                 <tr>
                     <th scope="col" class="th-input">{{ __('forms.code') }}</th>
-                    <th scope="col" class="th-input">{{ __('patients.code_and_name') }}</th>
+                    <th scope="col" class="th-input">{{ __('medical-events.code_and_name') }}</th>
                     <th scope="col" class="th-input">{{ __('forms.action') }}</th>
                 </tr>
             </thead>
@@ -181,7 +181,7 @@
                                 <div class="form-row-modal">
                                     <div class="form-group group">
                                         <label for="usedCode" class="label-modal">
-                                            {{ __('patients.code_and_name') }}
+                                            {{ __('medical-events.code_and_name') }}
                                         </label>
                                         <x-select2
                                             modelPath="modalUsedCode.code"

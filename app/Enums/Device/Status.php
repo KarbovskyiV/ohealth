@@ -17,9 +17,9 @@ enum Status: string
     public function label(): string
     {
         return match ($this) {
-            self::ACTIVE => __('patients.status.active'),
-            self::ENTERED_IN_ERROR => __('patients.status.entered_in_error'),
-            self::INACTIVE => __('patients.status.inactive')
+            self::ACTIVE => __('devices.status.active'),
+            self::ENTERED_IN_ERROR => __('devices.status.entered_in_error'),
+            self::INACTIVE => __('devices.status.inactive')
         };
     }
 

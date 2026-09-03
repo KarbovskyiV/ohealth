@@ -23,7 +23,7 @@
                     $codeLabel = $this->dictionaries[$system][$code] ?? $code;
                 @endphp
                 <div class="record-inner-column flex-1">
-                    <div class="record-inner-label">{{ __('patients.code_and_name') }}</div>
+                    <div class="record-inner-label">{{ __('medical-events.code_and_name') }}</div>
                     <div class="record-inner-value text-[16px]">{{ $code }} - {{ $codeLabel }}</div>
                 </div>
 

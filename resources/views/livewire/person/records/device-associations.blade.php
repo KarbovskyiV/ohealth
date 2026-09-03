@@ -238,7 +238,7 @@
                                             class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                            {{ __('patients.status.entered_in_error') }}
+                                            {{ __('device-associations.status.entered_in_error') }}
                                         </button>
                                     </div>
                                 </div>
@@ -250,32 +250,56 @@
                                 <div class="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4">
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px] uppercase">{{ __('patients.anatomical_site') }}</div>
-                                            <div class="record-inner-value text-[14px] font-semibold">{{ $device['anatomical_site'] }}</div>
+                                            <div class="record-inner-label text-[10px] uppercase">
+                                                {{ __('patients.anatomical_site') }}
+                                            </div>
+                                            <div class="record-inner-value text-[14px] font-semibold">
+                                                {{ $device['anatomical_site'] }}
+                                            </div>
                                         </div>
                                         <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px] uppercase">{{ __('devices.sgusoz') }}</div>
-                                            <div class="record-inner-value text-[14px] font-semibold">{{ $device['organization'] }}</div>
-                                        </div>
-                                    </div>
-                                    <div class="min-w-0 space-y-2.5">
-                                        <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px] uppercase">{{ __('patients.medical_device_id') }}</div>
-                                            <div class="record-inner-value text-[14px] font-semibold">{{ $device['device_id'] }}</div>
-                                        </div>
-                                        <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px] uppercase">{{ __('forms.employee') }}</div>
-                                            <div class="record-inner-value text-[14px] font-semibold">{{ $device['practitioner'] }}</div>
+                                            <div class="record-inner-label text-[10px] uppercase">
+                                                {{ __('devices.sgusoz') }}
+                                            </div>
+                                            <div class="record-inner-value text-[14px] font-semibold">
+                                                {{ $device['organization'] }}
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px] uppercase">{{ __('patients.association_date') }}</div>
-                                            <div class="record-inner-value text-[14px] font-semibold">{{ $device['date'] }}</div>
+                                            <div class="record-inner-label text-[10px] uppercase">
+                                                {{ __('patients.medical_device_id') }}
+                                            </div>
+                                            <div class="record-inner-value text-[14px] font-semibold">
+                                                {{ $device['device_id'] }}
+                                            </div>
                                         </div>
                                         <div class="min-w-0">
-                                            <div class="record-inner-label text-[10px] uppercase">{{ __('patients.record_creation_date') }}</div>
-                                            <div class="record-inner-value text-[14px] font-semibold">{{ $device['created_at'] }}</div>
+                                            <div class="record-inner-label text-[10px] uppercase">
+                                                {{ __('forms.employee') }}
+                                            </div>
+                                            <div class="record-inner-value text-[14px] font-semibold">
+                                                {{ $device['practitioner'] }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="min-w-0 space-y-2.5">
+                                        <div class="min-w-0">
+                                            <div class="record-inner-label text-[10px] uppercase">
+                                                {{ __('patients.association_date') }}
+                                            </div>
+                                            <div class="record-inner-value text-[14px] font-semibold">
+                                                {{ $device['date'] }}
+                                            </div>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="record-inner-label text-[10px] uppercase">
+                                                {{ __('patients.record_creation_date') }}
+                                            </div>
+                                            <div class="record-inner-value text-[14px] font-semibold">
+                                                {{ $device['created_at'] }}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -283,11 +307,15 @@
 
                             <div class="record-inner-id-col">
                                 <div class="min-w-0">
-                                    <div class="record-inner-label text-[10px] uppercase">{{ __('patients.association_id') }}</div>
+                                    <div class="record-inner-label text-[10px] uppercase">
+                                        {{ __('patients.association_id') }}
+                                    </div>
                                     <div class="record-inner-id-value">{{ $device['association_id'] }}</div>
                                 </div>
                                 <div class="min-w-0">
-                                    <div class="record-inner-label text-[10px] uppercase">{{ __('patients.encounter_id') }}</div>
+                                    <div class="record-inner-label text-[10px] uppercase">
+                                        {{ __('patients.encounter_id') }}
+                                    </div>
                                     <div class="record-inner-id-value">{{ $device['encounter_id'] }}</div>
                                 </div>
                                 <div class="min-w-0">

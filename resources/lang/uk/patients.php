@@ -29,13 +29,10 @@ return [
     'contact_data' => 'Контактні дані',
     'priority' => 'Пріоритет',
     'icpc-2_status_code' => 'Код стану за ICPC-2',
-    'code_and_name' => 'Код та назва',
     'diagnoses' => 'Діагнози',
     'body_part' => 'Частина тіла',
     'notes' => 'Нотатки',
     'author' => 'Автор',
-    'conclusion' => 'Заключення',
-    'added' => 'Додано',
     'based_on' => 'ID направлення',
     'patient_birth_date' => 'Дата народження пацієнта',
     'patient_full_name' => 'ПІБ пацієнта',
@@ -65,7 +62,6 @@ return [
     'status_completed' => 'Завершена',
     'created' => 'Створено',
     'category_and_code' => 'Категорія та код',
-    'status_valid' => 'Дійсний',
     'method' => 'Метод',
     'updated' => 'Оновлено',
     'medical_record_id' => 'ID Мед. Запису',
@@ -190,19 +186,8 @@ return [
         'completed' => 'Завершений',
         'expired' => 'Прострочений',
         'rejected' => 'Відхилений',
-        'active' => 'Діючий',
-        'inactive' => 'Недіючий',
-        'entered_in_error' => 'Внесений помилково',
-        'valid' => 'Дійсний',
-        'final' => 'Кінцева',
-        'recurrence' => 'рецидив',
-        'remission' => 'ремісія',
-        'resolved' => 'вилікуваний',
-        'confirmed' => 'заключний',
-        'differential' => 'диференціальний',
-        'provisional' => 'попередній',
-        'refuted' => 'спростований',
-        'not_done' => 'Не виконана'
+        // Kept for device dispenses and device issues, whose vocabulary still lives in this file
+        'entered_in_error' => 'Внесений помилково'
     ],
 
     'source' => [
@@ -281,7 +266,6 @@ return [
     'encounter_id' => 'ID взаємодії',
     'coding_system' => 'Система кодувань',
     'device_id' => 'ID девайсу',
-    'medical_records_type' => 'тип медичних записів',
 
     // Auth methods
     'authentication_methods' => 'Методи автентифікації',

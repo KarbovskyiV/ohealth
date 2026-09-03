@@ -58,7 +58,7 @@
         removeUsedReference(index) {
             this.modalProcedure.usedReferences.splice(index, 1);
         },
-        
+
         setPerformedType(type) {
             const now = new Date();
             const startTime = new Date(now.getTime() - 15 * 60 * 1000);
@@ -132,7 +132,7 @@
                     </div>
 
                     <template x-if="cancelledRecords.includes(procedure.uuid)">
-                        <span class="record-inner-badge-error"> {{ __('patients.status.entered_in_error') }} </span>
+                        <span class="record-inner-badge-error"> {{ __('procedures.status.entered_in_error') }} </span>
                     </template>
 
                     <div class="record-inner-column flex-1">
@@ -313,7 +313,7 @@
                                 <div class="record-inner-label">{{ __('forms.status.label') }}</div>
                                 <div
                                     class="record-inner-subvalue"
-                                    x-text="procedure.status === 'not_done' ? '{{ __('patients.status.not_done') }}' : '{{ __('patients.status.completed') }}'"
+                                    x-text="procedure.status === 'not_done' ? '{{ __('procedures.status.not_done') }}' : '{{ __('procedures.status.completed') }}'"
                                 ></div>
                             </div>
                         </div>
@@ -343,12 +343,7 @@
 
             {{-- Content --}}
             <form>
-                <fieldset
-                    @disabled($isReadonly)
-                    @class([
-                                            'pointer-event-none' => $isReadonly
-                                        ])
-                >
+                <fieldset @disabled($isReadonly) @class(['pointer-event-none' => $isReadonly])>
                     @include('livewire.encounter.procedure-parts.main-information', ['context' => 'encounter'])
                     @include('livewire.encounter.procedure-parts.additional-information', ['context' => 'encounter'])
                     @include('livewire.encounter.procedure-parts.reason-references')

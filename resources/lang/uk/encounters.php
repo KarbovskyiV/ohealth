@@ -21,12 +21,8 @@ return [
     'records_entered_in_error' => 'Позначити записи помилковими',
     'text_for_input' => 'Текст для введення',
     'add_observations_reports_conditions' => 'Додати обстеження, звіт або стан',
-
-    // Main data
     'interaction_class' => 'Клас взаємодії',
     'interaction_type' => 'Тип взаємодії',
-
-    // Referral
     'referral_available' => 'Є направлення',
     'referral_type' => 'Тип направлення',
     'electronic_referral' => 'Електронне направлення',
@@ -38,12 +34,8 @@ return [
     'paper_referral_institution_short' => 'Найменування закладу',
     'paper_referral_date' => 'Дата направлення',
     'paper_referral_notes' => 'Нотатки',
-
-    // Reasons
     'reasons_for_visit' => 'Причини звернення',
     'reason_for_visit' => 'Причина звернення',
-
-    // Additional data
     'additional_data' => 'Додаткові дані',
     'assignments' => 'Призначення',
     'write_assignments_here' => 'Напишіть призначення тут',
@@ -51,13 +43,17 @@ return [
     'add_coauthor' => 'Додати співавтора',
     'find_doctor' => 'Знайти лікаря',
     'coauthor' => 'Співавтор',
-
-    // Additional actions
     'additional_actions' => 'Додаткові дії',
     'add_prescription' => 'Додати рецепт',
     'add_referral' => 'Додати направлення',
     'add_medical_report' => 'Додати медичний висновок',
     'add_care_plan' => 'Додати план лікування',
+
+    'status' => [
+        'draft' => 'Чернетка',
+        'finished' => 'Завершений',
+        'entered_in_error' => 'Внесений помилково'
+    ],
 
     'policy' => [
         'create' => 'У вас немає дозволу на створення взаємодії.',

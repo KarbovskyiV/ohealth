@@ -135,7 +135,7 @@
                     </div>
 
                     <template x-if="cancelledRecords.includes(observation.uuid)">
-                        <span class="record-inner-badge-error"> {{ __('patients.status.entered_in_error') }} </span>
+                        <span class="record-inner-badge-error"> {{ __('observations.status.entered_in_error') }} </span>
                     </template>
 
                     <div class="record-inner-column flex-1">
@@ -349,12 +349,7 @@
 
                         {{-- Content --}}
                         <form>
-                            <fieldset
-                                @disabled($isReadonly)
-                                @class([
-                                                                    'pointer-event-none' => $isReadonly
-                                                                ])
-                            >
+                            <fieldset @disabled($isReadonly) @class(['pointer-event-none' => $isReadonly])>
                                 @include('livewire.encounter.observation-parts.coding-system')
                                 @include('livewire.encounter.observation-parts.main-information')
                                 @include('livewire.encounter.observation-parts.additional-information')

@@ -14,7 +14,7 @@
                 </div>
 
                 <div class="record-inner-column flex-1">
-                    <div class="record-inner-label">{{ __('patients.code_and_name') }}</div>
+                    <div class="record-inner-label">{{ __('medical-events.code_and_name') }}</div>
                     <div class="record-inner-value text-[16px]">
                         {{
                             data_get($procedure, 'code.displayValue')
@@ -28,13 +28,7 @@
                     <div>
                         @php($status = ProcedureStatus::from(data_get($procedure, 'status')))
 
-                        <span @class([
-                                                'badge-green' => $status === ProcedureStatus::COMPLETED,
-                                                'badge-red' => $status === ProcedureStatus::ENTERED_IN_ERROR,
-                                                'badge-dark' => $status === ProcedureStatus::NOT_DONE,
-                                            ])>
-                            {{ $status->label() }}
-                        </span>
+                        <span class="{{ $status->color() }}">{{ $status->label() }}</span>
                     </div>
                 </div>
 
@@ -47,7 +41,7 @@
 
             <div class="record-inner-body">
                 <div class="record-inner-grid-container">
-                    <div class="[&>div]:min-w-0 [&_.record-inner-subvalue]:break-words grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-3">
+                    <div class="[&>div]:min-w-0 [&_.record-inner-subvalue]:wrap-break-word grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-3">
                         <div>
                             <div class="record-inner-label">{{ __('forms.category') }}</div>
                             <div class="record-inner-subvalue">

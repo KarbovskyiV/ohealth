@@ -17,6 +17,18 @@ class DeviceForm extends Form
 {
     public array $devices = [];
 
+    /**
+     * Name the fields of a device the way the form labels them.
+     *
+     * @return array
+     */
+    public function validationAttributes(): array
+    {
+        return collect(__('devices.attributes'))
+            ->mapWithKeys(static fn (string $name, string $field): array => ["devices.*.$field" => $name])
+            ->all();
+    }
+
     protected function rules(): array
     {
         return [
@@ -46,7 +58,7 @@ class DeviceForm extends Form
                     );
 
                     if (!$isAssociated) {
-                        $fail(__('validation.custom.devices.association_required'));
+                        $fail(__('devices.validation.association_required'));
                     }
                 }
             ],
@@ -68,7 +80,7 @@ class DeviceForm extends Form
                         );
 
                     if (!$isAllowed) {
-                        $fail(__('validation.custom.devices.type_not_allowed'));
+                        $fail(__('devices.validation.type_not_allowed'));
                     }
                 }
             ],
@@ -80,7 +92,7 @@ class DeviceForm extends Form
                     $types = array_column((array) $value, 'type');
 
                     if (count($types) !== count(array_unique($types))) {
-                        $fail(__('validation.custom.devices.duplicated_name_type'));
+                        $fail(__('devices.validation.duplicated_name_type'));
                     }
                 }
             ],
@@ -122,13 +134,13 @@ class DeviceForm extends Form
                     );
 
                     if ($provided === []) {
-                        $fail(__('validation.custom.devices.property_value_required'));
+                        $fail(__('devices.validation.property_value_required'));
 
                         return;
                     }
 
                     if (count($provided) > 1) {
-                        $fail(__('validation.custom.devices.property_single_value'));
+                        $fail(__('devices.validation.property_single_value'));
                     }
                 }
             ],
@@ -200,7 +212,7 @@ class DeviceForm extends Form
                     );
 
                     if (!$matchesType) {
-                        $fail(__('validation.custom.devices.definition_type_mismatch'));
+                        $fail(__('devices.validation.definition_type_mismatch'));
                     }
                 }
             ],

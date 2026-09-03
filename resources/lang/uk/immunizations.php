@@ -19,8 +19,6 @@ return [
     'search' => 'Пошук вакцинації',
     'add' => 'Додати вакцинацію',
     'reaction_on' => 'Реакція на вакцинацію',
-
-    // Vaccine search
     'vaccine' => 'Вакцина',
     'vaccine_search' => 'Пошук вакцини',
     'vaccine_name' => 'Назва вакцини',
@@ -29,8 +27,6 @@ return [
     'disease' => 'Хвороба',
     'select_vaccine' => 'Обрати вакцину',
     'choose_another_vaccine' => 'Обрати іншу вакцину',
-
-    // Vaccine information
     'vaccine_information' => 'Інформація про вакцину',
     'manufacturer' => 'Виробник',
     'manufacturer_and_lot_number' => 'Виробник та партія',
@@ -38,15 +34,11 @@ return [
     'measurement_units' => 'Одиниці виміру',
     'input_route' => 'Шлях введення',
     'route' => 'Шлях',
-
-    // Data
     'data' => 'Дані',
     'was_performed' => 'Чи була проведена',
     'date_time_performed' => 'Дата та час проведення',
     'reasons' => 'Причини',
     'reactions' => 'Реакції',
-
-    // Vaccination protocol
     'vaccination_protocol' => 'Протокол імунізації',
     'dose_sequence' => 'Порядковий номер дози',
     'series' => 'Етап імунізації',
@@ -58,6 +50,11 @@ return [
     'vaccination_protocol_required_fields' => 'Для цієї вакцинації необхідно заповнити порядковий номер дози, етап імунізації та кількість доз по протоколу.',
     'duplicate_target_disease_in_protocol' => 'Цільова хвороба не може повторюватися в межах однієї вакцинації.',
     'vaccine_target_disease_mismatch' => 'Обрана цільова хвороба не відповідає коду вакцини.',
+
+    'status' => [
+        'completed' => 'Завершений',
+        'entered_in_error' => 'Внесений помилково'
+    ],
 
     'messages' => [
         'synced_successfully' => 'Вакцинації успішно синхронізовані',

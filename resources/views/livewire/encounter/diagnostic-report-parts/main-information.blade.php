@@ -322,7 +322,7 @@
         {{-- Conclusion --}}
         <div class="form-row">
             <div>
-                <label for="conclusion" class="label-modal"> {{ __('patients.conclusion') }} </label>
+                <label for="conclusion" class="label-modal"> {{ __('medical-events.conclusion') }} </label>
                 <textarea
                     rows="4"
                     x-model="modalDiagnosticReport.conclusion"

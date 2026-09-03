@@ -181,7 +181,7 @@
                     </div>
 
                     <div class="record-inner-column flex-1">
-                        <div class="record-inner-label">{{ __('patients.code_and_name') }}</div>
+                        <div class="record-inner-label">{{ __('medical-events.code_and_name') }}</div>
                         <div
                             class="record-inner-value text-[16px]"
                             x-text="
@@ -1032,7 +1032,7 @@
                     <option value="observation">{{ __('conditions.evidence_observations') }}</option>
                 </select>
                 <label for="evidenceDrawerSelectedType" class="label">
-                    {{ mb_ucfirst(__('patients.medical_records_type')) }}
+                    {{ mb_ucfirst(__('medical-events.medical_records_type')) }}
                 </label>
             </div>
         </div>
@@ -1051,7 +1051,7 @@
                     <tr>
                         <th scope="col" class="th-input">{{ __('forms.date') }}</th>
                         <th scope="col" class="th-input">{{ __('forms.type') }}</th>
-                        <th scope="col" class="th-input">{{ __('patients.code_and_name') }}</th>
+                        <th scope="col" class="th-input">{{ __('medical-events.code_and_name') }}</th>
                         <th scope="col" class="th-input text-center">{{ __('forms.action') }}</th>
                     </tr>
                 </thead>
@@ -1090,7 +1090,7 @@
                                 <template x-if="modalCondition.evidenceDetails.some((d) => d.id === record.id)">
                                     <span class="inline-flex items-center text-sm font-medium text-green-600 dark:text-green-400">
                                         @icon('check-circle', 'w-5 h-5')
-                                        {{ __('patients.added') }}
+                                        {{ __('medical-events.added') }}
                                     </span>
                                 </template>
                             </td>

@@ -19,7 +19,7 @@
             <thead class="thead-input">
                 <tr>
                     <th scope="col" class="th-input">{{ __('forms.date') }}</th>
-                    <th scope="col" class="th-input">{{ __('patients.code_and_name') }}</th>
+                    <th scope="col" class="th-input">{{ __('medical-events.code_and_name') }}</th>
                     <th scope="col" class="th-input">{{ __('forms.action') }}</th>
                 </tr>
             </thead>
@@ -197,7 +197,7 @@
                                             class="input-modal peer"
                                         >
                                             <option value="" selected>
-                                                {{ __('forms.select') }} {{ mb_strtolower(__('patients.medical_records_type')) }}
+                                                {{ __('forms.select') }} {{ mb_strtolower(__('medical-events.medical_records_type')) }}
                                             </option>
                                             <option value="condition">{{ __('conditions.label') }}</option>
                                             <option value="observation">{{ __('observations.label') }}</option>
@@ -227,7 +227,7 @@
                                                     <tr>
                                                         <th scope="col" class="th-input">{{ __('forms.date') }}</th>
                                                         <th scope="col" class="th-input">
-                                                            {{ __('patients.code_and_name') }}
+                                                            {{ __('medical-events.code_and_name') }}
                                                         </th>
                                                         <th scope="col" class="th-input">{{ __('forms.action') }}</th>
                                                     </tr>
@@ -275,7 +275,7 @@
                                                                     "
                                                                     class="button-primary w-28"
                                                                     x-text="selectedFindingIds.includes(detail.id)
-                                                                        ? '{{ __('patients.added') }}'
+                                                                        ? '{{ __('medical-events.added') }}'
                                                                         : '{{ __('forms.add') }}'"
                                                                 ></button>
                                                             </td>

@@ -16,7 +16,7 @@
             <thead class="thead-input">
                 <tr>
                     <th scope="col" class="th-input">{{ __('forms.date') }}</th>
-                    <th scope="col" class="th-input">{{ __('patients.code_and_name') }}</th>
+                    <th scope="col" class="th-input">{{ __('medical-events.code_and_name') }}</th>
                     <th scope="col" class="th-input">{{ __('forms.action') }}</th>
                 </tr>
             </thead>
@@ -222,7 +222,7 @@
                                                     <tr>
                                                         <th scope="col" class="th-input">{{ __('forms.date') }}</th>
                                                         <th scope="col" class="th-input">
-                                                            {{ __('patients.code_and_name') }}
+                                                            {{ __('medical-events.code_and_name') }}
                                                         </th>
                                                         <th scope="col" class="th-input">{{ __('forms.action') }}</th>
                                                     </tr>
@@ -282,7 +282,7 @@
                                                                     "
                                                                     class="button-primary w-28"
                                                                     x-text="selectedSupportingInfoIds.includes(result.uuid)
-                                                                        ? '{{ __('patients.added') }}'
+                                                                        ? '{{ __('medical-events.added') }}'
                                                                         : '{{ __('forms.add') }}'"
                                                                 ></button>
                                                             </td>

@@ -21,7 +21,7 @@
                     $role = data_get($diagnosis, 'role.coding.0.code');
                 @endphp
                 <div class="record-inner-column flex-1">
-                    <div class="record-inner-label">{{ __('patients.code_and_name') }}</div>
+                    <div class="record-inner-label">{{ __('medical-events.code_and_name') }}</div>
                     <div class="record-inner-value text-[16px]">
                         {{ $code }} - {{ $this->dictionaries[$system][$code] ?? null }}
                     </div>
