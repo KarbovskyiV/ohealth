@@ -10,13 +10,13 @@ use App\Enums\Person\EncounterStatus;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\Person\Person;
-use App\Services\Dictionary\ServiceProgramPicker;
 use App\Services\Dictionary\ServiceSearch;
 use App\Services\MedicalEvents\InformWith;
 use App\Services\MedicalEvents\Mappers\ServiceRequestMapper;
 use App\Services\MedicalEvents\ReferralRequestLifecycleService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Locked;
 
 trait ManagesEncounterReferrals
@@ -61,7 +61,7 @@ trait ManagesEncounterReferrals
             : EncounterStatus::tryFrom((string) $encounter->status);
 
         if ($status !== EncounterStatus::FINISHED) {
-            $this->flashOutcome('error', 'Виписати направлення можна лише для завершеної взаємодії.');
+            Session::flash('error', 'Виписати направлення можна лише для завершеної взаємодії.');
 
             return;
         }
@@ -121,7 +121,7 @@ trait ManagesEncounterReferrals
             Log::error('EncounterEdit: service search failed for standalone referral: '.$exception->getMessage());
             $this->encounterReferralServiceResults = [];
             $this->encounterReferralWarningMessage = 'Не вдалося виконати пошук послуг. Спробуйте ще раз.';
-            $this->flashOutcome('error', $this->encounterReferralWarningMessage);
+            Session::flash('error', $this->encounterReferralWarningMessage);
         }
     }
 
@@ -132,7 +132,7 @@ trait ManagesEncounterReferrals
 
         if (!is_array($selected)) {
             $this->encounterReferralWarningMessage = 'Не вдалося обрати послугу. Спробуйте пошукати ще раз.';
-            $this->flashOutcome('error', $this->encounterReferralWarningMessage);
+            Session::flash('error', $this->encounterReferralWarningMessage);
 
             return;
         }
@@ -190,24 +190,25 @@ trait ManagesEncounterReferrals
 
             $this->showEncounterReferralDrawer = false;
             $this->actionType = 'sign_referral';
-            $this->flashOutcome('success', 'Заявку на електронне направлення створено. Підпишіть КЕП.');
+            Session::flash('success', 'Заявку на електронне направлення створено. Підпишіть КЕП.');
             $this->showSignatureModal = true;
         } catch (EHealthValidationException $exception) {
             $exception->report();
             $this->encounterReferralWarningMessage = $exception->getFormattedMessage();
-            $this->flashOutcome('error', $this->encounterReferralWarningMessage);
+            Session::flash('error', $this->encounterReferralWarningMessage);
         } catch (\Throwable $exception) {
             Log::error('EncounterEdit: failed to create encounter referral: '.$exception->getMessage());
             $this->encounterReferralWarningMessage = 'Не вдалося створити направлення: '.$exception->getMessage();
-            $this->flashOutcome('error', $this->encounterReferralWarningMessage);
+            Session::flash('error', $this->encounterReferralWarningMessage);
         }
     }
 
     public function signEncounterReferral(): void
     {
         if (empty($this->encounterReferralRequestIdToSign)) {
-            $this->flashOutcome('error', 'Не вибрано направлення для підписання');
+            Session::flash('error', 'Не вибрано направлення для підписання');
             $this->showSignatureModal = false;
+            $this->actionType = null;
 
             return;
         }
@@ -215,6 +216,7 @@ trait ManagesEncounterReferrals
         $encounter = $this->resolveEncounterModelForStandalone();
         if ($encounter === null) {
             $this->showSignatureModal = false;
+            $this->actionType = null;
 
             return;
         }
@@ -286,15 +288,17 @@ trait ManagesEncounterReferrals
             $this->form->resetSigningFields();
 
             $referralIdentifier = $dbData['request_number'] ?? $dbData['uuid'];
-            $this->flashOutcome('success', 'Електронне направлення успішно створено без плану лікування. Номер направлення: '.$referralIdentifier);
+            Session::flash('success', 'Електронне направлення успішно створено без плану лікування. Номер направлення: '.$referralIdentifier);
         } catch (EHealthValidationException $exception) {
             $exception->report();
-            $this->flashOutcome('error', $exception->getFormattedMessage());
+            Session::flash('error', $exception->getFormattedMessage());
             $this->showSignatureModal = false;
+            $this->actionType = null;
         } catch (\Throwable $exception) {
             Log::error('EncounterEdit: failed to sign encounter referral: '.$exception->getMessage());
-            $this->flashOutcome('error', 'Не вдалося підписати направлення: '.$exception->getMessage());
+            Session::flash('error', 'Не вдалося підписати направлення: '.$exception->getMessage());
             $this->showSignatureModal = false;
+            $this->actionType = null;
         }
     }
 

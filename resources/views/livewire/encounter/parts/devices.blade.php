@@ -15,8 +15,8 @@
         item: 0,
 
         definitionsForSelectedType() {
-            return this.deviceDefinitions.filter(
-                (deviceDefinition) => deviceDefinition.typeCodes.includes(this.modalDevice.typeCode)
+            return this.deviceDefinitions.filter((deviceDefinition) =>
+                deviceDefinition.typeCodes.includes(this.modalDevice.typeCode),
             );
         },
 
@@ -232,8 +232,8 @@
             <fieldset
                 @disabled($isReadonly ?? false)
                 @class([
-                    'pointer-event-none' => $isReadonly ?? false
-                ])
+                                    'pointer-event-none' => $isReadonly ?? false
+                                ])
             >
                 <fieldset class="fieldset">
                     <legend class="legend">{{ __('patients.main_info') }}</legend>
@@ -313,12 +313,7 @@
 
                     <div class="form-row-2">
                         <div class="form-group group">
-                            <select
-                                x-model="modalDevice.status"
-                                id="deviceStatus"
-                                class="input-select peer"
-                                required
-                            >
+                            <select x-model="modalDevice.status" id="deviceStatus" class="input-select peer" required>
                                 <option value="" selected>{{ __('forms.select') }}</option>
                                 <option value="{{ DeviceStatus::ACTIVE->value }}">
                                     {{ __('patients.status.active') }}
@@ -345,14 +340,12 @@
                                     class="input peer"
                                     placeholder=" "
                                 />
-                                <label for="deviceModelNumber" class="label">
-                                    {{ __('devices.model_number') }}
-                                </label>
+                                <label for="deviceModelNumber" class="label"> {{ __('devices.model_number') }} </label>
                             </div>
                             <div class="form-group group">
                                 <select
                                     x-model="modalDevice.definitionId"
-                                    :disabled="!modalDevice.typeCode"
+                                    :disabled="! modalDevice.typeCode"
                                     id="deviceDefinition"
                                     class="input-select peer"
                                 >
@@ -364,9 +357,7 @@
                                         <option :value="deviceDefinition.id" x-text="deviceDefinition.name"></option>
                                     </template>
                                 </select>
-                                <label for="deviceDefinition" class="label">
-                                    {{ __('devices.definition') }}
-                                </label>
+                                <label for="deviceDefinition" class="label"> {{ __('devices.definition') }} </label>
                             </div>
                         </div>
 
@@ -404,9 +395,7 @@
                                     class="input peer"
                                     placeholder=" "
                                 />
-                                <label for="deviceLotNumber" class="label">
-                                    {{ __('devices.lot_number') }}
-                                </label>
+                                <label for="deviceLotNumber" class="label"> {{ __('devices.lot_number') }} </label>
                             </div>
                         </div>
 
@@ -459,13 +448,14 @@
                                         ></option>
                                     </template>
                                 </select>
-                                <label for="deviceParent" class="label">
-                                    {{ __('devices.parent') }}
-                                </label>
+                                <label for="deviceParent" class="label"> {{ __('devices.parent') }} </label>
                             </div>
                         </div>
 
-                        <template x-for="(identifier, identifierIndex) in modalDevice.identifiers" :key="identifierIndex">
+                        <template
+                            x-for="(identifier, identifierIndex) in modalDevice.identifiers"
+                            :key="identifierIndex"
+                        >
                             <div class="relative pr-10">
                                 <div class="form-row-2">
                                     <div class="form-group group">
@@ -737,6 +727,7 @@
 
                                 <button
                                     type="button"
+                                    x-show="modalDevice.properties.length > 1"
                                     @click.prevent="removeProperty(propertyIndex)"
                                     class="absolute top-3 right-0 text-gray-400 transition-colors hover:text-red-500 dark:text-gray-500"
                                 >
@@ -758,7 +749,7 @@
 
                     <div class="mt-6 border-t border-gray-100 pt-6 dark:border-gray-700">
                         <div class="mb-6 flex items-center gap-6">
-                            <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('patients.information_source') }}</span>
+                            <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('medical-events.information_source') }}</span>
                             <div class="flex items-center gap-4">
                                 <label class="flex cursor-pointer items-center gap-2">
                                     <input
@@ -773,7 +764,7 @@
                                         value="true"
                                         class="default-radio"
                                     />
-                                    <span class="text-sm">{{ __('patients.performer') }}</span>
+                                    <span class="text-sm">{{ __('medical-events.performer') }}</span>
                                 </label>
                                 <label class="flex cursor-pointer items-center gap-2">
                                     <input
@@ -784,7 +775,7 @@
                                         value="false"
                                         class="default-radio"
                                     />
-                                    <span class="text-sm">{{ __('patients.other_source') }}</span>
+                                    <span class="text-sm">{{ __('medical-events.other_source') }}</span>
                                 </label>
                             </div>
                         </div>
@@ -802,7 +793,10 @@
                                         <option value="{{ $code }}">{{ $reportOrigin }}</option>
                                     @endforeach
                                 </select>
-                                <label for="deviceReportOrigin" class="label">{{ __('patients.source_link') }}</label>
+                                <label
+                                    for="deviceReportOrigin"
+                                    class="label"
+                                >{{ __('medical-events.source_link') }}</label>
                             </div>
                         </div>
 
@@ -832,18 +826,14 @@
                         <button
                             type="button"
                             @click.prevent="
-                                newDevice !== false
-                                    ? devices.push(modalDevice)
-                                    : devices[item] = modalDevice;
+                                newDevice !== false ? devices.push(modalDevice) : (devices[item] = modalDevice);
                                 openDeviceDrawer = false;
                             "
                             class="button-primary"
-                            :disabled="!(
+                            :disabled="! (
                                 modalDevice.typeCode?.trim?.() &&
                                 modalDevice.status?.trim?.() &&
-                                modalDevice.names.every(
-                                    (name) => name.type?.trim?.() && name.value?.trim?.()
-                                ) &&
+                                modalDevice.names.every((name) => name.type?.trim?.() && name.value?.trim?.()) &&
                                 (modalDevice.primarySource || modalDevice.reportOriginCode?.trim?.())
                             )"
                         >
@@ -895,9 +885,13 @@
      * Read back the type of a stored property from the value it was saved with
      */
     function devicePropertyValueType(property) {
-        return Object.keys(DEVICE_PROPERTY_VALUE_KEYS)
-            .find(valueType => property[DEVICE_PROPERTY_VALUE_KEYS[valueType]] !== null
-                && property[DEVICE_PROPERTY_VALUE_KEYS[valueType]] !== undefined) ?? '';
+        return (
+            Object.keys(DEVICE_PROPERTY_VALUE_KEYS).find(
+                (valueType) =>
+                    property[DEVICE_PROPERTY_VALUE_KEYS[valueType]] !== null &&
+                    property[DEVICE_PROPERTY_VALUE_KEYS[valueType]] !== undefined,
+            ) ?? ''
+        );
     }
 
     /**
@@ -928,7 +922,7 @@
                 Object.assign(this, JSON.parse(JSON.stringify(obj)));
             }
 
-            // A device is named at least once, and the identifier row is always offered to fill in
+            // A device is named at least once, and the identifier and property rows are always offered to fill in
             if (this.names.length === 0) {
                 this.names.push({ type: '', value: '' });
             }
@@ -937,7 +931,11 @@
                 this.identifiers.push({ code: '', text: '', value: '' });
             }
 
-            this.properties = this.properties.map(property => ({
+            if (this.properties.length === 0) {
+                this.properties.push(newDeviceProperty());
+            }
+
+            this.properties = this.properties.map((property) => ({
                 ...newDeviceProperty(),
                 ...property,
                 valueType: devicePropertyValueType(property),

@@ -7,7 +7,7 @@
 
     {{-- Procedure information source --}}
     <div class="mb-4 flex gap-20 md:mb-5">
-        <h2 class="default-p font-bold">{{ __('patients.information_source') }}</h2>
+        <h2 class="default-p font-bold">{{ __('medical-events.information_source') }}</h2>
 
         <div class="flex items-center">
             <input
@@ -25,7 +25,7 @@
                 :checked="modalProcedure.primarySource === true"
             />
             <label for="performer" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                {{ __('patients.performer') }}
+                {{ __('medical-events.performer') }}
             </label>
         </div>
 
@@ -44,7 +44,7 @@
                 :checked="modalProcedure.primarySource === false"
             />
             <label for="patient" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                {{ __('patients.other_source') }}
+                {{ __('medical-events.other_source') }}
             </label>
         </div>
     </div>
@@ -93,7 +93,7 @@
                     required
                 >
                     <option value="" selected>
-                        {{ __('forms.select') }} {{ mb_strtolower(__('patients.source_link')) }} *
+                        {{ __('forms.select') }} {{ mb_strtolower(__('medical-events.source_link')) }} *
                     </option>
                     @foreach ($this->dictionaries['eHealth/report_origins'] as $key => $reportOrigin)
                         <option value="{{ $key }}">{{ $reportOrigin }}</option>

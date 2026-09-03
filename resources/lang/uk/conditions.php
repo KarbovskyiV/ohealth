@@ -42,6 +42,9 @@ return [
 
     'filter_onset_date_range' => 'Дата початку від - до',
 
+    'onset_after_encounter_end' => 'Дата та час початку діагнозу не можуть бути пізнішими за дату та час завершення взаємодії.',
+    'asserted_outside_encounter_period' => 'Дата та час внесення діагнозу мають бути в межах періоду взаємодії.',
+
     'messages' => [
         'synced_successfully' => 'Стани успішно синхронізовані',
         'first_page_synced_successfully' => 'Перша сторінка станів синхронізована, решта обробляється у фоні',

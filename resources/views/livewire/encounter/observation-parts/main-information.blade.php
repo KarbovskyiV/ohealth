@@ -2,7 +2,7 @@
     <legend class="legend">{{ __('forms.main_information') }}</legend>
 
     <div class="mb-4 flex gap-20 md:mb-5">
-        <h2 class="default-p font-bold">{{ __('patients.information_source') }}</h2>
+        <h2 class="default-p font-bold">{{ __('medical-events.information_source') }}</h2>
         <div class="flex items-center">
             <input
                 @change="modalObservation.primarySource = true"
@@ -15,7 +15,7 @@
                 :checked="modalObservation.primarySource === true"
             />
             <label for="performer" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                {{ __('patients.performer') }}
+                {{ __('medical-events.performer') }}
             </label>
         </div>
 
@@ -31,7 +31,7 @@
                 :checked="modalObservation.primarySource === false"
             />
             <label for="patient" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                {{ __('patients.other_source') }}
+                {{ __('medical-events.other_source') }}
             </label>
         </div>
     </div>
@@ -46,7 +46,7 @@
         <div x-show="modalObservation.primarySource === false">
             <div class="form-row-modal">
                 <div>
-                    <label for="reportOrigin" class="label-modal"> {{ __('patients.source_link') }} </label>
+                    <label for="reportOrigin" class="label-modal"> {{ __('medical-events.source_link') }} </label>
                     <select
                         class="input-modal"
                         x-model="modalObservation.reportOriginCode"

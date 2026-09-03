@@ -146,8 +146,8 @@
             <fieldset
                 @disabled($isReadonly ?? false)
                 @class([
-                                                                    'pointer-event-none' => $isReadonly ?? false
-                                                                ])
+                                                                                    'pointer-event-none' => $isReadonly ?? false
+                                                                                ])
             >
                 <fieldset class="fieldset">
                     <legend class="legend">{{ __('forms.main_information') }}</legend>
@@ -247,7 +247,7 @@
 
                     <div class="mt-6 border-t border-gray-100 pt-6 dark:border-gray-700">
                         <div class="mb-6 flex items-center gap-6">
-                            <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('patients.information_source') }} *</span>
+                            <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('medical-events.information_source') }} *</span>
                             <div class="flex items-center gap-4">
                                 <label class="flex cursor-pointer items-center gap-2">
                                     <input
@@ -257,7 +257,7 @@
                                         value="performer"
                                         class="default-radio"
                                     />
-                                    <span class="text-sm">{{ __('patients.performer') }}</span>
+                                    <span class="text-sm">{{ __('medical-events.performer') }}</span>
                                 </label>
                                 <label class="flex cursor-pointer items-center gap-2">
                                     <input
@@ -267,7 +267,7 @@
                                         value="other"
                                         class="default-radio"
                                     />
-                                    <span class="text-sm">{{ __('patients.other_source') }}</span>
+                                    <span class="text-sm">{{ __('medical-events.other_source') }}</span>
                                 </label>
                             </div>
                         </div>
@@ -280,7 +280,7 @@
                                         {{ __('patients.record_in_medical_documentation') }}
                                     </option>
                                 </select>
-                                <label class="label">{{ __('patients.source_link') }}</label>
+                                <label class="label">{{ __('medical-events.source_link') }}</label>
                             </div>
                         </div>
                     </div>

@@ -4,26 +4,27 @@ declare(strict_types=1);
 
 namespace App\Livewire\Encounter;
 
-use App\Classes\eHealth\Api\ServiceRequest;
 use App\Classes\eHealth\EHealth;
 use App\Classes\eHealth\Exceptions\ApiException as eHealthApiException;
 use App\Core\Arr;
+use App\Enums\Device\Status as DeviceStatus;
 use App\Enums\Episode\Status as EpisodeStatus;
 use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\Person\ClinicalImpressionStatus;
 use App\Enums\Person\ImmunizationStatus;
 use App\Enums\Person\ObservationStatus;
 use App\Enums\Status;
-use App\Enums\User\Role;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Livewire\Encounter\Forms\Api\EncounterRequestApi;
+use App\Livewire\Encounter\Forms\DeviceAssociationForm;
 use App\Livewire\Encounter\Forms\EncounterForm as Form;
 use App\Models\Employee\Employee;
 use App\Models\Equipment;
 use App\Models\Icd10;
+use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Immunization;
 use App\Models\Person\Person;
@@ -35,6 +36,7 @@ use App\Repositories\MedicalEvents\Repository as MedicalEventsRepository;
 use App\Services\MedicalEvents\Fhir;
 use App\Services\Dictionary\Mappers\ImmunizationDictionaryMapper;
 use App\Traits\FormTrait;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -48,6 +50,8 @@ class EncounterComponent extends Component
     use WithFileUploads;
 
     public Form $form;
+
+    public DeviceAssociationForm $deviceAssociationForm;
 
     public bool $showSignatureModal = false;
 
@@ -248,6 +252,13 @@ class EncounterComponent extends Component
     public array $equipmentOptionsByDivision = [];
 
     /**
+     * Devices already registered for the patient, offered for association alongside the ones this package adds.
+     *
+     * @var array
+     */
+    public array $patientDevices = [];
+
+    /**
      * List of employees available as diagnostic report performers.
      *
      * @var array
@@ -365,6 +376,8 @@ class EncounterComponent extends Component
         'device_definition_classification_type',
         'device_name_type',
         'device_properties',
+        'device_association_statuses',
+        'eHealth/body_structures',
         'POSITION'
     ];
 
@@ -511,14 +524,6 @@ class EncounterComponent extends Component
     }
 
     /**
-     * Livewire AJAX does not remount the layout toast, so session flash alone is invisible.
-     */
-    protected function flashOutcome(string $type, string $message): void
-    {
-        session()->flash($type, $message);
-        $this->dispatch('flashMessage', ['message' => $message, 'type' => $type]);
-    }
-    /**
      * Initialize the component data for the current patient.
      *
      * @return void
@@ -527,9 +532,8 @@ class EncounterComponent extends Component
     {
         $authUser = Auth::user();
 
-        $employees = Employee::query()
-            ->whereLegalEntityId(legalEntity()->id)
-            ->whereStatus(Status::APPROVED)
+        $employees = Employee::whereLegalEntityId(legalEntity()->id)
+            ->active()
             ->whereIn('employee_type', config('ehealth.encounter_package_allowed_encounter_participant_employee_types'))
             ->select([
                 'uuid',
@@ -547,10 +551,8 @@ class EncounterComponent extends Component
             ];
         })->toArray();
 
-        $this->diagnosticReportEmployees = Employee::query()
-            ->whereLegalEntityId(legalEntity()->id)
-            ->whereStatus(Status::APPROVED)
-            ->whereIsActive(true)
+        $this->diagnosticReportEmployees = Employee::whereLegalEntityId(legalEntity()->id)
+            ->active()
             ->whereIn('employee_type', config('ehealth.encounter_package_allowed_diagnostic_report_performer_employee_types', []))
             ->select([
                 'uuid',
@@ -585,8 +587,7 @@ class EncounterComponent extends Component
         $this->employeeFullName = $encounterWriterEmployee->fullName;
         $this->allowedConditionCodesBySystem = $this->computeAllowedConditionCodesBySystem($encounterWriterEmployee);
 
-        $this->equipmentOptions = Equipment::query()
-            ->where('legal_entity_id', legalEntity()->id)
+        $this->equipmentOptions = Equipment::whereLegalEntityId(legalEntity()->id)
             ->where('availability_status', AvailabilityStatus::AVAILABLE)
             ->active()
             ->with(['names', 'division:id,uuid'])
@@ -605,6 +606,17 @@ class EncounterComponent extends Component
             ->map(static fn ($items) => $items->values()->toArray())
             ->toArray();
 
+        $this->patientDevices = Device::forPatient($this->patient())
+            ->whereNot('status', DeviceStatus::ENTERED_IN_ERROR)
+            ->with('names')
+            ->get(['id', 'uuid'])
+            ->map(static fn (Device $device): array => [
+                'uuid' => $device->uuid,
+                'name' => $device->names->first()?->value ?? $device->uuid
+            ])
+            ->values()
+            ->toArray();
+
         $this->setPatientData();
 
         // set division ID if only one exist
@@ -618,7 +630,7 @@ class EncounterComponent extends Component
     /**
      * Load the primary diagnosis from the selected episode.
      *
-     * @param string|null $episodeId Episode UUID.
+     * @param  string|null  $episodeId  Episode UUID.
      * @return void
      */
     public function updatedFormEpisodeId(?string $episodeId): void
@@ -715,27 +727,22 @@ class EncounterComponent extends Component
     {
         $patient = $this->patient();
 
-        $query = Immunization::query()
-            ->forPatient($patient)
+        $query = Immunization::forPatient($patient)
             ->with('vaccineCode.coding')
-            ->where('status', ImmunizationStatus::COMPLETED->value)
-            ->where('not_given', false);
+            ->whereStatus(ImmunizationStatus::COMPLETED->value)
+            ->whereNotGiven(false);
 
         if ($episodeId) {
+            // The identifier value is a string column, so the encounter UUIDs are matched as strings
+            $encounterUuids = Encounter::forPatient($patient)->forEpisode($episodeId)->pluck('uuid');
+
             $query->whereHas(
                 'context',
-                static fn ($context) => $context->whereIn(
-                    'value',
-                    Encounter::query()
-                        ->forPatient($patient)
-                        ->forEpisode($episodeId)
-                        ->select('uuid')
-                )
+                static fn (Builder $context): Builder => $context->whereIn('value', $encounterUuids)
             );
         }
 
-        $this->reactionImmunizations = $query
-            ->get()
+        $this->reactionImmunizations = $query->get()
             ->map(static fn (Immunization $immunization): array => [
                 'uuid' => $immunization->uuid,
                 'vaccineCode' => $immunization->vaccineCode?->coding?->first()?->code,
@@ -1150,7 +1157,6 @@ class EncounterComponent extends Component
      *
      * @param  array  $package
      * @return void
-     *
      * @throws ValidationException
      */
     protected function validateEncounterPerformer(array $package): void
@@ -1183,7 +1189,7 @@ class EncounterComponent extends Component
 
         if ($performer === null || $performer->legalEntityId !== legalEntity()->id) {
             throw ValidationException::withMessages([
-                'encounter.performer' => __('validation.custom.encounter.performer_wrong_legal_entity'), 
+                'encounter.performer' => __('validation.custom.encounter.performer_wrong_legal_entity'),
             ]);
         }
 
@@ -1368,7 +1374,6 @@ class EncounterComponent extends Component
      *
      * @param  array  $package
      * @return void
-     *
      * @throws ValidationException
      */
     protected function validateObservationPerformers(array $package): void

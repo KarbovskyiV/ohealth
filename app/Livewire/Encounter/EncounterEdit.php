@@ -90,6 +90,7 @@ class EncounterEdit extends EncounterComponent
         $this->form->observations = $package['observations'];
         $this->form->procedures = $package['procedures'];
         $this->form->devices = $package['devices'];
+        $this->deviceAssociationForm->deviceAssociations = $package['deviceAssociations'];
         $this->form->clinicalImpressions = $package['clinicalImpressions'];
 
         $this->episodeType = 'existing';
@@ -131,11 +132,11 @@ class EncounterEdit extends EncounterComponent
 
         try {
             $this->syncEncounterParticipants();
-            $validated = $this->form->validate();
+            // Validating from the component runs every form of the package and collects their errors in one pass
+            $validated = $this->validate();
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
-            $this->dispatch('flashMessage', ['type' => 'error', 'message' => $exception->validator->errors()->first()]);
             $this->dispatch('scroll-to-error');
 
             return null;
@@ -158,6 +159,7 @@ class EncounterEdit extends EncounterComponent
         $fhirObservations = $fhir['observations'];
         $fhirProcedures = $fhir['procedures'];
         $fhirDevices = $fhir['devices'];
+        $fhirDeviceAssociations = $fhir['deviceAssociations'];
         $fhirClinicalImpressions = $fhir['clinicalImpressions'];
 
         try {
@@ -175,13 +177,16 @@ class EncounterEdit extends EncounterComponent
             );
             Repository::procedure()->sync($this->patient(), array_map($this->fhirToSync(...), $fhirProcedures));
             Repository::device()->sync($this->patient(), array_map($this->fhirToSync(...), $fhirDevices));
+            Repository::deviceAssociation()->sync(
+                $this->patient(),
+                array_map($this->fhirToSync(...), $fhirDeviceAssociations)
+            );
             Repository::clinicalImpression()->sync(
                 $this->patient(),
                 array_map($this->fhirToSync(...), $fhirClinicalImpressions)
             );
         } catch (Throwable $exception) {
             $this->handleDatabaseErrors($exception, 'Failed to sync encounter package data');
-            $this->dispatch('flashMessage', ['type' => 'error', 'message' => __('messages.database_error')]);
 
             return null;
         }
@@ -197,6 +202,7 @@ class EncounterEdit extends EncounterComponent
             'observations' => $fhirObservations,
             'procedures' => $fhirProcedures,
             'devices' => $fhirDevices,
+            'deviceAssociations' => $fhirDeviceAssociations,
             'clinicalImpressions' => $fhirClinicalImpressions
         ]);
     }
@@ -225,10 +231,8 @@ class EncounterEdit extends EncounterComponent
         }
 
         if (Auth::user()->cannot('create', Encounter::class)) {
-            $message = __('encounters.policy.create');
-            Session::flash('error', $message);
+            Session::flash('error', __('encounters.policy.create'));
             $this->showSignatureModal = false;
-            $this->dispatch('flashMessage', ['type' => 'error', 'message' => $message]);
 
             return;
         }
@@ -236,11 +240,9 @@ class EncounterEdit extends EncounterComponent
         try {
             $validated = $this->form->validate($this->form->signingRules());
         } catch (ValidationException $exception) {
+            // The KEP errors render inside the signature modal, so it stays open to show them
             Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
-            $this->showSignatureModal = false;
-            $this->dispatch('flashMessage', ['type' => 'error', 'message' => $exception->validator->errors()->first()]);
-            $this->dispatch('scroll-to-error');
 
             return;
         }
@@ -280,7 +282,6 @@ class EncounterEdit extends EncounterComponent
         } catch (CipherException|CipherConnectionException $exception) {
             $exception->handle('Error when signing data with Cipher');
             $this->showSignatureModal = false;
-            $this->dispatch('flashMessage', ['type' => 'error', 'message' => session('error') ?? $exception->getMessage()]);
 
             return;
         }
@@ -352,12 +353,10 @@ class EncounterEdit extends EncounterComponent
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while submitting encounter');
             $this->showSignatureModal = false;
-            $this->dispatch('flashMessage', ['type' => 'error', 'message' => session('error') ?? $exception->getMessage()]);
         } catch (\RuntimeException $exception) {
             logger()->error('Encounter submission runtime error: ' . $exception->getMessage());
             Session::flash('error', $exception->getMessage());
             $this->showSignatureModal = false;
-            $this->dispatch('flashMessage', ['type' => 'error', 'message' => session('error') ?? $exception->getMessage()]);
         } catch (\Throwable $exception) {
             logger()->error('Encounter submission unexpected error: ' . $exception->getMessage(), [
                 'trace' => $exception->getTraceAsString(),
@@ -365,7 +364,6 @@ class EncounterEdit extends EncounterComponent
             $errorMessage = __('encounters.messages.unexpected_error');
             Session::flash('error', $errorMessage);
             $this->showSignatureModal = false;
-            $this->dispatch('flashMessage', ['type' => 'error', 'message' => $errorMessage]);
         }
 
         Encounter::query()

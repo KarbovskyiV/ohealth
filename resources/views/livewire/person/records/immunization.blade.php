@@ -290,7 +290,7 @@
 
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px]">
-                                                {{ __('patients.performer') }}
+                                                {{ __('medical-events.performer') }}
                                             </div>
 
                                             <div class="record-inner-value text-[14px] font-semibold wrap-break-word">

@@ -123,6 +123,9 @@ class EncounterPackageBuilder
             ->values()
             ->toArray();
 
+        $fhirDeviceAssociations = Fhir::deviceAssociation()
+            ->toFhirCollection($data['deviceAssociations'] ?? [], $uuids);
+
         $fhirClinicalImpressions = collect($data['clinicalImpressions'] ?? [])
             ->map(fn (array $clinicalImpression) => Fhir::clinicalImpression()->toFhir($clinicalImpression, $uuids))
             ->values()
@@ -138,6 +141,7 @@ class EncounterPackageBuilder
             'observations' => $fhirObservations,
             'procedures' => $fhirProcedures,
             'devices' => $fhirDevices,
+            'deviceAssociations' => $fhirDeviceAssociations,
             'clinicalImpressions' => $fhirClinicalImpressions
         ];
     }

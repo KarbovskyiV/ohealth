@@ -179,7 +179,7 @@
 
     <div class="mt-12" x-show="modalImmunization.notGiven === false">
         <div class="mb-4 flex gap-20 md:mb-5">
-            <h2 class="default-p font-bold">{{ __('patients.information_source') }}</h2>
+            <h2 class="default-p font-bold">{{ __('medical-events.information_source') }}</h2>
             <div class="flex items-center">
                 <input
                     x-model.boolean="modalImmunization.primarySource"
@@ -191,7 +191,7 @@
                     :checked="modalImmunization.primarySource === true"
                 />
                 <label for="performer" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                    {{ __('patients.performer') }}
+                    {{ __('medical-events.performer') }}
                 </label>
             </div>
 
@@ -214,7 +214,7 @@
         <div x-show="modalImmunization.primarySource === false" x-transition>
             <div class="form-row-modal">
                 <div>
-                    <label for="reportOrigin" class="label-modal"> {{ __('patients.source_link') }} </label>
+                    <label for="reportOrigin" class="label-modal"> {{ __('medical-events.source_link') }} </label>
                     <select
                         class="input-modal"
                         x-model="modalImmunization.reportOriginCode"
