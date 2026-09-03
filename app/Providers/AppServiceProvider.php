@@ -18,6 +18,7 @@ use App\Jobs\LegalEntitySync;
 use App\Jobs\ObservationSync;
 use App\Jobs\PersonAuthMethodSync;
 use App\Jobs\RemoteEHealthLinksProcessing;
+use App\Livewire\Hooks\IgnoreSpuriousToJsonCalls;
 use App\Rules\TranslatedDateValidator;
 use Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider;
 use Fruitcake\LaravelDebugbar\ServiceProvider as DebugbarServiceProvider;
@@ -30,6 +31,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use App\Repositories\EHealthDatabaseBatchRepository;
 use Illuminate\Bus\BatchFactory;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -66,6 +68,8 @@ class AppServiceProvider extends ServiceProvider
 
         Model::shouldBeStrict($this->app->isLocal());
         DB::prohibitDestructiveCommands($this->app->isProduction());
+
+        Livewire::componentHook(IgnoreSpuriousToJsonCalls::class);
 
         $this->app['validator']->resolver(
             static fn ($translator, $data, $rules, $messages, $customAttributes) => new TranslatedDateValidator(

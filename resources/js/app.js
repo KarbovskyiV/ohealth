@@ -334,6 +334,16 @@ document.addEventListener('click', (event) => {
 });
 
 function registerLivewireHooks() {
+    // JSON.stringify($wire) (Boost browser logger, DevTools, Alpine clones) looks up
+    // toJSON on the proxy and Livewire POSTs it as a real method call. Drop those calls.
+    Livewire.hook('commit', ({ commit }) => {
+        if (!Array.isArray(commit.calls)) {
+            return;
+        }
+
+        commit.calls = commit.calls.filter((call) => call.method !== 'toJSON');
+    });
+
     Livewire.hook('request', ({ succeed, fail }) => {
         activeRequests++;
         updatePreloader();

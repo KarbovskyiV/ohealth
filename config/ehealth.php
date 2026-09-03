@@ -394,7 +394,8 @@ return [
     ],
 
     'pharmacy_employee_types' => [
-        'PHARMASIST', ' PHARMACY_OWNER'
+        'PHARMACIST',
+        'PHARMACY_OWNER',
     ],
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583402009/Medical+Events+Dictionaries+and+configurations#legal_entity_encounter_classes
     'legal_entity_encounter_classes' => [

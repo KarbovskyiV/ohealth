@@ -12,6 +12,17 @@ use Tests\TestCase;
 class EmployeeRequestPendingStatusTest extends TestCase
 {
     #[Test]
+    public function employee_request_index_filters_draft_and_new_separately(): void
+    {
+        $source = file_get_contents(app_path('Livewire/EmployeeRequest/EmployeeRequestIndex.php'));
+
+        $this->assertNotFalse($source);
+        $this->assertStringContainsString('RequestStatus::FILTER_DRAFT => $query->localDraft()', $source);
+        $this->assertStringContainsString('RequestStatus::NEW->value => $query->pendingEhealth()', $source);
+        $this->assertStringContainsString("orderByRaw('COALESCE(inserted_at, created_at) DESC')", $source);
+    }
+
+    #[Test]
     public function local_draft_is_new_without_uuid(): void
     {
         $request = new EmployeeRequest([
@@ -105,15 +116,15 @@ class EmployeeRequestPendingStatusTest extends TestCase
     }
 
     #[Test]
-    public function filter_choices_exclude_legacy_signed(): void
+    public function filter_choices_split_draft_and_new_and_exclude_legacy_signed(): void
     {
-        $values = array_map(
-            static fn (RequestStatus $status): string => $status->value,
-            RequestStatus::filterChoices()
-        );
+        $choices = RequestStatus::filterChoices();
 
-        $this->assertContains(RequestStatus::NEW->value, $values);
-        $this->assertContains(RequestStatus::APPROVED->value, $values);
-        $this->assertNotContains(RequestStatus::SIGNED->value, $values);
+        $this->assertArrayHasKey(RequestStatus::FILTER_DRAFT, $choices);
+        $this->assertSame(__('forms.status.draft'), $choices[RequestStatus::FILTER_DRAFT]);
+        $this->assertArrayHasKey(RequestStatus::NEW->value, $choices);
+        $this->assertSame(__('forms.status.new'), $choices[RequestStatus::NEW->value]);
+        $this->assertArrayHasKey(RequestStatus::APPROVED->value, $choices);
+        $this->assertArrayNotHasKey(RequestStatus::SIGNED->value, $choices);
     }
 }

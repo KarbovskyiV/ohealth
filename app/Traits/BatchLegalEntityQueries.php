@@ -49,14 +49,10 @@ trait BatchLegalEntityQueries
      */
     protected function isEntitySyncIsInProgress(?string $entityStatus = null, bool $isLegalEntity = false): bool
     {
-        return $isLegalEntity
-            ? $entityStatus !== JobStatus::COMPLETED->value
-            : (
-                $entityStatus !== JobStatus::COMPLETED->value &&
+        return $entityStatus !== JobStatus::COMPLETED->value &&
                $entityStatus !== JobStatus::PAUSED->value &&
                $entityStatus !== JobStatus::FAILED->value &&
-               !empty($entityStatus)
-            );
+               !empty($entityStatus);
     }
 
     /**

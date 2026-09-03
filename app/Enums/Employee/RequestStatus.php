@@ -16,6 +16,11 @@ enum RequestStatus: string
     case SIGNED = 'SIGNED';
     case EXPIRED = 'EXPIRED';
 
+    /**
+     * UI-only filter key: local drafts share DB status NEW but have no eHealth UUID.
+     */
+    public const string FILTER_DRAFT = 'DRAFT';
+
     public function label(): string
     {
         return match ($this) {
@@ -50,15 +55,19 @@ enum RequestStatus: string
     }
 
     /**
-     * Statuses shown in employee-request list filters (SIGNED is legacy, not selectable).
+     * Status filter options for employee-request index.
+     * DRAFT and NEW are split in UI even though both use DB status NEW.
      *
-     * @return list<self>
+     * @return array<string, string>
      */
     public static function filterChoices(): array
     {
-        return array_values(array_filter(
-            self::cases(),
-            static fn (self $status): bool => $status !== self::SIGNED
-        ));
+        return [
+            self::FILTER_DRAFT => __('forms.status.draft'),
+            self::NEW->value => __('forms.status.new'),
+            self::APPROVED->value => self::APPROVED->label(),
+            self::REJECTED->value => self::REJECTED->label(),
+            self::EXPIRED->value => self::EXPIRED->label(),
+        ];
     }
 }

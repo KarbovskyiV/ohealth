@@ -120,6 +120,8 @@ class EmployeeRequestIndex extends EmployeeComponent
 
     public function mount(LegalEntity $legalEntity): void
     {
+        $this->authorize('viewAny', EmployeeRequest::class);
+
         $this->legalEntity = $legalEntity;
 
         $this->loadDictionaries();
@@ -367,10 +369,14 @@ class EmployeeRequestIndex extends EmployeeComponent
             ->where('legal_entity_id', legalEntity()->id)
             ->whereHas('revision')
             ->when($this->search, fn ($query) => $query->searchByFullName($this->search))
-            ->when($this->status, function ($query) {
-                $query->where('status', $this->status);
+            ->when($this->status !== '', function ($query) {
+                match ($this->status) {
+                    RequestStatus::FILTER_DRAFT => $query->localDraft(),
+                    RequestStatus::NEW->value => $query->pendingEhealth(),
+                    default => $query->where('status', $this->status),
+                };
             })
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(inserted_at, created_at) DESC')
             ->paginate(20);
     }
 

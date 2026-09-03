@@ -41,7 +41,7 @@ button.item-remove {
 
     &:before {
         mask: url("../icons/calendar-week.svg") no-repeat;
-        @apply content-[''] absolute top-1/2 left-2.5 -translate-y-1/2 w-5 h-5 bg-gray-500;
+        @apply content-[''] absolute top-2.5 left-2.5 w-5 h-5 bg-gray-500;
     }
 }
 
@@ -54,7 +54,7 @@ button.item-remove {
 
     &:before {
         mask: url("../icons/phone.svg") no-repeat;
-        @apply content-[''] absolute top-1/2 left-2 -translate-y-1/2 w-5 h-5 bg-gray-500;
+        @apply content-[''] absolute top-2.5 left-2 w-5 h-5 bg-gray-500;
     }
 }
 

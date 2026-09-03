@@ -386,7 +386,7 @@ class EmployeeRequestProcessor
         $employeeRequestsUpsertData = [];
 
         foreach ($eHealthData as $ehealthEmployeeRequest) {
-            if (in_array($ehealthEmployeeRequest['uuid'], $localEmployeeRequestUuids) || $ehealthEmployeeRequest['status'] !== Status::APPROVED->value) {
+            if (in_array($ehealthEmployeeRequest['uuid'], $localEmployeeRequestUuids, true)) {
                 continue;
             }
 

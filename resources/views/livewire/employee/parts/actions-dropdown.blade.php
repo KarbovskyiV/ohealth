@@ -54,8 +54,8 @@
                     <li>
 
                         <button type="button" wire:click="syncOne({{ $position->id }})"
-                                class="flex w-full items-center gap-2 py-2 px-5 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                            @icon('refresh', 'w-5 h-5 text-blue-500') {{ __('general.sync') }}
+                                class="flex w-full items-center gap-2 py-2 px-5 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                            @icon('refresh', 'w-5 h-5') {{ __('general.sync') }}
                         </button>
                     </li>
                 @endif

@@ -50,6 +50,34 @@ class EmployeeIndexAdminActionsTest extends TestCase
     }
 
     #[Test]
+    public function policy_denies_update_and_deactivate_when_employee_is_not_approved(): void
+    {
+        [$legalEntity, $employee] = $this->createLegalEntityWithApprovedDoctor();
+        $employee->update(['status' => Status::NEW->value]);
+        $this->instance('legalEntity', $legalEntity);
+
+        $admin = Mockery::mock(User::class)->makePartial();
+        $admin->shouldReceive('can')->andReturn(true);
+        $admin->shouldReceive('hasElevatedEmployeeRole')->andReturn(true);
+
+        $this->assertTrue((new EmployeePolicy())->update($admin, $employee)->denied());
+        $this->assertTrue((new EmployeePolicy())->deactivate($admin, $employee)->denied());
+    }
+
+    #[Test]
+    public function policy_allows_deactivate_for_approved_employee_with_elevated_role(): void
+    {
+        [$legalEntity, $employee] = $this->createLegalEntityWithApprovedDoctor();
+        $this->instance('legalEntity', $legalEntity);
+
+        $admin = Mockery::mock(User::class)->makePartial();
+        $admin->shouldReceive('can')->with('employee:deactivate')->andReturn(false);
+        $admin->shouldReceive('hasElevatedEmployeeRole')->andReturn(true);
+
+        $this->assertTrue((new EmployeePolicy())->deactivate($admin, $employee)->allowed());
+    }
+
+    #[Test]
     public function actions_dropdown_links_admin_to_edit_even_when_employee_has_no_user(): void
     {
         [$legalEntity, $employee] = $this->createLegalEntityWithApprovedDoctor();

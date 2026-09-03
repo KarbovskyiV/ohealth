@@ -351,4 +351,45 @@ class PartyVerificationTest extends TestCase
             ->assertDontSee(__('party_verification.warning.drfo'), false)
             ->assertDontSee(__('party_verification.warning.dracs_death'), false);
     }
+
+    public function test_party_verify_allows_empty_comment(): void
+    {
+        ['legalEntity' => $legalEntity, 'party' => $party] = $this->createVerificationFixture('NOT_VERIFIED');
+
+        $mockPartyApi = Mockery::mock(PartyApi::class);
+        $this->instance(PartyApi::class, $mockPartyApi);
+
+        $detailResponse = [
+            'verification_status' => 'NOT_VERIFIED',
+            'details' => [
+                'dracs_death' => [
+                    'verification_status' => 'NOT_VERIFIED',
+                    'verification_reason' => 'RULES_TRIGGERED',
+                ],
+            ],
+        ];
+
+        $mockResponse = Mockery::mock(EHealthResponse::class);
+        $mockResponse->shouldReceive('json')->andReturn($detailResponse);
+        $mockResponse->shouldReceive('getData')->andReturn($detailResponse);
+        $mockPartyApi->shouldReceive('getDetails')->with($party->uuid)->andReturn($mockResponse);
+
+        $updateResponse = Mockery::mock(EHealthResponse::class);
+        $mockPartyApi->shouldReceive('update')
+            ->with($party->uuid, [
+                'dracs_death' => [
+                    'verification_status' => 'VERIFIED',
+                    'verification_reason' => 'MANUAL_DECEASED',
+                ],
+            ])
+            ->once()
+            ->andReturn($updateResponse);
+
+        Livewire::test(PartyVerify::class, ['legalEntity' => $legalEntity, 'party' => $party])
+            ->call('checkAndOpenModal')
+            ->set('reason', 'MANUAL_DECEASED')
+            ->set('comment', '')
+            ->call('updateStatus')
+            ->assertHasNoErrors();
+    }
 }

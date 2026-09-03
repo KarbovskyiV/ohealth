@@ -19,6 +19,8 @@ use App\Models\User;
 use App\Notifications\EmployeeSyncCompleted;
 use App\Notifications\SyncNotification;
 use App\Repositories\Repository;
+use App\Services\Party\PartyVerificationCache;
+use App\Models\Relations\Party;
 use App\Traits\BatchLegalEntityQueries;
 use App\Livewire\Employee\Concerns\DeletesEmployeeRequestDraft;
 use Illuminate\Bus\Batch;
@@ -29,6 +31,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Collection;
 use JsonException;
 use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
@@ -52,8 +55,7 @@ class EmployeeIndex extends EmployeeComponent
     public array $status = [
         Status::APPROVED->value,
         Status::NEW->value,
-        Status::SIGNED->value,
-        Status::REORGANIZED->value
+        Status::REORGANIZED->value,
     ];
     public array $filter = [
         'phone' => '',
@@ -139,6 +141,8 @@ class EmployeeIndex extends EmployeeComponent
 
     public function mount(LegalEntity $legalEntity): void
     {
+        $this->authorize('viewAny', Employee::class);
+
         $this->legalEntity = $legalEntity;
 
         $this->loadDivisions($legalEntity);
@@ -149,9 +153,33 @@ class EmployeeIndex extends EmployeeComponent
         $this->syncStatus = $this->getSyncStatus();
     }
 
+    public function hydrate(): void
+    {
+        $this->status = array_values(array_unique(array_map(
+            fn (string $status): string => match ($status) {
+                Status::SIGNED->value => Status::NEW->value,
+                Status::DISMISSED->value => Status::STOPPED->value,
+                default => $status,
+            },
+            $this->status,
+        )));
+    }
+
     public function applyFilters(): void
     {
         $this->resetPage();
+    }
+
+    /**
+     * @return array<string, array{verification_status: mixed}>
+     */
+    public function partyVerificationDetails(Party $party): array
+    {
+        if (empty($party->uuid)) {
+            return [];
+        }
+
+        return PartyVerificationCache::get($party->uuid)['details'] ?? [];
     }
 
     /**
@@ -176,17 +204,10 @@ class EmployeeIndex extends EmployeeComponent
      */
     private function applyDatabaseFilters(Builder $query): void
     {
-        // 1. Filter: Ensure Party is linked to this Legal Entity via Employee or Request
-        $query->where(function (Builder $q) {
-            $q->whereHas('employees', function ($sub) {
-                $sub->where('legal_entity_id', $this->legalEntity->id);
-                $this->applyChildFilters($sub);
-            })
-                ->orWhereHas('employeeRequests', function ($sub) {
-                    $sub->where('legal_entity_id', $this->legalEntity->id)
-                        ->whereIn('status', [Status::NEW->value, Status::SIGNED->value]);
-                    $this->applyChildFilters($sub);
-                });
+        // Only parties with real Employee records for this legal entity (requests live on EmployeeRequestIndex).
+        $query->whereHas('employees', function ($sub) {
+            $sub->where('legal_entity_id', $this->legalEntity->id);
+            $this->applyChildFilters($sub);
         });
 
         // 2. Filter: Search Text (Full Name, Case-Insensitive, Order-Independent)
@@ -241,21 +262,104 @@ class EmployeeIndex extends EmployeeComponent
     }
 
     /**
+     * Unique labels for the status multi-select (NEW covers SIGNED, STOPPED covers DISMISSED).
+     *
+     * @return array<string, string>
+     */
+    public function statusFilterOptions(): array
+    {
+        return [
+            Status::APPROVED->value => __('forms.status.active'),
+            Status::NEW->value => __('forms.status.new'),
+            Status::STOPPED->value => __('forms.status.stopped'),
+            Status::ENTERED_IN_ERROR->value => __('forms.status.entered_in_error'),
+            Status::REORGANIZED->value => __('forms.reorganized'),
+        ];
+    }
+
+    /**
+     * Expand UI status keys to the values stored on employees / requests.
+     *
+     * @return list<string>
+     */
+    public function statusesForQuery(): array
+    {
+        if ($this->status === []) {
+            return [];
+        }
+
+        $expanded = [];
+        foreach ($this->status as $status) {
+            $expanded = [
+                ...$expanded,
+                ...match ($status) {
+                    Status::NEW->value, Status::SIGNED->value => [Status::NEW->value, Status::SIGNED->value],
+                    Status::STOPPED->value, Status::DISMISSED->value => [Status::STOPPED->value, Status::DISMISSED->value],
+                    default => [$status],
+                },
+            ];
+        }
+
+        return array_values(array_unique(array_diff($expanded, ['VERIFIED', 'NOT_VERIFIED'])));
+    }
+
+    /**
+     * Positions shown for a party after applying list filters (status, role, position, division).
+     * Party-level whereHas only decides which parties appear; this trims rows inside each party card.
+     * EmployeeRequest drafts/pending updates are listed only on EmployeeRequestIndex.
+     *
+     * @return Collection<int, mixed>
+     */
+    public function positionsForParty(Party $party): Collection
+    {
+        $legalEntityId = $this->legalEntity->id;
+        $allowed = $this->statusesForQuery();
+
+        $positions = $party->employees
+            ->where('legal_entity_id', $legalEntityId)
+            ->sortByDesc('updated_at');
+
+        return $positions
+            ->filter(function ($position) use ($allowed) {
+                if ($allowed !== []) {
+                    $status = $position->status instanceof \UnitEnum
+                        ? $position->status->value
+                        : (string) $position->status;
+
+                    if (!in_array($status, $allowed, true)) {
+                        return false;
+                    }
+                }
+
+                if (!empty($this->filter['division_id'])
+                    && (string) $position->division_id !== (string) $this->filter['division_id']
+                ) {
+                    return false;
+                }
+
+                $employeeType = $position->employeeType ?? $position->employee_type ?? null;
+                if (!empty($this->filter['role']) && (string) $employeeType !== (string) $this->filter['role']) {
+                    return false;
+                }
+
+                $positionCode = $position->position ?? null;
+                if (!empty($this->filter['position']) && (string) $positionCode !== (string) $this->filter['position']) {
+                    return false;
+                }
+
+                return true;
+            })
+            ->values();
+    }
+
+    /**
      * Helper to apply role, division, position, and status filters to relationship subqueries.
      */
     private function applyChildFilters(Builder $subQuery): void
     {
-        // Status Filter
-        if (!empty($this->status)) {
-            // Map 'DISMISSED' -> 'STOPPED' for DB query
-            $dbStatuses = array_map(fn ($s) => $s === 'DISMISSED' ? 'STOPPED' : $s, $this->status);
-
-            // Remove non-DB statuses (like 'VERIFIED'/'NOT_VERIFIED' which apply to Party)
-            $dbStatuses = array_diff($dbStatuses, ['VERIFIED', 'NOT_VERIFIED']);
-
-            if (!empty($dbStatuses)) {
-                $subQuery->whereIn('status', $dbStatuses);
-            }
+        $dbStatuses = $this->statusesForQuery();
+        if ($dbStatuses !== []) {
+            $subQuery->whereIn('status', $dbStatuses);
         }
 
         // Division Filter
@@ -279,6 +383,8 @@ class EmployeeIndex extends EmployeeComponent
         $employee = Employee::find($id);
 
         if ($employee) {
+            $this->authorize('deactivate', $employee);
+
             $this->employeeIdToDeactivate = $id;
 
             $this->employeeToDeactivateName = $employee->full_name
@@ -318,7 +424,11 @@ class EmployeeIndex extends EmployeeComponent
     public function resetFilters(): void
     {
         $this->reset(['filter', 'status', 'search']);
-        $this->status = ['APPROVED', 'NEW'];
+        $this->status = [
+            Status::APPROVED->value,
+            Status::NEW->value,
+            Status::REORGANIZED->value,
+        ];
         $this->resetPage();
     }
 
@@ -464,11 +574,11 @@ class EmployeeIndex extends EmployeeComponent
         // Try to resume previous sync if it was paused or failed
         if ($this->syncStatus === JobStatus::PAUSED->value || $this->syncStatus === JobStatus::FAILED->value) {
 
-            $this->resumeSynchronization($user, $token);
+            if ($this->resumeSynchronization($user, $token)) {
+                $user->notify(new SyncNotification('employee', 'resumed'));
 
-            $user->notify(new SyncNotification('employee', 'resumed'));
-
-            return;
+                return;
+            }
         }
 
         $user->notify(new SyncNotification('employee', 'started'));
@@ -572,7 +682,7 @@ class EmployeeIndex extends EmployeeComponent
      * @param  string  $token  The authentication or session token used to resume the sync process
      * @return void
      */
-    protected function resumeSynchronization(User $user, string $token): void
+    protected function resumeSynchronization(User $user, string $token): bool
     {
         $encryptedToken = Crypt::encryptString($token);
 
@@ -592,9 +702,11 @@ class EmployeeIndex extends EmployeeComponent
                     'type' => 'success'
                 ]);
 
-                break;
+                return true;
             }
         }
+
+        return false;
     }
 
     /**

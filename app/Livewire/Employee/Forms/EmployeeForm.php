@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Livewire\Employee\Forms;
 
 use App\Core\Arr;
+use App\Enums\Status;
 use App\Livewire\Employee\EmployeeCreate;
 use App\Livewire\Party\PartyEdit;
 use App\Models\Employee\BaseEmployee;
-use App\Rules\Cyrillic;
 use App\Rules\DateFormat;
 use App\Rules\DocumentNumber;
 use App\Rules\HasIdentityDocumentRule;
@@ -111,7 +111,7 @@ class EmployeeForm extends Form
 
         $positionRules = ['required', 'string'];
         if (!$isCustomPositionAllowed) {
-            $positionRules[] = Rule::in(array_keys($this->component->dictionaries['POSITION'] ?? []));
+            $positionRules[] = Rule::in($this->allowedValuesForEmployeeType('position', 'POSITION'));
         }
 
         return [
@@ -136,7 +136,9 @@ class EmployeeForm extends Form
                 }),
                 'nullable',
                 'string',
-                Rule::exists('divisions', 'id')->where('legal_entity_id', legalEntity()->id)
+                Rule::exists('divisions', 'id')
+                    ->where('legal_entity_id', legalEntity()->id)
+                    ->where('status', Status::ACTIVE->value),
             ],
         ];
     }
@@ -265,11 +267,11 @@ class EmployeeForm extends Form
         return [
             'doctor.educations' => $educationRules,
             'doctor.educations.*.country' => ['required', 'string', 'max:255'],
-            'doctor.educations.*.city' => ['required', 'string', 'max:255', new Cyrillic()],
-            'doctor.educations.*.institutionName' => ['required', 'string', 'max:255', new Cyrillic()],
+            'doctor.educations.*.city' => ['required', 'string', 'max:255'],
+            'doctor.educations.*.institutionName' => ['required', 'string', 'max:255'],
             'doctor.educations.*.issuedDate' => ['nullable', 'date'],
             'doctor.educations.*.diplomaNumber' => ['required', 'string', 'max:255'],
-            'doctor.educations.*.degree' => ['required', 'string', 'max:255'],
+            'doctor.educations.*.degree' => ['required', 'string', 'max:255', Rule::in($this->allowedValuesForEmployeeType('education_degree', 'EDUCATION_DEGREE'))],
             'doctor.educations.*.speciality' => ['required', 'string', 'max:255'],
 
             'doctor.specialities' => array_merge($specialitiesRules, [
@@ -293,10 +295,10 @@ class EmployeeForm extends Form
                     }
                 },
             ]),
-            'doctor.specialities.*.speciality' => ['required', 'string', 'max:255'],
+            'doctor.specialities.*.speciality' => ['required', 'string', 'max:255', Rule::in($this->allowedValuesForEmployeeType('speciality_type', 'SPECIALITY_TYPE'))],
             'doctor.specialities.*.specialityOfficio' => ['required', 'boolean'],
-            'doctor.specialities.*.level' => ['required', 'string', 'max:255'],
-            'doctor.specialities.*.qualificationType' => ['required', 'string'],
+            'doctor.specialities.*.level' => ['required', 'string', 'max:255', Rule::in($this->allowedValuesForEmployeeType('speciality_level', 'SPECIALITY_LEVEL'))],
+            'doctor.specialities.*.qualificationType' => ['required', 'string', Rule::in($this->allowedValuesForEmployeeType('speciality_qualification_type', 'SPEC_QUALIFICATION_TYPE'))],
             'doctor.specialities.*.attestationName' => ['required', 'string', 'max:255'],
             'doctor.specialities.*.attestationDate' => ['required', 'date'],
             'doctor.specialities.*.validToDate' => ['nullable', 'date'],
@@ -305,20 +307,20 @@ class EmployeeForm extends Form
             'doctor.scienceDegree' => ['nullable', 'array'],
             'doctor.scienceDegree.country' => [Rule::requiredIf(fn () => !empty($this->doctor['scienceDegree'])), 'string', 'max:255'],
             'doctor.scienceDegree.city' => [Rule::requiredIf(fn () => !empty($this->doctor['scienceDegree'])), 'string', 'max:255'],
-            'doctor.scienceDegree.degree' => [Rule::requiredIf(fn () => !empty($this->doctor['scienceDegree'])), 'string', 'max:255'],
+            'doctor.scienceDegree.degree' => [Rule::requiredIf(fn () => !empty($this->doctor['scienceDegree'])), 'string', 'max:255', Rule::in($this->dictionaryKeys('SCIENCE_DEGREE'))],
             'doctor.scienceDegree.institutionName' => [Rule::requiredIf(fn () => !empty($this->doctor['scienceDegree'])), 'string', 'max:255'],
             'doctor.scienceDegree.diplomaNumber' => [Rule::requiredIf(fn () => !empty($this->doctor['scienceDegree'])), 'string', 'max:255'],
             'doctor.scienceDegree.speciality' => [Rule::requiredIf(fn () => !empty($this->doctor['scienceDegree'])), 'string', 'max:255'],
             'doctor.scienceDegree.issuedDate' => ['nullable', 'date'],
 
             'doctor.qualifications' => ['nullable', 'array'],
-            'doctor.qualifications.*.type' => ['required', 'string', 'max:255'],
+            'doctor.qualifications.*.type' => ['required', 'string', 'max:255', Rule::in($this->allowedValuesForEmployeeType('qualification_type', 'QUALIFICATION_TYPE'))],
             'doctor.qualifications.*.institutionName' => ['required', 'string', 'max:255'],
             'doctor.qualifications.*.speciality' => ['required', 'string', 'max:255'],
             'doctor.qualifications.*.issuedDate' => ['required', 'date'],
             'doctor.qualifications.*.certificateNumber' => ['required', 'string', 'max:255'],
             'doctor.qualifications.*.validTo' => ['nullable', 'date', 'after_or_equal:doctor.qualifications.*.issuedDate'],
-            'doctor.qualifications.*.additionalInfo' => ['nullable', 'string', new Cyrillic()],
+            'doctor.qualifications.*.additionalInfo' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -351,6 +353,28 @@ class EmployeeForm extends Form
         $this->startDate = '';
         $this->endDate = null;
         $this->divisionId = null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function dictionaryKeys(string $dictionaryName): array
+    {
+        return array_keys($this->component->dictionaries[$dictionaryName] ?? []);
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function allowedValuesForEmployeeType(string $configKey, string $dictionaryName): array
+    {
+        $configured = config('ehealth.employee_type.' . $this->employeeType . '.' . $configKey, []);
+
+        if (is_array($configured) && $configured !== []) {
+            return array_values($configured);
+        }
+
+        return $this->dictionaryKeys($dictionaryName);
     }
 
     /**
