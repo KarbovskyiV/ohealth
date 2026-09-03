@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Encounter;
 
 use App\Classes\eHealth\EHealth;
-use App\Classes\eHealth\Exceptions\ApiException as eHealthApiException;
 use App\Core\Arr;
 use App\Enums\Device\Status as DeviceStatus;
 use App\Enums\Episode\Status as EpisodeStatus;
@@ -18,8 +17,8 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
-use App\Livewire\Encounter\Forms\Api\EncounterRequestApi;
 use App\Livewire\Encounter\Forms\DeviceAssociationForm;
+use App\Livewire\Encounter\Forms\DeviceForm;
 use App\Livewire\Encounter\Forms\EncounterForm as Form;
 use App\Models\Employee\Employee;
 use App\Models\Equipment;
@@ -52,6 +51,8 @@ class EncounterComponent extends Component
     public Form $form;
 
     public DeviceAssociationForm $deviceAssociationForm;
+
+    public DeviceForm $deviceForm;
 
     public bool $showSignatureModal = false;
 
@@ -465,18 +466,6 @@ class EncounterComponent extends Component
             logger()->error('loadInProgressReferrals failed: ' . $e->getMessage());
             // Don't show an error toast — just silently leave the dropdown empty
         }
-    }
-
-    /**
-     * Search for referral number.
-     *
-     * @return void
-     * @throws eHealthApiException
-     */
-    public function searchForReferralNumber(): void
-    {
-        $buildSearchRequest = EncounterRequestApi::buildGetServiceRequestList($this->form->referralNumber);
-        \App\Classes\eHealth\EHealth::serviceRequest()->searchForServiceRequestsByParams($buildSearchRequest)->getData();
     }
 
     /**

@@ -17,7 +17,7 @@
         item: 0,
 
         deviceOptions() {
-            const packageDevices = (this.$wire.form.devices ?? [])
+            const packageDevices = (this.$wire.deviceForm.devices ?? [])
                 .filter((device) => device.uuid && device.names?.[0]?.value)
                 .map((device) => ({ uuid: device.uuid, name: device.names[0].value }));
             const packageDeviceIds = packageDevices.map((device) => device.uuid);
@@ -216,9 +216,7 @@
         <form>
             <fieldset
                 @disabled($isReadonly ?? false)
-                @class([
-                                    'pointer-event-none' => $isReadonly ?? false
-                                ])
+                @class(['pointer-event-none' => $isReadonly ?? false])
             >
                 <fieldset class="fieldset">
                     <legend class="legend">{{ __('patients.main_info') }}</legend>
@@ -415,7 +413,6 @@
             this.primarySource = true;
             this.reportOriginCode = '';
             this.reportOriginText = '';
-            // The record is stamped when it is first written, so a new association carries no stamp yet
             this.recorded = '';
 
             if (obj) {

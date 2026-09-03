@@ -141,7 +141,7 @@ class DeviceAssociationForm extends Form
             ->values()
             ->toArray();
 
-        $isDeviceInPackage = collect($this->component->form->devices ?? [])->contains(
+        $isDeviceInPackage = collect($this->component->deviceForm->devices)->contains(
             static fn (array $device): bool => ($device['uuid'] ?? '') === $deviceId
         );
 
