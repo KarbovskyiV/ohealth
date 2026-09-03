@@ -34,7 +34,6 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Collection;
 use JsonException;
 use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
