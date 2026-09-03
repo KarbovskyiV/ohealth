@@ -12,6 +12,7 @@ use App\Enums\User\Role;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Jobs\EmployeeSync;
+use App\Livewire\Actions\Logout;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\Role as ModelsRole;
@@ -24,6 +25,8 @@ use App\Livewire\Employee\Concerns\DeletesEmployeeRequestDraft;
 use Illuminate\Bus\Batch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Crypt;
@@ -290,9 +293,9 @@ class EmployeeIndex extends EmployeeComponent
         }
 
         $this->deactivationStatus = Status::STOPPED->value;
-        $startDateStr = isset($employee) ? ($employee->start_date ?? '') : '';
-        $todayStr = \Illuminate\Support\Carbon::now('Europe/Kyiv')->format('Y-m-d');
-        $this->deactivationEndDate = ($startDateStr && $todayStr < $startDateStr) ? $startDateStr : $todayStr;
+        $this->deactivationEndDate = $this->defaultDeactivationEndDate(
+            isset($employee) ? ($employee->startDate ?? '') : ''
+        );
 
         $this->showDeactivateModal = true;
     }
@@ -303,9 +306,7 @@ class EmployeeIndex extends EmployeeComponent
             $this->deactivationEndDate = '';
         } elseif ($this->deactivationEndDate === '' && $this->employeeIdToDeactivate) {
             $employee = Employee::find($this->employeeIdToDeactivate);
-            $startDateStr = $employee?->start_date ?? '';
-            $todayStr = \Illuminate\Support\Carbon::now('Europe/Kyiv')->format('Y-m-d');
-            $this->deactivationEndDate = ($startDateStr && $todayStr < $startDateStr) ? $startDateStr : $todayStr;
+            $this->deactivationEndDate = $this->defaultDeactivationEndDate($employee?->startDate ?? '');
         }
     }
 
@@ -322,7 +323,7 @@ class EmployeeIndex extends EmployeeComponent
         $this->resetPage();
     }
 
-    public function deactivate(): void
+    public function deactivate()
     {
         // 1. Get the employee record from the database
         $employee = Employee::find($this->employeeIdToDeactivate);
@@ -335,8 +336,6 @@ class EmployeeIndex extends EmployeeComponent
         }
 
         // eHealth: STOPPED requires end_date (>= start_date, <= today); ENTERED_IN_ERROR omits end_date.
-        $startDateStr = $employee->start_date;
-        $todayStr = \Illuminate\Support\Carbon::now('Europe/Kyiv')->format('Y-m-d');
         $status = in_array($this->deactivationStatus, [Status::STOPPED->value, Status::ENTERED_IN_ERROR->value], true)
             ? $this->deactivationStatus
             : Status::STOPPED->value;
@@ -344,10 +343,11 @@ class EmployeeIndex extends EmployeeComponent
         $formattedEndDate = null;
 
         if ($status === Status::STOPPED->value) {
-            $endDateInput = trim($this->deactivationEndDate);
-            $endDateStr = $endDateInput !== '' ? $endDateInput : $todayStr;
+            $today = $this->kyivToday();
+            $startDate = $this->parseFlexibleDate($employee->startDate);
+            $endDate = $this->parseFlexibleDate(trim($this->deactivationEndDate)) ?? $today;
 
-            if ($startDateStr && $endDateStr < $startDateStr) {
+            if ($startDate && $endDate->lt($startDate)) {
                 $this->dispatch('flashMessage', [
                     'message' => __('employees.deactivation_end_date_before_start'),
                     'type' => 'error',
@@ -356,7 +356,7 @@ class EmployeeIndex extends EmployeeComponent
                 return;
             }
 
-            if ($endDateStr > $todayStr) {
+            if ($endDate->gt($today)) {
                 $this->dispatch('flashMessage', [
                     'message' => __('employees.deactivation_end_date_in_future'),
                     'type' => 'error',
@@ -365,7 +365,7 @@ class EmployeeIndex extends EmployeeComponent
                 return;
             }
 
-            $formattedEndDate = $endDateStr;
+            $formattedEndDate = $endDate->format('Y-m-d');
         }
 
         try {
@@ -383,31 +383,16 @@ class EmployeeIndex extends EmployeeComponent
                     'is_active' => false,
                 ]);
 
-                // 4. Safe User Cleanup: Remove a role from a user (if binding exists)
-                // This handles cases where email might be 'N/A' or user doesn't exist locally
-                $party = $employee->party;
-                $partyEmployees = $party->employees->where('legal_entity_id', $this->legalEntity->id);
-                $employeesWithUser = $partyEmployees->filter(fn (Employee $employee) => $employee->user_id !== null);
+                $this->deactivateEmployeeRole($employee);
 
-                $partyUsers = $party->users->whereIn('id', $employeesWithUser->pluck('user_id')); // filter by legal entity id
+                $this->resetDeactivateState();
 
-                // Detach all users from the employee to prevent orphaned relationships
-                $employee->users()->detach();
-
-                // Get all specified guards from section 'guards' from file config/auth.php
-                $guards = array_keys((array) config('auth.guards'));
-
-                // Role from dissmisses employee can attached to multiple users, so we need to loop through all of them
-                foreach ($partyUsers as $user) {
-                    $roleToRemove = $employee->employee_type;
-
-                    foreach ($guards as $guard) {
-                        if ($user->hasRole($roleToRemove, $guard)) {
-                            $user->removeRole(
-                                ModelsRole::findByName($roleToRemove, $guard)
-                            );
-                        }
-                    }
+                $sessionUser = Auth::guard('ehealth')->user() ?? Auth::guard('web')->user();
+                if (
+                    $sessionUser instanceof User
+                    && (int) $employee->partyId === (int) $sessionUser->partyId
+                ) {
+                    return app(Logout::class)(message: __('employees.dismissalSuccess'));
                 }
 
                 $this->dispatch('flashMessage', ['message' => __('employees.dismissalSuccess'), 'type' => 'success']);
@@ -617,6 +602,135 @@ class EmployeeIndex extends EmployeeComponent
         if ($success) {
             $this->refreshTrigger++;
         }
+    }
+
+    /**
+     * Revoke the Spatie role of the deactivated employee type for linked users,
+     * unless another APPROVED employee of the same type remains in this legal entity.
+     * Also drops stale direct eHealth scopes so the next login can resync them.
+     */
+    protected function deactivateEmployeeRole(Employee $employee): void
+    {
+        $linkedUsers = $this->usersLinkedToEmployee($employee);
+
+        $employee->users()->detach();
+
+        if ($linkedUsers->isEmpty()) {
+            return;
+        }
+
+        $guards = array_keys((array) config('auth.guards'));
+        $savedGuard = Auth::getDefaultDriver();
+        $employeeType = $employee->employeeType;
+
+        setPermissionsTeamId($this->legalEntity->id);
+
+        foreach ($linkedUsers as $user) {
+            if (
+                is_string($employeeType)
+                && $employeeType !== ''
+                && !$employee->userHasOtherApprovedOfType((int) $user->id, (int) $this->legalEntity->id)
+            ) {
+                foreach ($guards as $guard) {
+                    Auth::shouldUse($guard);
+
+                    if ($user->hasRole($employeeType, $guard)) {
+                        $user->removeRole(ModelsRole::findByName($employeeType, $guard));
+                    }
+                }
+            }
+
+            // Direct eHealth scopes are synced on login only; drop stale rows after deactivate.
+            $user->syncPermissions([]);
+            $user->unsetRelation('roles')->unsetRelation('permissions');
+        }
+
+        Auth::shouldUse($savedGuard);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    /**
+     * Users bound to the employee via `user_id` or the `employee_users` pivot.
+     *
+     * @return Collection<int, User>
+     */
+    protected function usersLinkedToEmployee(Employee $employee): Collection
+    {
+        $users = collect();
+
+        if ($employee->userId) {
+            $owner = User::query()->without(['person'])->find($employee->userId);
+
+            if ($owner instanceof User) {
+                $users->push($owner);
+            }
+        }
+
+        return $users
+            ->concat($employee->users()->without(['person'])->get())
+            ->unique('id')
+            ->values();
+    }
+
+    /**
+     * Current calendar date in Europe/Kyiv, start of day.
+     */
+    protected function kyivToday(): Carbon
+    {
+        return Carbon::now('Europe/Kyiv')->startOfDay();
+    }
+
+    /**
+     * Parse a date from app display format, ISO, or Carbon into a Kyiv start-of-day value.
+     */
+    protected function parseFlexibleDate(mixed $value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof Carbon) {
+            return $value->copy()->timezone('Europe/Kyiv')->startOfDay();
+        }
+
+        $value = trim((string) $value);
+        $formats = array_unique([config('app.date_format'), 'Y-m-d', 'd.m.Y']);
+
+        foreach ($formats as $format) {
+            if ($format === '') {
+                continue;
+            }
+
+            try {
+                $parsed = Carbon::createFromFormat($format, $value, 'Europe/Kyiv');
+
+                if ($parsed !== false) {
+                    return $parsed->startOfDay();
+                }
+            } catch (\Throwable) {
+            }
+        }
+
+        try {
+            return Carbon::parse($value, 'Europe/Kyiv')->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Default STOPPED end date: today, or the employee start date when it is in the future.
+     */
+    protected function defaultDeactivationEndDate(mixed $startDateRaw = ''): string
+    {
+        $today = $this->kyivToday();
+        $startDate = $this->parseFlexibleDate($startDateRaw);
+
+        if ($startDate && $today->lt($startDate)) {
+            return $startDate->format((string) config('app.date_format'));
+        }
+
+        return $today->format((string) config('app.date_format'));
     }
 
     private function translateRequestError(string $error): string
