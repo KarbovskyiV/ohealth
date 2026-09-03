@@ -143,6 +143,13 @@
                   }
               }
           }"
+    x-effect="
+        if (showConfidantPersonDrawer || showDeactivateConfidantPersonDrawer || showDocumentDrawer || showAuthDrawer || showSignatureDrawer || showTerminateModal) {
+            document.body.classList.add('overflow-hidden');
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+    "
 >
     <legend class="legend flex items-baseline gap-2">
         <input type="checkbox" class="default-checkbox mb-2" x-model="isIncapacitated" id="isIncapacitated" />
