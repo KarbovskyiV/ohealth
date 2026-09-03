@@ -328,4 +328,27 @@ class Employee extends BaseEmployee
         return $careManagerId === null
             || self::query()->manageableBy($user)->whereUuid($careManagerId)->exists();
     }
+
+    /**
+     * Whether the user still has another APPROVED employee of this type in the legal entity.
+     */
+    public function userHasOtherApprovedOfType(int $userId, int $legalEntityId): bool
+    {
+        $employeeType = $this->employeeType;
+
+        if (!is_string($employeeType) || $employeeType === '') {
+            return false;
+        }
+
+        return self::query()
+            ->where('legal_entity_id', $legalEntityId)
+            ->where('employee_type', $employeeType)
+            ->whereKeyNot($this->id)
+            ->where('status', Status::APPROVED->value)
+            ->where(function (Builder $query) use ($userId) {
+                $query->where('user_id', $userId)
+                    ->orWhereHas('users', static fn (Builder $users) => $users->where('users.id', $userId));
+            })
+            ->exists();
+    }
 }
