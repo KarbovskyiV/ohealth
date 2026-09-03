@@ -88,7 +88,7 @@ class PatientVerification extends BasePatientComponent
     public function getVerificationStatus(): void
     {
         if (Auth::user()->cannot('view', PersonVerificationDetail::class)) {
-            Session::flash('error', __('patients.policy.verification_details'));
+            Session::flash('error', __('patient-verifications.policy.details'));
 
             return;
         }
@@ -125,7 +125,7 @@ class PatientVerification extends BasePatientComponent
     public function confirmDeathVerification(): bool
     {
         if (Auth::user()->cannot('update', [PersonVerificationDetail::class, $this->patient()])) {
-            Session::flash('error', __('patients.policy.verification_update'));
+            Session::flash('error', __('patient-verifications.policy.update'));
 
             return false;
         }
@@ -145,7 +145,7 @@ class PatientVerification extends BasePatientComponent
     public function signDeathVerification(): void
     {
         if (Auth::user()->cannot('update', [PersonVerificationDetail::class, $this->patient()])) {
-            Session::flash('error', __('patients.policy.verification_update'));
+            Session::flash('error', __('patient-verifications.policy.update'));
 
             return;
         }
@@ -201,7 +201,7 @@ class PatientVerification extends BasePatientComponent
         $this->form->resetSigningFields();
         $this->showSignatureModal = false;
 
-        Session::flash('success', __('patients.messages.verification_status_updated'));
+        Session::flash('success', __('patient-verifications.messages.status_updated'));
     }
 
     /**

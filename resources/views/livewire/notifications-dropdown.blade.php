@@ -18,7 +18,7 @@
     }
 }"
      @open-notifications.window="open = true"
-     @show-patient-verification-notification.window="addNotification('{{ __('patients.patient_verification_warning_title') }}', '{{ __('patients.patient_verification_warning_message') }}')"
+     @show-patient-verification-notification.window="addNotification('{{ __('patient-verifications.warning_title') }}', '{{ __('patient-verifications.warning_message') }}')"
      class="relative"
 >
     <button @click="open = !open"

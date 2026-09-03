@@ -154,7 +154,9 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
             ->whereNumber('procedureId');
     });
 
-    Route::get('/verifications', PatientVerifications::class)->name('persons.verifications');
+    Route::get('/verifications', PatientVerifications::class)
+        ->can('viewAny', PersonVerificationDetail::class)
+        ->name('persons.verifications');
 });
 
 Route::prefix('prepersons')

@@ -65,7 +65,7 @@
                                     href="{{ route('persons.verification', [legalEntity(), 'person' => $personId]) }}"
                                     class="summary-tab {{ ($activeTab === 'verification' || request()->routeIs('persons.verification')) ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                                 >
-                                    {{ __('patients.verification') }}
+                                    {{ __('patient-verifications.label') }}
                                 </a>
                             @endcan
                         @endif

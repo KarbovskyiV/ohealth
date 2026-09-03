@@ -48,9 +48,9 @@ class PersonVerificationForm extends BaseForm
     {
         return [
             'verificationStatus' => __('forms.status.label'),
-            'verificationReason' => __('patients.verification_reason_field'),
+            'verificationReason' => __('patient-verifications.reason_field'),
             'verificationComment' => __('forms.comment'),
-            'deathDate' => __('patients.death_date')
+            'deathDate' => __('patient-verifications.death_date')
         ];
     }
 

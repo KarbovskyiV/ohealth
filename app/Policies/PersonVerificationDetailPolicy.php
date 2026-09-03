@@ -14,6 +14,18 @@ use Illuminate\Auth\Access\Response;
 class PersonVerificationDetailPolicy
 {
     /**
+     * Determine whether the user can view the person verification list.
+     */
+    public function viewAny(User $user): Response
+    {
+        if ($user->cannot('person_verification:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Determine whether the user can view the person verification details.
      */
     public function view(User $user): Response
@@ -48,7 +60,10 @@ class PersonVerificationDetailPolicy
             return Response::denyWithStatus(404);
         }
 
-        $employee = $user->activeDoctorEmployee();
+        $employee = $user->employees()
+            ->whereLegalEntityId(legalEntity()->id)
+            ->whereEmployeeType(Role::DOCTOR)
+            ->first();
 
         if ($employee === null) {
             return Response::denyWithStatus(404);

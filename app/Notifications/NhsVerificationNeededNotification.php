@@ -36,8 +36,8 @@ class NhsVerificationNeededNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => __('patients.patient_verification_warning_title'),
-            'message' => __('patients.patient_verification_warning_message'),
+            'title' => __('patient-verifications.warning_title'),
+            'message' => __('patient-verifications.warning_message'),
             'time' => now()->toDateTimeString()
         ];
     }
