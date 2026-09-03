@@ -35,7 +35,7 @@ trait Cipher
     {
         return [
             'knedp' => 'required|string',
-            'keyContainerUpload' => 'required|file',
+            'keyContainerUpload' => 'required|file|extensions:dat,pfx,pk8,zs2,jks,p7s',
             'password' => 'required|string|max:255'
         ];
     }
