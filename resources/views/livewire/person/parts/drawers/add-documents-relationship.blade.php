@@ -12,7 +12,7 @@
     x-cloak
     @click="showDocumentDrawer = false"
     class="fixed inset-0 bg-gray-900/50"
-    style="z-index: 55"
+    style="z-index: 46"
 ></div>
 
 {{-- Document Drawer --}}
@@ -25,8 +25,8 @@
     x-transition:leave-start="translate-x-0"
     x-transition:leave-end="translate-x-full"
     x-cloak
-    class="fixed top-0 right-0 h-screen bg-white pt-16 shadow-2xl dark:bg-gray-800"
-    style="z-index: 60; width: calc(80% - 35px)"
+    class="fixed top-0 right-0 h-screen bg-white pt-20 shadow-2xl dark:bg-gray-800"
+    style="z-index: 47; width: 50%"
     id="add-document-drawer"
     tabindex="-1"
 >

@@ -168,6 +168,7 @@
                  }
              }
          }"
+         x-effect="document.body.style.overflow = (showConfidantPersonDrawer || showDeactivateConfidantPersonDrawer || showDocumentDrawer || showAuthDrawer || showSignatureDrawer || showTerminateModal) ? 'hidden' : ''"
     >
         <div id="accordion-open" data-accordion="open" class="flex flex-col gap-4">
             <div
