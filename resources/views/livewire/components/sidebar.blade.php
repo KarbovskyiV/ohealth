@@ -12,7 +12,7 @@
     <div class="h-full overflow-y-auto bg-white px-3 py-5 dark:bg-gray-800">
         <ul class="space-y-2">
             @if (Auth::user()->can('viewAny', LegalEntity::class) || Auth::user()->can('limitedAction', LegalEntity::class))
-                <li x-data="{ open: false }" class="space-y-2">
+                <li x-data="{ open: {{ request()->routeIs('legal-entity.*') ? 'true' : 'false' }} }" class="space-y-2">
                     <button
                         @click="open = ! open"
                         type="button"
@@ -39,7 +39,7 @@
 
                     <ul
                         id="dropdown-legal-entity"
-                        x-cloak
+                        @if(!request()->routeIs('legal-entity.*')) x-cloak @endif
                         class="space-y-2 py-2"
                         x-show="open"
                         x-transition:enter="transition ease-out duration-100"
@@ -126,7 +126,7 @@
 
                 @if (Auth::user()->can('viewAny', Employee::class) || Auth::user()->can('viewAny', EmployeeRequest::class))
                     <li
-                        x-data="{ open: {{ (request()->routeIs('employee.*') || request()->routeIs('party.verification.*')) ? 'true' : 'false' }} }"
+                        x-data="{ open: {{ request()->routeIs('employee.*', 'employee-request.*', 'employee-role.*', 'party.verification.*') ? 'true' : 'false' }} }"
                         class="space-y-2"
                     >
                         <button
@@ -155,7 +155,7 @@
 
                         <ul
                             id="dropdown-employees"
-                            x-cloak
+                            @if(!request()->routeIs('employee.*', 'employee-request.*', 'employee-role.*', 'party.verification.*')) x-cloak @endif
                             class="space-y-2 py-2"
                             x-show="open"
                             x-transition:enter="transition ease-out duration-100"
@@ -236,7 +236,7 @@
 
                         <ul
                             id="dropdown-contracts"
-                            x-cloak
+                            @if(!request()->routeIs('contract*')) x-cloak @endif
                             class="space-y-2 py-2"
                             x-show="open"
                             x-transition:enter="transition ease-out duration-100"
@@ -293,7 +293,7 @@
                     </li>
                 @endif
 
-                <li x-data="{ open: false }" class="space-y-2">
+                <li x-data="{ open: {{ request()->routeIs('persons.verifications.*') ? 'true' : 'false' }} }" class="space-y-2">
                     <button
                         @click="open = ! open"
                         type="button"
@@ -320,7 +320,7 @@
 
                     <ul
                         id="dropdown-my-patients"
-                        x-cloak
+                        @if(!request()->routeIs('persons.verifications.*')) x-cloak @endif
                         class="space-y-2 py-2"
                         x-show="open"
                         x-transition:enter="transition ease-out duration-100"
@@ -419,7 +419,7 @@
 
                     <ul
                         id="dropdown-dictionaries"
-                        x-cloak
+                        @if(!request()->routeIs('dictionaries.*')) x-cloak @endif
                         class="space-y-2 py-2"
                         x-show="open"
                         x-transition:enter="transition ease-out duration-100"

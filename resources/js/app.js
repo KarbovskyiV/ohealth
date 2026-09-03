@@ -262,35 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     observer.observe(document.body, { childList: true, subtree: true });
 });
 
-const FOCUSABLE = 'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), select';
 
-document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-
-    const el = document.activeElement;
-    if (!el || !el.matches(FOCUSABLE)) return;
-    if (el.tagName === 'TEXTAREA') return;
-    if (el.disabled || el.readOnly) return;
-
-    if (document.querySelector('.datepicker.active, .select2-container--open')) return;
-
-    const form = el.closest('form, fieldset, section, [wire\\:id], .breadcrumb-form');
-    if (!form) return;
-
-    const fields = Array.from(form.querySelectorAll(FOCUSABLE)).filter((f) => {
-        if (f.disabled || f.readOnly || f.tagName === 'TEXTAREA') return false;
-        if (f.offsetParent === null && !f.closest('[x-cloak]')) return false;
-        return true;
-    });
-
-    const idx = fields.indexOf(el);
-    if (idx === -1) return;
-
-    if (idx < fields.length - 1) {
-        e.preventDefault();
-        fields[idx + 1].focus();
-    }
-});
 
 let activeRequests = 0;
 let isNavigating = false;
