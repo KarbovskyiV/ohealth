@@ -159,7 +159,7 @@
                 <div class="p-6 space-y-6">
                     {{-- 1. Subject of verification --}}
                     <div class="form-group group">
-                        <select wire:model.live="verificationStream" id="verificationStream" class="input peer px-4 py-2">
+                        <select wire:model.live="verificationStream" id="verificationStream" class="input-select peer px-4 py-2">
                             <option value="dracs_death">{{ __('party_verification.types.dracs_death') }}</option>
                         </select>
                         <label for="verificationStream" class="label">{{ __('party_verification.subject_verification') }}</label>
@@ -178,7 +178,7 @@
 
                     {{-- 3. Reason (live IL enum: MANUAL_DECEASED / MANUAL_NO_DEATH_RECORD) --}}
                     <div class="form-group group">
-                        <select wire:model="reason" id="reason" class="input peer px-4 py-2">
+                        <select wire:model="reason" id="reason" class="input-select peer px-4 py-2">
                             <option value="">{{ __('forms.choose_reason') }}</option>
                             <option value="{{ \App\Enums\Party\DracsDeathVerificationReason::MANUAL_DECEASED->value }}">
                                 {{ __('party_verification.reasons.MANUAL_DECEASED') }}

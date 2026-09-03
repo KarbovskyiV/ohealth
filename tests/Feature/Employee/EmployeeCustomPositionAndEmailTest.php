@@ -11,6 +11,8 @@ use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\Relations\Party;
 use App\Models\User;
+use App\Rules\TaxId;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -114,6 +116,53 @@ class EmployeeCustomPositionAndEmailTest extends TestCase
         $method->invoke($form, $party);
 
         $this->assertSame('openhealthkopylets+pmd25@gmail.com', $form->party['email']);
+    }
+
+    #[Test]
+    public function existing_tax_id_in_legal_entity_asks_to_add_a_position(): void
+    {
+        [$legalEntity] = $this->createTwoLegalEntities();
+        $this->instance('legalEntity', $legalEntity);
+
+        $party = Party::create([
+            'uuid' => (string) Str::uuid(),
+            'first_name' => 'Іван',
+            'last_name' => 'Коваленко',
+            'tax_id' => '3212312312',
+            'birth_date' => '1990-01-01',
+            'gender' => 'MALE',
+        ]);
+
+        Employee::create([
+            'uuid' => (string) Str::uuid(),
+            'full_name' => 'Коваленко Іван',
+            'employee_type' => Role::DOCTOR->value,
+            'status' => Status::APPROVED->value,
+            'legal_entity_id' => $legalEntity->id,
+            'is_active' => true,
+            'position' => 'P1',
+            'start_date' => now()->format('Y-m-d'),
+            'party_id' => $party->id,
+        ]);
+
+        $validator = Validator::make(
+            [
+                'party' => [
+                    'noTaxId' => false,
+                    'taxId' => '3212312312',
+                    'email' => 'assistant-new@example.com',
+                ],
+            ],
+            [
+                'party.taxId' => ['required', 'string', new TaxId()],
+            ]
+        );
+
+        $this->assertTrue($validator->fails());
+        $this->assertStringContainsString(
+            'додайте посаду',
+            (string) $validator->errors()->first('party.taxId')
+        );
     }
 
     /**

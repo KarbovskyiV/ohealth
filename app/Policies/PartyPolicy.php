@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\Status;
+use App\Enums\User\Role;
 use App\Models\Relations\Party;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -12,7 +14,7 @@ class PartyPolicy
 {
     public function viewAnyVerification(User $user): Response
     {
-        if ($user->cannot('party_verification:details')) {
+        if (!$this->userHasTv323Role($user)) {
             return Response::denyWithStatus(404);
         }
 
@@ -25,7 +27,7 @@ class PartyPolicy
             return Response::denyWithStatus(404);
         }
 
-        if ($user->cannot('party_verification:details')) {
+        if (!$this->userHasTv323Role($user)) {
             return Response::denyWithStatus(404);
         }
 
@@ -34,7 +36,7 @@ class PartyPolicy
 
     public function syncVerification(User $user): Response
     {
-        if ($user->cannot('party_verification:details')) {
+        if (!$this->userHasTv323Role($user)) {
             return Response::denyWithStatus(404);
         }
 
@@ -47,11 +49,42 @@ class PartyPolicy
             return Response::denyWithStatus(404);
         }
 
-        if ($user->cannot('party_verification:write')) {
+        if (!$this->userHasTv323Role($user)) {
             return Response::denyWithStatus(404);
         }
 
         return Response::allow();
+    }
+
+    /**
+     * TZ 3.23 roles: OWNER, HR, ADMIN, PHARMACY_OWNER.
+     * Prefer employee_type / Spatie hasRole — avoids hasAllowedRole() which
+     * queries Role permissions and breaks when the Permission model is Spatie's.
+     */
+    private function userHasTv323Role(User $user): bool
+    {
+        $roles = [
+            Role::ADMIN->value,
+            Role::HR->value,
+            Role::OWNER->value,
+            Role::PHARMACY_OWNER->value,
+        ];
+
+        if ($user->hasRole($roles)) {
+            return true;
+        }
+
+        $legalEntity = legalEntity();
+
+        if ($legalEntity === null) {
+            return false;
+        }
+
+        return $user->employees()
+            ->where('legal_entity_id', $legalEntity->id)
+            ->whereIn('employee_type', $roles)
+            ->where('status', Status::APPROVED->value)
+            ->exists();
     }
 
     private function partyBelongsToCurrentLegalEntity(Party $party): bool

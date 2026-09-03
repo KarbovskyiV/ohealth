@@ -77,13 +77,13 @@ class EmployeeEdit extends AbstractEmployeeFormManager
             $preparedData['position'] = $this->employee->position;
             $preparedData['employee_type'] = $this->employee->employeeType;
             if ($this->employee->startDate) {
-                $preparedData['start_date'] = \Carbon\Carbon::parse($this->employee->startDate)->format('Y-m-d');
+                $preparedData['start_date'] = toIsoDate($this->employee->startDate);
             }
 
             $preparedData['tax_id'] = $this->employee->party->taxId;
             $preparedData['no_tax_id'] = $this->employee->party->noTaxId;
             if ($this->employee->party->birthDate) {
-                $preparedData['birth_date'] = \Carbon\Carbon::parse($this->employee->party->birthDate)->format('Y-m-d');
+                $preparedData['birth_date'] = toIsoDate($this->employee->party->birthDate);
             }
 
             $originalPrimarySpeciality = $this->employee->specialities()
@@ -94,25 +94,23 @@ class EmployeeEdit extends AbstractEmployeeFormManager
                 $submittedSpecialities = $preparedData['doctor']['specialities'] ?? [];
                 $filteredSpecialities = array_filter(
                     $submittedSpecialities,
-                    fn ($spec) => empty($spec['speciality_officio']) && empty($spec['specialityOfficio'])
+                    fn ($spec) => empty($spec['speciality_officio'])
                 );
 
-                $primarySpecData = [
+                // getPreparedData() already returns snake_case — never reintroduce camelCase keys.
+                $attestationDate = toIsoDate($originalPrimarySpeciality->attestationDate);
+                $validToDate = toIsoDate($originalPrimarySpeciality->validToDate);
+
+                $primarySpecData = array_filter([
                     'speciality' => $originalPrimarySpeciality->speciality,
                     'speciality_officio' => true,
-                    'specialityOfficio' => true,
-                    'attestation_name' => $originalPrimarySpeciality->attestation_name,
-                    'attestationName' => $originalPrimarySpeciality->attestation_name,
-                    'attestation_date' => $originalPrimarySpeciality->attestation_date?->format('Y-m-d'),
-                    'attestationDate' => $originalPrimarySpeciality->attestation_date?->format('Y-m-d'),
-                    'certificate_number' => $originalPrimarySpeciality->certificate_number,
-                    'certificateNumber' => $originalPrimarySpeciality->certificate_number,
+                    'attestation_name' => $originalPrimarySpeciality->attestationName,
+                    'attestation_date' => $attestationDate,
+                    'certificate_number' => $originalPrimarySpeciality->certificateNumber,
                     'level' => $originalPrimarySpeciality->level,
-                ];
-                if ($originalPrimarySpeciality->valid_to_date) {
-                    $primarySpecData['valid_to_date'] = $originalPrimarySpeciality->valid_to_date->format('Y-m-d');
-                    $primarySpecData['validToDate'] = $originalPrimarySpeciality->valid_to_date->format('Y-m-d');
-                }
+                    'qualification_type' => $originalPrimarySpeciality->qualificationType,
+                    'valid_to_date' => $validToDate,
+                ], static fn ($value) => $value !== null && $value !== '');
 
                 $filteredSpecialities[] = $primarySpecData;
                 $preparedData['doctor']['specialities'] = array_values($filteredSpecialities);

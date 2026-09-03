@@ -42,6 +42,8 @@ use App\Livewire\Employee\EmployeePositionAdd;
 use App\Livewire\Employee\EmployeeRequestEdit;
 use App\Livewire\Employee\EmployeeRequestShow;
 use App\Livewire\Employee\EmployeeShow;
+use App\Models\Employee\Employee;
+use App\Models\Employee\EmployeeRequest;
 use App\Livewire\EmployeeRequest\EmployeeRequestIndex;
 use App\Livewire\EmployeeRole\EmployeeRoleCreate;
 use App\Livewire\EmployeeRole\EmployeeRoleIndex;
@@ -176,7 +178,7 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
             });
 
             Route::prefix('employee')->name('employee.')->middleware('auth')->group(function () {
-                Route::get('/', EmployeeIndex::class)->name('index');
+                Route::get('/', EmployeeIndex::class)->name('index')->can('viewAny', Employee::class);
 
                 Route::get('/{employee}', EmployeeShow::class)
                     ->whereNumber('employee')
@@ -189,8 +191,8 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
 
             // --- Group for Employee Requests ---
             Route::prefix('employee-request')->name('employee-request.')->middleware('auth')->group(function () {
-                Route::get('/', EmployeeRequestIndex::class)->name('index');
-                Route::get('/create', EmployeeCreate::class)->name('create');
+                Route::get('/', EmployeeRequestIndex::class)->name('index')->can('viewAny', EmployeeRequest::class);
+                Route::get('/create', EmployeeCreate::class)->name('create')->can('create', EmployeeRequest::class);
                 Route::get('/party/{party}/position-add', EmployeePositionAdd::class)->name('position-add');
 
                 Route::get('/{employee_request}', EmployeeRequestShow::class)
@@ -199,7 +201,7 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
 
                 Route::get('/{employee_request}/edit', EmployeeRequestEdit::class)
                     ->whereNumber('employee_request')
-                    ->name('edit')->middleware('can:update,employee_request');
+                    ->name('edit')->middleware('can:view,employee_request');
             });
 
             Route::get('/party-verifications', PartyVerificationIndex::class)

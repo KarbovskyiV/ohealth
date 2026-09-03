@@ -23,6 +23,8 @@ class EmployeePositionAdd extends AbstractEmployeeFormManager
 
     public function mount(LegalEntity $legalEntity, Party $party): void
     {
+        $this->authorize('create', [EmployeeRequest::class, $party]);
+
         $this->loadDictionaries();
         $this->loadDivisions($legalEntity);
         $this->isPersonalDataLocked = true;

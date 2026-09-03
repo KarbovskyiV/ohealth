@@ -451,6 +451,8 @@ class EmployeeRequest extends EHealthRequest
                 'speciality' => ['type' => 'string'],
                 'issued_date' => ['type' => 'string', 'format' => 'date'],
                 'certificate_number' => ['type' => 'string'],
+                'valid_to' => ['type' => 'string', 'format' => 'date'],
+                'additional_info' => ['type' => 'string'],
             ],
             'required' => ['type', 'institution_name', 'speciality'],
             'additionalProperties' => false,

@@ -155,7 +155,7 @@ class PartyVerify extends Component
             'verificationStream' => 'required|string|in:dracs_death',
             'status' => 'required|string|in:VERIFIED',
             'reason' => ['required', 'string', Rule::enum(DracsDeathVerificationReason::class)],
-            'comment' => 'required|string|max:3000',
+            'comment' => 'nullable|string|max:3000',
         ]);
 
         if (!$this->canUpdateVerification) {
@@ -169,11 +169,11 @@ class PartyVerify extends Component
 
         try {
             $payload = [
-                'dracs_death' => [
+                'dracs_death' => array_filter([
                     'verification_status' => 'VERIFIED',
                     'verification_reason' => $this->reason,
-                    'verification_comment' => $this->comment,
-                ],
+                    'verification_comment' => filled($this->comment) ? $this->comment : null,
+                ]),
             ];
 
             Log::channel('e_health_errors')->info('[PARTY UPDATE PAYLOAD]', [

@@ -6,6 +6,7 @@ namespace App\Rules;
 
 use Closure;
 use App\Core\Arr;
+use App\Models\Relations\Party;
 use App\Models\User;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -165,10 +166,37 @@ class TaxId implements ValidationRule, DataAwareRule
             return;
         }
 
+        if (!\is_bool($value) && $this->taxIdAlreadyUsedInLegalEntity((string) $value)) {
+            $fail(__('validation.employee.tax_id_already_used'));
+
+            return;
+        }
+
         // If an email is provided, we perform an additional check against the database.
         if ($this->email) {
             $this->validateWithEmail($value, $fail);
         }
+    }
+
+    private function taxIdAlreadyUsedInLegalEntity(string $taxId): bool
+    {
+        $legalEntity = legalEntity();
+
+        if ($legalEntity === null) {
+            return false;
+        }
+
+        $existingPartyId = Arr::get($this->data, 'existingPartyId')
+            ?? $this->user?->party?->id;
+
+        return Party::query()
+            ->where('tax_id', $taxId)
+            ->when($existingPartyId, fn ($query, $partyId) => $query->where('id', '!=', $partyId))
+            ->whereHas(
+                'employees',
+                fn ($query) => $query->where('legal_entity_id', $legalEntity->id)
+            )
+            ->exists();
     }
 
     /**

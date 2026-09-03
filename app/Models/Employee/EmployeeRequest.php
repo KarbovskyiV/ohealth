@@ -60,6 +60,7 @@ class EmployeeRequest extends BaseEmployee
         'start_date' => EHealthDateCast::class,
         'end_date' => EHealthDateCast::class,
         'applied_at' => 'datetime',
+        'inserted_at' => 'datetime',
         'created_at' => 'datetime'
     ];
 
@@ -127,6 +128,19 @@ class EmployeeRequest extends BaseEmployee
         }
 
         return $this->status === RequestStatus::NEW && filled($this->uuid);
+    }
+
+    /**
+     * Local draft: NEW without eHealth UUID (same rules as isLocalDraft()).
+     *
+     * @param  Builder<EmployeeRequest>  $query
+     * @return Builder<EmployeeRequest>
+     */
+    public function scopeLocalDraft(Builder $query): Builder
+    {
+        return $query
+            ->where('status', RequestStatus::NEW)
+            ->whereNull('uuid');
     }
 
     /**

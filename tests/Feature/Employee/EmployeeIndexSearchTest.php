@@ -170,6 +170,217 @@ class EmployeeIndexSearchTest extends TestCase
         $this->assertCount(1, $ids);
     }
 
+    #[Test]
+    public function status_filter_options_do_not_duplicate_labels(): void
+    {
+        $options = (new EmployeeIndex())->statusFilterOptions();
+        $blade = file_get_contents(resource_path('views/livewire/employee/employee-index.blade.php'));
+
+        $this->assertSame(array_values($options), array_values(array_unique($options)));
+        $this->assertArrayNotHasKey(Status::SIGNED->value, $options);
+        $this->assertArrayNotHasKey(Status::DISMISSED->value, $options);
+        $this->assertStringContainsString('statusFilterOptions()', $blade);
+        $this->assertSame(1, substr_count(implode("\n", $options), __('forms.status.new')));
+        $this->assertSame(1, substr_count(implode("\n", $options), __('forms.status.stopped')));
+    }
+
+    #[Test]
+    public function statuses_for_query_expand_new_and_stopped_aliases(): void
+    {
+        $component = new EmployeeIndex();
+        $component->status = [Status::NEW->value, Status::STOPPED->value];
+
+        $this->assertEqualsCanonicalizing(
+            [Status::NEW->value, Status::SIGNED->value, Status::STOPPED->value, Status::DISMISSED->value],
+            $component->statusesForQuery(),
+        );
+    }
+
+    #[Test]
+    public function positions_for_party_respects_position_and_role_filters(): void
+    {
+        [$legalEntity, $party] = $this->createLegalEntityWithParty(
+            firstName: 'Іван',
+            lastName: 'Петренко',
+            secondName: 'Олегович',
+        );
+
+        Employee::create([
+            'uuid' => (string) Str::uuid(),
+            'full_name' => 'Петренко Іван Олегович',
+            'employee_type' => Role::ASSISTANT->value,
+            'status' => Status::APPROVED->value,
+            'legal_entity_id' => $legalEntity->id,
+            'is_active' => true,
+            'position' => 'ASSISTANT',
+            'start_date' => now()->format('Y-m-d'),
+            'party_id' => $party->id,
+        ]);
+
+        $component = new EmployeeIndex();
+        $component->status = [Status::APPROVED->value];
+        $component->filter = [
+            'phone' => '',
+            'email' => '',
+            'role' => '',
+            'position' => 'ASSISTANT',
+            'division_id' => '',
+            'tax_id' => '',
+            'verification_status' => '',
+        ];
+        $legalEntityProperty = new \ReflectionProperty(EmployeeIndex::class, 'legalEntity');
+        $legalEntityProperty->setValue($component, $legalEntity);
+
+        $party->load(['employees', 'employeeRequests']);
+        $byPosition = $component->positionsForParty($party);
+
+        $this->assertCount(1, $byPosition);
+        $this->assertSame('ASSISTANT', $byPosition->first()->position);
+
+        $component->filter['position'] = '';
+        $component->filter['role'] = Role::ASSISTANT->value;
+        $byRole = $component->positionsForParty($party);
+
+        $this->assertCount(1, $byRole);
+        $this->assertSame(Role::ASSISTANT->value, $byRole->first()->employeeType ?? $byRole->first()->employee_type);
+    }
+
+    #[Test]
+    public function positions_for_party_hide_stopped_unless_selected(): void
+    {
+        [$legalEntity, $party] = $this->createLegalEntityWithParty(
+            firstName: 'Іван',
+            lastName: 'Петренко',
+            secondName: 'Олегович',
+        );
+
+        Employee::create([
+            'uuid' => (string) Str::uuid(),
+            'full_name' => 'Петренко Іван Олегович',
+            'employee_type' => Role::DOCTOR->value,
+            'status' => Status::STOPPED->value,
+            'legal_entity_id' => $legalEntity->id,
+            'is_active' => false,
+            'position' => 'P2',
+            'start_date' => now()->format('Y-m-d'),
+            'party_id' => $party->id,
+        ]);
+
+        $component = new EmployeeIndex();
+        $component->status = [
+            Status::APPROVED->value,
+            Status::NEW->value,
+            Status::REORGANIZED->value,
+        ];
+        $legalEntityProperty = new \ReflectionProperty(EmployeeIndex::class, 'legalEntity');
+        $legalEntityProperty->setValue($component, $legalEntity);
+
+        $party->load(['employees', 'employeeRequests']);
+        $visible = $component->positionsForParty($party);
+
+        $this->assertCount(1, $visible);
+        $visibleStatus = $visible->first()->status;
+        $this->assertSame(
+            Status::APPROVED->value,
+            $visibleStatus instanceof \UnitEnum ? $visibleStatus->value : $visibleStatus,
+        );
+
+        $component->status = [Status::STOPPED->value];
+        $stopped = $component->positionsForParty($party);
+        $this->assertCount(1, $stopped);
+        $stoppedStatus = $stopped->first()->status;
+        $this->assertSame(
+            Status::STOPPED->value,
+            $stoppedStatus instanceof \UnitEnum ? $stoppedStatus->value : $stoppedStatus,
+        );
+    }
+
+    #[Test]
+    public function positions_for_party_excludes_employee_requests(): void
+    {
+        [$legalEntity, $party] = $this->createLegalEntityWithParty(
+            firstName: 'Іван',
+            lastName: 'Петренко',
+            secondName: 'Олегович',
+        );
+
+        \App\Models\Employee\EmployeeRequest::create([
+            'uuid' => null,
+            'legal_entity_id' => $legalEntity->id,
+            'party_id' => $party->id,
+            'employee_type' => Role::DOCTOR->value,
+            'status' => Status::NEW->value,
+            'position' => 'P2',
+            'start_date' => now()->format('Y-m-d'),
+        ]);
+
+        $component = new EmployeeIndex();
+        $component->status = [
+            Status::APPROVED->value,
+            Status::NEW->value,
+            Status::REORGANIZED->value,
+        ];
+        $legalEntityProperty = new \ReflectionProperty(EmployeeIndex::class, 'legalEntity');
+        $legalEntityProperty->setValue($component, $legalEntity);
+
+        $party->load(['employees', 'employeeRequests']);
+        $visible = $component->positionsForParty($party);
+
+        $this->assertCount(1, $visible);
+        $this->assertInstanceOf(Employee::class, $visible->first());
+        $this->assertFalse(
+            $visible->contains(fn ($row) => $row instanceof \App\Models\Employee\EmployeeRequest)
+        );
+    }
+
+    #[Test]
+    public function party_with_only_stopped_positions_is_hidden_when_stopped_is_unchecked(): void
+    {
+        [$legalEntity, $activeParty] = $this->createLegalEntityWithParty(
+            firstName: 'Іван',
+            lastName: 'Петренко',
+            secondName: 'Олегович',
+        );
+
+        [, $stoppedParty] = $this->createLegalEntityWithParty(
+            firstName: 'Марія',
+            lastName: 'Коваленко',
+            secondName: 'Іванівна',
+            legalEntity: $legalEntity,
+        );
+
+        Employee::query()->where('party_id', $stoppedParty->id)->update(['status' => Status::STOPPED->value]);
+
+        $component = new EmployeeIndex();
+        $component->search = '';
+        $component->status = [
+            Status::APPROVED->value,
+            Status::NEW->value,
+            Status::REORGANIZED->value,
+        ];
+        $component->filter = [
+            'phone' => '',
+            'email' => '',
+            'role' => '',
+            'position' => '',
+            'division_id' => '',
+            'tax_id' => '',
+            'verification_status' => '',
+        ];
+
+        $legalEntityProperty = new \ReflectionProperty(EmployeeIndex::class, 'legalEntity');
+        $legalEntityProperty->setValue($component, $legalEntity);
+
+        $query = Party::query();
+        $method = new ReflectionMethod(EmployeeIndex::class, 'applyDatabaseFilters');
+        $method->invoke($component, $query);
+
+        $ids = $query->pluck('id');
+
+        $this->assertContains($activeParty->id, $ids->all());
+        $this->assertNotContains($stoppedParty->id, $ids->all());
+    }
+
     /**
      * @return array<string, array{0: string}>
      */

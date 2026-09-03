@@ -20,6 +20,21 @@ class FlashMessage extends Component
     #[Locked]
     public array $errors = [];
 
+    public function mount(): void
+    {
+        if (session()->has('success')) {
+            $this->message = (string) session('success');
+            $this->type = 'success';
+
+            return;
+        }
+
+        if (session()->has('error')) {
+            $this->message = (string) session('error');
+            $this->type = 'error';
+        }
+    }
+
     #[On('flashMessage')]
     public function flashMessage($flash): void
     {

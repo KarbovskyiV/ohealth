@@ -7,12 +7,12 @@ namespace App\Livewire\Party;
 use App\Classes\eHealth\EHealth;
 use App\Models\LegalEntity;
 use App\Models\Relations\Party;
+use App\Services\Party\PartyVerificationCache;
 use App\Traits\ProcessesPartyVerificationResponses;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -23,10 +23,6 @@ class PartyVerificationIndex extends Component
     use AuthorizesRequests;
     use ProcessesPartyVerificationResponses;
     use WithPagination;
-
-    private const string DETAILS_CACHE_PREFIX = 'party_verification_details:';
-
-    private const int DETAILS_CACHE_TTL_SECONDS = 86400;
 
     public LegalEntity $legalEntity;
 
@@ -69,7 +65,11 @@ class PartyVerificationIndex extends Component
                     $response = EHealth::party()->getDetails($party->uuid);
 
                     $this->processPartyVerificationDetail($party->uuid, $response, $this->legalEntity);
-                    $this->cacheVerificationDetails($party->uuid, $response);
+                    $payload = $response->json();
+                    $data = is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
+                    if (is_array($data)) {
+                        PartyVerificationCache::put($party->uuid, $data);
+                    }
                 } catch (Throwable $e) {
                     Log::warning('Failed to fetch party verification details during sync', [
                         'party_uuid' => $party->uuid,
@@ -130,7 +130,7 @@ class PartyVerificationIndex extends Component
             ->orderBy('first_name')
             ->get()
             ->map(function (Party $party) {
-                $cached = Cache::get(self::DETAILS_CACHE_PREFIX . $party->uuid);
+                $cached = PartyVerificationCache::get($party->uuid);
                 if (is_array($cached)) {
                     return [
                         'party_id' => $party->uuid,
@@ -151,31 +151,10 @@ class PartyVerificationIndex extends Component
                     'details' => [
                         'drfo' => ['verification_status' => $status],
                         'dracs_death' => ['verification_status' => $status],
+                        'dms_passport' => ['verification_status' => $status],
                     ],
                 ];
             })
             ->values();
-    }
-
-    private function cacheVerificationDetails(string $partyUuid, mixed $response): void
-    {
-        $payload = $response->json();
-        $data = is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
-
-        Cache::put(
-            self::DETAILS_CACHE_PREFIX . $partyUuid,
-            [
-                'verification_status' => data_get($data, 'verification_status'),
-                'details' => [
-                    'drfo' => [
-                        'verification_status' => data_get($data, 'details.drfo.verification_status'),
-                    ],
-                    'dracs_death' => [
-                        'verification_status' => data_get($data, 'details.dracs_death.verification_status'),
-                    ],
-                ],
-            ],
-            self::DETAILS_CACHE_TTL_SECONDS
-        );
     }
 }

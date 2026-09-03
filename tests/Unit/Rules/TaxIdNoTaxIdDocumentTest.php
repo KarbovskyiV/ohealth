@@ -64,4 +64,12 @@ class TaxIdNoTaxIdDocumentTest extends TestCase
             $validator->errors()->first('party.taxId')
         );
     }
+
+    #[Test]
+    public function occupied_tax_id_messages_explain_to_add_a_position(): void
+    {
+        $this->assertStringContainsString('додайте йому посаду', __('validation.employee.wrong_tax_id'));
+        $this->assertStringContainsString('додайте посаду', __('validation.employee.tax_id_already_used'));
+        $this->assertStringContainsString('додайте посаду', __('errors.ehealth.messages.tax_id_exists'));
+    }
 }

@@ -34,7 +34,7 @@ class PartyPolicyTest extends TestCase
     /**
      * @return array{legalEntity: LegalEntity, party: Party, user: User}
      */
-    private function createFixture(): array
+    private function createFixture(string $employeeType = \App\Enums\User\Role::HR->value): array
     {
         $typeId = \Illuminate\Support\Facades\DB::table('legal_entity_types')->where('name', 'PRIMARY_CARE')->value('id')
             ?? \Illuminate\Support\Facades\DB::table('legal_entity_types')->insertGetId(['name' => 'PRIMARY_CARE']);
@@ -66,7 +66,7 @@ class PartyPolicyTest extends TestCase
         $employee = Employee::create([
             'uuid' => (string) Str::uuid(),
             'full_name' => 'John Doe',
-            'employee_type' => \App\Enums\User\Role::HR->value,
+            'employee_type' => $employeeType,
             'status' => \App\Enums\Status::APPROVED->value,
             'legal_entity_id' => $legalEntity->id,
             'is_active' => true,
@@ -82,7 +82,7 @@ class PartyPolicyTest extends TestCase
 
     public function test_policy_denies_verification_access_without_scope(): void
     {
-        ['legalEntity' => $legalEntity, 'party' => $party, 'user' => $user] = $this->createFixture();
+        ['legalEntity' => $legalEntity, 'party' => $party, 'user' => $user] = $this->createFixture(\App\Enums\User\Role::PHARMACIST->value);
         $this->instance('legalEntity', $legalEntity);
 
         $policy = new PartyPolicy();
@@ -111,7 +111,7 @@ class PartyPolicyTest extends TestCase
         $this->assertTrue($policy->viewAnyVerification($user)->allowed());
         $this->assertTrue($policy->viewVerification($user, $party)->allowed());
         $this->assertTrue($policy->syncVerification($user)->allowed());
-        $this->assertTrue($policy->updateVerification($user, $party)->denied());
+        $this->assertTrue($policy->updateVerification($user, $party)->allowed());
     }
 
     public function test_policy_allows_update_with_write_scope(): void

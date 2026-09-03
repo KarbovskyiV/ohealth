@@ -1,8 +1,9 @@
 <div class="overflow-x-auto relative">
     <fieldset class="fieldset" id="section-doctor-science-degree"
               :disabled="$wire.isPositionDataLocked ?? false"
+              {{-- Avoid $wire.entangle on objects: Livewire JSON-clones via stringify and can RPC missing toJSON. --}}
               x-data="{
-                  scienceDegree: $wire.entangle('form.doctor.scienceDegree').live,
+                  scienceDegree: {},
                   employeeType: $wire.entangle('form.employeeType'),
                   employeeTypeSpecialities: @js($this->employeeTypeSpecialities),
                   openModal: false,
@@ -21,6 +22,17 @@
                           && this.modalScienceDegree.diplomaNumber;
                   }
               }"
+              x-init="
+                  const initial = $wire.get('form.doctor.scienceDegree');
+                  scienceDegree = (initial && typeof initial === 'object') ? { ...initial } : {};
+                  $watch('scienceDegree', (val) => {
+                      $wire.set(
+                          'form.doctor.scienceDegree',
+                          (val && typeof val === 'object') ? { ...val } : {},
+                          false
+                      );
+                  });
+              "
     >
         <legend class="legend">
             <h2>{{ __('forms.science_degree') }}</h2>
@@ -102,7 +114,7 @@
                                 {{-- Кнопка "Видалити" --}}
                                 <button
                                     @click.prevent="
-                                        scienceDegree = new ScienceDegree();
+                                        scienceDegree = {};
                                         openDropdown = false;
                                     "
                                     class="dropdown-button dropdown-delete"
@@ -145,7 +157,7 @@
                 <div x-show="openModal"
                      x-transition
                      @click="openModal = false"
-                     class="relative flex min-h-screen items-center justify-start pl-72 p-4"
+                     class="modal-wrapper"
                 >
                     <div @click.stop
                          x-trap.noscroll.inert="openModal"
@@ -213,7 +225,7 @@
                             <p class="text-sm text-gray-400 mb-2">{{ __('forms.form_required_note') }}</p>
                             <div class="mt-6 flex flex-row items-center gap-4 border-t border-gray-200 pt-6">
                                 <button type="button" @click="openModal = false" class="button-minor">{{ __('forms.cancel') }}</button>
-                                <button @click.prevent="scienceDegree = modalScienceDegree; openModal = false;"
+                                <button @click.prevent="scienceDegree = { ...modalScienceDegree }; openModal = false;"
                                         class="button-primary"
                                         :class="{ 'opacity-50 cursor-not-allowed': !isModalValid() }"
                                         :disabled="!isModalValid()">

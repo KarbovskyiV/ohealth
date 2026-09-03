@@ -24,6 +24,7 @@ use App\Models\User;
 use Auth;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
@@ -43,7 +44,7 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
 
     #[Locked]
     public ?int $employeeRequestId = null;
-    protected ?BaseEmployee $employeeRequest;
+    protected ?BaseEmployee $employeeRequest = null;
     protected ?BaseEmployee $employee = null;
 
     /**
@@ -74,6 +75,7 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
     public function save(): void
     {
         try {
+            $this->authorizeEmployeeFormAction();
             $this->applyEmployeeTypeBusinessRules();
             // The validation call is now dynamic
             $this->form->validate($this->form->rulesForSave($this));
@@ -94,6 +96,7 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
     public function prepareForSigning(): void
     {
         try {
+            $this->authorizeEmployeeFormAction();
             $this->applyEmployeeTypeBusinessRules();
             $this->form->validate($this->form->rulesForSave($this));
             $this->validatePartyDataConsistency();
@@ -138,6 +141,7 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
         Log::info('Attempting to sign.');
 
         try {
+            $this->authorizeEmployeeFormAction();
             // 1. Validate the form
             $this->applyEmployeeTypeBusinessRules();
             $this->form->validate($this->form->rulesForSave($this));
@@ -163,10 +167,12 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
 
             $this->resetSignatureFields();
             $this->showSignatureModal = false;
+            $this->showRequestPreviewModal = false;
+            $this->dispatch('close-signature-modal');
             $this->flashSuccess(__('employees.sign_success'));
             Log::info('Successfully signed and will redirect.');
 
-            $this->redirectRoute('employee.index', [legalEntity()], navigate: true);
+            $this->redirectToEmployeeIndexAfterRequestProcessed();
 
         } catch (Exception $e) {
             $this->handleGeneralException($e);
@@ -320,10 +326,21 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
             $edu = $rawProfessionalData['educations'] ?? $rawProfessionalData['education'] ?? [];
 
             $professionalChunk = [
-                'educations' => array_values($edu), // Ensure JSON array [...]
-                'specialities' => array_values($rawProfessionalData['specialities'] ?? []),
-                'qualifications' => array_values($rawProfessionalData['qualifications'] ?? []),
-                'science_degree' => $rawProfessionalData['science_degree'] ?? null,
+                'specialities' => array_values(array_map(
+                    fn (array $item): array => $this->sanitizeSpecialityForEhealth($item),
+                    array_filter($rawProfessionalData['specialities'] ?? [], 'is_array')
+                )),
+                'qualifications' => array_values(array_map(
+                    fn (array $item): array => $this->sanitizeQualificationForEhealth($item),
+                    array_filter($rawProfessionalData['qualifications'] ?? [], 'is_array')
+                )),
+                'educations' => array_values(array_map(
+                    fn (array $item): array => $this->sanitizeEducationForEhealth($item),
+                    array_filter($edu, 'is_array')
+                )),
+                'science_degree' => is_array($rawProfessionalData['science_degree'] ?? null)
+                    ? $this->sanitizeScienceDegreeForEhealth($rawProfessionalData['science_degree'])
+                    : null,
             ];
         }
 
@@ -341,6 +358,100 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
         }
 
         return $result;
+    }
+
+    /**
+     * Keep only snake_case keys allowed by Create Employee Request v2 speciality schema.
+     *
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    protected function sanitizeSpecialityForEhealth(array $item): array
+    {
+        return $this->onlyEhealthKeys(Arr::toSnakeCase($item), [
+            'speciality',
+            'speciality_officio',
+            'level',
+            'qualification_type',
+            'attestation_name',
+            'attestation_date',
+            'valid_to_date',
+            'certificate_number',
+        ]);
+    }
+
+    /**
+     * Keep only snake_case keys allowed by Create Employee Request v2 qualification schema.
+     *
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    protected function sanitizeQualificationForEhealth(array $item): array
+    {
+        return $this->onlyEhealthKeys(Arr::toSnakeCase($item), [
+            'type',
+            'institution_name',
+            'speciality',
+            'issued_date',
+            'certificate_number',
+            'valid_to',
+            'additional_info',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    protected function sanitizeEducationForEhealth(array $item): array
+    {
+        return $this->onlyEhealthKeys(Arr::toSnakeCase($item), [
+            'country',
+            'city',
+            'institution_name',
+            'issued_date',
+            'diploma_number',
+            'degree',
+            'speciality',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $item
+     * @return array<string, mixed>|null
+     */
+    protected function sanitizeScienceDegreeForEhealth(?array $item): ?array
+    {
+        if ($item === null || $item === []) {
+            return null;
+        }
+
+        $sanitized = $this->onlyEhealthKeys(Arr::toSnakeCase($item), [
+            'country',
+            'city',
+            'degree',
+            'institution_name',
+            'diploma_number',
+            'speciality',
+            'issued_date',
+        ]);
+
+        return $sanitized === [] ? null : $sanitized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  list<string>  $allowedKeys
+     * @return array<string, mixed>
+     */
+    protected function onlyEhealthKeys(array $item, array $allowedKeys): array
+    {
+        $filtered = array_intersect_key($item, array_flip($allowedKeys));
+
+        return array_filter(
+            $filtered,
+            static fn ($value) => $value !== null && $value !== ''
+        );
     }
 
     /**
@@ -426,6 +537,19 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
      * Applies locks to fields that cannot be changed in eHealth for an existing employee.
      * Call this in the mount() method of child components.
      */
+    protected function authorizeEmployeeFormAction(): void
+    {
+        if ($this->employee instanceof Employee) {
+            $this->authorize('update', $this->employee);
+
+            return;
+        }
+
+        $party = $this->party ?? $this->matchedParty ?? null;
+
+        $this->authorize('create', $party ? [EmployeeRequest::class, $party] : EmployeeRequest::class);
+    }
+
     protected function applyImmutableFieldLocks(): void
     {
         // Check if we are editing a draft linked to an existing employee OR editing the employee directly
@@ -720,10 +844,44 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
     }
 
     /**
-     * A new centralized exception handler for various specific exceptions.
+     * After KEP submit the request is no longer a local draft. Stay-on-edit Livewire
+     * requests (persistent can:update, Alpine entangle) must not surface a 403 overlay.
      */
+    protected function redirectToEmployeeIndexAfterRequestProcessed(): void
+    {
+        $this->showSignatureModal = false;
+        $this->showRequestPreviewModal = false;
+        $this->dispatch('close-signature-modal');
+
+        if (session()->has('success')) {
+            session()->reflash();
+        }
+
+        $this->redirectRoute('employee.index', [legalEntity()], navigate: true);
+    }
+
+    protected function redirectIfEmployeeRequestAlreadyProcessed(): bool
+    {
+        $request = $this->employeeRequest instanceof EmployeeRequest
+            ? $this->employeeRequest
+            : ($this->employeeRequestId ? EmployeeRequest::query()->find($this->employeeRequestId) : null);
+
+        if (!$request instanceof EmployeeRequest || $request->isLocalDraft()) {
+            return false;
+        }
+
+        $this->employeeRequest = $request;
+        $this->redirectToEmployeeIndexAfterRequestProcessed();
+
+        return true;
+    }
+
     private function handleGeneralException(Exception $e): void
     {
+        if ($e instanceof AuthorizationException && $this->redirectIfEmployeeRequestAlreadyProcessed()) {
+            return;
+        }
+
         match (true) {
             $e instanceof ValidationException => $this->handleValidationException($e),
             $e instanceof EHealthValidationException => $this->handleEHealthValidationError($e),

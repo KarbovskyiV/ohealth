@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Enums\User\Role;
 use App\Models\Employee\EmployeeRequest;
 use App\Models\Relations\Party;
 use App\Models\User;
@@ -12,24 +11,14 @@ use Illuminate\Auth\Access\Response;
 
 class EmployeeRequestPolicy
 {
-    /**
-     * Roles that may manage employee requests even when eHealth scopes are incomplete (3.23.1.1).
-     *
-     * @return list<Role>
-     */
-    private function elevatedRoles(): array
-    {
-        return [Role::ADMIN, Role::HR, Role::OWNER, Role::PHARMACY_OWNER];
-    }
-
     private function canManageRequests(User $user): bool
     {
-        return $user->can('employee_request:write') || $user->hasAllowedRole($this->elevatedRoles());
+        return $user->can('employee_request:write') || $user->hasElevatedEmployeeRole();
     }
 
     private function canViewRequests(User $user): bool
     {
-        return $user->can('employee_request:read') || $user->hasAllowedRole($this->elevatedRoles());
+        return $user->can('employee_request:read') || $user->hasElevatedEmployeeRole();
     }
 
     public function viewAny(User $user): Response

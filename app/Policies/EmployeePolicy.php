@@ -47,8 +47,8 @@ class EmployeePolicy
             return Response::deny(__('employees.policy.no_user_linked'));
         }
 
-        // 4.Status check (dismissed cannot be edited)
-        if ($employee->status === Status::DISMISSED) {
+        // 4.Status check — TZ 3.23.1.7 only APPROVED employees may be updated
+        if ($employee->status !== Status::APPROVED) {
             return Response::deny(__('employees.policy.emp.dismissed_no_edit'));
         }
 
@@ -62,6 +62,10 @@ class EmployeePolicy
     {
         if ((int) $employee->legalEntityId !== (int) legalEntity()->id) {
             return Response::denyWithStatus(404);
+        }
+
+        if ($employee->status !== Status::APPROVED) {
+            return Response::deny(__('employees.policy.deactivate_denied'));
         }
 
         return ($user->can('employee:deactivate') || $user->hasElevatedEmployeeRole())
