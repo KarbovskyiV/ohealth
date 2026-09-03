@@ -556,14 +556,8 @@ class DeclarationIndex extends Component
                 ->withOption('legal_entity_id', $legalEntity->id)
                 ->withOption('token', Crypt::encryptString($token))
                 ->withOption('user', $user)
-                ->then(function (Batch $batch) use ($user) {
-                    $message = __('declarations.sync.completed', [
-                        'processed' => $batch->processedJobs,
-                        'total' => $batch->totalJobs,
-                    ]);
-
-                    $user->notify(new DeclarationSyncCompleted($message, 'success'));
-                })->catch(callback: function (Batch $batch, Throwable $err) use ($user) {
+                ->withOption('sync_entity', LegalEntity::ENTITY_DECLARATION)
+                ->catch(callback: function (Batch $batch, Throwable $err) use ($user) {
                     $message = __('declarations.sync.failed');
 
                     Log::error('Declaration sync batch failed.', [
@@ -586,14 +580,8 @@ class DeclarationIndex extends Component
                     ->withOption('legal_entity_id', $legalEntity->id)
                     ->withOption('token', Crypt::encryptString($token))
                     ->withOption('user', $user)
-                    ->then(function (Batch $batch) use ($user) {
-                        $message = __('declarations.sync.completed', [
-                            'processed' => $batch->processedJobs,
-                            'total' => $batch->totalJobs,
-                        ]);
-
-                        $user->notify(new DeclarationSyncCompleted($message, 'success'));
-                    })->catch(callback: function (Batch $batch, Throwable $err) use ($user) {
+                    ->withOption('sync_entity', LegalEntity::ENTITY_DECLARATION)
+                    ->catch(callback: function (Batch $batch, Throwable $err) use ($user) {
                         $message = __('declarations.sync.failed');
 
                         Log::error('DeclarationRequest sync batch failed.', [

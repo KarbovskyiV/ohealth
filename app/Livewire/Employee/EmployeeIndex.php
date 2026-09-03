@@ -528,14 +528,9 @@ class EmployeeIndex extends EmployeeComponent
                 ->withOption('legal_entity_id', $this->legalEntity->id)
                 ->withOption('token', Crypt::encryptString($token))
                 ->withOption('user', $user)
-                ->then(function (Batch $batch) use ($user) {
-                    app(PermissionRegistrar::class)->forgetCachedPermissions();
-                    $message = __('employees.sync.completed_successfully', [
-                        'processed' => $batch->processedJobs,
-                        'total' => $batch->totalJobs,
-                    ]);
-                    $user->notify(new EmployeeSyncCompleted($message, 'success'));
-                })->catch(callback: function (Batch $batch, \Throwable $e) use ($user) {
+                ->withOption('sync_entity', LegalEntity::ENTITY_EMPLOYEE)
+                ->then(fn () => app(PermissionRegistrar::class)->forgetCachedPermissions())
+                ->catch(callback: function (Batch $batch, \Throwable $e) use ($user) {
                     $message = __('employees.sync.failed');
                     Log::error('Employee sync batch failed.', ['batch_id' => $batch->id, 'exception' => $e]);
                     $user->notify(new EmployeeSyncCompleted($message, 'error'));
@@ -548,13 +543,8 @@ class EmployeeIndex extends EmployeeComponent
                 ->withOption('legal_entity_id', $this->legalEntity->id)
                 ->withOption('token', Crypt::encryptString($token))
                 ->withOption('user', $user)
-                ->then(function (Batch $batch) use ($user) {
-                    $message = __('employees.sync.completed_successfully', [
-                        'processed' => $batch->processedJobs,
-                        'total' => $batch->totalJobs,
-                    ]);
-                    $user->notify(new EmployeeSyncCompleted($message, 'success'));
-                })->catch(callback: function (Batch $batch, \Throwable $e) use ($user) {
+                ->withOption('sync_entity', LegalEntity::ENTITY_EMPLOYEE)
+                ->catch(callback: function (Batch $batch, \Throwable $e) use ($user) {
                     $message = __('employees.sync.failed');
                     Log::error('Employee sync batch failed.', ['batch_id' => $batch->id, 'exception' => $e]);
                     $user->notify(new EmployeeSyncCompleted($message, 'error'));
