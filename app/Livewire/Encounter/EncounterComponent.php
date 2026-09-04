@@ -21,6 +21,7 @@ use App\Livewire\Encounter\Forms\ClinicalImpressionForm;
 use App\Livewire\Encounter\Forms\DetectedIssueForm;
 use App\Livewire\Encounter\Forms\DeviceAssociationForm;
 use App\Livewire\Encounter\Forms\DeviceForm;
+use App\Livewire\Encounter\Forms\ConditionForm;
 use App\Livewire\Encounter\Forms\DiagnosticReportForm;
 use App\Livewire\Encounter\Forms\ImmunizationForm;
 use App\Livewire\Encounter\Forms\ObservationForm;
@@ -69,6 +70,8 @@ class EncounterComponent extends Component
     public DiagnosticReportForm $diagnosticReportForm;
 
     public ImmunizationForm $immunizationForm;
+
+    public ConditionForm $conditionForm;
 
     public DetectedIssueForm $detectedIssueForm;
 
@@ -499,7 +502,6 @@ class EncounterComponent extends Component
      * Search for referral number.
      *
      * @return void
-     * @throws eHealthApiException
      */
     public function searchForReferralNumber(): void
     {
@@ -681,7 +683,7 @@ class EncounterComponent extends Component
      */
     public function updatedFormEpisodeId(?string $episodeId): void
     {
-        $this->form->conditions = [];
+        $this->conditionForm->conditions = [];
         $this->form->encounter['diagnoses'] = [];
 
         if (empty($episodeId)) {
@@ -709,7 +711,7 @@ class EncounterComponent extends Component
 
         $detailsMap = MedicalEventsRepository::condition()->getDetailsMapForEvidences([$condition]);
 
-        $this->form->conditions = [Arr::except(
+        $this->conditionForm->conditions = [Arr::except(
             Fhir::condition()->fromFhir($condition, $detailsMap),
             ['uuid', 'assertedDate', 'assertedTime']
         )];
