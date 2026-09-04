@@ -93,7 +93,7 @@ class EncounterCreate extends EncounterComponent
                         }
                         $validated['procedures'][$index]['basedOnIdentifier'] = $uuid;
                     } catch (\Exception $e) {
-                        $this->addError("form.procedures.{$index}.basedOnIdentifier", $e->getMessage());
+                        $this->addError("procedureForm.procedures.{$index}.basedOnIdentifier", $e->getMessage());
                         throw $e;
                     }
                 }
@@ -245,7 +245,6 @@ class EncounterCreate extends EncounterComponent
         unset($formattedData['encounter']['incoming_referral']['display_value']);
 
         try {
-            $this->validateProcedurePerformers($formattedData);
             $this->validateObservationPerformers($formattedData);
             $this->validateDiagnosticReportPerformers($formattedData);
         } catch (ValidationException $exception) {
