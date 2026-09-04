@@ -166,7 +166,13 @@ class PartyVerificationTest extends TestCase
 
         Livewire::test(PartyVerificationIndex::class, ['legalEntity' => $legalEntity])
             ->call('sync')
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            ->assertDispatched('flashMessage', function (string $eventName, array $params): bool {
+                $payload = isset($params['message']) ? $params : ($params[0] ?? []);
+
+                return ($payload['message'] ?? null) === __('party_verification.messages.sync_success')
+                    && ($payload['type'] ?? null) === 'success';
+            });
 
         Bus::assertNothingBatched();
         $this->assertSame('VERIFIED', PartyVerificationCache::get($party->uuid)['verification_status'] ?? null);
@@ -209,7 +215,13 @@ class PartyVerificationTest extends TestCase
 
         Livewire::test(PartyVerificationIndex::class, ['legalEntity' => $legalEntity])
             ->call('sync')
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            ->assertDispatched('flashMessage', function (string $eventName, array $params): bool {
+                $payload = isset($params['message']) ? $params : ($params[0] ?? []);
+
+                return ($payload['message'] ?? null) === __('party_verification.messages.sync_page_done')
+                    && ($payload['type'] ?? null) === 'success';
+            });
 
         Bus::assertBatched(function ($batch) {
             return $batch->name === 'Party Verification Status Sync'

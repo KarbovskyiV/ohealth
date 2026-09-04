@@ -70,7 +70,7 @@ class PartyVerificationIndex extends Component
         $user = Auth::user();
 
         if (!$user || (!$this->canBulkSync && !$this->canDetailsSync)) {
-            session()->flash('error', __('party_verification.messages.sync_requires_details_or_read'));
+            $this->notifyFlash(__('party_verification.messages.sync_requires_details_or_read'), 'error');
 
             return;
         }
@@ -81,7 +81,7 @@ class PartyVerificationIndex extends Component
             $token = session()->get(config('ehealth.api.oauth.bearer_token'));
 
             if (!$token) {
-                session()->flash('error', __('party_verification.messages.sync_requires_ehealth_session'));
+                $this->notifyFlash(__('party_verification.messages.sync_requires_ehealth_session'), 'error');
 
                 return;
             }
@@ -111,7 +111,7 @@ class PartyVerificationIndex extends Component
         } catch (EHealthConnectionException $e) {
             Log::error('Party verification bulk sync failed: no connection.', ['error' => $e->getMessage()]);
             $this->legalEntity->setEntityStatus(JobStatus::FAILED, LegalEntity::ENTITY_PARTY_VERIFICATION);
-            session()->flash('error', __('errors.ehealth.messages.no_connection'));
+            $this->notifyFlash(__('errors.ehealth.messages.no_connection'), 'error');
 
             return;
         } catch (EHealthValidationException|EHealthResponseException $e) {
@@ -120,7 +120,7 @@ class PartyVerificationIndex extends Component
                 'code' => $e->getCode(),
             ]);
             $this->legalEntity->setEntityStatus(JobStatus::FAILED, LegalEntity::ENTITY_PARTY_VERIFICATION);
-            session()->flash('error', __('party_verification.messages.sync_failed'));
+            $this->notifyFlash(__('party_verification.messages.sync_failed'), 'error');
 
             return;
         }
@@ -151,13 +151,13 @@ class PartyVerificationIndex extends Component
                 ->onQueue('sync')
                 ->dispatch();
 
-            session()->flash('success', __('party_verification.messages.sync_page_done'));
+            $this->notifyFlash(__('party_verification.messages.sync_page_done'));
 
             return;
         }
 
         $this->legalEntity->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_PARTY_VERIFICATION);
-        session()->flash('success', __('party_verification.messages.sync_success'));
+        $this->notifyFlash(__('party_verification.messages.sync_success'));
     }
 
     /**
@@ -205,13 +205,13 @@ class PartyVerificationIndex extends Component
                 ->onQueue('sync')
                 ->dispatch();
 
-            session()->flash('success', __('party_verification.messages.sync_page_done'));
+            $this->notifyFlash(__('party_verification.messages.sync_page_done'));
 
             return;
         }
 
         $this->legalEntity->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_PARTY_VERIFICATION);
-        session()->flash('success', __('party_verification.messages.sync_success'));
+        $this->notifyFlash(__('party_verification.messages.sync_success'));
     }
 
     public function render(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\View\View
@@ -299,5 +299,17 @@ class PartyVerificationIndex extends Component
         $scopes = app(TokenStorage::class)->getTokenScopes();
         $this->canBulkSync = PartyVerificationBulkAccess::canBulkSync($scopes);
         $this->canDetailsSync = PartyVerificationBulkAccess::canDetailsSync($scopes);
+    }
+
+    /**
+     * Livewire requests do not reliably surface session flashes in the layout toast —
+     * use the same flashMessage event as other index sync actions.
+     */
+    private function notifyFlash(string $message, string $type = 'success'): void
+    {
+        $this->dispatch('flashMessage', [
+            'message' => $message,
+            'type' => $type,
+        ]);
     }
 }
