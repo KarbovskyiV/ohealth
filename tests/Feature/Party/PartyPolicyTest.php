@@ -106,12 +106,30 @@ class PartyPolicyTest extends TestCase
             Permission::findOrCreate('party_verification:details', 'web'),
         );
 
+        $this->withSession([
+            config('ehealth.api.oauth.token_scopes') => ['party_verification:details'],
+        ]);
+
         $policy = new PartyPolicy();
 
         $this->assertTrue($policy->viewAnyVerification($user)->allowed());
         $this->assertTrue($policy->viewVerification($user, $party)->allowed());
         $this->assertTrue($policy->syncVerification($user)->allowed());
         $this->assertTrue($policy->updateVerification($user, $party)->allowed());
+    }
+
+    public function test_policy_denies_sync_without_token_scopes(): void
+    {
+        ['legalEntity' => $legalEntity, 'user' => $user] = $this->createFixture();
+        $this->instance('legalEntity', $legalEntity);
+
+        $this->withSession([
+            config('ehealth.api.oauth.token_scopes') => [],
+        ]);
+
+        $policy = new PartyPolicy();
+
+        $this->assertTrue($policy->syncVerification($user)->denied());
     }
 
     public function test_policy_allows_update_with_write_scope(): void

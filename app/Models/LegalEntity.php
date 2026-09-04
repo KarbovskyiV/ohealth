@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Support\Facades\Schema;
 use Override;
 
 class LegalEntity extends Model
@@ -325,11 +326,14 @@ class LegalEntity extends Model
      */
     public function setEntityStatus(JobStatus $status, string $entityType = ''): void
     {
-        if (!$this->hasAttribute($entityType . 'sync_status')) {
+        $column = $entityType . 'sync_status';
+
+        // hasAttribute() is false when the column was never loaded on this instance (e.g. fresh create).
+        if (!Schema::hasColumn($this->getTable(), $column)) {
             return;
         }
 
-        $this->{$entityType . 'sync_status'} = $status->value;
+        $this->setAttribute($column, $status->value);
         $this->save();
         $this->refresh();
     }

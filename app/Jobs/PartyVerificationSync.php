@@ -8,6 +8,7 @@ use App\Classes\eHealth\EHealth;
 use App\Classes\eHealth\EHealthResponse;
 use App\Core\EHealthJob;
 use App\Models\LegalEntity;
+use App\Services\Party\PartyVerificationBulkAccess;
 use App\Services\Party\PartyVerificationCache;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\ProcessesPartyVerificationResponses;
@@ -23,7 +24,7 @@ class PartyVerificationSync extends EHealthJob
 
     public const string BATCH_NAME = 'PartyVerificationFullSync';
 
-    public const string SCOPE_REQUIRED = 'party_verification:read';
+    public const string SCOPE_REQUIRED = PartyVerificationBulkAccess::BULK_SCOPE;
 
     public const string ENTITY = LegalEntity::ENTITY_PARTY_VERIFICATION;
 

@@ -102,6 +102,13 @@ class PartyVerificationTest extends TestCase
         $this->grantPartyVerificationPermissions($user, $legalEntity);
         $this->actingAs($user);
         $this->instance('legalEntity', $legalEntity);
+        $this->withSession([
+            config('ehealth.api.oauth.token_scopes') => [
+                'party_verification:details',
+                'party_verification:write',
+            ],
+            config('ehealth.api.oauth.bearer_token') => 'test-token',
+        ]);
 
         return compact('legalEntity', 'party', 'user');
     }

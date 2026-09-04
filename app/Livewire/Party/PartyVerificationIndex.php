@@ -14,6 +14,7 @@ use App\Jobs\PartyVerificationDetailsUpsert;
 use App\Jobs\PartyVerificationSync;
 use App\Models\LegalEntity;
 use App\Models\Relations\Party;
+use App\Services\Party\PartyVerificationBulkAccess;
 use App\Services\Party\PartyVerificationCache;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\ProcessesPartyVerificationResponses;
@@ -35,13 +36,15 @@ class PartyVerificationIndex extends Component
     use ProcessesPartyVerificationResponses;
     use WithPagination;
 
-    public const string DETAILS_SCOPE = 'party_verification:details';
-
     public LegalEntity $legalEntity;
 
     public string $dracsDeathStatus = '';
 
     public bool $isSyncing = false;
+
+    public bool $canBulkSync = false;
+
+    public bool $canDetailsSync = false;
 
     public function updatedDracsDeathStatus(): void
     {
@@ -51,6 +54,7 @@ class PartyVerificationIndex extends Component
     public function mount(LegalEntity $legalEntity): void
     {
         $this->legalEntity = $legalEntity;
+        $this->refreshSyncCapabilities();
     }
 
     public function sync(): void
@@ -61,12 +65,11 @@ class PartyVerificationIndex extends Component
             return;
         }
 
-        $user = Auth::user();
-        $tokenScopes = app(TokenStorage::class)->getTokenScopes();
-        $hasRead = $user && in_array(PartyVerificationSync::SCOPE_REQUIRED, $tokenScopes, true);
-        $hasDetails = $user && in_array(self::DETAILS_SCOPE, $tokenScopes, true);
+        $this->refreshSyncCapabilities();
 
-        if (!$user || (!$hasRead && !$hasDetails)) {
+        $user = Auth::user();
+
+        if (!$user || (!$this->canBulkSync && !$this->canDetailsSync)) {
             session()->flash('error', __('party_verification.messages.sync_requires_details_or_read'));
 
             return;
@@ -83,7 +86,7 @@ class PartyVerificationIndex extends Component
                 return;
             }
 
-            if ($hasRead) {
+            if ($this->canBulkSync) {
                 $this->syncViaBulkList($user, $token);
 
                 return;
@@ -130,6 +133,8 @@ class PartyVerificationIndex extends Component
             }
         }
 
+        PartyVerificationBulkAccess::markSynced($this->legalEntity);
+
         if ($response->isNotLast()) {
             Bus::batch([
                 new PartyVerificationSync(
@@ -156,7 +161,8 @@ class PartyVerificationIndex extends Component
     }
 
     /**
-     * Fallback for OWNER/ADMIN: sync first page via getDetails, queue the rest.
+     * Fallback when token has party_verification:details but not :read (e.g. ADMIN).
+     * Syncs first N parties via getDetails, queues the rest.
      */
     private function syncViaDetails($user, string $token): void
     {
@@ -210,6 +216,8 @@ class PartyVerificationIndex extends Component
 
     public function render(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\View\View
     {
+        $this->refreshSyncCapabilities();
+
         $localItems = $this->localVerificationItems();
 
         if (!empty($this->dracsDeathStatus)) {
@@ -284,5 +292,12 @@ class PartyVerificationIndex extends Component
             ->whereNotNull('uuid')
             ->orderBy('last_name')
             ->orderBy('first_name');
+    }
+
+    private function refreshSyncCapabilities(): void
+    {
+        $scopes = app(TokenStorage::class)->getTokenScopes();
+        $this->canBulkSync = PartyVerificationBulkAccess::canBulkSync($scopes);
+        $this->canDetailsSync = PartyVerificationBulkAccess::canDetailsSync($scopes);
     }
 }

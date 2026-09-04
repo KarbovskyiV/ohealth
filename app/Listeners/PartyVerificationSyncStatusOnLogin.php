@@ -4,32 +4,27 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Enums\User\Role;
 use App\Events\EHealthUserLogin;
 use App\Jobs\PartyVerificationSync;
 use App\Models\LegalEntity;
-use App\Models\User;
 use App\Notifications\SyncNotification;
+use App\Services\Party\PartyVerificationBulkAccess;
 use Illuminate\Bus\Batch;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use JsonException;
 use Throwable;
 
 /**
- * On subsequent logins (max once per 24h per LE), queue party verification bulk list sync.
- * Triggers ONLY on HR login without OWNER/ADMIN roles, requiring party_verification:read on OAuth token.
+ * On subsequent logins (max once per 24h per LE), queue party verification bulk list sync
+ * when the OAuth token has party_verification:read (any role). First login is handled by
+ * FirstLoginOwnerSynchronization when the same scope is present.
  */
 class PartyVerificationSyncStatusOnLogin
 {
-    public const string SCOPE_REQUIRED = 'party_verification:read';
-
-    private const string CACHE_KEY_PREFIX = 'party_verification_last_run:';
-
-    private const int CACHE_TTL_SECONDS = 86400; // 24 hours
+    public const string SCOPE_REQUIRED = PartyVerificationBulkAccess::BULK_SCOPE;
 
     /**
      * @throws JsonException
@@ -40,34 +35,34 @@ class PartyVerificationSyncStatusOnLogin
             return;
         }
 
-        if (!in_array(self::SCOPE_REQUIRED, $event->scopes, true)) {
+        $legalEntity = $event->legalEntity;
+
+        if (!PartyVerificationBulkAccess::canBulkSync($event->scopes)) {
             Log::info('Party verification sync skipped: missing party_verification:read on token.', [
-                'legal_entity_id' => $event->legalEntity->id,
+                'legal_entity_id' => $legalEntity->id,
                 'user_id' => $event->user->id,
             ]);
 
             return;
         }
 
-        $user = $event->user;
-        $legalEntity = $event->legalEntity;
-
-        if (!$this->isEligibleHrUser($user, $legalEntity, $event->guard)) {
-            Log::info('Party verification sync skipped: User is not HR without OWNER/ADMIN.', [
+        if (PartyVerificationBulkAccess::wasSyncedRecently($legalEntity)) {
+            Log::info('Party verification sync skipped: Already ran today.', [
                 'legal_entity_id' => $legalEntity->id,
-                'user_id' => $user->id,
             ]);
 
             return;
         }
 
-        $cacheKey = self::CACHE_KEY_PREFIX . $legalEntity->id;
-
-        if (Cache::has($cacheKey)) {
-            Log::info('Party verification sync skipped: Already ran today.', ['legal_entity_id' => $legalEntity->id]);
+        if (PartyVerificationBulkAccess::isBulkSyncInProgress($legalEntity)) {
+            Log::info('Party verification sync skipped: already PROCESSING.', [
+                'legal_entity_id' => $legalEntity->id,
+            ]);
 
             return;
         }
+
+        $user = $event->user;
 
         try {
             $token = Crypt::decryptString($event->token);
@@ -98,7 +93,7 @@ class PartyVerificationSyncStatusOnLogin
                 ->onQueue('sync')
                 ->dispatch();
 
-            Cache::put($cacheKey, true, self::CACHE_TTL_SECONDS);
+            PartyVerificationBulkAccess::markSynced($legalEntity);
             $user->notify(new SyncNotification('party_verification', 'started'));
         } catch (Throwable $e) {
             Log::error('Failed to queue party verification sync on login.', [
@@ -106,45 +101,5 @@ class PartyVerificationSyncStatusOnLogin
                 'error' => $e->getMessage(),
             ]);
         }
-    }
-
-    private function isEligibleHrUser(User $user, LegalEntity $legalEntity, string $guard): bool
-    {
-        if (config('permission.teams')) {
-            setPermissionsTeamId($legalEntity->id);
-        }
-
-        $user->unsetRelation('roles');
-
-        $excludedRoles = [
-            Role::OWNER->value,
-            Role::ADMIN->value,
-            Role::REORGANIZATION_OWNER->value,
-            Role::PHARMACY_OWNER->value,
-        ];
-
-        // 1. Exclude OWNER and ADMIN roles
-        if ($user->hasAnyRole($excludedRoles, $guard) || $user->hasAnyRole($excludedRoles)) {
-            return false;
-        }
-
-        $hasExcludedEmployee = $user->employees()
-            ->where('legal_entity_id', $legalEntity->id)
-            ->whereIn('employee_type', $excludedRoles)
-            ->exists();
-
-        if ($hasExcludedEmployee) {
-            return false;
-        }
-
-        // 2. Must be HR
-        if ($user->hasRole(Role::HR->value, $guard) || $user->hasRole(Role::HR->value)) {
-            return true;
-        }
-
-        return $user->employees()
-            ->where('legal_entity_id', $legalEntity->id)
-            ->where('employee_type', Role::HR->value)
-            ->exists();
     }
 }
