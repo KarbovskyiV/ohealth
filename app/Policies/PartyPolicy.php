@@ -38,11 +38,8 @@ class PartyPolicy
 
     public function syncVerification(User $user): Response
     {
-        if (!$this->userHasTv323Role($user)) {
-            return Response::denyWithStatus(404);
-        }
-
-        // Sync ability follows OAuth token scopes (not employee_type alone).
+        // Bulk/details sync is gated by OAuth token scopes only — not by employee role.
+        // ADMIN without party_verification:read never hits getMany (uses details or is denied).
         $scopes = app(TokenStorage::class)->getTokenScopes();
 
         if (!PartyVerificationBulkAccess::canManualSync($scopes)) {

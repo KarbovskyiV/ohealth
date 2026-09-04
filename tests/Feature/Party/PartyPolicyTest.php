@@ -85,6 +85,10 @@ class PartyPolicyTest extends TestCase
         ['legalEntity' => $legalEntity, 'party' => $party, 'user' => $user] = $this->createFixture(\App\Enums\User\Role::PHARMACIST->value);
         $this->instance('legalEntity', $legalEntity);
 
+        $this->withSession([
+            config('ehealth.api.oauth.token_scopes') => [],
+        ]);
+
         $policy = new PartyPolicy();
 
         $this->assertTrue($policy->viewAnyVerification($user)->denied());

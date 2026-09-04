@@ -19,8 +19,8 @@ use Throwable;
 
 /**
  * On subsequent logins (max once per 24h per LE), queue party verification bulk list sync
- * when the OAuth token has party_verification:read (any role). First login is handled by
- * FirstLoginOwnerSynchronization when the same scope is present.
+ * only when token scopes include party_verification:read. Role (HR/OWNER/ADMIN) is not checked —
+ * ADMIN without that scope is skipped and never calls the list API.
  */
 class PartyVerificationSyncStatusOnLogin
 {

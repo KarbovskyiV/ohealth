@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * Single gate for party verification bulk/list sync.
- * Bulk path requires party_verification:read on the OAuth token (any role — HR, OWNER, …).
+ * Bulk path requires party_verification:read on the token scopes — role is irrelevant.
+ * Without that scope (typical for ADMIN), callers must not use GET /parties/verifications.
  * Legal entity is taken from the token by eHealth; do not send legal_entity_id in query.
  */
 final class PartyVerificationBulkAccess

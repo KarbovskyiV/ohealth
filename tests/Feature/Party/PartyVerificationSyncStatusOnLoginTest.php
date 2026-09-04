@@ -140,10 +140,34 @@ class PartyVerificationSyncStatusOnLoginTest extends TestCase
     }
 
     #[Test]
-    public function owner_login_with_read_scope_queues_party_verification_sync(): void
+    public function login_without_read_scope_skips_even_for_admin_fixture(): void
     {
         Bus::fake();
 
+        // ADMIN in config has no party_verification:read — must not queue bulk list sync.
+        ['legalEntity' => $legalEntity, 'user' => $user] = $this->createFixture('ADMIN');
+
+        Cache::forget(PartyVerificationBulkAccess::cacheKey($legalEntity->id));
+
+        $event = new EHealthUserLogin(
+            user: $user,
+            legalEntity: $legalEntity,
+            authUserUUID: $user->uuid,
+            scopes: ['party_verification:details', 'party_verification:write', 'declaration:read'],
+            isFirstLogin: false
+        );
+
+        event($event);
+
+        $this->assertPartyVerificationSyncNotQueued();
+    }
+
+    #[Test]
+    public function login_with_read_scope_queues_regardless_of_role_label(): void
+    {
+        Bus::fake();
+
+        // Scope presence alone decides; fixture role is incidental.
         ['legalEntity' => $legalEntity, 'user' => $user] = $this->createFixture('OWNER');
 
         Cache::forget(PartyVerificationBulkAccess::cacheKey($legalEntity->id));
@@ -166,31 +190,6 @@ class PartyVerificationSyncStatusOnLoginTest extends TestCase
         });
 
         $this->assertTrue(PartyVerificationBulkAccess::wasSyncedRecently($legalEntity));
-    }
-
-    #[Test]
-    public function admin_login_with_read_scope_queues_party_verification_sync(): void
-    {
-        Bus::fake();
-
-        ['legalEntity' => $legalEntity, 'user' => $user] = $this->createFixture('ADMIN');
-
-        Cache::forget(PartyVerificationBulkAccess::cacheKey($legalEntity->id));
-
-        $event = new EHealthUserLogin(
-            user: $user,
-            legalEntity: $legalEntity,
-            authUserUUID: $user->uuid,
-            scopes: [PartyVerificationSync::SCOPE_REQUIRED, 'declaration:read'],
-            isFirstLogin: false
-        );
-
-        event($event);
-
-        Bus::assertBatched(function ($batch) {
-            return $batch->name === 'Party Verification Status Sync'
-                && $batch->jobs[0] instanceof PartyVerificationSync;
-        });
     }
 
     #[Test]
