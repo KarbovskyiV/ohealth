@@ -17,6 +17,7 @@ use App\Services\MedicalEvents\Mappers\MedicationRequestMapper;
 use App\Services\MedicalEvents\Mappers\ObservationMapper;
 use App\Services\MedicalEvents\Mappers\ProcedureMapper;
 use App\Services\MedicalEvents\Mappers\ServiceRequestMapper;
+use App\Services\MedicalEvents\Mappers\DetectedIssueMapper;
 
 final class Fhir
 {
@@ -58,6 +59,11 @@ final class Fhir
     public static function device(): DeviceMapper
     {
         return app(DeviceMapper::class);
+    }
+
+    public static function detectedIssue(): DetectedIssueMapper
+    {
+        return app(DetectedIssueMapper::class);
     }
 
     public static function deviceAssociation(): DeviceAssociationMapper
