@@ -90,8 +90,21 @@ class EncounterEdit extends EncounterComponent
         $this->form->observations = $package['observations'];
         $this->form->procedures = $package['procedures'];
         $this->deviceForm->devices = $package['devices'];
+        $this->detectedIssueForm->detectedIssues = $package['detectedIssues'];
         $this->deviceAssociationForm->deviceAssociations = $package['deviceAssociations'];
         $this->clinicalImpressionForm->clinicalImpressions = $package['clinicalImpressions'];
+
+        if ($this->isReadonly) {
+            $basedOnIds = collect($package['detectedIssues'])
+                ->pluck('basedOnId')
+                ->filter()
+                ->unique()
+                ->values()
+                ->toArray();
+
+            $this->previousDetectedIssues = Repository::detectedIssue()
+                ->getByUuidsForSelect($this->patient(), $basedOnIds);
+        }
 
         $this->episodeType = 'existing';
         $this->form->episode = array_merge(
@@ -160,6 +173,7 @@ class EncounterEdit extends EncounterComponent
         $fhirProcedures = $fhir['procedures'];
         $fhirDevices = $fhir['devices'];
         $fhirDeviceAssociations = $fhir['deviceAssociations'];
+        $fhirDetectedIssues = $fhir['detectedIssues'];
         $fhirClinicalImpressions = $fhir['clinicalImpressions'];
 
         try {
@@ -180,6 +194,10 @@ class EncounterEdit extends EncounterComponent
             Repository::deviceAssociation()->sync(
                 $this->patient(),
                 array_map($this->fhirToSync(...), $fhirDeviceAssociations)
+            );
+            Repository::detectedIssue()->sync(
+                $this->patient(),
+                array_map($this->fhirToSync(...), $fhirDetectedIssues)
             );
             Repository::clinicalImpression()->sync(
                 $this->patient(),
@@ -203,6 +221,7 @@ class EncounterEdit extends EncounterComponent
             'procedures' => $fhirProcedures,
             'devices' => $fhirDevices,
             'deviceAssociations' => $fhirDeviceAssociations,
+            'detectedIssues' => $fhirDetectedIssues,
             'clinicalImpressions' => $fhirClinicalImpressions
         ]);
     }

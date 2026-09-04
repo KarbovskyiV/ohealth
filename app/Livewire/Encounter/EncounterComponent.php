@@ -18,6 +18,7 @@ use App\Exceptions\EHealth\EHealthException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Livewire\Encounter\Forms\ClinicalImpressionForm;
+use App\Livewire\Encounter\Forms\DetectedIssueForm;
 use App\Livewire\Encounter\Forms\DeviceAssociationForm;
 use App\Livewire\Encounter\Forms\DeviceForm;
 use App\Livewire\Encounter\Forms\EncounterForm as Form;
@@ -56,6 +57,8 @@ class EncounterComponent extends Component
     public DeviceForm $deviceForm;
 
     public ClinicalImpressionForm $clinicalImpressionForm;
+
+    public DetectedIssueForm $detectedIssueForm;
 
     public bool $showSignatureModal = false;
 
@@ -263,6 +266,13 @@ class EncounterComponent extends Component
     public array $patientDevices = [];
 
     /**
+     * Previous detected issues available for selection.
+     *
+     * @var array
+     */
+    public array $previousDetectedIssues = [];
+
+    /**
      * List of employees available as diagnostic report performers.
      *
      * @var array
@@ -382,6 +392,8 @@ class EncounterComponent extends Component
         'device_properties',
         'device_association_statuses',
         'eHealth/body_structures',
+        'detected_issue_statuses',
+        'detected_issue_codes',
         'POSITION'
     ];
 
@@ -469,6 +481,36 @@ class EncounterComponent extends Component
             logger()->error('loadInProgressReferrals failed: ' . $e->getMessage());
             // Don't show an error toast — just silently leave the dropdown empty
         }
+    }
+
+    /**
+     * Search for referral number.
+     *
+     * @return void
+     * @throws eHealthApiException
+     */
+    public function searchForReferralNumber(): void
+    {
+        EHealth::serviceRequest()
+            ->searchForServiceRequestsByParams(['requisition' => $this->form->referralNumber])
+            ->validate();
+    }
+
+    /**
+     * Load previous detected issues for the selected device.
+     *
+     * @param  string|null  $deviceUuid
+     * @return void
+     */
+    public function loadPreviousDetectedIssues(?string $deviceUuid): void
+    {
+        $this->previousDetectedIssues = [];
+
+        if (empty($deviceUuid)) {
+            return;
+        }
+
+        $this->previousDetectedIssues = MedicalEventsRepository::detectedIssue()->getByDevice($this->patient(), $deviceUuid);
     }
 
     /**

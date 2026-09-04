@@ -401,6 +401,10 @@ class EncounterCreate extends EncounterComponent
                 Repository::deviceAssociation()->store($formattedData['deviceAssociations'], $this->patient());
             }
 
+            if (isset($formattedData['detectedIssues'])) {
+                Repository::detectedIssue()->store($formattedData['detectedIssues'], $this->patient());
+            }
+
             if (isset($formattedData['clinicalImpressions'])) {
                 Repository::clinicalImpression()->store($formattedData['clinicalImpressions'], $this->patient());
 
