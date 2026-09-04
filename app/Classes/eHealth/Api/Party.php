@@ -25,7 +25,10 @@ class Party extends EHealthRequest
     /**
      * Get list of party verification statuses.
      *
-     * @param  array  $filters  An array of filters to apply to the query.
+     * Scope is limited by legal_entity_id from the OAuth token — do not pass legal_entity_id
+     * (schema rejects it as an additional property).
+     *
+     * @param  array  $filters  Query filters allowed by the eHealth schema (e.g. pagination helpers only).
      * @param  int  $page
      * @return PromiseInterface|EHealthResponse
      * @throws EHealthConnectionException

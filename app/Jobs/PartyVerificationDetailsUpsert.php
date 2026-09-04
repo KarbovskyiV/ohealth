@@ -8,34 +8,46 @@ use App\Classes\eHealth\EHealth;
 use App\Classes\eHealth\EHealthResponse;
 use App\Core\EHealthJob;
 use App\Models\LegalEntity;
+use App\Models\Relations\Party;
 use App\Services\Party\PartyVerificationCache;
-use App\Traits\BatchLegalEntityQueries;
 use App\Traits\ProcessesPartyVerificationResponses;
 use GuzzleHttp\Promise\PromiseInterface;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\Middleware\RateLimited;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class PartyVerificationSync extends EHealthJob
+/**
+ * Sync a single party verification status via GET /api/parties/{id}/verification.
+ * Requires party_verification:details (OWNER/ADMIN/HR).
+ */
+class PartyVerificationDetailsUpsert extends EHealthJob
 {
-    use BatchLegalEntityQueries;
+    use Dispatchable;
     use ProcessesPartyVerificationResponses;
+    use SerializesModels;
 
-    public const string BATCH_NAME = 'PartyVerificationFullSync';
+    public const string BATCH_NAME = 'PartyVerificationDetailsSync';
 
-    public const string SCOPE_REQUIRED = 'party_verification:read';
+    public const string SCOPE_REQUIRED = 'party_verification:details';
 
     public const string ENTITY = LegalEntity::ENTITY_PARTY_VERIFICATION;
 
-    /**
-     * Bulk sync via GET /api/parties/verifications (party_verification:read).
-     */
+    public function __construct(
+        public Party $party,
+        public ?LegalEntity $legalEntity,
+        protected ?EHealthJob $nextEntity = null,
+        public bool $standalone = false,
+    ) {
+        parent::__construct(legalEntity: $legalEntity, nextEntity: $nextEntity, standalone: $standalone);
+    }
+
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse|null
     {
-        // LE is taken from the OAuth token; GET /parties/verifications rejects legal_entity_id as additional property.
         return EHealth::party()
             ->withToken($token)
-            ->getMany([], $this->page);
+            ->getDetails($this->party->uuid);
     }
 
     protected function processResponse(?EHealthResponse $response): void
@@ -44,12 +56,13 @@ class PartyVerificationSync extends EHealthJob
             return;
         }
 
-        $this->processPartyVerificationResponse($response, $this->legalEntity);
+        $this->processPartyVerificationDetail($this->party->uuid, $response, $this->legalEntity);
 
-        foreach ($response->map($response->validate()) as $partyUuid => $item) {
-            if (is_string($partyUuid) && is_array($item)) {
-                PartyVerificationCache::put($partyUuid, $item);
-            }
+        $payload = $response->json();
+        $data = is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
+
+        if (is_array($data)) {
+            PartyVerificationCache::put($this->party->uuid, $data);
         }
     }
 
@@ -58,13 +71,11 @@ class PartyVerificationSync extends EHealthJob
         return [new RateLimited('ehealth-party-verification-get')];
     }
 
-    /**
-     * Handle a job failure.
-     */
     public function failed(Throwable|null $exception): void
     {
-        Log::error('Job [PartyVerificationSync] failed.', [
+        Log::error('Job [PartyVerificationDetailsUpsert] failed.', [
             'legal_entity_id' => $this->legalEntity->id ?? 'unknown',
+            'party_uuid' => $this->party->uuid ?? 'unknown',
             'error' => $exception?->getMessage(),
             'trace' => $exception?->getTraceAsString(),
         ]);
@@ -72,9 +83,6 @@ class PartyVerificationSync extends EHealthJob
         parent::failed($exception);
     }
 
-    /**
-     * Get next entity job if needed.
-     */
     protected function getNextEntityJob(): ?EHealthJob
     {
         return $this->standalone || !$this->nextEntity

@@ -26,18 +26,35 @@ class PartyVerificationScopesTest extends TestCase
     }
 
     #[Test]
-    public function role_scopes_do_not_include_party_verification_read(): void
+    public function hr_role_includes_party_verification_read(): void
     {
-        $scopes = collect(config('ehealth.roles'))
-            ->flatten()
-            ->unique()
-            ->values();
+        $scopes = config('ehealth.roles.HR');
 
-        $this->assertFalse(
-            $scopes->contains('party_verification:read'),
-            'party_verification:read must not be present in role scope configs'
+        $this->assertIsArray($scopes, 'Role HR must be configured');
+        $this->assertContains(
+            'party_verification:read',
+            $scopes,
+            'party_verification:read must be present for HR role'
         );
-        $this->assertTrue($scopes->contains('party_verification:details'));
-        $this->assertTrue($scopes->contains('party_verification:write'));
+    }
+
+    #[Test]
+    public function non_hr_roles_except_owner_do_not_include_party_verification_read(): void
+    {
+        // OWNER may carry party_verification:read in upstream scopes; login sync still skips OWNER/ADMIN.
+        $rolesWithoutBulkRead = collect(config('ehealth.roles'))
+            ->keys()
+            ->diff(['HR', 'OWNER']);
+
+        foreach ($rolesWithoutBulkRead as $role) {
+            $scopes = config("ehealth.roles.{$role}");
+
+            $this->assertIsArray($scopes);
+            $this->assertNotContains(
+                'party_verification:read',
+                $scopes,
+                "party_verification:read must not be present for role {$role}"
+            );
+        }
     }
 }
