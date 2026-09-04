@@ -13,12 +13,8 @@
                     @icon('refresh', 'w-4 h-4')
                     {{ __('forms.synchronise_with_eHealth') }}
                 </button>
-                @if ($canBulkSync)
-                    <p class="max-w-md text-sm text-gray-500">{{ __('party_verification.messages.sync_bulk_hint') }}</p>
-                @elseif ($canDetailsSync)
-                    <p class="max-w-md text-sm text-gray-500">
-                        {{ __('party_verification.messages.sync_details_hint') }}
-                    </p>
+                @if ($canDetailsSync && ! $canBulkSync)
+                    <p class="max-w-md text-sm text-gray-500">{{ __('party_verification.messages.sync_details_hint') }}</p>
                 @endif
             @endcan
         </div>
