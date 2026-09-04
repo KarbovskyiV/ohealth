@@ -6,28 +6,25 @@ namespace App\Listeners;
 
 use App\Events\EHealthUserLogin;
 use App\Jobs\PartyVerificationSync;
+use App\Models\LegalEntity;
 use App\Notifications\SyncNotification;
+use App\Services\Party\PartyVerificationBulkAccess;
 use Illuminate\Bus\Batch;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use JsonException;
 use Throwable;
 
 /**
- * On subsequent logins (max once per 24h per LE), queue party verification sync.
- * Sync uses GET /api/parties/{id}/verification (party_verification:details) in a background job —
- * not the list endpoint — so the HTTP login request stays light.
+ * On subsequent logins (max once per 24h per LE), queue party verification bulk list sync
+ * only when token scopes include party_verification:read. Role (HR/OWNER/ADMIN) is not checked —
+ * ADMIN without that scope is skipped and never calls the list API.
  */
 class PartyVerificationSyncStatusOnLogin
 {
-    public const string SCOPE_REQUIRED = 'party_verification:details';
-
-    private const string CACHE_KEY_PREFIX = 'party_verification_last_run:';
-
-    private const int CACHE_TTL_SECONDS = 86400; // 24 hours
+    public const string SCOPE_REQUIRED = PartyVerificationBulkAccess::BULK_SCOPE;
 
     /**
      * @throws JsonException
@@ -38,16 +35,34 @@ class PartyVerificationSyncStatusOnLogin
             return;
         }
 
-        $user = $event->user;
         $legalEntity = $event->legalEntity;
 
-        $cacheKey = self::CACHE_KEY_PREFIX . $legalEntity->id;
-
-        if (Cache::has($cacheKey)) {
-            Log::info('Party verification sync skipped: Already ran today.', ['legal_entity_id' => $legalEntity->id]);
+        if (!PartyVerificationBulkAccess::canBulkSync($event->scopes)) {
+            Log::info('Party verification sync skipped: missing party_verification:read on token.', [
+                'legal_entity_id' => $legalEntity->id,
+                'user_id' => $event->user->id,
+            ]);
 
             return;
         }
+
+        if (PartyVerificationBulkAccess::wasSyncedRecently($legalEntity)) {
+            Log::info('Party verification sync skipped: Already ran today.', [
+                'legal_entity_id' => $legalEntity->id,
+            ]);
+
+            return;
+        }
+
+        if (PartyVerificationBulkAccess::isBulkSyncInProgress($legalEntity)) {
+            Log::info('Party verification sync skipped: already PROCESSING.', [
+                'legal_entity_id' => $legalEntity->id,
+            ]);
+
+            return;
+        }
+
+        $user = $event->user;
 
         try {
             $token = Crypt::decryptString($event->token);
@@ -59,23 +74,15 @@ class PartyVerificationSyncStatusOnLogin
             return;
         }
 
-        if (!$user->can(self::SCOPE_REQUIRED)) {
-            Log::info('Party verification sync skipped: User missing required scope.', [
-                'user_id' => $user->id,
-                'required_scope' => self::SCOPE_REQUIRED,
-            ]);
-
-            return;
-        }
-
         try {
             Log::info('Starting party verification sync (queued).', ['user_id' => $user->id]);
 
-            Bus::batch([new PartyVerificationSync($legalEntity, null, false)])
+            Bus::batch([new PartyVerificationSync($legalEntity, null, false, standalone: true)])
                 ->name('Party Verification Status Sync')
                 ->withOption('legal_entity_id', $legalEntity->id)
                 ->withOption('token', Crypt::encryptString($token))
                 ->withOption('user', $user)
+                ->withOption('sync_entity', LegalEntity::ENTITY_PARTY_VERIFICATION)
                 ->then(function (Batch $batch) use ($user) {
                     $user->notify(new SyncNotification('party_verification', 'completed'));
                 })
@@ -86,7 +93,7 @@ class PartyVerificationSyncStatusOnLogin
                 ->onQueue('sync')
                 ->dispatch();
 
-            Cache::put($cacheKey, true, self::CACHE_TTL_SECONDS);
+            PartyVerificationBulkAccess::markSynced($legalEntity);
             $user->notify(new SyncNotification('party_verification', 'started'));
         } catch (Throwable $e) {
             Log::error('Failed to queue party verification sync on login.', [

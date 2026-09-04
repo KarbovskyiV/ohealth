@@ -10,34 +10,62 @@ use Tests\TestCase;
 class PartyVerificationScopesTest extends TestCase
 {
     #[Test]
-    public function legal_entity_type_scopes_do_not_request_party_verification_read(): void
+    public function legal_entity_type_scopes_include_party_verification_read(): void
     {
         $scopes = collect(config('ehealth.legal_entity_types'))
             ->flatten()
             ->unique()
             ->values();
 
-        $this->assertFalse(
+        // Upstream requests party_verification:read for every legal entity type (OAuth base scopes).
+        $this->assertTrue(
             $scopes->contains('party_verification:read'),
-            'party_verification:read must not be requested for any legal entity type'
+            'party_verification:read must be requested for legal entity types'
         );
         $this->assertTrue($scopes->contains('party_verification:details'));
         $this->assertTrue($scopes->contains('party_verification:write'));
+
+        foreach (array_keys(config('ehealth.legal_entity_types')) as $type) {
+            $typeScopes = config("ehealth.legal_entity_types.{$type}");
+            $this->assertContains(
+                'party_verification:read',
+                $typeScopes,
+                "party_verification:read must be present for legal entity type {$type}"
+            );
+        }
     }
 
     #[Test]
-    public function role_scopes_do_not_include_party_verification_read(): void
+    public function hr_role_includes_party_verification_read(): void
     {
-        $scopes = collect(config('ehealth.roles'))
-            ->flatten()
-            ->unique()
-            ->values();
+        $scopes = config('ehealth.roles.HR');
 
-        $this->assertFalse(
-            $scopes->contains('party_verification:read'),
-            'party_verification:read must not be present in role scope configs'
+        $this->assertIsArray($scopes, 'Role HR must be configured');
+        $this->assertContains(
+            'party_verification:read',
+            $scopes,
+            'party_verification:read must be present for HR role'
         );
-        $this->assertTrue($scopes->contains('party_verification:details'));
-        $this->assertTrue($scopes->contains('party_verification:write'));
+    }
+
+    #[Test]
+    public function non_hr_roles_except_owner_do_not_include_party_verification_read(): void
+    {
+        // OWNER may carry party_verification:read in upstream scopes; bulk sync is gated by token scope,
+        // not by HR role (see PartyVerificationBulkAccess / login listener).
+        $rolesWithoutBulkRead = collect(config('ehealth.roles'))
+            ->keys()
+            ->diff(['HR', 'OWNER']);
+
+        foreach ($rolesWithoutBulkRead as $role) {
+            $scopes = config("ehealth.roles.{$role}");
+
+            $this->assertIsArray($scopes);
+            $this->assertNotContains(
+                'party_verification:read',
+                $scopes,
+                "party_verification:read must not be present for role {$role}"
+            );
+        }
     }
 }

@@ -25,7 +25,9 @@ use Illuminate\Bus\BatchRepository;
 use App\Jobs\DeclarationDetailsSync;
 use App\Models\Employee\EmployeeRequest;
 use App\Models\Relations\ConfidantPerson;
+use App\Models\Relations\Party;
 use App\Jobs\EmployeeRequestDetailsUpsert;
+use App\Jobs\PartyVerificationDetailsUpsert;
 use App\Jobs\DeclarationRequestDetailsSync;
 use App\Models\Relations\AuthenticationMethod;
 use App\Jobs\RemoteEHealthLinksProcessing;
@@ -236,6 +238,37 @@ trait BatchLegalEntityQueries
         }
 
         return $pendingJobs;
+    }
+
+    /**
+     * Creates a chain of PartyVerificationDetailsUpsert jobs for the given parties.
+     *
+     * Jobs are created in reverse order so execution follows the original collection order.
+     *
+     * @param  LegalEntity  $legalEntity
+     * @param  Collection<int, Party>  $parties
+     * @param  EHealthJob|null  $nextEntity  Job after the chain completes (or null)
+     * @return EHealthJob|null First job in the chain, or $nextEntity when parties is empty
+     */
+    protected function getPartyVerificationDetailsStartJob(
+        LegalEntity $legalEntity,
+        Collection $parties,
+        ?EHealthJob $nextEntity = null
+    ): ?EHealthJob {
+        $job = null;
+        $previousJob = $nextEntity;
+
+        foreach ($parties->reverse() as $party) {
+            $job = new PartyVerificationDetailsUpsert(
+                party: $party,
+                legalEntity: $legalEntity,
+                nextEntity: $previousJob
+            );
+
+            $previousJob = $job;
+        }
+
+        return $job ?? $previousJob;
     }
 
     /**

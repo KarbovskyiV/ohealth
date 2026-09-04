@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Auth\EHealth\Services\TokenStorage;
 use App\Enums\Status;
 use App\Enums\User\Role;
 use App\Models\Relations\Party;
 use App\Models\User;
+use App\Services\Party\PartyVerificationBulkAccess;
 use Illuminate\Auth\Access\Response;
 
 class PartyPolicy
@@ -36,8 +38,12 @@ class PartyPolicy
 
     public function syncVerification(User $user): Response
     {
-        if (!$this->userHasTv323Role($user)) {
-            return Response::denyWithStatus(404);
+        // Bulk/details sync is gated by OAuth token scopes only — not by employee role.
+        // ADMIN without party_verification:read never hits getMany (uses details or is denied).
+        $scopes = app(TokenStorage::class)->getTokenScopes();
+
+        if (!PartyVerificationBulkAccess::canManualSync($scopes)) {
+            return Response::deny(__('party_verification.messages.sync_requires_details_or_read'));
         }
 
         return Response::allow();

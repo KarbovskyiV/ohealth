@@ -20,6 +20,7 @@ return [
         'auth_ehealth' => env('EHEALTH_CODE_TOKEN', 'user_id_auth_ehealth'),
         'oauth' => [
             'bearer_token' => env('EHEALTH_OAUTH_TOKEN', 'auth_token'),
+            'token_scopes' => env('EHEALTH_OAUTH_TOKEN_SCOPES', 'auth_token_scopes'),
             'tokens' => env('EHEALTH_OAUTH_TOKENS', '/oauth/tokens'),
             'user' => env('EHEALTH_OAUTH_USER', '/oauth/user'),
             'logout' => env('EHEALTH_OAUTH_LOGOUT', '/auth/logout')
@@ -30,6 +31,11 @@ return [
         'retries' => 10,
         'page_size' => env('EHEALTH_PAGE_SIZE', 300),
         'page_size_max' => env('EHEALTH_PAGE_SIZE_MAX', 500)
+    ],
+
+    'party_verification' => [
+        // Local parties synced synchronously via getDetails before the rest go to the queue.
+        'details_sync_page_size' => (int) env('EHEALTH_PARTY_VERIFICATION_DETAILS_PAGE_SIZE', 50),
     ],
 
     'auth' => [

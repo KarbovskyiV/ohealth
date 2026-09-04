@@ -10,16 +10,20 @@ use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\LegalEntity;
 use App\Models\Relations\Party;
+use App\Services\Party\PartyVerificationCache;
+use App\Traits\ProcessesPartyVerificationResponses;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Throwable;
 
 class PartyVerify extends Component
 {
     use AuthorizesRequests;
+    use ProcessesPartyVerificationResponses;
 
     public Party $party;
     public LegalEntity $legalEntity;
@@ -31,6 +35,8 @@ class PartyVerify extends Component
 
     #[Locked]
     public bool $showUpdateModal = false;
+
+    public bool $isSyncing = false;
 
     /**
      * Always VERIFIED for DRACS death updates (API allows only this status).
@@ -109,6 +115,71 @@ class PartyVerify extends Component
 
         } catch (\Throwable $e) {
             $this->verificationDetails = [];
+        }
+    }
+
+    /**
+     * Force-sync one party verification via GET /api/parties/{uuid}/verification.
+     * Same pattern as EmployeeRequestIndex::syncOne / PartyVerify::updateStatus:
+     * perform eHealth call, persist, then reload UI via loadVerificationDetails().
+     */
+    public function syncOne(): void
+    {
+        $this->authorize('syncVerification', Party::class);
+
+        if ($this->isSyncing) {
+            return;
+        }
+
+        if (!$this->party->uuid) {
+            $this->dispatch('flashMessage', [
+                'message' => __('party_verification.messages.sync_one_missing_uuid'),
+                'type' => 'error',
+            ]);
+
+            return;
+        }
+
+        $this->isSyncing = true;
+
+        try {
+            Log::info('[PartyVerify SyncOne] Started', [
+                'party_uuid' => $this->party->uuid,
+                'legal_entity_id' => $this->legalEntity->id,
+            ]);
+
+            $response = EHealth::party()->getDetails($this->party->uuid);
+
+            $this->processPartyVerificationDetail($this->party->uuid, $response, $this->legalEntity);
+
+            $payload = $response->json();
+            $data = is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
+
+            if (is_array($data)) {
+                PartyVerificationCache::put($this->party->uuid, $data);
+            }
+
+            $this->loadVerificationDetails();
+            $this->party->refresh();
+
+            $this->dispatch('flashMessage', [
+                'message' => __('party_verification.messages.sync_one_success'),
+                'type' => 'success',
+            ]);
+        } catch (Throwable $e) {
+            Log::error('[PartyVerify SyncOne] ERROR: ' . $e->getMessage(), [
+                'party_uuid' => $this->party->uuid,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            $this->dispatch('flashMessage', [
+                'message' => __('party_verification.messages.sync_one_failed', [
+                    'error' => $e->getMessage(),
+                ]),
+                'type' => 'error',
+            ]);
+        } finally {
+            $this->isSyncing = false;
         }
     }
 
