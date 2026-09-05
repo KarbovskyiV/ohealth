@@ -6,8 +6,8 @@ namespace App\Rules;
 
 use Closure;
 use App\Core\Arr;
-use App\Models\Relations\Party;
 use App\Models\User;
+use App\Models\Relations\Party;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Translation\PotentiallyTranslatedString;
@@ -166,7 +166,7 @@ class TaxId implements ValidationRule, DataAwareRule
             return;
         }
 
-        if (!\is_bool($value) && $this->taxIdAlreadyUsedInLegalEntity((string) $value)) {
+        if (!\is_bool($value) && !$this->isOwner && $this->taxIdAlreadyUsedInLegalEntity((string) $value)) {
             $fail(__('validation.employee.tax_id_already_used'));
 
             return;
