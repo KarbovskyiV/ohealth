@@ -19,21 +19,23 @@
             </label>
         </div>
 
-        <div class="flex items-center">
-            <input
-                @change="modalObservation.primarySource = false"
-                x-model.boolean="modalObservation.primarySource"
-                id="patient"
-                type="radio"
-                value="false"
-                name="primarySource"
-                class="default-radio"
-                :checked="modalObservation.primarySource === false"
-            />
-            <label for="patient" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                {{ __('medical-events.other_source') }}
-            </label>
-        </div>
+        @unless (auth()->user()->isAssistantOnly())
+            <div class="flex items-center">
+                <input
+                    @change="modalObservation.primarySource = false"
+                    x-model.boolean="modalObservation.primarySource"
+                    id="patient"
+                    type="radio"
+                    value="false"
+                    name="primarySource"
+                    class="default-radio"
+                    :checked="modalObservation.primarySource === false"
+                />
+                <label for="patient" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                    {{ __('medical-events.other_source') }}
+                </label>
+            </div>
+        @endunless
     </div>
 
     <div

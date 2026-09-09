@@ -8,6 +8,7 @@ use App\Enums\Device\Status as DeviceStatus;
 use App\Enums\DeviceAssociation\Status as DeviceAssociationStatus;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Rules\InDictionary;
+use App\Rules\PrimarySourceRequiredForAssistant;
 use Closure;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -105,7 +106,11 @@ class DeviceForm extends Form
             'devices.*.manufactureDate' => ['nullable', 'date', 'before:tomorrow'],
             'devices.*.expirationDate' => ['nullable', 'date'],
             'devices.*.note' => ['nullable', 'string'],
-            'devices.*.primarySource' => ['required_with:devices', 'boolean'],
+            'devices.*.primarySource' => [
+                'required_with:devices',
+                'boolean',
+                new PrimarySourceRequiredForAssistant()
+            ],
             'devices.*.reportOriginCode' => Rule::forEach(function (mixed $value, string $attribute) {
                 $primarySource = $this->devices[(int) explode('.', $attribute)[1]]['primarySource'];
 

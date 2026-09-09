@@ -181,6 +181,24 @@
             });
         },
     }"
+    {{-- Outside primary health care only ICD10_AM codes are allowed, so a code picked from ICPC-2 before the class
+        was changed is dropped here instead of being rejected on submission --}}
+    x-effect="
+        if (encounter.classCode && encounter.classCode !== 'PHC') {
+            if (conditions.some((condition) => condition.codeSystem === 'eHealth/ICPC2/condition_codes')) {
+                conditions = conditions.map((condition) =>
+                    condition.codeSystem === 'eHealth/ICPC2/condition_codes'
+                        ? { ...condition, codeSystem: '', codeCode: '' }
+                        : condition,
+                );
+            }
+
+            if (modalCondition.codeSystem === 'eHealth/ICPC2/condition_codes') {
+                modalCondition.codeSystem = '';
+                modalCondition.codeCode = '';
+            }
+        }
+    "
 >
     <div class="space-y-4">
         <template x-for="(condition, index) in conditions" :key="index">
@@ -397,6 +415,7 @@
                                     <option
                                         value="eHealth/ICPC2/condition_codes"
                                         x-show="
+                                            encounter.classCode === 'PHC' &&
                                             ($wire.allowedConditionCodesBySystem['eHealth/ICPC2/condition_codes']
                                                 ?.length ?? 1) > 0
                                         "
@@ -851,27 +870,29 @@
                             </label>
                         </div>
 
-                        <div class="flex items-center gap-2">
-                            <input
-                                x-model.boolean="modalCondition.primarySource"
-                                @change="
-                                    modalCondition.primarySource = false;
-                                    modalCondition.asserterText = '';
-                                "
-                                id="otherSource"
-                                type="radio"
-                                value="false"
-                                name="primarySource"
-                                class="default-radio cursor-pointer text-blue-600 focus:ring-blue-500"
-                                :checked="modalCondition.primarySource === false"
-                            />
-                            <label
-                                for="otherSource"
-                                class="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-300"
-                            >
-                                {{ __('medical-events.other_source') }}
-                            </label>
-                        </div>
+                        @unless (auth()->user()->isAssistantOnly())
+                            <div class="flex items-center gap-2">
+                                <input
+                                    x-model.boolean="modalCondition.primarySource"
+                                    @change="
+                                        modalCondition.primarySource = false;
+                                        modalCondition.asserterText = '';
+                                    "
+                                    id="otherSource"
+                                    type="radio"
+                                    value="false"
+                                    name="primarySource"
+                                    class="default-radio cursor-pointer text-blue-600 focus:ring-blue-500"
+                                    :checked="modalCondition.primarySource === false"
+                                />
+                                <label
+                                    for="otherSource"
+                                    class="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-300"
+                                >
+                                    {{ __('medical-events.other_source') }}
+                                </label>
+                            </div>
+                        @endunless
                     </div>
 
                     <div class="max-w-md flex-1">

@@ -49,7 +49,7 @@ class Observation extends PatientApiBase
     {
         $this->setValidator($this->validateObservation(...));
 
-        return $this->get(self::URL . "/$patientId/episodes/$observationId");
+        return $this->get(self::URL . "/$patientId/observations/$observationId");
     }
 
     /**

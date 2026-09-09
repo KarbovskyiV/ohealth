@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Encounter\Forms;
 
 use App\Rules\InDictionary;
+use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
 use Closure;
 use Illuminate\Support\Facades\Auth;
@@ -64,7 +65,11 @@ class ObservationForm extends Form
                 'date_format:H:i',
                 new PastDateTime($this->observations[(int)explode('.', $attribute)[1]]['issuedDate'] ?? '')
             ]),
-            'observations.*.primarySource' => ['required_with:observations', 'boolean'],
+            'observations.*.primarySource' => [
+                'required_with:observations',
+                'boolean',
+                new PrimarySourceRequiredForAssistant()
+            ],
             'observations.*.reportOriginCode' => Rule::forEach(function (mixed $value, string $attribute) {
                 $index = (int)explode('.', $attribute)[1];
                 $primarySource = $this->observations[$index]['primarySource'];

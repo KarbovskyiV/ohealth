@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\Person\DiagnosticReportStatus;
+use App\Enums\Status;
+use App\Enums\User\Role;
+use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -58,6 +61,19 @@ class DiagnosticReportPolicy
 
         if ($diagnosticReport->encounter_id !== null) {
             return Response::denyWithStatus(404);
+        }
+
+        // A medical administrator cancels what the employees of their legal entity recorded, the patient's
+        // approval not being needed for it
+        $isMedicalAdministrator = Employee::wherePartyId($user->partyId)
+            ->whereLegalEntityId(legalEntity()->id)
+            ->whereStatus(Status::APPROVED)
+            ->whereIsActive(true)
+            ->whereEmployeeType(Role::MED_ADMIN->value)
+            ->exists();
+
+        if ($isMedicalAdministrator) {
+            return Response::allow();
         }
 
         $currentEmployeeUuid = $user->getDiagnosticReportWriterEmployee()?->uuid;

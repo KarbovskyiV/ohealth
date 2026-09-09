@@ -8,6 +8,7 @@ use App\Enums\Person\ConditionVerificationStatus;
 use App\Enums\User\Role;
 use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
+use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -43,7 +44,11 @@ class ConditionForm extends Form
             ],
             // for edit page
             'conditions.*.uuid' => ['nullable', 'uuid'],
-            'conditions.*.primarySource' => ['required_with:conditions', 'boolean'],
+            'conditions.*.primarySource' => [
+                'required_with:conditions',
+                'boolean',
+                new PrimarySourceRequiredForAssistant()
+            ],
             'conditions.*.reportOriginCode' => ['nullable', 'string', 'required_if:conditions.*.primarySource,false'],
             'conditions.*.codeCode' => [
                 'required_with:conditions',

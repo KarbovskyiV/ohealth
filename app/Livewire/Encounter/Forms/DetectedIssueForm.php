@@ -6,6 +6,7 @@ namespace App\Livewire\Encounter\Forms;
 
 use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
+use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Enums\DetectedIssue\Status;
 use App\Models\MedicalEvents\Sql\DetectedIssue;
 use Carbon\CarbonImmutable;
@@ -81,7 +82,8 @@ class DetectedIssueForm extends Form
             ],
             'detectedIssues.*.primarySource' => [
                 'required_with:detectedIssues',
-                'boolean'
+                'boolean',
+                new PrimarySourceRequiredForAssistant()
             ],
             'detectedIssues.*.reportOriginCode' => Rule::forEach(
                 function (mixed $value, string $attribute): array {
@@ -170,7 +172,8 @@ class DetectedIssueForm extends Form
      * @param  Closure  $fail
      * @return void
      */
-    private function validateDeviceReference(string $deviceId, Closure $fail): void {
+    private function validateDeviceReference(string $deviceId, Closure $fail): void
+    {
         $isPackageDevice = collect($this->component->deviceForm->devices)->contains(
             static fn (array $device): bool => ($device['uuid'] ?? '') === $deviceId
         );
@@ -192,7 +195,8 @@ class DetectedIssueForm extends Form
      * @param  Closure  $fail
      * @return void
      */
-    private function validateBasedOn(int $index, string $basedOnId, Closure $fail): void {
+    private function validateBasedOn(int $index, string $basedOnId, Closure $fail): void
+    {
         $currentIssue = $this->detectedIssues[$index] ?? [];
         $currentUuid = $currentIssue['uuid'] ?? '';
         $subjectId = $currentIssue['subjectId'] ?? '';
@@ -203,7 +207,7 @@ class DetectedIssueForm extends Form
             return;
         }
 
-        $packageIssue = collect($this->detectedIssues)->first(static fn (array $issue): bool =>($issue['uuid'] ?? '') === $basedOnId);
+        $packageIssue = collect($this->detectedIssues)->first(static fn (array $issue): bool => ($issue['uuid'] ?? '') === $basedOnId);
 
         if ($packageIssue !== null) {
             if (($packageIssue['subjectId'] ?? '') !== $subjectId) {
