@@ -4,26 +4,27 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use Throwable;
 use App\Enums\JobStatus;
 use App\Enums\User\Role;
-use App\Events\EHealthUserLogin;
-use App\Jobs\DeclarationsSync;
 use App\Jobs\DivisionSync;
-use App\Jobs\EmployeeRequestsSyncAll;
-use App\Jobs\EmployeeRoleSync;
 use App\Jobs\EmployeeSync;
 use App\Jobs\EquipmentSync;
-use App\Jobs\LegalEntitySync;
-use App\Jobs\PartyVerificationSync;
 use App\Models\LegalEntity;
-use App\Notifications\SyncNotification;
-use App\Services\Party\PartyVerificationBulkAccess;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\Auth;
+use App\Jobs\ConnectionSync;
+use App\Jobs\LegalEntitySync;
+use App\Jobs\DeclarationsSync;
+use App\Jobs\EmployeeRoleSync;
+use App\Events\EHealthUserLogin;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
-use Throwable;
+use App\Jobs\PartyVerificationSync;
+use Illuminate\Support\Facades\Auth;
+use App\Jobs\EmployeeRequestsSyncAll;
+use App\Notifications\SyncNotification;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Services\Party\PartyVerificationBulkAccess;
 
 class FirstLoginOwnerSynchronization implements ShouldQueue
 {
@@ -61,8 +62,14 @@ class FirstLoginOwnerSynchronization implements ShouldQueue
         // Create a chain of jobs for synchronization
 
         // This is the last job in the chain
+        $nextJob = new ConnectionSync(
+            legalEntity: $event->legalEntity,
+            isFirstLogin: true
+        );
+
         $nextJob = new LegalEntitySync(
             legalEntity: $event->legalEntity,
+            nextEntity: $nextJob,
             isFirstLogin: true
         );
 

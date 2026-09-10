@@ -34,6 +34,6 @@ class Connection extends Model
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(Client::class, 'legal_entity_id', 'legal_entity_id');
+        return $this->belongsTo(Client::class, 'client_uuid', 'uuid');
     }
 }

@@ -24,6 +24,10 @@ class Client extends Model
         'ehealth_updated_at',
     ];
 
+    protected $casts = [
+        'settings' => 'array',
+    ];
+
     /**
      * Relation to the reference LegalEntityTypes entry.
      *
@@ -36,6 +40,6 @@ class Client extends Model
 
     public function connections(): HasMany
     {
-        return $this->hasMany(Connection::class, 'legal_entity_id', 'legal_entity_id');
+        return $this->hasMany(Connection::class, 'client_uuid', 'uuid');
     }
 }

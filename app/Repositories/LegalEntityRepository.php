@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use Exception;
+use App\Core\Arr;
 use App\Models\User;
 use App\Enums\Status;
+use App\Models\Client;
 use App\Enums\User\Role;
 use App\Models\LegalEntity;
+use App\Traits\LogsExceptions;
 use App\Models\LegalEntityType;
 use App\Models\Employee\Employee;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,6 +22,8 @@ use Illuminate\Database\Eloquent\Collection;
 
 class LegalEntityRepository
 {
+    use LogsExceptions;
+
     /**
      * Get all legal entities founded in the system.
      * Reformat it data to the array looks like:
@@ -160,5 +167,110 @@ class LegalEntityRepository
             ->update(['status' => Status::STOPPED->value]);
 
         Log::info(__('** OWNER CHANGED **', [], 'en'), ['old_owner_id' => $oldOwner->id, 'legal_entity_id' => $legalEntity->id]);
+    }
+
+    /**
+     * Synchronize connections from eHealth with the local database.
+     *
+     * @param  array  $connections  Array of connection data from eHealth API.
+     *                               Each entry must contain:
+     *                               - uuid: Connection UUID
+     *                               - client_uuid: Client UUID
+     *                               - consumer_uuid: Consumer UUID
+     *                               - redirect_uri: Redirect URI
+     *                               - secret: Optional secret
+     *                               - ehealth_inserted_at: Timestamp from eHealth
+     *                               - ehealth_updated_at: Timestamp from eHealth
+     *
+     * @param  LegalEntity|null  $legalEntity  Optional LegalEntity instance. Defaults to the current legal entity.
+     *
+     * @return bool  Returns true if synchronization was successful, false otherwise.
+     *
+     * @throws Exception  If a database error occurs during synchronization.
+     */
+    public function syncConnections(array $connections, ?LegalEntity $legalEntity = null): bool
+    {
+        $legalEntity ??= legalEntity();
+
+        $connectionsData = [];
+
+        $legalEntityIdsByUuid = LegalEntity::whereIn('uuid', array_column($connections, 'client_uuid'))->pluck('id', 'uuid');
+
+        foreach ($connections as $connection) {
+            $connectionsData[] = [
+                'legal_entity_id' => $legalEntityIdsByUuid[$connection['client_uuid']],
+                'uuid' => $connection['uuid'],
+                'client_uuid' => $connection['client_uuid'],
+                'consumer_uuid' => $connection['consumer_uuid'],
+                'redirect_uri' => $connection['redirect_uri'],
+                'secret' => $connection['secret'] ?? null,
+                "ehealth_inserted_at" => $connection['ehealth_inserted_at'],
+                "ehealth_updated_at" => $connection['ehealth_updated_at'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if (!empty($connectionsData)) {
+            try {
+                DB::transaction(function () use ($connectionsData, $legalEntity) {
+                    // Ensure a client row exists for each connection before inserting since client_uuid is a foreign key
+                    // (you cannot insert a connection row with a client_uuid value unless a clients row with that exact uuid already exists)
+                    collect($connectionsData)
+                        ->unique('client_uuid')
+                        ->each(fn (array $data) => Client::firstOrCreate(
+                            ['uuid' => $data['client_uuid']],
+                            ['legal_entity_id' => $data['legal_entity_id']]
+                        ));
+
+                    $legalEntity->connections()->upsert(
+                        $connectionsData,
+                        ['uuid', 'legal_entity_id'], // unique keys
+                        ['client_uuid', 'consumer_uuid', 'redirect_uri', 'secret', 'ehealth_inserted_at', 'ehealth_updated_at'] // fields to update if record exists
+                    );
+                });
+            } catch (Exception $exception) {
+                $this->handleDatabaseErrors($exception, __('Error occurred while trying to save connections'), __('Error occurred while trying to save connections'));
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Synchronize a single client's data from eHealth with the local database.
+     *
+     * @param  array  $clientData  Client data from eHealth API. Must contain:
+     *                              - uuid: Client UUID
+     *                              - client_type_name: Client type name
+     *                              - legal_entity_type_uuid: Client type UUID
+     *                              Additional fields are passed directly to the Client model.
+     *
+     * @return Client|null  Returns the synchronized Client instance, or null if synchronization failed.
+     */
+    public function syncClient(array $clientData): ?Client
+    {
+        $client = null;
+
+        $clientData['legal_entity_id'] = LegalEntity::whereUuid($clientData['uuid'])->value('id');
+        $clientData['legal_entity_type_id'] = LegalEntityType::whereName(Arr::pull($clientData, 'client_type_name'))->value('id');
+        $clientTypeUuid = Arr::pull($clientData, 'legal_entity_type_uuid');
+
+        try {
+            DB::transaction(function () use ($clientData, $clientTypeUuid, &$client) {
+                LegalEntityType::whereKey($clientData['legal_entity_type_id'])->update(['uuid' => $clientTypeUuid]);
+
+                $client = Client::updateOrCreate(
+                    ['uuid' => $clientData['uuid']],
+                    $clientData
+                );
+            });
+        } catch (Exception $exception) {
+            $this->handleDatabaseErrors($exception, __('Error occurred while trying to save client data'), __('Error occurred while trying to save client data'));
+        }
+
+        return $client;
     }
 }

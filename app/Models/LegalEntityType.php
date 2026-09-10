@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany ;
 class LegalEntityType extends Model
 {
     protected $fillable = [
+        'uuid',
         'name',
         'localized_name',
     ];
