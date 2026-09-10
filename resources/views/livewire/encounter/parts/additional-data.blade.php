@@ -420,7 +420,7 @@
 
                             <template x-if="serviceSearches[index] && (serviceFilteredOptions[index] || []).length === 0">
                                 <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                    {{ __('forms.not_found') }}
+                                    {{ __('forms.nothing_found') }}
                                 </div>
                             </template>
 

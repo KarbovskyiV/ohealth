@@ -260,7 +260,7 @@ class Procedure extends Model
     /**
      * Limit procedures to the services allowed in the patient summary.
      * The procedure stores its service as a reference, so the allowed service codes are resolved to ids first.
-     * An empty list of allowed codes leaves the query untouched.
+     * An empty list of allowed codes leaves nothing to show, exactly as the eHealth summary does.
      *
      * @param  Builder  $query
      * @return Builder
@@ -268,15 +268,9 @@ class Procedure extends Model
     #[Scope]
     protected function allowedForSummary(Builder $query): Builder
     {
-        $allowedCodes = config('ehealth.summary_procedures_allowed');
-
-        if (empty($allowedCodes)) {
-            return $query;
-        }
-
         $serviceIds = dictionary()->services()
             ->flattened()
-            ->whereIn('code', $allowedCodes)
+            ->whereIn('code', config('ehealth.summary_procedures_allowed'))
             ->pluck('id');
 
         return $query->whereHas(

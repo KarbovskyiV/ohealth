@@ -6,6 +6,7 @@ namespace App\Livewire\Encounter\Forms;
 
 use App\Enums\Person\ConditionVerificationStatus;
 use App\Enums\User\Role;
+use App\Models\Relations\Speciality;
 use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
 use App\Rules\PrimarySourceRequiredForAssistant;
@@ -317,17 +318,19 @@ class ConditionForm extends Form
 
             $codeCode = data_get($value, 'codeCode');
 
-            $hasAllowedSpeciality = $specialities->contains(
-                static function ($speciality) use ($codeCode): bool {
-                    $allowedCodes = config("ehealth.icd10am_speciality_conditions_allowed.$speciality->speciality");
+            $allowedCodes = $specialities
+                ->map(static fn (Speciality $speciality): mixed => config(
+                    "ehealth.icd10am_speciality_conditions_allowed.$speciality->speciality"
+                ))
+                ->filter(static fn (mixed $codes): bool => is_array($codes))
+                ->flatten();
 
-                    return is_array($allowedCodes) && in_array($codeCode, $allowedCodes, true);
-                }
-            );
-
-            if (!$hasAllowedSpeciality) {
-                $fail(__('conditions.validation.speciality_condition_code_forbidden', ['code' => $codeCode]));
+            // A speciality the config does not list is restricted by nothing, so any code stands
+            if ($allowedCodes->isEmpty() || $allowedCodes->contains($codeCode)) {
+                return;
             }
+
+            $fail(__('conditions.validation.speciality_condition_code_forbidden', ['code' => $codeCode]));
         };
     }
 

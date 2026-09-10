@@ -172,24 +172,12 @@ class ObservationMapper implements FhirMapperContract
             $value['valueBoolean'] = $data['valueBoolean'];
         }
 
-        if (isset($data['valueRange'])) {
-            $value['valueRange'] = ['low' => '', 'high' => ''];
-        }
-
-        if (isset($data['valueRatio'])) {
-            $value['valueRatio'] = ['denominator' => '', 'numerator' => ''];
-        }
-
         if (isset($data['valueDate'], $data['valueTime'])) {
             $value['valueDateTime'] = convertToEHealthISO8601(
                 $data['valueDate'] . ' ' . $data['valueTime']
             );
         } elseif (isset($data['valueTime'])) {
             $value['valueTime'] = $data['valueTime'] . ':00';
-        }
-
-        if (isset($data['valuePeriod'])) {
-            $value['valuePeriod'] = ['start' => '', 'end' => ''];
         }
 
         return $value;

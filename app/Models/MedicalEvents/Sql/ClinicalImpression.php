@@ -117,6 +117,24 @@ class ClinicalImpression extends Model
     }
 
     /**
+     * Limit clinical impressions to the patient category codes allowed in the patient summary.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function allowedForSummary(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'code.coding',
+            static fn (Builder $coding): Builder => $coding->whereIn(
+                'code',
+                config('ehealth.summary_clinical_impressions_allowed')
+            )
+        );
+    }
+
+    /**
      * Order by most recently updated in eHealth first, keeping records without a timestamp last.
      *
      * @param  Builder  $query

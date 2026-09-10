@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Livewire\CarePlan\CarePlanCreate;
+use App\Livewire\ClinicalImpression\ClinicalImpressionIndex;
+use App\Livewire\Condition\ConditionIndex;
 use App\Livewire\Declaration\DeclarationCreate;
 use App\Livewire\Declaration\DeclarationEdit;
 use App\Livewire\Declaration\DeclarationView;
@@ -10,12 +12,16 @@ use App\Livewire\Device\DeviceIndex;
 use App\Livewire\Device\DeviceView;
 use App\Livewire\DiagnosticReport\DiagnosticReportCreate;
 use App\Livewire\DiagnosticReport\DiagnosticReportEdit;
+use App\Livewire\DiagnosticReport\DiagnosticReportIndex;
 use App\Livewire\Encounter\EncounterCreate;
 use App\Livewire\Encounter\EncounterEdit;
+use App\Livewire\Encounter\EncounterIndex;
 use App\Livewire\Episode\EpisodeCreate;
 use App\Livewire\Episode\EpisodeEdit;
 use App\Livewire\Episode\EpisodeIndex;
 use App\Livewire\Episode\EpisodeView;
+use App\Livewire\Immunization\ImmunizationIndex;
+use App\Livewire\Observation\ObservationIndex;
 use App\Livewire\Person\PatientVerifications;
 use App\Livewire\Person\PersonCreate;
 use App\Livewire\Person\PersonIndex;
@@ -23,23 +29,17 @@ use App\Livewire\Person\PersonRequestEdit;
 use App\Livewire\Person\PersonUpdate;
 use App\Livewire\Person\Records\DeviceDispenses;
 use App\Livewire\Person\Records\PatientCarePlans;
-use App\Livewire\Person\Records\PatientClinicalImpressions;
-use App\Livewire\Person\Records\PatientConditions;
 use App\Livewire\Person\Records\PatientData;
 use App\Livewire\Person\Records\PatientDeviceAssociations;
 use App\Livewire\Person\Records\PatientDeviceIssues;
-use App\Livewire\Person\Records\PatientDiagnosticReports;
-use App\Livewire\Person\Records\PatientEncounters;
-use App\Livewire\Person\Records\PatientImmunizations;
 use App\Livewire\Person\Records\PatientMedicationRequests;
-use App\Livewire\Person\Records\PatientObservations;
-use App\Livewire\Person\Records\PatientProcedures;
 use App\Livewire\Person\Records\PatientReferrals;
 use App\Livewire\Person\Records\PatientSummary;
 use App\Livewire\Person\Records\PatientVerification;
 use App\Livewire\Preperson\PrepersonData;
 use App\Livewire\Preperson\PrepersonEdit;
 use App\Livewire\Preperson\PrepersonIndex;
+use App\Livewire\Procedure\ProcedureIndex;
 use App\Livewire\Procedure\ProcedureCreate;
 use App\Livewire\Procedure\ProcedureEdit;
 use App\Models\CarePlan;
@@ -98,14 +98,14 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
                 Route::get('/{person}/medication-requests', PatientMedicationRequests::class)
                     ->name('medication-requests');
                 Route::get('/{person}/referrals', PatientReferrals::class)->name('referrals');
-                Route::get('/{person}/observations', PatientObservations::class)->name('observations');
-                Route::get('/{person}/immunizations', PatientImmunizations::class)->name('immunizations');
-                Route::get('/{person}/conditions', PatientConditions::class)->name('conditions');
-                Route::get('/{person}/diagnostic-reports', PatientDiagnosticReports::class)->name('diagnostic-reports');
-                Route::get('/{person}/clinical-impressions', PatientClinicalImpressions::class)
+                Route::get('/{person}/observations', ObservationIndex::class)->name('observations');
+                Route::get('/{person}/immunizations', ImmunizationIndex::class)->name('immunizations');
+                Route::get('/{person}/conditions', ConditionIndex::class)->name('conditions');
+                Route::get('/{person}/diagnostic-reports', DiagnosticReportIndex::class)->name('diagnostic-reports');
+                Route::get('/{person}/clinical-impressions', ClinicalImpressionIndex::class)
                     ->name('clinical-impressions');
-                Route::get('/{person}/encounters', PatientEncounters::class)->name('encounters');
-                Route::get('/{person}/procedures', PatientProcedures::class)->name('procedures');
+                Route::get('/{person}/encounters', EncounterIndex::class)->name('encounters');
+                Route::get('/{person}/procedures', ProcedureIndex::class)->name('procedures');
                 Route::get('/{person}/devices', DeviceIndex::class)
                     ->can('view', Device::class)
                     ->name('devices');
@@ -197,21 +197,21 @@ Route::prefix('prepersons')
             ->can('update', 'episode')
             ->whereNumber('episode')
             ->name('episodes.edit');
-        Route::get('/{preperson}/observations', PatientObservations::class)
+        Route::get('/{preperson}/observations', ObservationIndex::class)
             ->can('view', 'preperson')
             ->name('observations');
-        Route::get('/{preperson}/immunizations', PatientImmunizations::class)
+        Route::get('/{preperson}/immunizations', ImmunizationIndex::class)
             ->can('view', 'preperson')
             ->name('immunizations');
-        Route::get('/{preperson}/conditions', PatientConditions::class)->can('view', 'preperson')->name('conditions');
-        Route::get('/{preperson}/diagnostic-reports', PatientDiagnosticReports::class)
+        Route::get('/{preperson}/conditions', ConditionIndex::class)->can('view', 'preperson')->name('conditions');
+        Route::get('/{preperson}/diagnostic-reports', DiagnosticReportIndex::class)
             ->can('view', 'preperson')
             ->name('diagnostic-reports');
-        Route::get('/{preperson}/clinical-impressions', PatientClinicalImpressions::class)
+        Route::get('/{preperson}/clinical-impressions', ClinicalImpressionIndex::class)
             ->can('view', 'preperson')
             ->name('clinical-impressions');
-        Route::get('/{preperson}/encounters', PatientEncounters::class)->can('view', 'preperson')->name('encounters');
-        Route::get('/{preperson}/procedures', PatientProcedures::class)->can('view', 'preperson')->name('procedures');
+        Route::get('/{preperson}/encounters', EncounterIndex::class)->can('view', 'preperson')->name('encounters');
+        Route::get('/{preperson}/procedures', ProcedureIndex::class)->can('view', 'preperson')->name('procedures');
         Route::get('/{preperson}/devices', DeviceIndex::class)
             ->can('view', 'preperson')
             ->can('view', Device::class)

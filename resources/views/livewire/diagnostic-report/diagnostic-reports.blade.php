@@ -399,7 +399,7 @@
                             <div class="record-inner-id-col">
                                 <div class="min-w-0">
                                     <div class="record-inner-label text-[10px] uppercase">
-                                        {{ __('patients.ehealth_id') }}
+                                        {{ __('forms.ehealth_id') }}
                                     </div>
                                     <div class="record-inner-id-value">
                                         {{ data_get($diagnosticReport, 'uuid') ?? '-' }}

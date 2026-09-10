@@ -63,10 +63,7 @@ class EncounterForm extends BaseForm
                 $this->patientIdentityObservationCodes()
             ],
             'encounter.priorityCode' => [
-                Rule::requiredIf(
-                    ($this->encounter['classCode'] ?? '') === 'INPATIENT'
-                    && ($this->encounter['typeCode'] ?? '') !== 'patient_identity'
-                ),
+                Rule::requiredIf(($this->encounter['classCode'] ?? '') === 'INPATIENT'),
                 'string',
                 new InDictionary('eHealth/encounter_priority')
             ],
@@ -93,10 +90,7 @@ class EncounterForm extends BaseForm
             'encounter.actions.*.code' => ['required', 'string', new InDictionary('eHealth/ICPC2/actions')],
             'encounter.actions.*.text' => ['nullable', 'string'],
             'encounter.divisionId' => [
-                Rule::requiredIf(
-                    ($this->encounter['classCode'] ?? '') === 'INPATIENT'
-                    && ($this->encounter['typeCode'] ?? '') !== 'patient_identity'
-                ),
+                Rule::requiredIf(($this->encounter['classCode'] ?? '') === 'INPATIENT'),
                 'nullable',
                 'uuid',
                 Rule::prohibitedIf(in_array($this->encounter['typeCode'] ?? '', ['field', 'home']))

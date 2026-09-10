@@ -131,13 +131,7 @@ class ObservationForm extends Form
             'observations.*.valueSampledDataFactor' => ['nullable', 'numeric'],
             'observations.*.valueSampledDataLowerLimit' => ['nullable', 'numeric'],
             'observations.*.valueSampledDataUpperLimit' => ['nullable', 'numeric'],
-            'observations.*.valueSampledDataDimensions' => ['nullable', 'numeric'],
-            'observations.*.valueRange' => ['nullable', 'array'],
-            'observations.*.valueRange.low' => ['nullable', 'array'],
-            'observations.*.valueRange.high' => ['nullable', 'array'],
-            'observations.*.valueRatio' => ['nullable', 'array'],
-            'observations.*.valueRatio.numerator' => ['nullable', 'array'],
-            'observations.*.valueRatio.denominator' => ['nullable', 'array']
+            'observations.*.valueSampledDataDimensions' => ['nullable', 'numeric']
         ];
     }
 

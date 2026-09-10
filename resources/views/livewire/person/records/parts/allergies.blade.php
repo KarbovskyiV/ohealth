@@ -3,11 +3,11 @@
     $hasLimit = $limit && 1 > $limit;
 @endphp
 
-<div @if($hasLimit) x-data="{ limit: {{ $limit }} }" @endif>
-    <div class="record-inner-card" @if($hasLimit) x-show="limit > 0" @endif>
+<div @if ($hasLimit) x-data="{ limit: {{ $limit }} }" @endif>
+    <div class="record-inner-card" @if ($hasLimit) x-show="limit > 0" @endif>
         <div class="record-inner-header">
             <div class="record-inner-checkbox-col">
-                <input type="checkbox" class="default-checkbox w-5 h-5">
+                <input type="checkbox" class="default-checkbox h-5 w-5" />
             </div>
 
             <div class="record-inner-column flex-1">
@@ -15,12 +15,10 @@
                 <div class="record-inner-value text-[16px]">1232131-3213 | Алергія</div>
             </div>
 
-            <div class="record-inner-column-bordered w-full md:w-36 shrink-0">
+            <div class="record-inner-column-bordered w-full shrink-0 md:w-36">
                 <div class="record-inner-label">{{ __('patients.status_clinical') }}</div>
                 <div>
-                    <span class="badge-green">
-                        {{ __('patients.active_status') }}
-                    </span>
+                    <span class="badge-green"> {{ __('patients.active_status') }} </span>
                 </div>
             </div>
 
@@ -33,8 +31,7 @@
 
         <div class="record-inner-body">
             <div class="record-inner-grid-container">
-                <div
-                    class="grid grid-cols-2 xl:grid-cols-4 gap-y-4 gap-x-4 w-full [&>div]:min-w-0 [&_.record-inner-subvalue]:break-words">
+                <div class="[&>div]:min-w-0 [&_.record-inner-subvalue]:break-words grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-4">
                     <div>
                         <div class="record-inner-label">{{ __('forms.category') }}</div>
                         <div class="record-inner-subvalue">Побутова</div>
@@ -65,7 +62,7 @@
             </div>
             <div class="record-inner-id-col">
                 <div class="min-w-0">
-                    <div class="record-inner-label">ID ECO3</div>
+                    <div class="record-inner-label">{{ __('forms.ehealth_id') }}</div>
                     <div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div>
                 </div>
                 <div class="min-w-0">

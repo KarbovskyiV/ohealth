@@ -39,7 +39,6 @@ return [
     'resend_again_in_seconds' => 'Відправити ще раз (через',
     'seconds_short' => 'с)',
     'date_time_entered' => 'Дата та час внесення',
-    'ehealth_id' => 'ID ЕСОЗ',
     'filter_code' => 'ЕСОЗ ID',
     'reset_filters' => 'Скинути фільтри',
     'group_actions' => 'Групові дії',

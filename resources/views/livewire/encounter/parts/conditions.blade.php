@@ -435,18 +435,32 @@
                                 @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
                             </div>
 
+                            {{-- ICPC-2 exists only in primary health care, so outside it the switch always
+                                offers ICD-10 and hides once it is already the chosen system --}}
                             <button
                                 type="button"
+                                x-show="
+                                    encounter.classCode === 'PHC' ||
+                                    modalCondition.codeSystem !== 'eHealth/ICD10_AM/condition_codes'
+                                "
                                 @click="
                                     modalCondition.codeSystem =
-                                        modalCondition.codeSystem === 'eHealth/ICPC2/condition_codes'
-                                            ? 'eHealth/ICD10_AM/condition_codes'
-                                            : 'eHealth/ICPC2/condition_codes';
+                                        encounter.classCode === 'PHC' &&
+                                        modalCondition.codeSystem !== 'eHealth/ICPC2/condition_codes'
+                                            ? 'eHealth/ICPC2/condition_codes'
+                                            : 'eHealth/ICD10_AM/condition_codes';
                                     modalCondition.codeCode = '';
                                 "
                                 class="mt-2.5 block text-left text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                             >
-                                <span x-text="modalCondition.codeSystem === 'eHealth/ICPC2/condition_codes' ? '{{ __('conditions.add_icd10_code') }}' : '{{ __('conditions.add_icpc2_code') }}'"></span>
+                                <span
+                                    x-text="
+                                        encounter.classCode === 'PHC' &&
+                                        modalCondition.codeSystem !== 'eHealth/ICPC2/condition_codes'
+                                            ? '{{ __('conditions.add_icpc2_code') }}'
+                                            : '{{ __('conditions.add_icd10_code') }}'
+                                    "
+                                ></span>
                             </button>
                         </div>
 

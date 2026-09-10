@@ -101,7 +101,7 @@
 
                 <div class="record-inner-id-col">
                     <div class="min-w-0">
-                        <div class="record-inner-label">ID ECO3</div>
+                        <div class="record-inner-label">{{ __('forms.ehealth_id') }}</div>
                         <div class="record-inner-id-value">{{ data_get($procedure, 'uuid') }}</div>
                     </div>
 

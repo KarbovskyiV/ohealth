@@ -18,10 +18,12 @@ use App\Jobs\ImmunizationSync;
 use App\Jobs\ObservationSync;
 use App\Jobs\ConditionSync;
 use App\Jobs\DiagnosticReportSync;
+use App\Jobs\DeviceSync;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\ClinicalImpression;
 use App\Models\MedicalEvents\Sql\Condition;
+use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Episode;
@@ -54,6 +56,7 @@ class PatientSummary extends BasePatientComponent
     public const string ENTITY_TYPE_OBSERVATION = 'observation';
     public const string ENTITY_TYPE_CONDITION = 'condition';
     public const string ENTITY_TYPE_DIAGNOSTIC_REPORT = 'diagnostic_report';
+    public const string ENTITY_TYPE_DEVICE = 'device';
 
     public const int SUMMARY_PAGE_SIZE = 5;
 
@@ -67,6 +70,7 @@ class PatientSummary extends BasePatientComponent
         'conditions' => self::SUMMARY_PAGE_SIZE,
         'diagnosticReports' => self::SUMMARY_PAGE_SIZE,
         'procedures' => self::SUMMARY_PAGE_SIZE,
+        'devices' => self::SUMMARY_PAGE_SIZE,
     ];
 
     public array $hasMore = [
@@ -79,6 +83,7 @@ class PatientSummary extends BasePatientComponent
         'conditions' => false,
         'diagnosticReports' => false,
         'procedures' => false,
+        'devices' => false,
     ];
 
     public array $episodes = [];
@@ -103,7 +108,7 @@ class PatientSummary extends BasePatientComponent
 
     public array $riskAssessments;
 
-    public array $devices;
+    public array $devices = [];
 
     public array $medicationStatements;
 
@@ -152,6 +157,9 @@ class PatientSummary extends BasePatientComponent
         'eHealth/diagnostic_report_categories',
         'eHealth/procedure_categories',
         'eHealth/procedure_outcomes',
+        'device_definition_classification_type',
+        'device_properties',
+        'device_status_reasons',
     ];
 
     protected function getSyncStatus(string $entityType): ?string
@@ -201,6 +209,7 @@ class PatientSummary extends BasePatientComponent
             'conditions' => $this->getConditions(),
             'diagnosticReports' => $this->getDiagnosticReports(),
             'procedures' => $this->getProcedures(),
+            'devices' => $this->getDevices(),
             default => null,
         };
     }
@@ -398,7 +407,7 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'clinicalImpressions',
-            ClinicalImpression::forPatient($this->patient())->withAllRelations(),
+            ClinicalImpression::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
             'clinicalImpressions'
         );
     }
@@ -659,11 +668,65 @@ class PatientSummary extends BasePatientComponent
 
     public function syncDevices(): void
     {
+        if ($this->cannotStartSync(self::ENTITY_TYPE_DEVICE)) {
+            return;
+        }
+
+        if ($this->shouldResumeSync(self::ENTITY_TYPE_DEVICE)) {
+            $this->handleResumeLogic(self::ENTITY_TYPE_DEVICE);
+
+            return;
+        }
+
         try {
-            $response = EHealth::patient()->getDevices($this->uuid);
+            $response = EHealth::device()->getSummary($this->uuid);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error while synchronizing devices');
+
+            return;
+        }
+
+        try {
+            $validatedData = $response->validate();
+            Repository::device()->sync($this->patient(), $validatedData);
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Error while synchronizing devices');
+
+            return;
+        }
+
+        if ($response->isNotLast()) {
+            $this->dispatchRemainingPages(self::ENTITY_TYPE_DEVICE);
+        } else {
+            legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_DEVICE);
+            Session::flash('success', __('devices.messages.synced_successfully'));
+        }
+
+        $this->resetSummarySection('devices');
+        $this->getDevices();
+    }
+
+    public function getDevices(): void
+    {
+        $this->setPaginatedRecords(
+            'devices',
+            Device::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            'devices'
+        );
+    }
+
+    /**
+     * Fetch the care plans of the patient summary.
+     *
+     * @return void
+     */
+    public function syncCarePlans(): void
+    {
+        try {
+            $response = EHealth::carePlan()->getSummary($this->uuid);
             $validatedData = $response->validate();
         } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error when getting devices');
+            $exception->handle('Error when getting care plans');
 
             return;
         }
@@ -895,6 +958,7 @@ class PatientSummary extends BasePatientComponent
             self::ENTITY_TYPE_OBSERVATION => ObservationSync::BATCH_NAME,
             self::ENTITY_TYPE_CONDITION => ConditionSync::BATCH_NAME,
             self::ENTITY_TYPE_DIAGNOSTIC_REPORT => DiagnosticReportSync::BATCH_NAME,
+            self::ENTITY_TYPE_DEVICE => DeviceSync::BATCH_NAME,
             default => throw new InvalidArgumentException('Unknown entity type: ' . $entityType),
         };
     }
@@ -915,6 +979,7 @@ class PatientSummary extends BasePatientComponent
             self::ENTITY_TYPE_OBSERVATION => ObservationSync::class,
             self::ENTITY_TYPE_CONDITION => ConditionSync::class,
             self::ENTITY_TYPE_DIAGNOSTIC_REPORT => DiagnosticReportSync::class,
+            self::ENTITY_TYPE_DEVICE => DeviceSync::class,
             default => throw new InvalidArgumentException('Unknown entity type: ' . $entityType),
         };
     }
@@ -935,6 +1000,7 @@ class PatientSummary extends BasePatientComponent
             self::ENTITY_TYPE_OBSERVATION => LegalEntity::ENTITY_OBSERVATION,
             self::ENTITY_TYPE_CONDITION => LegalEntity::ENTITY_CONDITION,
             self::ENTITY_TYPE_DIAGNOSTIC_REPORT => LegalEntity::ENTITY_DIAGNOSTIC_REPORT,
+            self::ENTITY_TYPE_DEVICE => LegalEntity::ENTITY_DEVICE,
             default => throw new InvalidArgumentException('Unknown entity type: ' . $entityType),
         };
     }

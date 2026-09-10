@@ -47,7 +47,7 @@ class EmployeeShowPartyUuidTest extends TestCase
             'employee' => $employee,
         ])
             ->assertOk()
-            ->assertSee(__('employees.ehealth_id'))
+            ->assertSee(__('forms.ehealth_id'))
             ->assertSee($partyUuid);
     }
 
@@ -61,7 +61,7 @@ class EmployeeShowPartyUuidTest extends TestCase
             'employee' => $employee,
         ])
             ->assertOk()
-            ->assertSee(__('employees.ehealth_id'))
+            ->assertSee(__('forms.ehealth_id'))
             ->assertSeeHtml('id="partyUuid"');
     }
 
@@ -75,7 +75,7 @@ class EmployeeShowPartyUuidTest extends TestCase
             'employee_request' => $employeeRequest,
         ])
             ->assertOk()
-            ->assertSee(__('employees.ehealth_id'))
+            ->assertSee(__('forms.ehealth_id'))
             ->assertSee($partyUuid);
     }
 

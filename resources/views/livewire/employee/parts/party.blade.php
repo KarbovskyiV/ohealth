@@ -271,7 +271,7 @@
                         disabled
                         readonly
                     />
-                    <label for="partyUuid" class="label">{{ __('employees.ehealth_id') }}</label>
+                    <label for="partyUuid" class="label">{{ __('forms.ehealth_id') }}</label>
                 </div>
             @endisset
         </div>

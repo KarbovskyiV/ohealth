@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Person\Records;
+namespace App\Livewire\DiagnosticReport;
 
 use App\Classes\Cipher\Api\CipherRequest;
 use App\Classes\eHealth\EHealth;
@@ -16,6 +16,7 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\DiagnosticReportSync;
 use App\Livewire\DiagnosticReport\Forms\DiagnosticReportCancellationForm as Form;
+use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\MedicalEvents\Sql\Identifier;
@@ -24,19 +25,19 @@ use App\Services\MedicalEvents\Fhir;
 use App\Services\MedicalEvents\FhirResource;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesSyncBatch;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Throwable;
 
-class PatientDiagnosticReports extends BasePatientComponent
+class DiagnosticReportIndex extends BasePatientComponent
 {
     use BatchLegalEntityQueries;
     use HandlesSyncBatch;
@@ -692,6 +693,6 @@ class PatientDiagnosticReports extends BasePatientComponent
 
     public function render(): View
     {
-        return view('livewire.person.records.diagnostic-reports');
+        return view('livewire.diagnostic-report.diagnostic-reports');
     }
 }

@@ -483,6 +483,7 @@ return [
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583402176/Transferred+Summary+Observations#Configuration
     'summary_observations_allowed' => ['APGAR_1', 'APGAR_5', '10331-7', '14578-9', '29463-7', '82810-3'],
 
+    // Config params Condition
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20238172184/DRAFT+Config+params+Condition+ENT-010
     'condition_max_days_passed' => 54750,
     'summary_conditions_allowed' => [
@@ -529,8 +530,13 @@ return [
         '56022-00', '56101-00', '56030-00', '56549-01'
     ],
 
-    //
+    // List of allowed codes
     'summary_procedures_allowed' => [],
+    'summary_device_types_allowed' => [],
+    'summary_clinical_impressions_allowed' => [
+        'insulin_1', 'insulin_2', 'insulin_3', 'insulin_4', 'insulin_5', 'insulin_6', 'insulin_7', 'insulin_8',
+        'insulin_9', 'insulin_10'
+    ],
 
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20213956636/DRAFT+Config+params+Legal+Entity+ENT-035
     'legal_entity_episode_types' => [

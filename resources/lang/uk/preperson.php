@@ -60,7 +60,6 @@ return [
     'delete_draft' => 'Видалити чернетку',
     'ehealth_info' => 'Інформація ЕСОЗ',
     'ehealth_status' => 'Статус в ЕСОЗ',
-    'ehealth_id' => 'ID ЕСОЗ',
     'merge_request_table' => [
         'number' => '№ заявки',
         'patient_name' => 'ПІБ ідентифікованого пацієнта'

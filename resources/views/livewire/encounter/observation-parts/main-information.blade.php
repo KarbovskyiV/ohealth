@@ -208,11 +208,9 @@
                         class="input-modal"
                         x-model="modalObservation.valueCodeableConcept"
                         x-effect="
-                            if (
-                                codeableConceptValues[valueMap[modalObservation.codeCode]?.[0]] &&
-                                modalObservation.valueCodeableConcept
-                            )
-                                $nextTick(() => ($el.value = modalObservation.valueCodeableConcept));
+                            codeableConceptValues[valueMap[modalObservation.codeCode]?.[0]] &&
+                            modalObservation.valueCodeableConcept &&
+                            $nextTick(() => ($el.value = modalObservation.valueCodeableConcept))
                         "
                         id="valueCodeableConcept"
                         type="text"

@@ -196,6 +196,25 @@ class Device extends Model
     }
 
     /**
+     * Limit devices to the types allowed in the patient summary.
+     * An empty list of allowed types leaves nothing to show, exactly as the eHealth summary does.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function allowedForSummary(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'type.coding',
+            static fn (Builder $coding): Builder => $coding->whereIn(
+                'code',
+                config('ehealth.summary_device_types_allowed')
+            )
+        );
+    }
+
+    /**
      * Order by most recently updated in eHealth first, keeping records without a timestamp last.
      *
      * @param  Builder  $query

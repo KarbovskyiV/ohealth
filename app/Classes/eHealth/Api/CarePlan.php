@@ -13,6 +13,7 @@ use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use App\Core\Arr;
+use Illuminate\Validation\ValidationException;
 
 class CarePlan extends Request
 {
@@ -107,6 +108,26 @@ class CarePlan extends Request
         return $this->get("/api/patients/$patientId/care_plans", $query);
     }
 
+    /**
+     * Get a list of summary info about care plans.
+     *
+     * @param  string  $patientId
+     * @param  array  $query
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/patient-summary/get-care-plans
+     */
+    public function getSummary(string $patientId, array $query = []): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateMany(...));
+        $this->setDefaultPageSize();
+
+        $mergedQuery = array_merge($this->options['query'], $query);
+
+        return $this->get("/api/patients/$patientId/summary/care_plans", $mergedQuery);
+    }
+
     protected function validateDetails(EHealthResponse $response): array
     {
         $data = $this->replaceEHealthPropNames($response->getData());
@@ -121,7 +142,7 @@ class CarePlan extends Request
             Log::channel('e_health_errors')->error(
                 'CarePlan details validation failed: ' . implode(', ', $validator->errors()->all())
             );
-            throw new \Illuminate\Validation\ValidationException($validator);
+            throw new ValidationException($validator);
         }
 
         return $data;
@@ -145,7 +166,7 @@ class CarePlan extends Request
             Log::channel('e_health_errors')->error(
                 'CarePlan validation failed: ' . implode(', ', $validator->errors()->all())
             );
-            throw new \Illuminate\Validation\ValidationException($validator);
+            throw new ValidationException($validator);
         }
 
         return $transformedData;
