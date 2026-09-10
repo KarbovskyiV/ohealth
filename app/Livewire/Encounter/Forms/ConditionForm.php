@@ -6,8 +6,10 @@ namespace App\Livewire\Encounter\Forms;
 
 use App\Enums\Person\ConditionVerificationStatus;
 use App\Enums\User\Role;
+use App\Models\Relations\Speciality;
 use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
+use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -43,7 +45,11 @@ class ConditionForm extends Form
             ],
             // for edit page
             'conditions.*.uuid' => ['nullable', 'uuid'],
-            'conditions.*.primarySource' => ['required_with:conditions', 'boolean'],
+            'conditions.*.primarySource' => [
+                'required_with:conditions',
+                'boolean',
+                new PrimarySourceRequiredForAssistant()
+            ],
             'conditions.*.reportOriginCode' => ['nullable', 'string', 'required_if:conditions.*.primarySource,false'],
             'conditions.*.codeCode' => [
                 'required_with:conditions',
@@ -312,17 +318,19 @@ class ConditionForm extends Form
 
             $codeCode = data_get($value, 'codeCode');
 
-            $hasAllowedSpeciality = $specialities->contains(
-                static function ($speciality) use ($codeCode): bool {
-                    $allowedCodes = config("ehealth.icd10am_speciality_conditions_allowed.$speciality->speciality");
+            $allowedCodes = $specialities
+                ->map(static fn (Speciality $speciality): mixed => config(
+                    "ehealth.icd10am_speciality_conditions_allowed.$speciality->speciality"
+                ))
+                ->filter(static fn (mixed $codes): bool => is_array($codes))
+                ->flatten();
 
-                    return is_array($allowedCodes) && in_array($codeCode, $allowedCodes, true);
-                }
-            );
-
-            if (!$hasAllowedSpeciality) {
-                $fail(__('conditions.validation.speciality_condition_code_forbidden', ['code' => $codeCode]));
+            // A speciality the config does not list is restricted by nothing, so any code stands
+            if ($allowedCodes->isEmpty() || $allowedCodes->contains($codeCode)) {
+                return;
             }
+
+            $fail(__('conditions.validation.speciality_condition_code_forbidden', ['code' => $codeCode]));
         };
     }
 

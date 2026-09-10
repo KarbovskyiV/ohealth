@@ -11,6 +11,7 @@ use App\Enums\Status;
 use App\Enums\User\Role;
 use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
+use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
 use Closure;
 use Illuminate\Validation\Rule;
@@ -53,10 +54,30 @@ class ProcedureForm extends BaseForm
                 ProcedureStatus::NOT_DONE->value,
             ])],
             'procedure.categoryCode' => ['required', 'string', new InDictionary('eHealth/procedure_categories')],
-            'procedure.codeValue' => ['required', 'uuid'],
+            'procedure.codeValue' => [
+                'required',
+                'uuid',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $categoryCode = data_get($this->procedure, 'categoryCode');
+
+                    $service = dictionary()
+                        ->services()
+                        ->flattened()
+                        ->firstWhere('id', $value);
+
+                    if ($service === null || data_get($service, 'category') !== $categoryCode) {
+                        $fail(
+                            __('validation.exists', [
+                                'attribute' => __('procedures.attributes.codeValue')
+                            ])
+                        );
+                    }
+                }
+            ],
             'procedure.primarySource' => [
                 'required',
                 'boolean',
+                new PrimarySourceRequiredForAssistant()
             ],
             'procedure.performerEmployeeId' => [
                 Rule::requiredIf($isPrimarySourceTrue),

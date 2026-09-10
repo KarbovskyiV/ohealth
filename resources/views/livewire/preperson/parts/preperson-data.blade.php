@@ -47,7 +47,7 @@
                             autocomplete="new-password"
                             readonly
                         />
-                        <label for="prepersonEhealthId" class="label">{{ __('preperson.ehealth_id') }}</label>
+                        <label for="prepersonEhealthId" class="label">{{ __('forms.ehealth_id') }}</label>
                     </div>
                 </div>
 

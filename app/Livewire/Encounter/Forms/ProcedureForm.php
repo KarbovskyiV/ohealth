@@ -11,6 +11,7 @@ use App\Enums\Status;
 use App\Models\Employee\Employee;
 use App\Models\Equipment;
 use App\Rules\InDictionary;
+use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
 use Closure;
 use Illuminate\Validation\Rule;
@@ -80,7 +81,11 @@ class ProcedureForm extends Form
                 'string',
                 new InDictionary('eHealth/procedure_categories')
             ],
-            'procedures.*.primarySource' => ['required_with:procedures', 'boolean'],
+            'procedures.*.primarySource' => [
+                'required_with:procedures',
+                'boolean',
+                new PrimarySourceRequiredForAssistant()
+            ],
             'procedures.*.performerEmployeeId' => Rule::forEach(
                 function (mixed $value, string $attribute): array {
                     $index = (int) explode('.', $attribute)[1];

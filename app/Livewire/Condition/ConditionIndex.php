@@ -2,29 +2,30 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Person\Records;
+namespace App\Livewire\Condition;
 
-use App\Repositories\MedicalEvents\Repository;
-use App\Traits\BatchLegalEntityQueries;
-use App\Jobs\ConditionSync;
 use App\Classes\eHealth\EHealth;
-use App\Traits\HandlesSyncBatch;
+use App\Core\Arr;
+use App\Enums\JobStatus;
+use App\Exceptions\EHealth\EHealthConnectionException;
+use App\Exceptions\EHealth\EHealthException;
+use App\Jobs\ConditionSync;
+use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Condition;
+use App\Repositories\MedicalEvents\Repository;
 use App\Rules\InDictionary;
-use App\Enums\JobStatus;
-use App\Core\Arr;
+use App\Traits\BatchLegalEntityQueries;
+use App\Traits\HandlesSyncBatch;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
-use App\Exceptions\EHealth\EHealthConnectionException;
-use App\Exceptions\EHealth\EHealthException;
 use Throwable;
 
-class PatientConditions extends BasePatientComponent
+class ConditionIndex extends BasePatientComponent
 {
     use BatchLegalEntityQueries;
     use HandlesSyncBatch;
@@ -288,6 +289,6 @@ class PatientConditions extends BasePatientComponent
 
     public function render(): View
     {
-        return view('livewire.person.records.conditions');
+        return view('livewire.condition.conditions');
     }
 }

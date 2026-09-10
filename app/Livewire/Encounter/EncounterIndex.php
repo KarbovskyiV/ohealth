@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Person\Records;
+namespace App\Livewire\Encounter;
 
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\JobStatus;
+use App\Exceptions\EHealth\EHealthConnectionException;
+use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\EncounterFullSync;
 use App\Livewire\Encounter\Forms\EncounterCancellationForm;
+use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Identifier;
@@ -20,14 +23,12 @@ use App\Traits\HandlesSyncBatch;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
-use App\Exceptions\EHealth\EHealthConnectionException;
-use App\Exceptions\EHealth\EHealthException;
 use Livewire\Attributes\Computed;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Throwable;
 
-class PatientEncounters extends BasePatientComponent
+class EncounterIndex extends BasePatientComponent
 {
     use BatchLegalEntityQueries;
     use HandlesEncounterCancellation;
@@ -353,6 +354,6 @@ class PatientEncounters extends BasePatientComponent
 
     public function render(): View
     {
-        return view('livewire.person.records.encounters');
+        return view('livewire.encounter.encounters');
     }
 }

@@ -30,20 +30,22 @@
             </div>
 
             {{-- Patient --}}
-            <div class="flex items-center">
-                <input
-                    x-model.boolean="modalDiagnosticReport.primarySource"
-                    id="patient"
-                    type="radio"
-                    value="false"
-                    name="primarySource"
-                    class="default-radio"
-                    :checked="modalDiagnosticReport.primarySource === false"
-                />
-                <label for="patient" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                    {{ __('forms.patient') }}
-                </label>
-            </div>
+            @unless (auth()->user()->isAssistantOnly())
+                <div class="flex items-center">
+                    <input
+                        x-model.boolean="modalDiagnosticReport.primarySource"
+                        id="patient"
+                        type="radio"
+                        value="false"
+                        name="primarySource"
+                        class="default-radio"
+                        :checked="modalDiagnosticReport.primarySource === false"
+                    />
+                    <label for="patient" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        {{ __('forms.patient') }}
+                    </label>
+                </div>
+            @endunless
         </div>
 
         {{-- When patient selected --}}

@@ -45,7 +45,7 @@
 
             <div class="record-inner-body">
                 <div class="record-inner-grid-container">
-                    <div class="[&>div]:min-w-0 [&_.record-inner-subvalue]:break-words grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-5">
+                    <div class="[&>div]:min-w-0 [&_.record-inner-subvalue]:wrap-break-word grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-5">
                         <div>
                             <div class="record-inner-label">{{ __('medical-events.information_source') }}</div>
                             <div class="record-inner-subvalue">
@@ -99,7 +99,7 @@
                 </div>
                 <div class="record-inner-id-col">
                     <div class="min-w-0">
-                        <div class="record-inner-label">ID ECO3</div>
+                        <div class="record-inner-label">{{ __('forms.ehealth_id') }}</div>
                         <div class="record-inner-id-value">{{ data_get($observation, 'uuid') }}</div>
                     </div>
                     <div class="min-w-0">

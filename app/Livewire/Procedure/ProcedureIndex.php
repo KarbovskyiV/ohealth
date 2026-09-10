@@ -2,42 +2,44 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Person\Records;
+namespace App\Livewire\Procedure;
 
+use App\Classes\Cipher\Api\CipherRequest;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\JobStatus;
 use App\Enums\Person\ProcedureStatus;
+use App\Exceptions\Cipher\CipherConnectionException;
+use App\Exceptions\Cipher\CipherException;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\ProcedureSync;
+use App\Livewire\Person\Records\BasePatientComponent;
+use App\Livewire\Procedure\Forms\ProcedureCancellationForm as Form;
 use App\Models\Equipment;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Identifier;
 use App\Models\MedicalEvents\Sql\Procedure;
 use App\Repositories\MedicalEvents\Repository;
-use App\Traits\BatchLegalEntityQueries;
-use App\Traits\HandlesSyncBatch;
-use App\Classes\Cipher\Api\CipherRequest;
-use App\Exceptions\Cipher\CipherConnectionException;
-use App\Exceptions\Cipher\CipherException;
-use App\Livewire\Procedure\Forms\ProcedureCancellationForm as Form;
 use App\Services\MedicalEvents\Fhir;
 use App\Services\MedicalEvents\FhirResource;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
+use App\Traits\BatchLegalEntityQueries;
+use App\Traits\HandlesSyncBatch;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\WithPagination;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 use Throwable;
 
-class PatientProcedures extends BasePatientComponent
+class ProcedureIndex extends BasePatientComponent
 {
     use BatchLegalEntityQueries;
     use HandlesSyncBatch;
@@ -66,11 +68,6 @@ class PatientProcedures extends BasePatientComponent
 
     public array $originEpisodes = [];
 
-    /**
-     * Stays empty until devices are supported in the project.
-     *
-     * @var array
-     */
     public array $devices = [];
 
     public string $filterCategory = '';
@@ -650,9 +647,22 @@ class PatientProcedures extends BasePatientComponent
             ->toArray();
     }
 
+    /**
+     * Build the device options out of the devices stored for the patient.
+     *
+     * @return void
+     */
     private function getDevicesFromDb(): void
     {
-        //TODO implement device_id filter options
+        $this->devices = Device::forPatient($this->patient())
+            ->with('names')
+            ->recentlyUpdatedFirst()
+            ->get(['id', 'uuid'])
+            ->map(static fn (Device $device): array => [
+                'uuid' => $device->uuid,
+                'name' => $device->names->first()?->value ?? $device->uuid
+            ])
+            ->toArray();
     }
 
     private function buildSearchParams(): array
@@ -689,6 +699,6 @@ class PatientProcedures extends BasePatientComponent
 
     public function render(): View
     {
-        return view('livewire.person.records.procedures');
+        return view('livewire.procedure.procedures');
     }
 }

@@ -540,16 +540,18 @@
                                     <span class="text-sm">{{ __('medical-events.performer') }}</span>
                                 </label>
 
-                                <label class="flex cursor-pointer items-center gap-2">
-                                    <input
-                                        type="radio"
-                                        name="detectedIssuePrimarySource"
-                                        x-model.boolean="modalDetectedIssue.primarySource"
-                                        value="false"
-                                        class="default-radio"
-                                    />
-                                    <span class="text-sm">{{ __('medical-events.other_source') }}</span>
-                                </label>
+                                @unless (auth()->user()->isAssistantOnly())
+                                    <label class="flex cursor-pointer items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            name="detectedIssuePrimarySource"
+                                            x-model.boolean="modalDetectedIssue.primarySource"
+                                            value="false"
+                                            class="default-radio"
+                                        />
+                                        <span class="text-sm">{{ __('medical-events.other_source') }}</span>
+                                    </label>
+                                @endunless
                             </div>
                         </div>
 

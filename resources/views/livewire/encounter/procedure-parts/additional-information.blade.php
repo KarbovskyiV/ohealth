@@ -30,22 +30,24 @@
         </div>
 
         <div class="flex items-center">
-            <input
-                @change="
-                    modalProcedure.primarySource = false;
-                    modalProcedure.performerEmployeeId = '';
-                "
-                x-model.boolean="modalProcedure.primarySource"
-                id="patient"
-                type="radio"
-                value="false"
-                name="primarySource"
-                class="default-radio"
-                :checked="modalProcedure.primarySource === false"
-            />
-            <label for="patient" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                {{ __('medical-events.other_source') }}
-            </label>
+            @unless (auth()->user()->isAssistantOnly())
+                <input
+                    @change="
+                        modalProcedure.primarySource = false;
+                        modalProcedure.performerEmployeeId = '';
+                    "
+                    x-model.boolean="modalProcedure.primarySource"
+                    id="patient"
+                    type="radio"
+                    value="false"
+                    name="primarySource"
+                    class="default-radio"
+                    :checked="modalProcedure.primarySource === false"
+                />
+                <label for="patient" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                    {{ __('medical-events.other_source') }}
+                </label>
+            @endunless
         </div>
     </div>
 

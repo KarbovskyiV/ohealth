@@ -101,6 +101,23 @@ class Device extends PatientApiBase
     }
 
     /**
+     * Return detail data about a device of the patient summary by ID.
+     *
+     * @param  string  $patientId
+     * @param  string  $deviceId
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicalevents9156v1.docs.apiary.io/#reference/medical-events/patient-summary/get-device-by-id-(summary)
+     */
+    public function getSummaryById(string $patientId, string $deviceId): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateDevice(...));
+
+        return $this->get(self::URL . "/$patientId/summary/devices/$deviceId");
+    }
+
+    /**
      * Validate a single device from eHealth API response.
      *
      * @param  EHealthResponse  $response

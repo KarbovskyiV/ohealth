@@ -28,7 +28,7 @@
     </x-header-navigation>
 
     <section class="section-form mt-4">
-        <div class="shift-content w-full max-w-screen-xl px-4 py-6 lg:py-10">
+        <div class="shift-content w-full max-w-7xl px-4 py-6 lg:py-10">
             {{-- Search and Filters Section --}}
             <div class="mb-6 w-full" x-data="{ showAdditionalParams: $wire.entangle('showAdditionalParams') }">
                 <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
@@ -359,7 +359,7 @@
                             <div class="record-inner-id-col">
                                 <div class="min-w-0">
                                     <div class="record-inner-label text-[10px] uppercase">
-                                        {{ __('patients.ehealth_id') }}
+                                        {{ __('forms.ehealth_id') }}
                                     </div>
                                     <div class="record-inner-id-value">{{ $plan->uuid ?? '-' }}</div>
                                 </div>

@@ -2,30 +2,31 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Person\Records;
+namespace App\Livewire\Immunization;
 
-use App\Exceptions\EHealth\EHealthConnectionException;
-use App\Exceptions\EHealth\EHealthException;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\JobStatus;
+use App\Exceptions\EHealth\EHealthConnectionException;
+use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\ImmunizationSync;
+use App\Livewire\Encounter\Forms\EncounterCancellationForm;
+use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Immunization;
 use App\Repositories\MedicalEvents\Repository;
 use App\Rules\InDictionary;
-use App\Livewire\Encounter\Forms\EncounterCancellationForm;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
-use Illuminate\View\View;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Session;
+use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
 use Throwable;
 
-class PatientImmunizations extends BasePatientComponent
+class ImmunizationIndex extends BasePatientComponent
 {
     use BatchLegalEntityQueries;
     use HandlesEncounterCancellation;
@@ -269,6 +270,6 @@ class PatientImmunizations extends BasePatientComponent
 
     public function render(): View
     {
-        return view('livewire.person.records.immunization');
+        return view('livewire.immunization.immunizations');
     }
 }

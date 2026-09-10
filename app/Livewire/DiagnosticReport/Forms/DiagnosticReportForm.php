@@ -11,6 +11,7 @@ use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\Equipment\Status as EquipmentStatus;
 use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
+use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
 use App\Models\Employee\Employee;
 use App\Models\Equipment;
@@ -376,7 +377,11 @@ class DiagnosticReportForm extends BaseForm
             'observations.*.effectiveDate' => ['nullable', 'date', 'before_or_equal:today'],
             'observations.*.effectiveTime' => ['nullable', 'date_format:H:i'],
 
-            'observations.*.primarySource' => ['required_with:observations', 'boolean'],
+            'observations.*.primarySource' => [
+                'required_with:observations',
+                'boolean',
+                new PrimarySourceRequiredForAssistant()
+            ],
             'observations.*.reportOriginCode' => Rule::forEach(function (mixed $value, string $attribute) {
                 $index = (int) explode('.', $attribute)[1];
                 $primarySource = $this->observations[$index]['primarySource'] ?? true;

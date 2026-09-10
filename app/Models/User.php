@@ -391,6 +391,20 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Whether an assistant is the only role the user signed in with that records medical events.
+     *
+     * @return bool
+     */
+    public function isAssistantOnly(): bool
+    {
+        $recordingRoles = $this->allowedRoles->intersect(
+            array_keys(config('ehealth.performer_employee_encounter_types', []))
+        );
+
+        return $recordingRoles->count() === 1 && $recordingRoles->first() === Role::ASSISTANT->value;
+    }
+
+    /**
      * Get employee by priority with encounter:write permission.
      * When $encounterClass is provided, only roles allowed for that class are considered.
      *

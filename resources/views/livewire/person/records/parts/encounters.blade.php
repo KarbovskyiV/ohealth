@@ -5,12 +5,12 @@
     $hasLimit = $limit && count($this->encounters) > $limit;
 @endphp
 
-<div @if($hasLimit) x-data="{ limit: {{ $limit }} }" @endif>
-    @foreach($this->encounters as $index => $encounter)
-        <div class="record-inner-card" @if($hasLimit) x-show="limit > {{ $index }}" @endif>
+<div @if ($hasLimit) x-data="{ limit: {{ $limit }} }" @endif>
+    @foreach ($this->encounters as $index => $encounter)
+        <div class="record-inner-card" @if ($hasLimit) x-show="limit > {{ $index }}" @endif>
             <div class="record-inner-header">
                 <div class="record-inner-checkbox-col">
-                    <input type="checkbox" class="default-checkbox w-5 h-5">
+                    <input type="checkbox" class="default-checkbox h-5 w-5" />
                 </div>
 
                 <div class="record-inner-column flex-1">
@@ -20,13 +20,11 @@
                     </div>
                 </div>
 
-                <div class="record-inner-column-bordered w-full md:w-36 shrink-0">
+                <div class="record-inner-column-bordered w-full shrink-0 md:w-36">
                     <div class="record-inner-label">{{ __('forms.status.label') }}</div>
                     <div>
                         @php($status = EncounterStatus::from(data_get($encounter, 'status')))
-                        <span @class([$status->color()])>
-                            {{ $status->label() }}
-                        </span>
+                        <span @class([$status->color()])> {{ $status->label() }} </span>
                     </div>
                 </div>
 
@@ -65,27 +63,23 @@
 
                 <div class="record-inner-id-col">
                     <div class="min-w-0">
-                        <div class="record-inner-label">ID ECO3</div>
+                        <div class="record-inner-label">{{ __('forms.ehealth_id') }}</div>
                         <div class="record-inner-id-value">{{ data_get($encounter, 'uuid', '-') }}</div>
                     </div>
                     <div class="min-w-0">
-                        <div class="record-inner-label">ID Епізоду</div>
-                        <div
-                            class="record-inner-id-value">{{ data_get($encounter, 'episode.identifier.value', '-') }}</div>
+                        <div class="record-inner-label">{{ __('episodes.id') }}</div>
+                        <div class="record-inner-id-value">
+                            {{ data_get($encounter, 'episode.identifier.value', '-') }}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     @endforeach
 
-    @if($hasLimit)
-        <div x-show="limit < {{ count($this->encounters) }}" class="flex justify-start mt-4">
-            <button type="button"
-                    @click="limit += 5"
-                    class="item-add"
-            >
-                {{ __('patients.show_more') }}
-            </button>
+    @if ($hasLimit)
+        <div x-show="limit < {{ count($this->encounters) }}" class="mt-4 flex justify-start">
+            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
         </div>
     @endif
 </div>

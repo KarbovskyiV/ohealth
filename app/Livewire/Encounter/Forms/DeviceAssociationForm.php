@@ -7,6 +7,7 @@ namespace App\Livewire\Encounter\Forms;
 use App\Enums\DeviceAssociation\Status;
 use App\Models\MedicalEvents\Sql\DeviceAssociation;
 use App\Rules\InDictionary;
+use App\Rules\PrimarySourceRequiredForAssistant;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
@@ -71,7 +72,11 @@ class DeviceAssociationForm extends Form
 
                 return [$bodySiteCode === '' ? 'prohibited' : 'nullable', 'string'];
             }),
-            'deviceAssociations.*.primarySource' => ['required_with:deviceAssociations', 'boolean'],
+            'deviceAssociations.*.primarySource' => [
+                'required_with:deviceAssociations',
+                'boolean',
+                new PrimarySourceRequiredForAssistant()
+            ],
             'deviceAssociations.*.reportOriginCode' => Rule::forEach(function (mixed $value, string $attribute) {
                 $primarySource = $this->deviceAssociations[(int) explode('.', $attribute)[1]]['primarySource']
                     ?? null;

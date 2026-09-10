@@ -3,7 +3,7 @@
     class="p-4 sm:p-8"
     id="observations-section"
     x-data="{
-        observations: $wire.entangle('observationForm.observations'),
+        observations: $wire.entangle('{{ $isEncounterContext ? 'observationForm' : 'form' }}.observations'),
         @if($isEncounterContext)
             currentImmunizations: $wire.entangle('immunizationForm.immunizations'),
             currentEpisodeId: $wire.entangle('form.episode.id'),

@@ -63,7 +63,8 @@ class EncounterPolicy
      * Determine whether the user signs the cancellation as an employee eHealth accepts for it: the performer of
      * the encounter, the holder of an approval that still grants write access to it, or a medical administrator.
      * The signature carries the tax ID of the user's party, so the employees of that party are the ones the
-     * signature resolves to, and only the ones still employed count.
+     * signature resolves to, and only the ones still employed count. An assistant cancels what they recorded
+     * themselves and nothing else, so neither an approval nor an administrator role opens the way for them.
      */
     private function signsAsEmployeeAllowedToCancel(User $user, Encounter $encounter): bool
     {
@@ -73,7 +74,9 @@ class EncounterPolicy
             ->whereIsActive(true)
             ->get(['uuid', 'employee_type']);
 
-        if ($employees->contains('employeeType', Role::MED_ADMIN->value)) {
+        $isAssistantOnly = $user->isAssistantOnly();
+
+        if (!$isAssistantOnly && $employees->contains('employeeType', Role::MED_ADMIN->value)) {
             return true;
         }
 
@@ -81,6 +84,10 @@ class EncounterPolicy
 
         if ($employeeIds->contains($encounter->performer?->value)) {
             return true;
+        }
+
+        if ($isAssistantOnly) {
+            return false;
         }
 
         return Approval::grantingWriteAccessTo($encounter->uuid)

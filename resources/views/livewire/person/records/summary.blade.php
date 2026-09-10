@@ -74,7 +74,7 @@
                 ['id' => 'procedures', 'action' => 'getProcedures', 'syncAction' => 'syncProcedures', 'label' => __('procedures.plural'), 'icon' => 'settings', 'syncEntity' => ''],
                 ['id' => 'allergies', 'action' => 'syncAllergyIntolerances', 'syncAction' => 'syncAllergyIntolerances', 'label' => __('patients.allergies'), 'icon' => 'alert', 'syncEntity' => ''],
                 ['id' => 'risk_assessments', 'action' => 'syncRiskAssessments', 'syncAction' => 'syncRiskAssessments', 'label' => __('patients.risk_assessments'), 'icon' => 'alert-octagon', 'syncEntity' => ''],
-                ['id' => 'devices', 'action' => 'syncDevices', 'syncAction' => 'syncDevices', 'label' => __('devices.plural'), 'icon' => 'equipment', 'syncEntity' => ''],
+                ['id' => 'devices', 'action' => 'getDevices', 'syncAction' => 'syncDevices', 'label' => __('devices.plural'), 'icon' => 'equipment', 'syncEntity' => PatientSummary::ENTITY_TYPE_DEVICE],
                 ['id' => 'medicines', 'action' => 'syncMedicationStatements', 'syncAction' => 'syncMedicationStatements', 'label' => __('patients.medicines'), 'icon' => 'pill-outline', 'syncEntity' => ''],
             ];
         @endphp
@@ -142,14 +142,20 @@
                                 @include('livewire.person.records.parts.conditions')
                             @elseif ($item['id'] === 'diagnosticReports')
                                 @include('livewire.person.records.parts.diagnostic-reports')
+                                {{-- The allergy and risk assessment parts still hold mock records, so the sections
+                                fall through to the empty state until they are built on real data
                             @elseif ($item['id'] === 'allergies')
                                 @include('livewire.person.records.parts.allergies')
                             @elseif ($item['id'] === 'risk_assessments')
                                 @include('livewire.person.records.parts.risk-assessments')
+                            --}}
                             @elseif ($item['id'] === 'devices')
                                 @include('livewire.person.records.parts.devices')
+                                {{-- The medicine part still holds mock records, so the section falls through
+                                to the empty state until it is built on real data
                             @elseif ($item['id'] === 'medicines')
                                 @include('livewire.person.records.parts.medicines')
+                            --}}
                             @elseif ($item['id'] === 'procedures')
                                 @include('livewire.person.records.parts.procedures')
                             @else
@@ -159,9 +165,7 @@
                                             @icon($item['icon'])
                                         </div>
                                         <p class="text-[15px] font-medium">{{ __('forms.no_data') }}</p>
-                                        <p class="mt-1 text-[13px] text-gray-400">
-                                            В цьому розділі поки немає інформації
-                                        </p>
+                                        <p class="mt-1 text-[13px] text-gray-400">{{ __('forms.section_no_data') }}</p>
                                     </div>
                                 </div>
                             @endif
@@ -184,9 +188,9 @@
                     <button
                         class="summary-sidebar-btn"
                         @click="
-                                activeSection = '{{ $item['id'] }}';
-                                setTimeout(() => { document.getElementById('block-{{ $item['id'] }}').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
-                            "
+                            activeSection = '{{ $item['id'] }}';
+                            setTimeout(() => { document.getElementById('block-{{ $item['id'] }}').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+                        "
                         type="button"
                         :class="activeSection === '{{ $item['id'] }}' ? 'summary-sidebar-btn-active' : 'summary-sidebar-btn-inactive'"
                         @if ($item['action']) wire:click.once="{{ $item['action'] }}" @endif

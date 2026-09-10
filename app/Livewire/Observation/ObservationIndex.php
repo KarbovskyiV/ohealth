@@ -2,32 +2,34 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Person\Records;
+namespace App\Livewire\Observation;
 
-use App\Core\Arr;
 use App\Classes\eHealth\EHealth;
+use App\Core\Arr;
 use App\Enums\JobStatus;
+use App\Exceptions\EHealth\EHealthConnectionException;
+use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\ObservationSync;
+use App\Livewire\Encounter\Forms\EncounterCancellationForm;
+use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\MedicalEvents\Sql\Observation;
 use App\Repositories\MedicalEvents\Repository;
 use App\Rules\InDictionary;
-use App\Livewire\Encounter\Forms\EncounterCancellationForm;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
 use Carbon\CarbonImmutable;
-use Illuminate\View\View;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Session;
+use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
-use App\Exceptions\EHealth\EHealthConnectionException;
-use App\Exceptions\EHealth\EHealthException;
 use Throwable;
 
-class PatientObservations extends BasePatientComponent
+class ObservationIndex extends BasePatientComponent
 {
     use BatchLegalEntityQueries;
     use HandlesEncounterCancellation;
@@ -234,7 +236,17 @@ class PatientObservations extends BasePatientComponent
                 'displayValue' => $report->code->displayValue ?? $serviceNames->get($report->code->value)
             ])
             ->toArray();
-        // todo: devices, specimens
+
+        $this->devices = Device::forPatient($this->patient())
+            ->with('names')
+            ->recentlyUpdatedFirst()
+            ->get(['id', 'uuid'])
+            ->map(static fn (Device $device): array => [
+                'uuid' => $device->uuid,
+                'name' => $device->names->first()?->value ?? $device->uuid
+            ])
+            ->toArray();
+        // todo: specimens
     }
 
     /**
@@ -437,6 +449,6 @@ class PatientObservations extends BasePatientComponent
 
     public function render(): View
     {
-        return view('livewire.person.records.observations');
+        return view('livewire.observation.observations');
     }
 }

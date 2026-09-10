@@ -155,6 +155,7 @@ abstract class DiagnosticReportComponent extends Component
         'eHealth/observation_categories',
         'eHealth/ICF/observation_categories',
         'eHealth/LOINC/observation_codes',
+        'eHealth/custom/observation_codes',
         'eHealth/ICF/classifiers',
         'eHealth/ucum/units',
         'eHealth/ICF/qualifiers/extent_or_magnitude_of_impairment',

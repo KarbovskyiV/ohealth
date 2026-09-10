@@ -12,10 +12,26 @@
         canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
         deviceTypesDictionary: $wire.dictionaries['device_definition_classification_type'],
         deviceDefinitions: $wire.dictionaries['custom/device_definitions'],
+        patientDevices: $wire.patientDevices,
         modalDevice: new Device(),
         newDevice: false,
         openDeviceDrawer: false,
         item: 0,
+
+        parentOptions() {
+            const packageDevices = this.devices
+                .filter((device) => device.uuid !== this.modalDevice.uuid && device.names?.[0]?.value)
+                .map((device) => ({ uuid: device.uuid, name: device.names[0].value }));
+            const packageDeviceIds = packageDevices.map((device) => device.uuid);
+
+            return [
+                ...packageDevices,
+                ...this.patientDevices.filter(
+                    (device) =>
+                        device.uuid !== this.modalDevice.uuid && ! packageDeviceIds.includes(device.uuid),
+                ),
+            ];
+        },
 
         definitionsForSelectedType() {
             return this.deviceDefinitions.filter((deviceDefinition) =>
@@ -453,13 +469,10 @@
                             <div class="form-group group">
                                 <select x-model="modalDevice.parentId" id="deviceParent" class="input-select peer">
                                     <option value="" selected>{{ __('forms.select') }}</option>
-                                    {{-- A device cannot be its own parent, the rest of the package is fair game --}}
-                                    <template x-for="(parentDevice, parentIndex) in devices" :key="parentIndex">
-                                        <option
-                                            x-show="newDevice || parentIndex !== item"
-                                            :value="parentDevice.uuid"
-                                            x-text="parentDevice.names[0].value"
-                                        ></option>
+                                    {{-- A device cannot be its own parent, the rest of the package and the
+                                         devices the patient already carries are fair game --}}
+                                    <template x-for="parentDevice in parentOptions()" :key="parentDevice.uuid">
+                                        <option :value="parentDevice.uuid" x-text="parentDevice.name"></option>
                                     </template>
                                 </select>
                                 <label for="deviceParent" class="label"> {{ __('devices.parent') }} </label>
@@ -780,17 +793,19 @@
                                     />
                                     <span class="text-sm">{{ __('medical-events.performer') }}</span>
                                 </label>
-                                <label class="flex cursor-pointer items-center gap-2">
-                                    <input
-                                        type="radio"
-                                        name="primarySource"
-                                        x-model.boolean="modalDevice.primarySource"
-                                        :checked="modalDevice.primarySource === false"
-                                        value="false"
-                                        class="default-radio"
-                                    />
-                                    <span class="text-sm">{{ __('medical-events.other_source') }}</span>
-                                </label>
+                                @unless (auth()->user()->isAssistantOnly())
+                                    <label class="flex cursor-pointer items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            name="primarySource"
+                                            x-model.boolean="modalDevice.primarySource"
+                                            :checked="modalDevice.primarySource === false"
+                                            value="false"
+                                            class="default-radio"
+                                        />
+                                        <span class="text-sm">{{ __('medical-events.other_source') }}</span>
+                                    </label>
+                                @endunless
                             </div>
                         </div>
 

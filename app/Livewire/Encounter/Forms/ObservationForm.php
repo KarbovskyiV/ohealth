@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Encounter\Forms;
 
 use App\Rules\InDictionary;
+use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
 use Closure;
 use Illuminate\Support\Facades\Auth;
@@ -64,7 +65,11 @@ class ObservationForm extends Form
                 'date_format:H:i',
                 new PastDateTime($this->observations[(int)explode('.', $attribute)[1]]['issuedDate'] ?? '')
             ]),
-            'observations.*.primarySource' => ['required_with:observations', 'boolean'],
+            'observations.*.primarySource' => [
+                'required_with:observations',
+                'boolean',
+                new PrimarySourceRequiredForAssistant()
+            ],
             'observations.*.reportOriginCode' => Rule::forEach(function (mixed $value, string $attribute) {
                 $index = (int)explode('.', $attribute)[1];
                 $primarySource = $this->observations[$index]['primarySource'];
@@ -126,13 +131,7 @@ class ObservationForm extends Form
             'observations.*.valueSampledDataFactor' => ['nullable', 'numeric'],
             'observations.*.valueSampledDataLowerLimit' => ['nullable', 'numeric'],
             'observations.*.valueSampledDataUpperLimit' => ['nullable', 'numeric'],
-            'observations.*.valueSampledDataDimensions' => ['nullable', 'numeric'],
-            'observations.*.valueRange' => ['nullable', 'array'],
-            'observations.*.valueRange.low' => ['nullable', 'array'],
-            'observations.*.valueRange.high' => ['nullable', 'array'],
-            'observations.*.valueRatio' => ['nullable', 'array'],
-            'observations.*.valueRatio.numerator' => ['nullable', 'array'],
-            'observations.*.valueRatio.denominator' => ['nullable', 'array']
+            'observations.*.valueSampledDataDimensions' => ['nullable', 'numeric']
         ];
     }
 

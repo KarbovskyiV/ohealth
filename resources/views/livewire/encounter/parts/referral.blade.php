@@ -49,7 +49,7 @@
                             get filteredReferrals() {
                                 const value = this.referralNumber.replaceAll('-', '').toUpperCase();
 
-                                if (!value) {
+                                if (! value) {
                                     return this.referrals;
                                 }
 
@@ -156,9 +156,8 @@
                                     id="paperReferralNumber"
                                     class="input !pr-7 peer @error('form.encounter.paperReferral.requisition') input-error @enderror"
                                     placeholder=" "
-                                    required
                                 />
-                                <label for="paperReferralNumber" class="label required">
+                                <label for="paperReferralNumber" class="label">
                                     {{ __('encounters.referral_number') }}
                                 </label>
                                 <div class="absolute inset-y-0 end-0 flex items-center">
