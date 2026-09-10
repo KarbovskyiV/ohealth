@@ -175,7 +175,7 @@ class LegalEntityConnectionIndex extends Component
 
         $isJobsStarted
             ? Session::flash('success', __('legal-entity-connection.sync.started'))
-            : session()->flash('success', __('legal-entity-connection.sync.success'));
+            : session()->flash('success', __('legal-entity-connection.sync.success_many'));
     }
 
     /**

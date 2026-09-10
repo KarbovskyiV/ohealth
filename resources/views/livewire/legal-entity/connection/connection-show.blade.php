@@ -1,4 +1,5 @@
 @use(App\Enums\LegalEntity\States)
+@use(App\Models\Connection)
 
 <section class="section-form"
          x-data="{
@@ -16,10 +17,11 @@
         <x-slot name="title">
             {{ __('legal-entity-connection.details_title') }} {{ $connection->uuid }}
         </x-slot>
-        @can('updateConnection', $connection)
+        @can('sync', $connection)
             <x-slot name="actions">
                 <button
                     type="button"
+                    wire:click='sync'
                     class="button-success flex items-center gap-2 whitespace-nowrap"
                 >
                     @icon('refresh', 'w-4 h-4')
@@ -122,7 +124,7 @@
         </div>
 
         <div class="mt-12 flex flex-row items-center gap-4">
-            <a href="{{ route('connection.index', ['legalEntity' => $legalEntity]) }}"
+            <a href="{{ route('connection.index', ['legalEntity' => $connection->legalEntity]) }}"
                class="button-minor px-6"
             >
                 {{ __('legal-entity-connection.btn_back') }}
@@ -199,7 +201,7 @@
                 </button>
                 <button
                     type="button"
-                    @click="window.location.href='{{ route('connection.index', ['legalEntity' => $legalEntity]) }}'"
+                    @click="window.location.href='{{ route('connection.index', ['legalEntity' => $connection->legalEntity]) }}'"
                     class="bg-[#b91c1c] text-white hover:bg-red-800 font-medium rounded-md text-sm px-5 py-2.5 outline-none transition-colors"
                 >
                     {{ __('legal-entity-connection.btn_terminate_connection') }}

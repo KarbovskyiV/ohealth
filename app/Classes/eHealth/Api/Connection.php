@@ -56,7 +56,7 @@ class Connection extends Request
      */
     public function getClientConnections(string $clientId, $query = null): PromiseInterface|EHealthResponse
     {
-        $this->setValidator($this->validateClientConnections(...));
+        $this->setValidator($this->validateConnections(...));
 
         $this->setDefaultPageSize();
 
@@ -69,13 +69,30 @@ class Connection extends Request
     }
 
     /**
-     * validate get Clients input,
-     * see: https://ehealthmisapi1.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/manage-client-configuration/get-clients
+     * Get connection details by UUID.
+     *
+     * @param  string  $connectionId  The unique identifier of the connection (uuid).
+     *
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     */
+    public function getConnectionDetails(string $clientId, string $connectionId): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateConnectionDetails(...));
+
+        return parent::get(self::URL . '/' . $clientId . '/connections/' . $connectionId);
+    }
+
+
+    /**
+     * Validate get Clients input
+     *
+     * @see https://ehealthmisapi1.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/manage-client-configuration/get-clients
      */
     protected function validateClients(EHealthResponse $response): array
     {
         if (!$response->successful()) {
-            throw new Exception('validateMany: ' . $response->body());
+            throw new Exception('validateClients: ' . $response->body());
         }
 
         $replaced = [];
@@ -84,7 +101,7 @@ class Connection extends Request
 
         $validationRules = ['*' => 'required|array'];
 
-        foreach ($this->getValidationRules() as $key => $rule) {
+        foreach ($this->getValidationClientRules() as $key => $rule) {
             $validationRules["*.{$key}"] = $rule;
         }
 
@@ -95,7 +112,7 @@ class Connection extends Request
         $validator = Validator::make($replaced, $validationRules);
 
         if ($validator->fails()) {
-            Log::channel('e_health_errors')->error('Validation failed: ' . implode(', ', $validator->errors()->all()));
+            Log::channel('e_health_errors')->error('Validation Clients failed: ' . implode(', ', $validator->errors()->all()));
         }
 
         return $validator->validate();
@@ -103,22 +120,81 @@ class Connection extends Request
 
     /**
      * Validate single Client response data
-     * see; https://ehealthmisapi1.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/manage-client-configuration/get-client-details
+     *
+     * @see https://ehealthmisapi1.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/manage-client-configuration/get-client-details
      */
     protected function validateClientDetails(EHealthResponse $response): array
     {
         if (!$response->successful()) {
-            throw new Exception('validateOne: ' . $response->body());
+            throw new Exception('validateClientDetails: ' . $response->body());
         }
 
         $data = $response->getData();
 
         $replaced = self::replaceEHealthPropNames($data);
 
-        $validator = Validator::make($replaced, $this->getValidationRules());
+        $validator = Validator::make($replaced, $this->getValidationClientRules());
 
         if ($validator->fails()) {
-            Log::channel('e_health_errors')->error('Validation failed: ' . implode(', ', $validator->errors()->all()));
+            Log::channel('e_health_errors')->error('Validation Client Details failed: ' . implode(', ', $validator->errors()->all()));
+        }
+
+        return $validator->validate();
+    }
+
+    /**
+     * Validate array of connections response data
+     *
+     * @see https://ehealthmisapi1.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/manage-client-configuration/get-client-connections
+     */
+    protected function validateConnections(EHealthResponse $response): array
+    {
+        if (!$response->successful()) {
+            throw new Exception('validateConnections: ' . $response->body());
+        }
+
+        $replaced = [];
+
+        $clientsList = $response->getData();
+
+        $validationRules = ['*' => 'required|array'];
+
+        foreach ($this->getValidationConnectionRules() as $key => $rule) {
+            $validationRules["*.{$key}"] = $rule;
+        }
+
+        foreach ($clientsList as $data) {
+            $replaced[] = self::replaceEHealthPropNames($data);
+        }
+
+        $validator = Validator::make($replaced, $validationRules);
+
+        if ($validator->fails()) {
+            Log::channel('e_health_errors')->error('Validation Connections failed: ' . implode(', ', $validator->errors()->all()));
+        }
+
+        return $validator->validate();
+    }
+
+    /**
+     * Validate single connection response data
+     *
+     * @see https://ehealthmisapi1.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/manage-client-configuration/get-client-connection-details
+     */
+    protected function validateConnectionDetails(EHealthResponse $response): array
+    {
+        if (!$response->successful()) {
+            throw new Exception('validateConnectionDetails: ' . $response->body());
+        }
+
+        $data = $response->getData();
+
+        $replaced = self::replaceEHealthPropNames($data);
+
+        $validator = Validator::make($replaced, $this->getValidationConnectionRules());
+
+        if ($validator->fails()) {
+            Log::channel('e_health_errors')->error('Validation Connection Details failed: ' . implode(', ', $validator->errors()->all()));
         }
 
         return $validator->validate();
@@ -129,7 +205,7 @@ class Connection extends Request
      *
      * @return array An associative array containing validation rules for Client fields
      */
-    protected function getValidationRules(): array
+    protected function getValidationClientRules(): array
     {
         return [
             'uuid' => 'required|uuid',
@@ -145,29 +221,22 @@ class Connection extends Request
         ];
     }
 
-
-
-     protected function validateClientConnections(EHealthResponse $response): array
+    /**
+     * Returns the validation rules array used for validating Connection's data.
+     *
+     * @return array An associative array containing validation rules for Connection fields
+     */
+    protected function getValidationConnectionRules(): array
     {
-        $data = $response->getData();
-
-        $replaced = self::replaceEHealthPropNames($data);
-
-        $validator = Validator::make($replaced, [
-            '*.uuid' => ['required', 'uuid'],
-            '*.client_uuid' => ['required', 'uuid'],
-            '*.consumer_uuid' => ['required', 'uuid'],
-            '*.redirect_uri' => ['required', 'string'],
-            '*.secret' => ['nullable', 'string'],
-            '*.ehealth_inserted_at' => 'nullable|date',
-            '*.ehealth_updated_at' => 'nullable|date'
-        ]);
-
-        if ($validator->fails()) {
-            Log::channel('e_health_errors')->error('Validation failed: ' . implode(', ', $validator->errors()->all()));
-        }
-
-        return $validator->validate();
+        return [
+            'uuid' => ['required', 'uuid'],
+            'client_uuid' => ['required', 'uuid'],
+            'consumer_uuid' => ['required', 'uuid'],
+            'redirect_uri' => ['required', 'string'],
+            'secret' => ['nullable', 'string'],
+            'ehealth_inserted_at' => 'nullable|date',
+            'ehealth_updated_at' => 'nullable|date'
+        ];
     }
 
     /**
@@ -193,7 +262,6 @@ class Connection extends Request
 
             $replaced[$newName] = $value;
 
-            // TODO: remove it if future use shows that it is not needed.
             if (is_array($value)) {
                 $replaced[$newName] = self::replaceEHealthPropNames($value);
             }
