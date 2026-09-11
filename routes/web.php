@@ -303,6 +303,8 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
 
             Route::get('/care-plans', \App\Livewire\CarePlan\CarePlanIndex::class)
                 ->name('care-plans.index');
+            Route::get('/specimens', \App\Livewire\Specimen\SpecimenIndex::class)
+                ->name('specimens.index');
             Route::get('/care-plans/create/{personId?}', \App\Livewire\CarePlan\CarePlanCreate::class)
                 ->name('care-plans.create')
                 ->can('create', \App\Models\CarePlan::class);
