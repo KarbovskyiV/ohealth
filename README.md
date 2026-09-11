@@ -54,6 +54,7 @@ SESSION_SECURE_COOKIE=false
 EHEALTH_API_URL=https://api-preprod.ehealth.gov.ua
 EHEALTH_AUTH_HOST=https://auth-preprod.ehealth.gov.ua
 EHEALTH_REDIRECT_URI=
+EHEALTH_OAUTH_REDIRECT_URI=
 EHEALTH_X_CUSTOM_PSK=
 EHEALTH_API_KEY=
 ```
@@ -61,7 +62,9 @@ EHEALTH_API_KEY=
 
 `EHEALTH_AUTH_HOST` - URL to the eHealth authentication API
 
-`EHEALTH_REDIRECT_URI` - URL to the application endpoint, which handles user authentication. It receives authentication code from eHealth, which later is exchanged to the token. Contact eHealth to provide the redirect URL of the application.
+`EHEALTH_REDIRECT_URI` - callback URL registered for the legal entity's connection with eHealth (client/consumer OAuth link). It must be a publicly accessible URL of your application; eHealth redirects to it after the legal entity connection flow.
+
+`EHEALTH_OAUTH_REDIRECT_URI` - URL to the application endpoint, which handles user authentication. It receives authentication code from eHealth, which later is exchanged to the token. Contact eHealth to provide the redirect URL of the application.
 
 `EHEALTH_X_CUSTOM_PSK` and `EHEALTH_API_KEY` - are provided by the eHealth and are used in the authentication process. For more details see eHealth [API documentation](https://uaehealthapi.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/oauth/login).
 #### Other

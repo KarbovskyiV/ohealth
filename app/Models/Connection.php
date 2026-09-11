@@ -18,6 +18,7 @@ class Connection extends Model
         'legal_entity_id',
         'consumer_uuid',
         'redirect_uri',
+        'secret',
         'ehealth_inserted_at',
         'ehealth_updated_at',
     ];

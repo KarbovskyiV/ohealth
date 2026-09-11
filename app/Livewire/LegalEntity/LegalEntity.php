@@ -516,7 +516,7 @@ abstract class LegalEntity extends Component
     private function prepareSecurityData(): array
     {
         return [
-            'redirect_uri' => 'https://openhealths.com',
+            'redirect_uri' => $this->legalEntity->connections()->first()?->redirectUri ?? config('ehealth.api.connection_redirect_uri'),
         ];
     }
 

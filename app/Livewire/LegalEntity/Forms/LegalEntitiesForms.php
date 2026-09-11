@@ -68,9 +68,7 @@ class LegalEntitiesForms extends Form
 
     public ?array $publicOffer = [];
 
-    public array $security = [
-        'redirect_uri' => 'https://openhealths.com/ehealth/oauth',
-    ];
+    public array $security = [];
 
     public function rules(): array
     {

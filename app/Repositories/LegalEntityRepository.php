@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Enums\Status;
 use App\Models\Client;
 use App\Enums\User\Role;
+use App\Models\Connection;
 use App\Models\LegalEntity;
 use App\Traits\LogsExceptions;
 use App\Models\LegalEntityType;
@@ -272,5 +273,58 @@ class LegalEntityRepository
         }
 
         return $client;
+    }
+
+    /**
+     * Synchronize the redirect URI for a given connection.
+     *
+     * @param  Connection  $connection  The connection instance to update.
+     * @param  string  $redirectUri  The new redirect URI to set for the connection.
+     *
+     * @return bool  Returns true if the update was successful, false otherwise.
+     *
+     * @throws Exception  If a database error occurs during the update process.
+     */
+    public function syncRedirectUri(Connection $connection, string $redirectUri): bool
+    {
+        try {
+            DB::transaction(function () use ($connection, $redirectUri) {
+                $connection->update(['redirect_uri' => $redirectUri]);
+            });
+        } catch (Exception $exception) {
+            $this->handleDatabaseErrors($exception, __('Error occurred while trying to update connection data'), __('Error occurred while trying to update connection\'s data'));
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Synchronize the Legal Entity secret for a given connection.
+     *
+     * @param  Connection  $connection  The connection instance to update.
+     * @param  string  $secret  The new client_secret to set for the connection.
+     *
+     * @return bool  Returns true if the update was successful, false otherwise.
+     *
+     * @throws Exception  If a database error occurs during the update process.
+     */
+    public function syncConnectionSecret(Connection $connection, string $secret): bool
+    {
+        try {
+            DB::transaction(function () use ($connection, $secret) {
+                $connection->update(['secret' => $secret]);
+            });
+
+            $connection->legalEntity->update(['client_secret' => $secret]);
+            $connection->legalEntity->refresh();
+        } catch (Exception $exception) {
+            $this->handleDatabaseErrors($exception, __('Error occurred while trying to update connection secret'), __('Error occurred while trying to update connection\'s secret'));
+
+            return false;
+        }
+
+        return true;
     }
 }

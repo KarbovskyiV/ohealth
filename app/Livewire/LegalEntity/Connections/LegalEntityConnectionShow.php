@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\LegalEntity\Connections;
 
-use Livewire\Component;
+use Exception;
 use App\Models\Connection;
-use App\Models\LegalEntity;
 use Livewire\Attributes\Title;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\Repository;
@@ -16,36 +15,15 @@ use Illuminate\Support\Facades\Session;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 
-class LegalEntityConnectionShow extends Component
+class LegalEntityConnectionShow extends LegalEntityConnectionComponent
 {
     /**
-     * Connection data with the needed relation data.
+     * Synchronize current connection with stored one on the eHealths side
      *
-     * @var Connection
-     */
-    protected ?Connection $connection=null;
-
-    public int $connectionId;
-
-    /**
-     * LegalEntity instance.
+     * @return void
      *
-     * @var LegalEntity
+     * @throws Exception|EHealthResponseException|EHealthValidationException
      */
-    protected ?LegalEntity $legalEntity=null;
-
-    public function mount(LegalEntity $legalEntity, Connection $connection)
-    {
-        $this->legalEntity = $legalEntity;
-
-        $this->connectionId = $connection->id;
-
-        $this->connection = $connection->load([
-            'legalEntity',
-            'client',
-        ]);
-    }
-
     public function sync(): void
     {
         $user = Auth::user();
@@ -55,8 +33,6 @@ class LegalEntityConnectionShow extends Component
 
             return;
         }
-
-        $this->connection ??= Connection::find($this->connectionId);
 
         $clientUuid = $this->connection->clientUuid ?? null;
 
@@ -84,31 +60,9 @@ class LegalEntityConnectionShow extends Component
 
         $this->connection->refresh();
 
-        // Client synchronization
-        try {
-            $response = EHealth::connection()->getClientDetails(clientId: $clientUuid);
-
-            $clientData = $response->validate();
-        } catch (EHealthResponseException $err) {
-            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $err->getDetails()]);
-            session()->flash('error', __('errors.ehealth.messages.server_error'));
-
-            return;
-        } catch (EHealthValidationException $err) {
-            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $err->getDetails()]);
-
-            session()->flash('error', __('errors.ehealth.messages.validation_error'));
-
+        if (!$this->syncSingleClient($clientUuid)) {
             return;
         }
-
-        $client = Repository::legalEntity()->syncClient($clientData);
-
-        if (!$client) {
-            return;
-        }
-
-        $client->refresh();
 
         session()->flash('success', __('legal-entity-connection.sync.success_one'));
 

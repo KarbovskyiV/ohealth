@@ -16,7 +16,7 @@ return [
 
     'btn_back' => 'Назад',
     'btn_terminate_connection' => 'Припинити зв\'язок',
-    'btn_update_secret' => 'Оновити секрет (secret)',
+    'btn_update_secret' => 'Зміна client_secret',
     'btn_update_callback' => 'Оновити адресу зворотнього виклику',
     'btn_close' => 'Закрити',
     'btn_update' => 'Оновити',
@@ -45,8 +45,8 @@ return [
     'table_action' => 'ДІЯ',
 
     'btn_view_details' => 'Переглянути деталі',
-    'btn_update_secret_short' => 'Оновити секрет',
-    'btn_update_callback_short' => 'Оновити адресу',
+    'btn_update_secret_short' => 'Зміна client_secret',
+    'btn_update_callback_short' => 'Оновити redirect_uri',
 
     'signature_modal_title' => 'Електронний підпис',
     'btn_cancel' => 'Скасувати',

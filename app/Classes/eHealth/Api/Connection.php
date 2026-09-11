@@ -83,6 +83,61 @@ class Connection extends Request
         return parent::get(self::URL . '/' . $clientId . '/connections/' . $connectionId);
     }
 
+    /**
+     * Refresh connection's token by UUID.
+     *
+     * @param  string  $clientId  The unique identifier of the client.
+     * @param  string  $connectionId  The unique identifier of the connection (uuid).
+     *
+     * @return PromiseInterface|EHealthResponse
+     *
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     */
+    public function refreshConnectionToken(string $clientId, string $connectionId): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateConnectionDetails(...));
+
+        return parent::patch(self::URL . '/' . $clientId . '/connections/' . $connectionId . '/actions/refresh_secret');
+    }
+
+    /**
+     * Update connection's redirect URI.
+     *
+     * @param  string  $clientId  The unique identifier of the client.
+     * @param  string  $connectionId  The unique identifier of the connection (uuid).
+     *
+     * @return PromiseInterface|EHealthResponse
+     *
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     */
+    public function updateConnectionRedirectUri(string $clientId, string $connectionId, string $redirectUri): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateConnectionDetails(...));
+
+        $mergedQuery = array_merge(
+            $this->options['query'] ?? [],
+            ['redirect_uri' => $redirectUri]
+        );
+
+        return parent::patch(self::URL . '/' . $clientId . '/connections/' . $connectionId, $mergedQuery);
+    }
+
+    /**
+     * Delete connection by UUID.
+     *
+     * @param  string  $clientId  The unique identifier of the client.
+     * @param  string  $connectionId  The unique identifier of the connection (uuid).
+     *
+     * @return PromiseInterface|EHealthResponse
+     *
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     */
+    public function deleteConnection(string $clientId, string $connectionId): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateConnectionDetails(...));
+
+        return parent::delete(self::URL . '/' . $clientId . '/connections/' . $connectionId);
+    }
 
     /**
      * Validate get Clients input
