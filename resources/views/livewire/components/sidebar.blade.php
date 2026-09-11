@@ -386,6 +386,16 @@
                     </li>
                 @endif
 
+                <li>
+                    <a
+                        href="{{ route('specimens.index', [legalEntity()]) }}"
+                        class="menu-item-simple {{ request()->routeIs('specimens.*') ? 'menu-item-active' : '' }}"
+                    >
+                        @icon('sample-outline')
+                        <span>{{ __('specimens.sidebar_title') }}</span>
+                    </a>
+                </li>
+
                 @can('viewAny', Equipment::class)
                     <li>
                         <a href="{{ route('equipment.index', [legalEntity()]) }}" class="menu-item-simple {{ request()->routeIs('equipment.*') ? 'menu-item-active' : '' }}">
