@@ -6,14 +6,8 @@ namespace Tests\Unit\Employee;
 
 use App\Classes\eHealth\Api\EmployeeRequest as EmployeeRequestApi;
 use App\Classes\eHealth\EHealthResponse;
-use App\Enums\Employee\RequestStatus;
-use App\Events\EHealthUserLogin;
-use App\Jobs\EmployeeRequestPendingApply;
 use App\Listeners\eHealth\EmployeeCreate;
-use App\Models\Employee\EmployeeRequest;
 use App\Models\LegalEntity;
-use App\Models\User;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Str;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -21,7 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use ReflectionMethod;
 use Tests\TestCase;
 
-class EmployeeCreatePendingEditDispatchTest extends TestCase
+class EmployeeCreatePendingEditListGateTest extends TestCase
 {
     #[Test]
     #[DataProvider('pendingEditActionProvider')]
@@ -39,8 +33,8 @@ class EmployeeCreatePendingEditDispatchTest extends TestCase
     public static function pendingEditActionProvider(): array
     {
         return [
-            'missing from list' => [null, 'queue'],
-            'empty status' => ['', 'queue'],
+            'missing from list' => [null, 'skip'],
+            'empty status' => ['', 'skip'],
             'still new' => ['NEW', 'skip'],
             'legacy signed' => ['SIGNED', 'skip'],
             'approved' => ['APPROVED', 'apply'],
@@ -51,7 +45,7 @@ class EmployeeCreatePendingEditDispatchTest extends TestCase
     }
 
     #[Test]
-    public function fetch_remote_request_status_map_indexes_uuid_to_status(): void
+    public function fetch_remote_request_status_map_uses_page_size_max(): void
     {
         $legalEntity = new LegalEntity([
             'edrpou' => '12345678',
@@ -72,7 +66,7 @@ class EmployeeCreatePendingEditDispatchTest extends TestCase
             ->once()
             ->withArgs(function (array $filters, ?int $page): bool {
                 return ($filters['edrpou'] ?? null) === '12345678'
-                    && isset($filters['page_size'])
+                    && ($filters['page_size'] ?? null) === (int) config('ehealth.api.page_size_max', 500)
                     && $page === 1;
             })
             ->andReturn($response);
@@ -102,70 +96,5 @@ class EmployeeCreatePendingEditDispatchTest extends TestCase
         $method = new ReflectionMethod(EmployeeCreate::class, 'fetchRemoteRequestStatusMap');
 
         $this->assertTrue($method->invoke($listener, $legalEntity)->isEmpty());
-    }
-
-    #[Test]
-    public function dispatch_pending_edit_apply_jobs_builds_rate_limited_chain(): void
-    {
-        Bus::fake();
-        $this->withSession([
-            config('ehealth.api.oauth.bearer_token') => 'test-ehealth-token',
-        ]);
-
-        $user = new User();
-        $user->id = 1;
-        $user->email = 'doc@example.com';
-
-        $legalEntity = new LegalEntity();
-        $legalEntity->id = 10;
-        $legalEntity->uuid = (string) Str::uuid();
-
-        $first = new EmployeeRequest([
-            'uuid' => (string) Str::uuid(),
-            'status' => RequestStatus::NEW,
-            'employee_id' => 5,
-        ]);
-        $first->id = 1;
-
-        $second = new EmployeeRequest([
-            'uuid' => (string) Str::uuid(),
-            'status' => RequestStatus::NEW,
-            'employee_id' => 6,
-        ]);
-        $second->id = 2;
-
-        $event = new EHealthUserLogin($user, $legalEntity, (string) Str::uuid(), []);
-
-        $listener = new EmployeeCreate();
-        $method = new ReflectionMethod(EmployeeCreate::class, 'dispatchPendingEditApplyJobs');
-        $method->invoke($listener, collect([$first, $second]), $event);
-
-        Bus::assertBatched(function ($batch) {
-            return $batch->jobs->count() === 1
-                && $batch->jobs->first() instanceof EmployeeRequestPendingApply
-                && $batch->name === EmployeeRequestPendingApply::BATCH_NAME;
-        });
-    }
-
-    #[Test]
-    public function dispatch_pending_edit_apply_jobs_skips_empty_collection(): void
-    {
-        Bus::fake();
-        $this->withSession([
-            config('ehealth.api.oauth.bearer_token') => 'test-ehealth-token',
-        ]);
-
-        $user = new User();
-        $user->id = 1;
-        $legalEntity = new LegalEntity();
-        $legalEntity->id = 10;
-
-        $event = new EHealthUserLogin($user, $legalEntity, (string) Str::uuid(), []);
-
-        $listener = new EmployeeCreate();
-        $method = new ReflectionMethod(EmployeeCreate::class, 'dispatchPendingEditApplyJobs');
-        $method->invoke($listener, collect(), $event);
-
-        Bus::assertNothingBatched();
     }
 }
