@@ -128,6 +128,38 @@
                         this.$watch('modalObservation.categoryCode', () => {
                             this.updateIcfOptions(rawData);
                         });
+                    } else if (dictionaryKey === 'SPECIALITY_TYPE') {
+                        const readEmployeeType = () => this.$wire.form?.employeeType ?? null;
+
+                        const setSpecialityOptions = () => {
+                            const empType = readEmployeeType();
+                            const specDict = (empType && this.$wire.employeeTypeSpecialities?.[empType]) 
+                                ? this.$wire.employeeTypeSpecialities[empType] 
+                                : {};
+
+                            this.options = Object.entries(specDict).map(([value, label]) => this.makeOption(value, label));
+                            this.buildOptionsMap();
+
+                            const selectedOption = this.optionsMap.get(this.selected);
+                            if (selectedOption) {
+                                this.search = `[${selectedOption.code ?? selectedOption.value}] – ${selectedOption.label}`;
+                            } else if (this.selected) {
+                                this.selected = '';
+                                this.search = '';
+                            }
+
+                            this.filterOptions();
+                        };
+
+                        setSpecialityOptions();
+
+                        this.$wire.$watch('form.employeeType', (newType, oldType) => {
+                            setSpecialityOptions();
+                            if (oldType !== undefined && newType !== oldType && !this.optionsMap.has(this.selected)) {
+                                this.selected = '';
+                                this.search = '';
+                            }
+                        });
                     } else if (dictionaryKey === 'custom/services') {
                         const rootPath = modelPath.split('.')[0];
                         const isModalProcedure = rootPath === 'modalProcedure';
@@ -161,6 +193,7 @@
                             if (selectedOption) {
                                 this.search = `[${selectedOption.code ?? selectedOption.value}] - ${selectedOption.label}`;
                             } else if (this.selected) {
+                                this.selected = '';
                                 this.search = '';
                             }
 
