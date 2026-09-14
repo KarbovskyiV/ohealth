@@ -36,13 +36,19 @@ class EnsureSingleSession
             return $next($request);
         }
 
+        $logout = new Logout();
+
+        // The binding was released by a logout or an inactivity timeout that a concurrent request has already reported,
+        // so this request only has to finish that logout instead of reporting a security termination
+        if ($user->sessionId === null) {
+            return $logout();
+        }
+
         Log::warning('Session is no longer bound to the user it was issued to, terminating it', [
             'user_id' => $user->id,
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent()
         ]);
-
-        $logout = new Logout();
 
         return $logout()->with('error', __('auth.session_terminated'));
     }
