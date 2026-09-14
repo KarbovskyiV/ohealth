@@ -73,7 +73,8 @@ class EncounterForm extends BaseForm
             'encounter.diagnoses' => [
                 'required_unless:encounter.typeCode,intervention',
                 'array',
-                new OnlyOnePrimaryDiagnosis($this->encounter['classCode'] ?? null, $conditions)
+                new OnlyOnePrimaryDiagnosis($this->encounter['classCode'] ?? null, $conditions),
+                $this->diagnosisCodeInSingleRole($conditions)
             ],
             'encounter.diagnoses.*.roleCode' => [
                 // The conditions live in their own form, so this cannot lean on required_with
@@ -211,6 +212,37 @@ class EncounterForm extends BaseForm
             config('ehealth.legal_entity_episode_types')[legalEntity()->type->name],
             config('ehealth.employee_episode_types')[Auth::user()->getEncounterWriterEmployee()->employeeType]
         ));
+    }
+
+    /**
+     * The same condition code cannot be used as primary, comorbidity and complication diagnoses at once.
+     *
+     * @param  array  $conditions  Conditions of the package, indexed the same way as the diagnoses
+     * @return Closure
+     */
+    private function diagnosisCodeInSingleRole(array $conditions): Closure
+    {
+        return static function (string $attribute, mixed $value, Closure $fail) use ($conditions): void {
+            $rolesByCode = [];
+
+            foreach ((array) $value as $index => $diagnosis) {
+                $roleCode = $diagnosis['roleCode'] ?? '';
+                $codeCode = $conditions[$index]['codeCode'] ?? '';
+
+                if ($codeCode === '' || !in_array($roleCode, ['primary', 'comorbidity', 'complication'], true)) {
+                    continue;
+                }
+
+                $code = ($conditions[$index]['codeSystem'] ?? '') . ':' . $codeCode;
+                $rolesByCode[$code][$roleCode] = true;
+
+                if (count($rolesByCode[$code]) > 1) {
+                    $fail(__('conditions.validation.diagnosis_code_in_several_roles', ['code' => $codeCode]));
+
+                    return;
+                }
+            }
+        };
     }
 
     /**

@@ -1053,17 +1053,23 @@
                                     }
                                 }
 
-                                // TODO: decide to keep or not
-                                // const newConditionCode = modalCondition.codeCode;
-                                // const matchingCodesCount = conditions.filter((c, index) => {
-                                //     if (newCondition === false && index === item) return false;
-                                //     return c.codeCode === newConditionCode;
-                                // }).length;
-                                //
-                                // if (matchingCodesCount >= 1) {
-                                //     showDuplicateCodeWarning = true;
-                                //     return;
-                                // }
+                                const exclusiveRoleCodes = ['primary', 'comorbidity', 'complication'];
+
+                                const isCodeUsedInAnotherRole =
+                                    exclusiveRoleCodes.includes(modalDiagnosis.roleCode) &&
+                                    conditions.some(
+                                        (condition, index) =>
+                                            ! (newCondition === false && index === item) &&
+                                            condition.codeSystem === modalCondition.codeSystem &&
+                                            condition.codeCode === modalCondition.codeCode &&
+                                            exclusiveRoleCodes.includes(diagnoses[index]?.roleCode) &&
+                                            diagnoses[index].roleCode !== modalDiagnosis.roleCode,
+                                    );
+
+                                if (isCodeUsedInAnotherRole) {
+                                    showDuplicateCodeWarning = true;
+                                    return;
+                                }
 
                                 const condition = JSON.parse(JSON.stringify(modalCondition));
                                 const diagnosis = JSON.parse(JSON.stringify(modalDiagnosis));
@@ -1108,7 +1114,10 @@
                         <p class="text-error">{!! __('conditions.new_primary_diagnose') !!}</p>
                     </template>
                     <template x-if="showDuplicateCodeWarning">
-                        <p class="text-error">{!! __('patients.duplicate_code_warning') !!}</p>
+                        <p
+                            class="text-error"
+                            x-text="'{{ __('conditions.validation.diagnosis_code_in_several_roles') }}'.replace(':code', modalCondition.codeCode)"
+                        ></p>
                     </template>
                 </div>
             </form>
