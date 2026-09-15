@@ -870,6 +870,5 @@ return [
         'С07AB02', 'C09АА02', 'С09АА02', 'N04BA02', 'A10AD06', 'N06AB05', 'N02CC01', 'J05AB14', 'N03AA02', 'C09DB04',
         'N03AX14', 'R03BB04', 'C01DA08', 'A10BB01', 'А10ВВ01', 'N07AA02', 'H02AB09', 'C03CA01', 'С03СА01', 'N04AA02',
         'C07AB03', 'A03FA01', 'L02BA01', 'L02BG06', 'L02BG04', 'A10AD05',
-    ],
-    'show_connection_button' => env('EHEALTH_MIS_CONNECTION_SHOW', false),
+    ]
 ];

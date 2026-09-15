@@ -261,7 +261,7 @@
                     {{ __('legal-entity-connection.btn_back') }}
                 </button>
 
-                @can('updateConnection', $connection)
+                @can('update', $connection)
                     <button
                         type="button"
                         @click="isCallbackUpdated = true"

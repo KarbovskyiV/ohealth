@@ -97,18 +97,17 @@
             @endif
 
             @if (legalEntity() && Auth::user()->cannot('limitedAction', LegalEntity::class))
-                @if(config('ehealth.show_connection_button'))
-                    @can('viewAny', Connection::class)
-                        <li>
-                            <a href="{{ route('connection.index', [legalEntity()]) }}"
-                            class="menu-item-simple {{ request()->routeIs('legal-entity-connection.*') ? 'menu-item-active' : '' }}"
-                            >
-                                @icon('connection-two-way')
-                                <span>{{ __('Зв\'язки МІС та СГуСОЗ') }}</span>
-                            </a>
-                        </li>
-                    @endcan
-                @endif
+                @can('viewAny', Connection::class)
+                    <li>
+                        <a href="{{ route('connection.index', [legalEntity()]) }}"
+                        class="menu-item-simple {{ request()->routeIs('legal-entity-connection.*') ? 'menu-item-active' : '' }}"
+                        >
+                            @icon('connection-two-way')
+                            <span>{{ __('Зв\'язки МІС та СГуСОЗ') }}</span>
+                        </a>
+                    </li>
+                @endcan
+
                 @can('viewAny', Division::class)
                     <li>
                         <a href="{{ route('division.index', [legalEntity()]) }}" class="menu-item-simple {{ request()->routeIs('division.*') ? 'menu-item-active' : '' }}">

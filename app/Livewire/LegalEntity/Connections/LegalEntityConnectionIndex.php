@@ -6,15 +6,19 @@ namespace App\Livewire\LegalEntity\Connections;
 use Throwable;
 use Exception;
 use App\Models\User;
+use App\Core\Arr;
 use App\Enums\JobStatus;
 use Illuminate\Bus\Batch;
 use App\Models\Connection;
 use App\Models\LegalEntity;
 use App\Jobs\ConnectionSync;
+use Livewire\WithFileUploads;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\Repository;
 use Livewire\Attributes\Computed;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -25,14 +29,33 @@ use App\Traits\BatchLegalEntityQueries;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
+use App\Livewire\LegalEntity\Connections\Form\ConnectionForm;
 
 class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
 {
-    use BatchLegalEntityQueries;
+    use BatchLegalEntityQueries,
+        WithFileUploads;
+
+    /**
+     * @var object|null
+     */
+    public ?object $file = null;
 
     public const string BATCH_NAME = 'ConnectionSync';
 
     public const string BATCH_SUBNAME = 'ConnectionClientSync';
+
+    public bool $showSignatureModal = false;
+
+    public string $clientUuid = '';
+
+    public ConnectionForm $form;
+
+    #[Locked]
+    public array $dataToSign = [
+        'client_id' => '',
+        'redirect_uri' => ''
+    ];
 
     /**
      * Retrieves paginated connections for the current legal entity.
@@ -60,6 +83,110 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
         );
     }
 
+    public function create(string $clientUuid): void
+    {
+        if (Auth::user()->cannot('create', Connection::class)) {
+            session()->flash('error', __('legal-entity-connection.policy.restrict.create'));
+
+            return;
+        }
+
+        $this->dataToSign = [
+            'client_id' => $clientUuid,
+            'redirect_uri' => config('ehealth.api.connection_redirect_uri')
+        ];
+
+        $this->showSignatureModal = true;
+    }
+
+    public function sign()
+    {
+        $this->form->validate($this->form->rulesForSign());
+
+        try {
+            $signedData = signatureService()->signData(
+                $this->dataToSign,
+                $this->form->password,
+                $this->form->knedp,
+                $this->form->keyContainerUpload,
+                Auth::user()->party->tax_id
+            );
+        } catch (Throwable $err) {
+            Log::error('Failed to sign connection data.', ['exception' => $err]);
+            session()->flash('error', $err->getMessage());
+
+            return;
+        }
+
+        // Handle errors from encrypted data
+        if (isset($signedData['errors'])) {
+            $this->dispatchErrorMessage($signedData['errors']);
+
+            Log::channel('e_health_errors')->error(self::class . ':createConnection', ['error' => $signedData['errors']]);
+
+            session()->flash('error', __('forms.signature_validation_error'));
+
+            return;
+        }
+
+        $this->showSignatureModal = false;
+
+        try {
+            $response = EHealth::connection()->createConnection($signedData);
+
+            $connectionData = $response->validate();
+        } catch (EHealthResponseException $err) {
+            $code = $err->getCode();
+            $errorMessage = $err->getDetails()['error']['message'] ?? ($err->getMessage() ?? __('errors.ehealth.messages.server_error'));
+
+            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $errorMessage]);
+
+            $code === 409
+                ? session()->flash('error', __('legal-entity-connection.sync.error.already_exist'))
+                : session()->flash('error', $errorMessage);
+
+            return;
+        } catch (EHealthValidationException $err) {
+            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $err->getDetails()]);
+
+            session()->flash('error', __('errors.ehealth.messages.validation_error'));
+
+            return;
+        }
+
+        if (!Repository::legalEntity()->syncConnections([$connectionData], $this->legalEntity)) {
+            return;
+        }
+
+        $connection = Connection::whereUuid($connectionData['uuid'])->first();
+
+        try {
+            DB::transaction(function () use ($connectionData, $connection) {
+                Repository::legalEntity()->updateLegalEntitySecret($connection->legalEntity, $connectionData['secret']);
+            });
+        } catch (Throwable $err) {
+            Log::error('Connection creation: cannot update client secret for Legal Entity: ', ['legalEntity' => $connection->legalEntity->id]);
+
+            session()->flash('success', 'Зв\'язок успішно встановлений!');
+
+            return;
+        }
+
+        // This (all below) should be done accordingly TZ (3.31.2.3)
+        $connectionsData = $this->getClientConnections();
+
+        if (!$connectionsData) {
+            return;
+        }
+
+        // If connection was successful, the connection uuid should exist in the eHealth system.
+        $isSuccessfulConnect = in_array($connection->uuid, array_column($connectionsData['responseData'], 'uuid'), true);
+
+        return $isSuccessfulConnect
+           ? redirect()->route('connection.show', [$this->legalEntity ?? legalEntity(), $connection->id])->with('success', __('legal-entity-connection.connection_established'))
+           : redirect()->route('connection.show', [$this->legalEntity ?? legalEntity(), $connection->id])->with('error', __('legal-entity-connection.connection_error'));
+    }
+
     /**
      * Synchronize all the Connections with stored ones on the eHealths side
      *
@@ -72,36 +199,22 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
         $user = Auth::user();
 
         if ($user->cannot('sync', Connection::class)) {
-            Session::flash('error', __('legal-entity.policy.deny.sync'));
+            Session::flash('error', __('legal-entity-connection.policy.restrict.sync'));
 
             return;
         }
 
         $token = Session::get(config('ehealth.api.oauth.bearer_token'));
 
-        $syncQuery = [
-            'page' => 1,
-            'page_size' => config('ehealth.api.page_size_le_connections_max')
-        ];
+        $connections = $this->getClientConnections();
 
-        try {
-            $response = EHealth::connection()->getClientConnections(clientId: $this->legalEntity->uuid, query: $syncQuery);
-
-            $connections = $response->validate();
-        } catch (EHealthResponseException $err) {
-            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $err->getDetails()]);
-            session()->flash('error', __('errors.ehealth.messages.server_error'));
-
-            return;
-        } catch (EHealthValidationException $err) {
-            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $err->getDetails()]);
-
-            session()->flash('error', __('errors.ehealth.messages.validation_error'));
-
+        if (!$connections) {
             return;
         }
 
-        if (!Repository::legalEntity()->syncConnections($connections, $this->legalEntity)) {
+        $response = $connections['response'];
+
+        if (!Repository::legalEntity()->syncConnections($connections['responseData'], $this->legalEntity)) {
             return;
         }
 
@@ -132,8 +245,8 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
             $this->legalEntity->setEntityStatus(JobStatus::PROCESSING);
         } else {
             // Client synchronization
-            if (count($connections) === 1) {
-                $clientUuid = $connections[0]['client_uuid'] ?? null;
+            if (count($connections['responseData']) === 1) {
+                $clientUuid = Arr::get($connections, 'responseData.0.client_uuid', null);
 
                 if (!$this->syncSingleClient($clientUuid)) {
                     return;
