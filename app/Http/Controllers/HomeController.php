@@ -80,8 +80,10 @@ class HomeController extends Controller
             }
         }
 
+        $uri = config('ehealth.api.connection_redirect_uri');
+
         // 3. Ultimate Fallback
         // If no scopes matched, redirect to external dashboard.
-        return redirect()->away('https://openhealths.com/dashboard');
+        return redirect()->away("{$uri}/dashboard");
     }
 }

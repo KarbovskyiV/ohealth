@@ -85,9 +85,11 @@ class Request
                 'isToken' => $this->isToken
             ];
 
+            $uri = config('ehealth.api.connection_redirect_uri');
+
             $response = Http::acceptJson()
                 ->timeout(EHealthRequest::TIMEOUT)
-                ->post('https://openhealths.com/api/v1/send-request', $data);
+                ->post("{$uri}/api/v1/send-request", $data);
         } else {
             $response = Http::acceptJson()
                 ->timeout(EHealthRequest::TIMEOUT)
