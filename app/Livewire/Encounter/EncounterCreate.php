@@ -129,7 +129,6 @@ class EncounterCreate extends EncounterComponent
      */
     public function save(): void
     {
-        dd($this->immunizationForm);
         if (Auth::user()->cannot('create', Encounter::class)) {
             Session::flash('error', __('encounters.policy.create'));
 

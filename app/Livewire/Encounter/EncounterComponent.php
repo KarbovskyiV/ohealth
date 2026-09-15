@@ -42,7 +42,7 @@ use App\Repositories\Repository;
 use App\Repositories\MedicalEvents\Repository as MedicalEventsRepository;
 use App\Services\MedicalEvents\Fhir;
 use App\Services\Dictionary\Mappers\ImmunizationDictionaryMapper;
-use App\Services\MedData\VaccineLotService;
+use App\Services\MedData\MedData;
 use App\Traits\FormTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -450,7 +450,7 @@ class EncounterComponent extends Component
 
         $this->loadVaccineOptions();
 
-        $this->vaccineLots = app(VaccineLotService::class)->getLots();
+        $this->vaccineLots = MedData::vaccineLot()->getLots();
 
         $this->dictionaries['eHealth/ICD10_AM/condition_codes'] = $icd10Cache;
 

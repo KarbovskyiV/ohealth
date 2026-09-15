@@ -11,7 +11,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
 
-final class VaccineLotService
+final class VaccineLot
 {
     private const string CACHE_KEY = 'meddata.vaccine_lots';
 

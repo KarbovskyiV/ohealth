@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Services\MedData\VaccineLotService;
+use App\Services\MedData\VaccineLot;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -22,10 +22,10 @@ class VaccineLotSync implements ShouldQueue
     /**
      * Refresh cached vaccine lots from MedData; on failure the previously cached lots stay available.
      *
-     * @param  VaccineLotService  $vaccineLotService
+     * @param  VaccineLot  $vaccineLotService
      * @return void
      */
-    public function handle(VaccineLotService $vaccineLotService): void
+    public function handle(VaccineLot $vaccineLotService): void
     {
         try {
             $vaccineLotService->sync();
