@@ -666,6 +666,12 @@ class PatientSummary extends BasePatientComponent
         }
     }
 
+    public function syncAssociatedDevices(): void {}
+    public function syncDeviceAssociations(): void {}
+    public function syncDeviceIssues(): void {}
+    public function syncDeviceDispenses(): void {}
+    public function syncSpecimens(): void {}
+
     public function syncDevices(): void
     {
         if ($this->cannotStartSync(self::ENTITY_TYPE_DEVICE)) {

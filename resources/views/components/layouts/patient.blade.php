@@ -95,14 +95,14 @@
 
                         <a
                             href="{{ route("$routePrefix.immunizations", [legalEntity(), $routeParamKey => $recordId]) }}"
-                            class="summary-tab {{ request()->routeIs("$routePrefix.immunization") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                            class="summary-tab {{ request()->routeIs("$routePrefix.immunizations") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                         >
                             {{ __('immunizations.plural') }}
                         </a>
 
                         <a
                             href="{{ route("$routePrefix.conditions", [legalEntity(), $routeParamKey => $recordId]) }}"
-                            class="summary-tab {{ request()->routeIs("$routePrefix.condition") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                            class="summary-tab {{ request()->routeIs("$routePrefix.conditions") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                         >
                             {{ __('conditions.plural') }}
                         </a>
@@ -227,6 +227,13 @@
                             class="summary-tab {{ request()->routeIs("$routePrefix.prescription-requests") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
                         >
                             {{ __('patients.prescription_requests') }}
+                        </a>
+
+                        <a
+                            href="{{ route("$routePrefix.specimens", [legalEntity(), $routeParamKey => $recordId]) }}"
+                            class="summary-tab {{ request()->routeIs("$routePrefix.specimens") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                        >
+                            {{ __('specimens.sidebar_title') }}
                         </a>
 
                         <div class="flex-1"></div>
