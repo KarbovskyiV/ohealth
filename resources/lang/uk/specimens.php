@@ -62,4 +62,8 @@ return [
     'add_container' => '+ Додати контейнер',
     'cancel' => 'Скасувати',
     'add_specimen_btn' => 'Додати зразок',
+    'collection_date_range' => 'Дата забору від - до',
+    'created_by_employee' => 'Працівник, що створив',
+    'container_id' => 'ID контейнера',
+    'group_actions' => 'Групові дії',
 ];

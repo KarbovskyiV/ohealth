@@ -74,7 +74,12 @@
                 ['id' => 'procedures', 'action' => 'getProcedures', 'syncAction' => 'syncProcedures', 'label' => __('procedures.plural'), 'icon' => 'settings', 'syncEntity' => ''],
                 ['id' => 'allergies', 'action' => 'syncAllergyIntolerances', 'syncAction' => 'syncAllergyIntolerances', 'label' => __('patients.allergies'), 'icon' => 'alert', 'syncEntity' => ''],
                 ['id' => 'risk_assessments', 'action' => 'syncRiskAssessments', 'syncAction' => 'syncRiskAssessments', 'label' => __('patients.risk_assessments'), 'icon' => 'alert-octagon', 'syncEntity' => ''],
-                ['id' => 'devices', 'action' => 'getDevices', 'syncAction' => 'syncDevices', 'label' => __('devices.plural'), 'icon' => 'equipment', 'syncEntity' => PatientSummary::ENTITY_TYPE_DEVICE],
+                ['id' => 'devices', 'action' => 'getDevices', 'syncAction' => 'syncDevices', 'label' => __('devices.plural'), 'icon' => 'monitor', 'syncEntity' => PatientSummary::ENTITY_TYPE_DEVICE],
+                ['id' => 'associatedDevices', 'action' => 'syncAssociatedDevices', 'syncAction' => 'syncAssociatedDevices', 'label' => __('patients.associated_devices'), 'icon' => 'equipment', 'syncEntity' => ''],
+                ['id' => 'deviceAssociations', 'action' => 'syncDeviceAssociations', 'syncAction' => 'syncDeviceAssociations', 'label' => __('patients.device_associations'), 'icon' => 'boxicons-plug-connect-filled', 'syncEntity' => ''],
+                ['id' => 'deviceIssues', 'action' => 'syncDeviceIssues', 'syncAction' => 'syncDeviceIssues', 'label' => __('patients.device_issues'), 'icon' => 'alert-octagon', 'syncEntity' => ''],
+                ['id' => 'deviceDispenses', 'action' => 'syncDeviceDispenses', 'syncAction' => 'syncDeviceDispenses', 'label' => __('patients.device_dispenses'), 'icon' => 'solid-notes-medical', 'syncEntity' => ''],
+                ['id' => 'specimens', 'action' => 'syncSpecimens', 'syncAction' => 'syncSpecimens', 'label' => __('patients.specimens'), 'icon' => 'sample-outline', 'syncEntity' => ''],
                 ['id' => 'medicines', 'action' => 'syncMedicationStatements', 'syncAction' => 'syncMedicationStatements', 'label' => __('patients.medicines'), 'icon' => 'pill-outline', 'syncEntity' => ''],
             ];
         @endphp

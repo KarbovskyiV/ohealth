@@ -228,6 +228,11 @@ return [
     'allergies' => 'Алергії',
     'risk_assessments' => 'Оцінки ризиків',
     'medicines' => 'Відомості про ліки',
+    'associated_devices' => 'Асоційовані медичні вироби',
+    'device_associations' => 'Зв\'язки медичних виробів з пацієнтом',
+    'device_issues' => 'Виявлені проблеми медичних виробів',
+    'device_dispenses' => 'Видачі медичних виробів',
+    'specimens' => 'Зразок біологічного матеріалу',
 
     // Diagnoses record
     'diagnoses_search' => 'Пошук діагнозів',
