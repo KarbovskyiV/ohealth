@@ -63,15 +63,10 @@ class EmployeeCreatePendingEditListGateTest extends TestCase
             'status' => RequestStatus::NEW,
             'employee_id' => 55,
         ]);
-        $pendingEdit->id = 1;
 
         $listener = new EmployeeCreate();
-        $pendingMethod = new ReflectionMethod(EmployeeCreate::class, 'pendingEditRequests');
         $skipMethod = new ReflectionMethod(EmployeeCreate::class, 'shouldSkipPendingEditOnLogin');
 
-        $pending = $pendingMethod->invoke($listener, collect([$pendingEdit]));
-
-        $this->assertCount(1, $pending);
         $this->assertTrue($skipMethod->invoke($listener, $pendingEdit));
     }
 }

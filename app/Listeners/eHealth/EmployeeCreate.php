@@ -20,7 +20,6 @@ use App\Repositories\Repository;
 use App\Models\Employee\Employee;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Session;
 use App\Enums\Employee\RequestStatus;
 use App\Enums\Employee\RevisionStatus;
 use App\Models\Employee\EmployeeRequest;
@@ -138,9 +137,8 @@ class EmployeeCreate
         // confirmation, so matching remote employees is not proof that EmployeeRequest is APPROVED.
         // Do not call EmployeeRequest APIs here — some roles lack employee_request:read (403).
         // Apply after confirmation via EmployeeRequestActualize / manual sync under a scoped role.
-        if ($this->pendingEditRequests($employeeRequests)->isNotEmpty()) {
-            Session::flash('warning', __('employees.sync.pending_edit_needs_specialist'));
-        }
+        // No Session::flash here: login lands on dashboard FlashMessage (success/error only), and
+        // flashing from listeners is not a reliable UX channel in this app.
 
         $matched = 0;
 
@@ -294,22 +292,6 @@ class EmployeeCreate
             ->map(fn (EmployeeRequest $request) => data_get($request->revision?->data, 'party.tax_id'))
             ->filter(fn ($taxId) => is_string($taxId) && $taxId !== '')
             ->unique()
-            ->values();
-    }
-
-    /**
-     * Local pending edits: submitted to eHealth (uuid) and linked to an existing employee.
-     *
-     * @param  Collection<int, EmployeeRequest>  $employeeRequests
-     * @return Collection<int, EmployeeRequest>
-     */
-    private function pendingEditRequests(Collection $employeeRequests): Collection
-    {
-        return $employeeRequests
-            ->filter(
-                static fn (EmployeeRequest $request): bool => $request->isPendingEhealth()
-                    && filled($request->employeeId)
-            )
             ->values();
     }
 
