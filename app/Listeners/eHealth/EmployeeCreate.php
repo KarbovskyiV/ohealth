@@ -20,6 +20,7 @@ use App\Repositories\Repository;
 use App\Models\Employee\Employee;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use App\Enums\Employee\RequestStatus;
 use App\Enums\Employee\RevisionStatus;
 use App\Models\Employee\EmployeeRequest;
@@ -134,8 +135,12 @@ class EmployeeCreate
             return;
         }
 
-        // One list call: uuid → remote status. Missing uuids stay pending until later sync.
-        $remoteRequestStatuses = $this->fetchRemoteRequestStatusMap($event->legalEntity);
+        // One list call only when we can read employee requests and have pending edits to gate.
+        $remoteRequestStatuses = $this->resolveRemoteRequestStatusesForLogin(
+            $user,
+            $employeeRequests,
+            $event->legalEntity
+        );
 
         $matched = 0;
 
@@ -329,6 +334,50 @@ class EmployeeCreate
     }
 
     /**
+     * Load EmployeeRequest list statuses when needed for pending-edit gating.
+     * Without employee_request:read we must not call the list API (would 403);
+     * pending edits stay skipped until a scoped user runs sync.
+     *
+     * @param  Collection<int, EmployeeRequest>  $employeeRequests
+     * @return Collection<string, string> uuid => remote status
+     */
+    private function resolveRemoteRequestStatusesForLogin(
+        User $user,
+        Collection $employeeRequests,
+        LegalEntity $legalEntity
+    ): Collection {
+        $hasPendingEdits = $employeeRequests->contains(
+            static fn (EmployeeRequest $request): bool => $request->status !== RequestStatus::APPROVED
+                && $request->isPendingEhealth()
+                && filled($request->employeeId)
+        );
+
+        if (!$hasPendingEdits) {
+            return collect();
+        }
+
+        if (!$user->can('employee_request:read')) {
+            Session::flash('warning', __('employees.sync.pending_edit_needs_specialist'));
+
+            Log::info('[EmployeeCreate] Pending edits exist but user lacks employee_request:read; skip list + apply.', [
+                'user_id' => $user->id,
+                'legal_entity_id' => $legalEntity->id,
+                'pending_edit_ids' => $employeeRequests
+                    ->filter(
+                        static fn (EmployeeRequest $request): bool => $request->isPendingEhealth()
+                            && filled($request->employeeId)
+                    )
+                    ->pluck('id')
+                    ->all(),
+            ]);
+
+            return collect();
+        }
+
+        return $this->fetchRemoteRequestStatusMap($legalEntity);
+    }
+
+    /**
      * One EmployeeRequest list page (page_size_max). Fresh approvals tend to appear first.
      * Absence from the map means "unknown" — skip apply on login; later sync can pick it up.
      *
@@ -379,17 +428,13 @@ class EmployeeCreate
 
     /**
      * Decide how to handle a pending edit given an optional status from the list page.
-     * Login never queues jobs — missing/unknown statuses are skipped until later sync.
+     * Login never queues jobs — missing/unknown/pending statuses are skipped until later sync.
      *
      * @return 'apply'|'skip'|'reject'|'expire'
      */
     private function resolvePendingEditAction(?string $remoteStatus): string
     {
         if ($remoteStatus === null || $remoteStatus === '') {
-            return 'skip';
-        }
-
-        if (EmployeeRequestMatcher::isRemoteStillPending($remoteStatus)) {
             return 'skip';
         }
 
@@ -405,6 +450,7 @@ class EmployeeCreate
             return 'apply';
         }
 
+        // NEW, SIGNED, and anything unexpected — wait for later sync.
         return 'skip';
     }
 
