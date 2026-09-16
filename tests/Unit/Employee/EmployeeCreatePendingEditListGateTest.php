@@ -22,36 +22,37 @@ use Tests\TestCase;
 class EmployeeCreatePendingEditListGateTest extends TestCase
 {
     #[Test]
-    #[DataProvider('pendingEditActionProvider')]
-    public function resolve_pending_edit_action_matches_list_status(?string $remoteStatus, string $expected): void
+    #[DataProvider('requiresRevisionUpdateProvider')]
+    public function requires_revision_update_matches_remote_status(?string $remoteStatus, false|string $expected): void
     {
         $listener = new EmployeeCreate();
-        $method = new ReflectionMethod(EmployeeCreate::class, 'resolvePendingEditAction');
+        $method = new ReflectionMethod(EmployeeCreate::class, 'requiresRevisionUpdate');
 
         $this->assertSame($expected, $method->invoke($listener, $remoteStatus));
     }
 
     /**
-     * @return array<string, array{0: ?string, 1: string}>
+     * @return array<string, array{0: ?string, 1: false|string}>
      */
-    public static function pendingEditActionProvider(): array
+    public static function requiresRevisionUpdateProvider(): array
     {
         return [
-            'missing from list' => [null, 'skip'],
-            'empty status' => ['', 'skip'],
-            'still new' => ['NEW', 'skip'],
-            'legacy signed' => ['SIGNED', 'skip'],
-            'approved' => ['APPROVED', 'apply'],
-            'rejected' => ['REJECTED', 'reject'],
-            'expired' => ['EXPIRED', 'expire'],
-            'unknown' => ['SOMETHING_ELSE', 'skip'],
+            'missing' => [null, false],
+            'empty' => ['', false],
+            'still new' => ['NEW', false],
+            'legacy signed' => ['SIGNED', false],
+            'approved' => ['APPROVED', 'APPROVED'],
+            'rejected' => ['REJECTED', 'REJECTED'],
+            'expired' => ['EXPIRED', 'EXPIRED'],
+            'unknown' => ['SOMETHING_ELSE', false],
         ];
     }
 
     #[Test]
-    public function resolve_statuses_skips_list_and_flashes_when_user_lacks_scope(): void
+    public function resolve_statuses_skips_api_and_flashes_when_user_lacks_scope(): void
     {
         $api = Mockery::mock(EmployeeRequestApi::class);
+        $api->shouldNotReceive('getDetails');
         $api->shouldNotReceive('getMany');
         $this->instance(EmployeeRequestApi::class, $api);
 
@@ -81,17 +82,19 @@ class EmployeeCreatePendingEditListGateTest extends TestCase
     }
 
     #[Test]
-    public function resolve_statuses_fetches_list_when_user_has_scope_and_pending_edits(): void
+    public function resolve_statuses_fetches_by_id_when_user_has_scope_and_pending_edits(): void
     {
         $uuid = (string) Str::uuid();
 
         $response = Mockery::mock(EHealthResponse::class);
         $response->shouldReceive('validate')->once()->andReturn([
-            ['uuid' => $uuid, 'status' => 'APPROVED'],
+            'uuid' => $uuid,
+            'status' => 'APPROVED',
         ]);
 
         $api = Mockery::mock(EmployeeRequestApi::class);
-        $api->shouldReceive('getMany')->once()->andReturn($response);
+        $api->shouldReceive('getDetails')->once()->with($uuid)->andReturn($response);
+        $api->shouldNotReceive('getMany');
         $this->instance(EmployeeRequestApi::class, $api);
 
         $user = Mockery::mock(User::class)->makePartial();
@@ -117,56 +120,24 @@ class EmployeeCreatePendingEditListGateTest extends TestCase
     }
 
     #[Test]
-    public function fetch_remote_request_status_map_uses_page_size_max(): void
+    public function fetch_remote_statuses_skips_failed_get_details(): void
     {
-        $legalEntity = new LegalEntity([
-            'edrpou' => '12345678',
-        ]);
-        $legalEntity->id = 10;
-
-        $firstUuid = (string) Str::uuid();
-        $secondUuid = (string) Str::uuid();
-
-        $response = Mockery::mock(EHealthResponse::class);
-        $response->shouldReceive('validate')->once()->andReturn([
-            ['uuid' => $firstUuid, 'status' => 'APPROVED'],
-            ['uuid' => $secondUuid, 'status' => 'NEW'],
-        ]);
+        $uuid = (string) Str::uuid();
 
         $api = Mockery::mock(EmployeeRequestApi::class);
-        $api->shouldReceive('getMany')
-            ->once()
-            ->withArgs(function (array $filters, ?int $page): bool {
-                return ($filters['edrpou'] ?? null) === '12345678'
-                    && ($filters['page_size'] ?? null) === (int) config('ehealth.api.page_size_max', 500)
-                    && $page === 1;
-            })
-            ->andReturn($response);
+        $api->shouldReceive('getDetails')->once()->with($uuid)->andThrow(new \RuntimeException('eHealth down'));
         $this->instance(EmployeeRequestApi::class, $api);
 
-        $listener = new EmployeeCreate();
-        $method = new ReflectionMethod(EmployeeCreate::class, 'fetchRemoteRequestStatusMap');
-        $map = $method->invoke($listener, $legalEntity);
-
-        $this->assertSame([
-            $firstUuid => 'APPROVED',
-            $secondUuid => 'NEW',
-        ], $map->all());
-    }
-
-    #[Test]
-    public function fetch_remote_request_status_map_returns_empty_on_api_failure(): void
-    {
-        $legalEntity = new LegalEntity(['edrpou' => '12345678']);
-        $legalEntity->id = 10;
-
-        $api = Mockery::mock(EmployeeRequestApi::class);
-        $api->shouldReceive('getMany')->once()->andThrow(new \RuntimeException('eHealth down'));
-        $this->instance(EmployeeRequestApi::class, $api);
+        $pendingEdit = new EmployeeRequest([
+            'uuid' => $uuid,
+            'status' => RequestStatus::NEW,
+            'employee_id' => 55,
+        ]);
+        $pendingEdit->id = 1;
 
         $listener = new EmployeeCreate();
-        $method = new ReflectionMethod(EmployeeCreate::class, 'fetchRemoteRequestStatusMap');
+        $method = new ReflectionMethod(EmployeeCreate::class, 'fetchRemoteStatusesByRequestIds');
 
-        $this->assertTrue($method->invoke($listener, $legalEntity)->isEmpty());
+        $this->assertTrue($method->invoke($listener, collect([$pendingEdit]))->isEmpty());
     }
 }

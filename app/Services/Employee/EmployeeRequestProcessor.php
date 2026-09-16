@@ -81,6 +81,7 @@ class EmployeeRequestProcessor
 
         // Never apply revision data while the eHealth request is still awaiting email confirmation.
         // An APPROVED Employee may already exist (edit flow) — that must not count as request approval.
+        // NEW/SIGNED return here only — the APPROVED check below is not reached for pending statuses.
         if (EmployeeRequestMatcher::isRemoteStillPending($remoteStatus)) {
             return [
                 'outcome' => self::OUTCOME_PENDING,
@@ -88,7 +89,7 @@ class EmployeeRequestProcessor
             ];
         }
 
-        if ($remoteStatus !== 'APPROVED') {
+        if ($remoteStatus !== LocalStatus::APPROVED->value) {
             return [
                 'outcome' => self::OUTCOME_FAILED,
                 'message' => __('employees.sync.employee_request_status_updated', ['status' => (string) $remoteStatus]),
