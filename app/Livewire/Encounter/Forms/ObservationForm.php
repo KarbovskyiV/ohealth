@@ -175,6 +175,13 @@ class ObservationForm extends Form
                     }
                 }
             ],
+            'observations.*.specimenId' => [
+                'nullable',
+                'uuid',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $this->component->specimenForm->validateReference($value, $fail);
+                }
+            ],
             'observations.*.methodCode' => [
                 'nullable',
                 'string',

@@ -96,6 +96,25 @@
             this.modalDiagnosticReport.usedReferences.splice(index, 1);
         },
 
+        specimenOptions() {
+            const specimenTypes = $wire.dictionaries['specimen_types'] ?? {};
+            const packageSpecimens = $wire.specimenForm.specimens.map((specimen) => ({
+                uuid: specimen.uuid,
+                name: [
+                    specimenTypes[specimen.typeCode],
+                    specimen.collectedDate ? `{{ __('specimens.collected_at') }}: ${specimen.collectedDate} ${specimen.collectedTime}` : ''
+                ].filter(Boolean).join(', ')
+            }));
+            const packageSpecimenIds = packageSpecimens.map((specimen) => specimen.uuid);
+
+            return [
+                ...packageSpecimens,
+                ...$wire.patientSpecimens
+                    .filter((specimen) => specimen.status === 'available' && ! packageSpecimenIds.includes(specimen.uuid))
+                    .map((specimen) => ({ uuid: specimen.uuid, name: specimenTypes[specimen.typeCode] || specimen.uuid }))
+            ];
+        },
+
         setEffectiveType(type) {
             const now = new Date();
 
@@ -405,6 +424,8 @@
                                     return;
                                 }
 
+                                modalDiagnosticReport.specimenIds = modalDiagnosticReport.specimenIds.filter(Boolean);
+
                                 newDiagnosticReport !== false
                                     ? diagnosticReports.push(modalDiagnosticReport)
                                     : (diagnosticReports[item] = modalDiagnosticReport);
@@ -462,6 +483,7 @@
             this.effectiveDate = '';
             this.effectiveTime = '';
             this.usedReferences = [];
+            this.specimenIds = [];
             this.resultsInterpreterEmployeeId = '';
             this.issuedDate = toFormattedDate(now);
             this.issuedTime = now.toLocaleTimeString('uk-UA', timeOptions);

@@ -521,6 +521,10 @@ return [
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20215136310/DRAFT+Config+params+Diagnostic+Report+ENT-021
     'diagnostic_report_max_days_passed' => 90,
 
+    // Config params Specimen
+    'specimen_max_days_passed' => 14,
+    'specimen_duration_allowed_codes' => ['s', 'min', 'h', 'day', 'wk', 'mo', 'year'],
+
     // The age limit, in days, of the medical event that serves as the evidence for an emergency contact request.
     // The documented minimum is 0, which admits only the events created within the last day.
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583402009/Medical+Events+Dictionaries+and+configurations#EMERGENCY_CONTACT_MEDICAL_EVENT_MAX_DAYS_PASSED

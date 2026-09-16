@@ -81,6 +81,11 @@ final class Repository
         return app(DeviceDispenseRepository::class);
     }
 
+    public static function specimen(): SpecimenRepository
+    {
+        return app(SpecimenRepository::class);
+    }
+
     public static function detectedIssue(): DetectedIssueRepository
     {
         return app(DetectedIssueRepository::class);

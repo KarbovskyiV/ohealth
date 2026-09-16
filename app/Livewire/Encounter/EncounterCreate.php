@@ -394,6 +394,10 @@ class EncounterCreate extends EncounterComponent
                 Repository::deviceDispense()->store($formattedData['deviceDispenses'], $this->patient());
             }
 
+            if (isset($formattedData['specimens'])) {
+                Repository::specimen()->store($formattedData['specimens'], $this->patient());
+            }
+
             if (isset($formattedData['devices'])) {
                 Repository::device()->store($formattedData['devices'], $this->patient());
             }

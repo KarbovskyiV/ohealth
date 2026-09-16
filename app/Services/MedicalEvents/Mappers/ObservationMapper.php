@@ -145,7 +145,11 @@ class ObservationMapper implements FhirMapperContract
                 ->toIdentifier($data['deviceId']);
         }
 
-        // todo: add specimen
+        if (!empty($data['specimenId'])) {
+            $result['specimen'] = FhirResource::make()
+                ->coding('eHealth/resources', 'specimen')
+                ->toIdentifier($data['specimenId']);
+        }
 
         return $result;
     }
@@ -259,6 +263,7 @@ class ObservationMapper implements FhirMapperContract
             'effectivePeriodEndTime' => data_get($data, 'effectivePeriodEndTime', ''),
             'reactionOn' => data_get($data, 'reactionOn.identifier.value', ''),
             'deviceId' => data_get($data, 'device.identifier.value', ''),
+            'specimenId' => data_get($data, 'specimen.identifier.value', ''),
             'components' => $this->componentsFromFhir(data_get($data, 'components', []))
         ];
 
