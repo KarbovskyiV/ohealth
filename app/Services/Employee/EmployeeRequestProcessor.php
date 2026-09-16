@@ -65,35 +65,50 @@ class EmployeeRequestProcessor
             ? $remoteData['status']->value
             : $remoteData['status'];
 
-        if (in_array($remoteStatus, ['REJECTED', 'EXPIRED'], true)) {
-            $newStatus = $remoteStatus === 'REJECTED' ? LocalStatus::REJECTED : LocalStatus::EXPIRED;
-            $request->update([
-                'status' => $newStatus,
-                'applied_at' => now(),
-            ]);
-            $request->revision?->update(['status' => RevisionStatus::OUTDATED]);
+        // One outcome / one message only. Remote NEW with uuid is keep-NEW in ESOZ
+        // (submitted, often awaiting email) — not a local unsigned draft (those have no uuid
+        // and never reach getDetails here).
+        switch ($remoteStatus) {
+            case 'REJECTED':
+                $request->update([
+                    'status' => LocalStatus::REJECTED,
+                    'applied_at' => now(),
+                ]);
+                $request->revision?->update(['status' => RevisionStatus::OUTDATED]);
 
-            return [
-                'outcome' => $remoteStatus === 'REJECTED' ? self::OUTCOME_REJECTED : self::OUTCOME_EXPIRED,
-                'message' => __('employees.sync.employee_request_status_updated', ['status' => $remoteStatus]),
-            ];
-        }
+                return [
+                    'outcome' => self::OUTCOME_REJECTED,
+                    'message' => __('employees.sync.employee_request_status_updated', ['status' => $remoteStatus]),
+                ];
 
-        // Never apply revision data while the eHealth request is still awaiting email confirmation.
-        // An APPROVED Employee may already exist (edit flow) — that must not count as request approval.
-        // NEW/SIGNED return here only — the APPROVED check below is not reached for pending statuses.
-        if (EmployeeRequestMatcher::isRemoteStillPending($remoteStatus)) {
-            return [
-                'outcome' => self::OUTCOME_PENDING,
-                'message' => __('employees.sync.employee_request_still_pending'),
-            ];
-        }
+            case 'EXPIRED':
+                $request->update([
+                    'status' => LocalStatus::EXPIRED,
+                    'applied_at' => now(),
+                ]);
+                $request->revision?->update(['status' => RevisionStatus::OUTDATED]);
 
-        if ($remoteStatus !== LocalStatus::APPROVED->value) {
-            return [
-                'outcome' => self::OUTCOME_FAILED,
-                'message' => __('employees.sync.employee_request_status_updated', ['status' => (string) $remoteStatus]),
-            ];
+                return [
+                    'outcome' => self::OUTCOME_EXPIRED,
+                    'message' => __('employees.sync.employee_request_status_updated', ['status' => $remoteStatus]),
+                ];
+
+            case 'NEW':
+            case 'SIGNED':
+                // Do not apply revision: APPROVED Employee may already exist (edit flow).
+                return [
+                    'outcome' => self::OUTCOME_PENDING,
+                    'message' => __('employees.sync.employee_request_still_pending'),
+                ];
+
+            case LocalStatus::APPROVED->value:
+                break;
+
+            default:
+                return [
+                    'outcome' => self::OUTCOME_FAILED,
+                    'message' => __('employees.sync.employee_request_status_updated', ['status' => (string) $remoteStatus]),
+                ];
         }
 
         // Prefer employee_id from request details; otherwise search APPROVED employees like EmployeeCreate.

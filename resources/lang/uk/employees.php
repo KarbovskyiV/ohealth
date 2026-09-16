@@ -62,7 +62,7 @@ return [
         'failed' => 'Під час фонової синхронізації працівників сталася помилка.',
         'completed_successfully' => 'Синхронізацію працівників успішно завершено. Оброблено :processed з :total записів.',
         'employee_request_success' => 'Синхронізацію заявки працівника успішно завершено.',
-        'employee_request_still_pending' => 'Заявка ще очікує рішення в ЕСОЗ (статус NEW). Підтвердженого працівника не знайдено.',
+        'employee_request_still_pending' => 'Заявка в ЕСОЗ ще очікує підтвердження email (статус NEW/SIGNED). Застосувати зміни в МІС можна лише після APPROVED.',
         'employee_request_status_updated' => 'Статус заявки оновлено: :status.',
         'employee_request_not_pending' => 'Синхронізувати можна лише заявки, надіслані в ЕСОЗ і ще без рішення.',
         'employee_request_not_found' => 'Заявку не знайдено.',
