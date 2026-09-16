@@ -5,13 +5,9 @@ declare(strict_types=1);
 namespace Tests\Unit\Employee;
 
 use App\Classes\eHealth\Api\EmployeeRequest as EmployeeRequestApi;
-use App\Classes\eHealth\EHealthResponse;
 use App\Enums\Employee\RequestStatus;
 use App\Listeners\eHealth\EmployeeCreate;
 use App\Models\Employee\EmployeeRequest;
-use App\Models\LegalEntity;
-use App\Models\User;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -22,46 +18,45 @@ use Tests\TestCase;
 class EmployeeCreatePendingEditListGateTest extends TestCase
 {
     #[Test]
-    #[DataProvider('requiresRevisionUpdateProvider')]
-    public function requires_revision_update_matches_remote_status(?string $remoteStatus, false|string $expected): void
-    {
-        $listener = new EmployeeCreate();
-        $method = new ReflectionMethod(EmployeeCreate::class, 'requiresRevisionUpdate');
+    #[DataProvider('shouldSkipPendingEditProvider')]
+    public function should_skip_pending_edit_on_login_uses_local_state_only(
+        RequestStatus $status,
+        ?int $employeeId,
+        bool $expectedSkip
+    ): void {
+        $request = new EmployeeRequest([
+            'uuid' => (string) Str::uuid(),
+            'status' => $status,
+            'employee_id' => $employeeId,
+        ]);
 
-        $this->assertSame($expected, $method->invoke($listener, $remoteStatus));
+        $listener = new EmployeeCreate();
+        $method = new ReflectionMethod(EmployeeCreate::class, 'shouldSkipPendingEditOnLogin');
+
+        $this->assertSame($expectedSkip, $method->invoke($listener, $request));
     }
 
     /**
-     * @return array<string, array{0: ?string, 1: false|string}>
+     * @return array<string, array{0: RequestStatus, 1: ?int, 2: bool}>
      */
-    public static function requiresRevisionUpdateProvider(): array
+    public static function shouldSkipPendingEditProvider(): array
     {
         return [
-            'missing' => [null, false],
-            'empty' => ['', false],
-            'still new' => ['NEW', false],
-            'legacy signed' => ['SIGNED', false],
-            'approved' => ['APPROVED', 'APPROVED'],
-            'rejected' => ['REJECTED', 'REJECTED'],
-            'expired' => ['EXPIRED', 'EXPIRED'],
-            'unknown' => ['SOMETHING_ELSE', false],
+            'pending edit (NEW + employee_id)' => [RequestStatus::NEW, 55, true],
+            'pending edit (SIGNED + employee_id)' => [RequestStatus::SIGNED, 55, true],
+            'pending create (NEW, no employee)' => [RequestStatus::NEW, null, false],
+            'already approved edit' => [RequestStatus::APPROVED, 55, false],
+            'rejected edit' => [RequestStatus::REJECTED, 55, false],
         ];
     }
 
     #[Test]
-    public function resolve_statuses_skips_api_and_flashes_when_user_lacks_scope(): void
+    public function pending_edit_gate_never_calls_employee_request_api(): void
     {
         $api = Mockery::mock(EmployeeRequestApi::class);
         $api->shouldNotReceive('getDetails');
         $api->shouldNotReceive('getMany');
         $this->instance(EmployeeRequestApi::class, $api);
-
-        $user = Mockery::mock(User::class)->makePartial();
-        $user->id = 7;
-        $user->shouldReceive('can')->with('employee_request:read')->andReturn(false);
-
-        $legalEntity = new LegalEntity(['edrpou' => '12345678']);
-        $legalEntity->id = 10;
 
         $pendingEdit = new EmployeeRequest([
             'uuid' => (string) Str::uuid(),
@@ -71,73 +66,12 @@ class EmployeeCreatePendingEditListGateTest extends TestCase
         $pendingEdit->id = 1;
 
         $listener = new EmployeeCreate();
-        $method = new ReflectionMethod(EmployeeCreate::class, 'resolveRemoteRequestStatusesForLogin');
-        $map = $method->invoke($listener, $user, collect([$pendingEdit]), $legalEntity);
+        $pendingMethod = new ReflectionMethod(EmployeeCreate::class, 'pendingEditRequests');
+        $skipMethod = new ReflectionMethod(EmployeeCreate::class, 'shouldSkipPendingEditOnLogin');
 
-        $this->assertTrue($map->isEmpty());
-        $this->assertSame(
-            __('employees.sync.pending_edit_needs_specialist'),
-            Session::get('warning')
-        );
-    }
+        $pending = $pendingMethod->invoke($listener, collect([$pendingEdit]));
 
-    #[Test]
-    public function resolve_statuses_fetches_by_id_when_user_has_scope_and_pending_edits(): void
-    {
-        $uuid = (string) Str::uuid();
-
-        $response = Mockery::mock(EHealthResponse::class);
-        $response->shouldReceive('validate')->once()->andReturn([
-            'uuid' => $uuid,
-            'status' => 'APPROVED',
-        ]);
-
-        $api = Mockery::mock(EmployeeRequestApi::class);
-        $api->shouldReceive('getDetails')->once()->with($uuid)->andReturn($response);
-        $api->shouldNotReceive('getMany');
-        $this->instance(EmployeeRequestApi::class, $api);
-
-        $user = Mockery::mock(User::class)->makePartial();
-        $user->id = 7;
-        $user->shouldReceive('can')->with('employee_request:read')->andReturn(true);
-
-        $legalEntity = new LegalEntity(['edrpou' => '12345678']);
-        $legalEntity->id = 10;
-
-        $pendingEdit = new EmployeeRequest([
-            'uuid' => $uuid,
-            'status' => RequestStatus::NEW,
-            'employee_id' => 55,
-        ]);
-        $pendingEdit->id = 1;
-
-        $listener = new EmployeeCreate();
-        $method = new ReflectionMethod(EmployeeCreate::class, 'resolveRemoteRequestStatusesForLogin');
-        $map = $method->invoke($listener, $user, collect([$pendingEdit]), $legalEntity);
-
-        $this->assertSame([$uuid => 'APPROVED'], $map->all());
-        $this->assertNull(Session::get('warning'));
-    }
-
-    #[Test]
-    public function fetch_remote_statuses_skips_failed_get_details(): void
-    {
-        $uuid = (string) Str::uuid();
-
-        $api = Mockery::mock(EmployeeRequestApi::class);
-        $api->shouldReceive('getDetails')->once()->with($uuid)->andThrow(new \RuntimeException('eHealth down'));
-        $this->instance(EmployeeRequestApi::class, $api);
-
-        $pendingEdit = new EmployeeRequest([
-            'uuid' => $uuid,
-            'status' => RequestStatus::NEW,
-            'employee_id' => 55,
-        ]);
-        $pendingEdit->id = 1;
-
-        $listener = new EmployeeCreate();
-        $method = new ReflectionMethod(EmployeeCreate::class, 'fetchRemoteStatusesByRequestIds');
-
-        $this->assertTrue($method->invoke($listener, collect([$pendingEdit]))->isEmpty());
+        $this->assertCount(1, $pending);
+        $this->assertTrue($skipMethod->invoke($listener, $pendingEdit));
     }
 }
