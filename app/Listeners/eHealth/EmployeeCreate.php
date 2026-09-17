@@ -149,8 +149,15 @@ class EmployeeCreate
             $event,
             &$matched
         ) {
+            // Exclude pending edits before matching: their revision often has new party names /
+            // null start_date, and the fragile matcher fallback must not run (or crash) for
+            // requests we are going to skip anyway on login.
+            $requestsForMatch = $employeeRequests
+                ->reject(fn (EmployeeRequest $request): bool => $this->shouldSkipPendingEditOnLogin($request))
+                ->values();
+
             foreach ($employees as $eHealthEmployee) {
-                $employeeRequest = $this->findMatchingLocalRequest($employeeRequests, $eHealthEmployee);
+                $employeeRequest = $this->findMatchingLocalRequest($requestsForMatch, $eHealthEmployee);
 
                 if (!$employeeRequest) {
                     Log::info('[EmployeeCreate] No local request matched remote employee.', [
@@ -393,19 +400,34 @@ class EmployeeCreate
                     return false;
                 }
 
-                $employeeRequest->startDate = Employee::matchingEmployee(
+                $matchedEmployee = Employee::matchingEmployee(
                     legalEntityUuid: $employeeRequest->legalEntityUuid,
                     employeeType: $employeeRequest->employeeType,
                     position: $employeeRequest->position,
                     partyId: $party->id,
-                )
-                    ->first()
-                        ? $employeeRequest->revision->data['employee_request_data']['start_date']
-                        : null;
+                )->first();
 
-                if (!$employeeRequest->startDate) {
+                if (!$matchedEmployee) {
                     return false;
                 }
+
+                // Owner/party edits often leave employee_requests.start_date NULL and may omit
+                // employee_request_data.start_date in revision JSON — never use bare ['start_date'].
+                $fallbackStartDate = data_get($employeeRequest->revision?->data, 'employee_request_data.start_date')
+                    ?? data_get($employeeRequest->revision?->data, 'employee.start_date');
+
+                if (!is_string($fallbackStartDate) || $fallbackStartDate === '') {
+                    $localStart = $matchedEmployee->startDate;
+                    $fallbackStartDate = $localStart instanceof \DateTimeInterface
+                        ? $localStart->format('Y-m-d')
+                        : (is_string($localStart) && $localStart !== '' ? $localStart : null);
+                }
+
+                if (!$fallbackStartDate) {
+                    return false;
+                }
+
+                $employeeRequest->startDate = $fallbackStartDate;
                 $namesMatch = true; // If we have found the employee by other parameters and got the start date,
                 // we can assume that names match because of the uniqueness of the employee record
 
