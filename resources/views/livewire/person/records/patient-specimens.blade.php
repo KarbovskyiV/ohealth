@@ -28,7 +28,7 @@
                 </div>
                 <div class="form-group group">
                     <select id="filterSpecimenType" wire:model="filterSpecimenType" class="input-select peer w-full">
-                        <option value="">Кров</option>
+                        <option value="">{{ __('specimens.blood') }}</option>
                     </select>
                     <label class="label" for="filterSpecimenType">{{ __('specimens.specimen_type') }}</label>
                 </div>
@@ -95,7 +95,7 @@
                     </div>
                     <div class="form-group group">
                         <select id="filterContainerType" wire:model="filterContainerType" class="input-select peer w-full">
-                            <option value="">Пробірка</option>
+                            <option value="">{{ __('specimens.test_tube') }}</option>
                         </select>
                         <label class="label" for="filterContainerType">{{ __('specimens.container_type') }}</label>
                     </div>
@@ -126,7 +126,7 @@
                         <div class="record-inner-column flex-1">
                             <div class="record-inner-label">{{ __('specimens.specimen_number') }} 1332-1421-1321-6123-1235</div>
                             <div class="record-inner-value text-[17px] font-semibold text-gray-900 dark:text-gray-100">
-                                Кров венозна
+                                {{ __('specimens.venous_blood') }}
                             </div>
                         </div>
 
@@ -179,13 +179,13 @@
                                     :id="$id('dropdown-button')"
                                     class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
                                 >
-                                    <button
-                                        @click="close($refs.button)"
+                                    <a
+                                        href="{{ $personId ? route('persons.specimens.view', ['legalEntity' => request()->route('legalEntity'), 'person' => $personId, 'specimenId' => '1234-1234-1234-1234']) : route('prepersons.specimens.view', ['legalEntity' => request()->route('legalEntity'), 'preperson' => $prepersonId, 'specimenId' => '1234-1234-1234-1234']) }}"
                                         class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                     >
                                         @icon('eye', 'w-5 h-5 text-gray-500')
                                         {{ __('specimens.view_details') }}
-                                    </button>
+                                    </a>
 
                                     <button
                                         @click="close($refs.button)"
@@ -212,7 +212,7 @@
                                 </div>
                                 <div>
                                     <div class="record-inner-label text-[10px] uppercase">{{ __('specimens.containers_and_type') }}</div>
-                                    <div class="record-inner-value font-semibold">VAC-001, пробірка<br>VAC-001, пробірка</div>
+                                    <div class="record-inner-value font-semibold">{{ __('specimens.test_tube_vac') }}<br>{{ __('specimens.test_tube_vac') }}</div>
                                 </div>
                                 <div>
                                     <div class="record-inner-label text-[10px] uppercase">{{ __('specimens.created_by') }}</div>
