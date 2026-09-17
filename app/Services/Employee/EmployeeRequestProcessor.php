@@ -65,18 +65,50 @@ class EmployeeRequestProcessor
             ? $remoteData['status']->value
             : $remoteData['status'];
 
-        if (in_array($remoteStatus, ['REJECTED', 'EXPIRED'], true)) {
-            $newStatus = $remoteStatus === 'REJECTED' ? LocalStatus::REJECTED : LocalStatus::EXPIRED;
-            $request->update([
-                'status' => $newStatus,
-                'applied_at' => now(),
-            ]);
-            $request->revision?->update(['status' => RevisionStatus::OUTDATED]);
+        // One outcome / one message only. Remote NEW with uuid is keep-NEW in ESOZ
+        // (submitted, often awaiting email) — not a local unsigned draft (those have no uuid
+        // and never reach getDetails here).
+        switch ($remoteStatus) {
+            case 'REJECTED':
+                $request->update([
+                    'status' => LocalStatus::REJECTED,
+                    'applied_at' => now(),
+                ]);
+                $request->revision?->update(['status' => RevisionStatus::OUTDATED]);
 
-            return [
-                'outcome' => $remoteStatus === 'REJECTED' ? self::OUTCOME_REJECTED : self::OUTCOME_EXPIRED,
-                'message' => __('employees.sync.employee_request_status_updated', ['status' => $remoteStatus]),
-            ];
+                return [
+                    'outcome' => self::OUTCOME_REJECTED,
+                    'message' => __('employees.sync.employee_request_status_updated', ['status' => $remoteStatus]),
+                ];
+
+            case 'EXPIRED':
+                $request->update([
+                    'status' => LocalStatus::EXPIRED,
+                    'applied_at' => now(),
+                ]);
+                $request->revision?->update(['status' => RevisionStatus::OUTDATED]);
+
+                return [
+                    'outcome' => self::OUTCOME_EXPIRED,
+                    'message' => __('employees.sync.employee_request_status_updated', ['status' => $remoteStatus]),
+                ];
+
+            case 'NEW':
+            case 'SIGNED':
+                // Do not apply revision: APPROVED Employee may already exist (edit flow).
+                return [
+                    'outcome' => self::OUTCOME_PENDING,
+                    'message' => __('employees.sync.employee_request_still_pending'),
+                ];
+
+            case LocalStatus::APPROVED->value:
+                break;
+
+            default:
+                return [
+                    'outcome' => self::OUTCOME_FAILED,
+                    'message' => __('employees.sync.employee_request_status_updated', ['status' => (string) $remoteStatus]),
+                ];
         }
 
         // Prefer employee_id from request details; otherwise search APPROVED employees like EmployeeCreate.
@@ -93,13 +125,6 @@ class EmployeeRequestProcessor
         }
 
         if ($remoteEmployee === null && !is_string($employeeUuid)) {
-            if (EmployeeRequestMatcher::isRemoteStillPending($remoteStatus)) {
-                return [
-                    'outcome' => self::OUTCOME_PENDING,
-                    'message' => __('employees.sync.employee_request_still_pending'),
-                ];
-            }
-
             return [
                 'outcome' => self::OUTCOME_FAILED,
                 'message' => __('employees.sync.no_employees_found'),
@@ -117,24 +142,7 @@ class EmployeeRequestProcessor
 
         $applyPayload['legal_entity_id'] = $applyPayload['legal_entity_id'] ?? $legalEntity->uuid;
 
-        try {
-            $this->applyApprovedRequest($request, $applyPayload);
-        } catch (\Throwable $e) {
-            if (EmployeeRequestMatcher::isRemoteStillPending($remoteStatus)) {
-                Log::info('[EmployeeRequestProcessor] Pending request has no APPROVED employee yet.', [
-                    'request_id' => $request->id,
-                    'remote_status' => $remoteStatus,
-                    'error' => $e->getMessage(),
-                ]);
-
-                return [
-                    'outcome' => self::OUTCOME_PENDING,
-                    'message' => __('employees.sync.employee_request_still_pending'),
-                ];
-            }
-
-            throw $e;
-        }
+        $this->applyApprovedRequest($request, $applyPayload);
 
         return [
             'outcome' => self::OUTCOME_APPROVED,
