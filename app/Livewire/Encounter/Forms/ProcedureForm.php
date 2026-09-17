@@ -13,9 +13,12 @@ use App\Models\Equipment;
 use App\Rules\InDictionary;
 use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
+use App\Rules\AfterOrEqualDateTime;
 use Closure;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
+use Carbon\CarbonImmutable;
+use Throwable;
 
 class ProcedureForm extends Form
 {
@@ -151,6 +154,7 @@ class ProcedureForm extends Form
                         'nullable',
                         'date_format:' . config('app.date_format'),
                         'before_or_equal:today',
+                        'date_equals:' . (($this->encounter()['periodDate'] ?? '') ?: 'today'),
                     ];
                 }
             ),
@@ -166,16 +170,82 @@ class ProcedureForm extends Form
                         Rule::prohibitedIf(!$isDateTime),
                         'nullable',
                         'date_format:H:i',
-                        new PastDateTime(
-                            $procedure['performedDate'] ?? ''
-                        ),
+                        new PastDateTime($procedure['performedDate'] ?? ''),
+                        $this->withinEncounterPeriod($procedure['performedDate'] ?? ''),
                     ];
                 }
             ),
-            'procedures.*.performedPeriodStartDate' => ['nullable'],
-            'procedures.*.performedPeriodStartTime' => ['nullable'],
-            'procedures.*.performedPeriodEndDate' => ['nullable'],
-            'procedures.*.performedPeriodEndTime' => ['nullable'],
+            'procedures.*.performedPeriodStartDate' => Rule::forEach(
+                function (mixed $value, string $attribute): array {
+                    $index = (int) explode('.', $attribute)[1];
+                    $procedure = $this->procedures[$index] ?? [];
+                    $isPeriod = ($procedure['status'] ?? null) === ProcedureStatus::COMPLETED->value && ($procedure['performedType'] ?? null) === 'period';
+
+                    return [
+                        Rule::requiredIf($isPeriod),
+                        Rule::prohibitedIf(!$isPeriod),
+                        'nullable',
+                        'date_format:' . config('app.date_format'),
+                        'before_or_equal:today',
+                        'date_equals:' . (($this->encounter()['periodDate'] ?? '') ?: 'today'),
+                    ];
+                }
+            ),
+            'procedures.*.performedPeriodStartTime' => Rule::forEach(
+                function (mixed $value, string $attribute): array {
+                    $index = (int) explode('.', $attribute)[1];
+                    $procedure = $this->procedures[$index] ?? [];
+                    $isPeriod = ($procedure['status'] ?? null) === ProcedureStatus::COMPLETED->value && ($procedure['performedType'] ?? null) === 'period';
+
+                    return [
+                        Rule::requiredIf($isPeriod),
+                        Rule::prohibitedIf(!$isPeriod),
+                        'nullable',
+                        'date_format:H:i',
+                        new PastDateTime($procedure['performedPeriodStartDate'] ?? ''),
+                        $this->withinEncounterPeriod($procedure['performedPeriodStartDate'] ?? ''),
+                    ];
+                }
+            ),
+            'procedures.*.performedPeriodEndDate' => Rule::forEach(
+                function (mixed $value, string $attribute): array {
+                    $index = (int) explode('.', $attribute)[1];
+                    $procedure = $this->procedures[$index] ?? [];
+                    $isPeriod = ($procedure['status'] ?? null) === ProcedureStatus::COMPLETED->value && ($procedure['performedType'] ?? null) === 'period';
+
+                    return [
+                        Rule::requiredIf($isPeriod),
+                        Rule::prohibitedIf(!$isPeriod),
+                        'nullable',
+                        'date_format:' . config('app.date_format'),
+                        'before_or_equal:today',
+                        'date_equals:' . (($this->encounter()['periodDate'] ?? '') ?: 'today'),
+                        'after_or_equal:procedures.*.performedPeriodStartDate',
+                    ];
+                }
+            ),
+            'procedures.*.performedPeriodEndTime' => Rule::forEach(
+                function (mixed $value, string $attribute): array {
+                    $index = (int) explode('.', $attribute)[1];
+                    $procedure = $this->procedures[$index] ?? [];
+                    $isPeriod = ($procedure['status'] ?? null) === ProcedureStatus::COMPLETED->value && ($procedure['performedType'] ?? null) === 'period';
+
+                    return [
+                        Rule::requiredIf($isPeriod),
+                        Rule::prohibitedIf(!$isPeriod),
+                        'nullable',
+                        'date_format:H:i',
+                        new PastDateTime($procedure['performedPeriodEndDate'] ?? ''),
+                        new AfterOrEqualDateTime(
+                            $procedure['performedPeriodEndDate'] ?? '',
+                            $procedure['performedPeriodStartDate'] ?? '',
+                            $procedure['performedPeriodStartTime'] ?? '',
+                            'performed_period_start'
+                        ),
+                        $this->withinEncounterPeriod($procedure['performedPeriodEndDate'] ?? ''),
+                    ];
+                }
+            ),
             'procedures.*.note' => ['nullable', 'string'],
             'procedures.*.paperReferralRequisition' => ['nullable', 'string', 'max:255'],
             'procedures.*.paperReferralNote' => ['nullable', 'string'],
@@ -333,6 +403,35 @@ class ProcedureForm extends Form
         return [
             'procedures.*.performerEmployeeId.required' => __('procedures.validation.performer_required')
         ];
+    }
+
+    private function withinEncounterPeriod(string $date): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($date): void {
+            $encounter = $this->encounter();
+
+            if (empty($date) || empty($value) || empty($encounter['periodDate']) || empty($encounter['periodStart']) || empty($encounter['periodEnd'])) {
+                return;
+            }
+
+            try {
+                $format = config('app.date_format') . ' H:i';
+                $performed = CarbonImmutable::createFromFormat($format, $date . ' ' . $value);
+                $encounterStart = CarbonImmutable::createFromFormat($format, $encounter['periodDate'] . ' ' . $encounter['periodStart']);
+                $encounterEnd = CarbonImmutable::createFromFormat($format, $encounter['periodDate'] . ' ' . $encounter['periodEnd']);
+            } catch (Throwable) {
+                return;
+            }
+
+            if ($performed->lessThan($encounterStart) || $performed->greaterThan($encounterEnd)) {
+                $fail(__('procedures.validation.performed_outside_encounter_period'));
+            }
+        };
+    }
+
+    private function encounter(): array
+    {
+        return $this->component->form->encounter;
     }
 
     /**

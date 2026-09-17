@@ -16,7 +16,6 @@ use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Identifier;
 use App\Repositories\MedicalEvents\Repository;
-use App\Services\MedicalEvents\EncounterReferralDisplay;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
@@ -326,10 +325,11 @@ class EncounterIndex extends BasePatientComponent
      */
     protected function hydrateEncounterReferralLabels(\Illuminate\Support\Collection $encounters): \Illuminate\Support\Collection
     {
-        $requestNumbers = EncounterReferralDisplay::requestNumbersFor($encounters->all());
+        $repository = Repository::serviceRequest();
+        $requestNumbers = $repository->requestNumbersForEncounters($encounters->all());
 
-        return $encounters->map(static function (array $encounter) use ($requestNumbers): array {
-            $encounter['referralDisplay'] = EncounterReferralDisplay::label($encounter, $requestNumbers);
+        return $encounters->map(static function (array $encounter) use ($repository, $requestNumbers): array {
+            $encounter['referralDisplay'] = $repository->encounterReferralLabel($encounter, $requestNumbers);
 
             return $encounter;
         });

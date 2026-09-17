@@ -3,6 +3,7 @@
     id="procedures-section"
     x-data="{
         procedures: $wire.entangle('procedureForm.procedures'),
+        encounter: $wire.entangle('form.encounter'),
         selectedRecords: $wire.entangle('selectedRecords.procedures'),
         cancelledRecords: $wire.cancelledRecords.procedures,
         canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
@@ -10,6 +11,8 @@
         modalProcedure: new Procedure(),
         newProcedure: false,
         openProcedureDrawer: false,
+        openServiceCatalog: false,
+        selectedServiceFromCatalog: null,
         item: 0,
         divisions: {{ json_encode($divisions) }},
         equipmentOptions: @js($equipmentOptions),
@@ -59,28 +62,19 @@
             this.modalProcedure.usedReferences.splice(index, 1);
         },
 
+        selectProcedureService(service) {
+            this.modalProcedure.categoryCode = service.category;
+            this.modalProcedure.codeValue = service.id;
+            this.selectedServiceFromCatalog = service;
+            this.openServiceCatalog = false;
+        },
+
         setPerformedType(type) {
-            const now = new Date();
-            const startTime = new Date(now.getTime() - 15 * 60 * 1000);
-
-            const toFormattedDate = (date) => {
-                const [yyyy, mm, dd] = date.toISOString().split('T')[0].split('-');
-
-                return `${dd}.${mm}.${yyyy}`;
-            };
-
-            const timeOptions = {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            };
-
             this.modalProcedure.performedType = type;
 
             if (type === 'date_time') {
-                this.modalProcedure.performedDate = toFormattedDate(now);
-                this.modalProcedure.performedTime =
-                    now.toLocaleTimeString('uk-UA', timeOptions);
+                this.modalProcedure.performedDate = this.encounter.periodDate || '';
+                this.modalProcedure.performedTime = this.encounter.periodStart || '';
 
                 this.modalProcedure.performedPeriodStartDate = '';
                 this.modalProcedure.performedPeriodStartTime = '';
@@ -94,14 +88,10 @@
                 this.modalProcedure.performedDate = '';
                 this.modalProcedure.performedTime = '';
 
-                this.modalProcedure.performedPeriodStartDate =
-                    toFormattedDate(startTime);
-                this.modalProcedure.performedPeriodStartTime =
-                    startTime.toLocaleTimeString('uk-UA', timeOptions);
-                this.modalProcedure.performedPeriodEndDate =
-                    toFormattedDate(now);
-                this.modalProcedure.performedPeriodEndTime =
-                    now.toLocaleTimeString('uk-UA', timeOptions);
+                this.modalProcedure.performedPeriodStartDate = this.encounter.periodDate || '';
+                this.modalProcedure.performedPeriodStartTime = this.encounter.periodStart || '';
+                this.modalProcedure.performedPeriodEndDate = this.encounter.periodDate || '';
+                this.modalProcedure.performedPeriodEndTime = this.encounter.periodEnd || '';
 
                 return;
             }
@@ -112,8 +102,61 @@
             this.modalProcedure.performedPeriodStartTime = '';
             this.modalProcedure.performedPeriodEndDate = '';
             this.modalProcedure.performedPeriodEndTime = '';
+        },
+        
+        parseProcedureDateTime(date, time) {
+            if (!date || !time) {
+                return null;
+            }
+
+            const dateParts = date.split('.').map(Number);
+            const timeParts = time.split(':').map(Number);
+
+            if (dateParts.length !== 3 || timeParts.length !== 2) {
+                return null;
+            }
+
+            const [day, month, year] = dateParts;
+            const [hours, minutes] = timeParts;
+
+            return new Date(year, month - 1, day, hours, minutes);
+        },
+
+        procedurePerformedOutsideEncounterPeriod() {
+            if (this.modalProcedure.status !== 'completed') {
+                return false;
+            }
+
+            const encounterStart = this.parseProcedureDateTime(
+                this.encounter.periodDate,
+                this.encounter.periodStart
+            );
+            const encounterEnd = this.parseProcedureDateTime(
+                this.encounter.periodDate,
+                this.encounter.periodEnd
+            );
+
+            if (!encounterStart || !encounterEnd) {
+                return false;
+            }
+
+            if (this.modalProcedure.performedType === 'date_time') {
+                const performed = this.parseProcedureDateTime(this.modalProcedure.performedDate, this.modalProcedure.performedTime);
+
+                return Boolean(performed && (performed < encounterStart || performed > encounterEnd));
+            }
+
+            if (this.modalProcedure.performedType === 'period') {
+                const start = this.parseProcedureDateTime(this.modalProcedure.performedPeriodStartDate, this.modalProcedure.performedPeriodStartTime);
+                const end = this.parseProcedureDateTime(this.modalProcedure.performedPeriodEndDate, this.modalProcedure.performedPeriodEndTime);
+
+                return Boolean(start && end && (start < encounterStart || start > encounterEnd || end < encounterStart || end > encounterEnd));
+            }
+
+            return false;
         }
       }"
+      @procedure-service-selected.window="selectProcedureService($event.detail.service)"
 >
     <div class="space-y-4">
         <template x-for="(procedure, index) in procedures" :key="index">
@@ -368,7 +411,9 @@
                                     openProcedureDrawer = false;
                                 "
                                 class="button-primary"
-                                :disabled="! (modalProcedure.categoryCode.trim() && modalProcedure.codeValue.trim())"
+                                :disabled="!(modalProcedure.categoryCode.trim() && modalProcedure.codeValue.trim() 
+                                    && (modalProcedure.primarySource !== true || modalProcedure.performerEmployeeId)) || procedurePerformedOutsideEncounterPeriod()
+                                "
                             >
                                 {{ __('forms.save') }}
                             </button>
@@ -377,6 +422,35 @@
                 </fieldset>
             </form>
         </x-dialog-drawer>
+        @unless ($isReadonly)
+            <x-dialog-drawer
+                x-model="openServiceCatalog"
+                onCloseClick="openServiceCatalog = false"
+                maxWidth="4/5"
+                overlayWidth="100%"
+                backdropClickThrough="true"
+                stopClickPropagation="true"
+                zIndex="50"
+            >
+                <livewire:dictionary.service-catalog
+                    :legal-entity="legalEntity()"
+                    :selection-mode="true"
+                    selection-event="procedure-service-selected"
+                    :allowed-categories="array_keys($this->dictionaries['eHealth/procedure_categories'] ?? [])"
+                    :key="'encounter-procedure-service-catalog'"
+                />
+
+                <div class="mt-8">
+                    <button
+                        type="button"
+                        @click="openServiceCatalog = false"
+                        class="button-minor"
+                    >
+                        {{ __('forms.cancel') }}
+                    </button>
+                </div>
+            </x-dialog-drawer>
+        @endunless
     </div>
 </div>
 

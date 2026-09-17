@@ -11,6 +11,7 @@ use App\Enums\Person\EncounterStatus;
 use App\Livewire\Encounter\Forms\EncounterCancellationForm;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
+use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
@@ -89,6 +90,9 @@ class EncounterEdit extends EncounterComponent
         $this->diagnosticReportForm->diagnosticReports = $package['diagnosticReports'];
         $this->observationForm->observations = $package['observations'];
         $this->procedureForm->procedures = $package['procedures'];
+        if ($this->isReadonly) {
+            $this->loadProcedureReferralsForView($package['procedures']);
+        }
         $this->deviceDispenseForm->deviceDispenses = $package['deviceDispenses'];
         $this->specimenForm->specimens = $package['specimens'];
         $this->deviceForm->devices = $package['devices'];
@@ -399,6 +403,45 @@ class EncounterEdit extends EncounterComponent
             ]);
 
         $this->redirectRoute('persons.index', [legalEntity()], navigate: true);
+    }
+
+    private function loadProcedureReferralsForView(array $procedures): void
+    {
+        $referralIds = collect($procedures)
+            ->pluck('basedOnIdentifier')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($referralIds->isEmpty()) {
+            $this->referralsLoaded = true;
+
+            return;
+        }
+
+        $referrals = ServiceRequestRequest::query()
+            ->whereIn('uuid', $referralIds->all())
+            ->get(['uuid', 'request_number'])
+            ->keyBy('uuid');
+
+        $this->availableReferrals = $referralIds
+            ->map(static function (string $referralId) use ($referrals): ?array {
+                $referral = $referrals->get($referralId);
+
+                if ($referral === null) {
+                    return null;
+                }
+
+                return [
+                    'id' => $referral->uuid,
+                    'requisition' => $referral->requestNumber ?: $referral->uuid,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->toArray();
+
+        $this->referralsLoaded = true;
     }
 
     /**

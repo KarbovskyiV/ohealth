@@ -64,6 +64,8 @@ class ProcedureIndex extends BasePatientComponent
 
     public array $services = [];
 
+    public array $serviceCodes = [];
+
     public array $encounters = [];
 
     public array $originEpisodes = [];
@@ -566,7 +568,14 @@ class ProcedureIndex extends BasePatientComponent
      */
     private function getServices(): void
     {
-        $this->services = collect(dictionary()->services()->flattened()->toArray())
+        $services = collect(dictionary()->services()->flattened()->toArray());
+
+        $this->serviceCodes = $services
+            ->filter(static fn (array $service): bool => !empty($service['id']) && !empty($service['code']))
+            ->mapWithKeys(static fn (array $service): array => [$service['id'] => $service['code']])
+            ->toArray();
+
+        $this->services = $services
             ->when(
                 $this->filterCategory !== '',
                 fn (Collection $services): Collection => $services->where('category', $this->filterCategory)

@@ -38,6 +38,7 @@ use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Immunization;
 use App\Models\MedicalEvents\Sql\Specimen;
+use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Models\MedicalEvents\Sql\Episode;
@@ -522,40 +523,40 @@ class EncounterComponent extends Component
     }
 
     /**
-     * Fetch all in_progress referrals for the patient from eHealth.
-     * Called from mount() in EncounterCreate.
+     * Load available patient referrals from the local database.
      */
-    public function loadInProgressReferrals(): void
+    protected function loadAvailableReferrals(): void
     {
-        if ($this->referralsLoaded || $this->patientUuid === null) {
+        if ($this->referralsLoaded) {
             return;
         }
 
-        try {
-            $items = [];
-            $page = 1;
-
-            do {
-                $response = EHealth::serviceRequest()->getBySearchParams($this->patientUuid, [
-                    'requester_legal_entity' => legalEntity()->uuid,
-                    'status' => ServiceRequestStatus::ACTIVE->value,
-                    'page' => $page,
-                ]);
-
-                $items = [...$items, ...$response->validate()];
-                $page++;
-            } while ($response->isNotLast());
-
-            $this->availableReferrals = collect($items)->map(static fn (array $referral): array => [
-                'id' => $referral['id'],
-                'requisition' => $referral['requisition'],
-                'category' => data_get($referral, 'category.coding.0.display', 'Направлення'),
-            ])->values()->toArray();
-
+        if ($this->personId === null) {
             $this->referralsLoaded = true;
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error while loading processed referrals');
+
+            return;
         }
+
+        $services = collect($this->dictionaries['custom/services'] ?? []);
+        $procedureCategories = array_keys($this->dictionaries['eHealth/procedure_categories'] ?? []);
+
+        $this->availableReferrals = MedicalEventsRepository::serviceRequest()
+            ->getByPersonIdAndStatus($this->personId, ServiceRequestStatus::PROCESSED->value, ['uuid', 'request_number', 'service_id', 'category'])
+            ->map(static function (ServiceRequestRequest $referral) use ($services, $procedureCategories): array {
+                $service = $services->firstWhere('id', $referral->serviceId);
+
+                return [
+                    'id' => $referral->uuid,
+                    'requisition' => $referral->requestNumber ?: $referral->uuid,
+                    'category' => $referral->category ? __('care-plan.referral_category.'.$referral->category) : __('encounters.electronic_referral'),
+                    'service' => $service,
+                    'isProcedureAllowed' => $service !== null && in_array($service['category'] ?? null, $procedureCategories, true),
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        $this->referralsLoaded = true;
     }
 
     /**

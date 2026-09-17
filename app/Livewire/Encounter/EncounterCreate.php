@@ -57,15 +57,7 @@ class EncounterCreate extends EncounterComponent
 
         $referral = collect($this->availableReferrals)->firstWhere('requisition', $referralNumber);
 
-        if ($referral !== null) {
-            return data_get($referral, 'id');
-        }
-
-        $referrals = EHealth::serviceRequest()
-            ->searchForServiceRequestsByParams(['requisition' => $referralNumber])
-            ->validate();
-
-        return data_get(collect($referrals)->first(), 'id');
+        return data_get($referral, 'id');
     }
 
     private function resolveAllReferrals(array &$validated): void
@@ -76,7 +68,7 @@ class EncounterCreate extends EncounterComponent
 
             if ($uuid === null) {
                 throw ValidationException::withMessages([
-                    'form.encounter.referralNumber' => 'Направлення не знайдено в ЕСОЗ.'
+                    'form.encounter.referralNumber' => __('encounters.messages.referral_not_found')
                 ]);
             }
 
@@ -93,7 +85,7 @@ class EncounterCreate extends EncounterComponent
 
             if ($uuid === null) {
                 throw ValidationException::withMessages([
-                    "form.procedures.{$index}.basedOnIdentifier" => 'Направлення не знайдено серед активних направлень пацієнта.'
+                    "form.procedures.{$index}.basedOnIdentifier" => __('encounters.messages.referral_not_found')
                 ]);
             }
 
@@ -119,7 +111,7 @@ class EncounterCreate extends EncounterComponent
 
         $this->setDefaultDate();
 
-        $this->loadInProgressReferrals();
+        $this->loadAvailableReferrals();
     }
 
     /**
