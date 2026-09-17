@@ -38,7 +38,7 @@
                             <option value="{{ $specimenStatus->value }}">{{ $specimenStatus->label() }}</option>
                         @endforeach
                     </select>
-                    <label class="label" for="filterStatus">{{ __('specimens.status') }}</label>
+                    <label class="label" for="filterStatus">{{ __('forms.status.label') }}</label>
                 </div>
                 <div class="form-group group">
                     <select id="filterType" wire:model="filterType" class="input-select peer w-full">
@@ -103,7 +103,7 @@
                         @click="openGroupActions = ! openGroupActions"
                         class="button-primary-outline px-5 py-2.5 text-sm"
                     >
-                        {{ __('specimens.group_actions') }}
+                        {{ __('patients.group_actions') }}
                     </button>
 
                     <div
@@ -135,7 +135,7 @@
                         bind="filterRegisteredBy"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('specimens.created_by_employee')"
+                        :label="__('specimens.employee_created_record')"
                     />
                     <div class="form-group group">
                         <input
@@ -176,7 +176,7 @@
                         bind="filterRequest"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('specimens.electronic_referral')"
+                        :label="__('patients.electronic')"
                     />
                     <x-forms.combobox
                         :options="$encounters"
@@ -195,16 +195,19 @@
                         $collectedPeriodStart = data_get($specimen, 'collection.collectedPeriod.start');
                         $collectedPeriodEnd = data_get($specimen, 'collection.collectedPeriod.end');
                         $status = SpecimenStatus::from(data_get($specimen, 'status'));
-                        $statusBadge = match ($status) {
-                            SpecimenStatus::AVAILABLE => 'badge-green',
-                            SpecimenStatus::UNSATISFACTORY => 'badge-yellow',
-                            default => 'badge-red'
-                        };
                     @endphp
                     <div class="record-inner-card" wire:key="specimen-{{ data_get($specimen, 'uuid') }}">
                         <div class="record-inner-header">
                             <div class="record-inner-checkbox-col">
-                                <input type="checkbox" class="default-checkbox h-5 w-5" />
+                                <label
+                                    for="specimenRecord{{ $loop->index }}"
+                                    class="sr-only"
+                                >{{ __('forms.select') }}</label>
+                                <input
+                                    type="checkbox"
+                                    id="specimenRecord{{ $loop->index }}"
+                                    class="default-checkbox h-5 w-5"
+                                />
                             </div>
                             <div class="record-inner-column flex-1">
                                 <div class="record-inner-label">
@@ -216,9 +219,9 @@
                             </div>
 
                             <div class="record-inner-column-bordered w-full shrink-0 md:w-48">
-                                <div class="record-inner-label">{{ __('specimens.status') }}</div>
+                                <div class="record-inner-label">{{ __('forms.status.label') }}</div>
                                 <div>
-                                    <span class="{{ $statusBadge }}">{{ $status->label() }}</span>
+                                    <span class="{{ $status->color() }}">{{ $status->label() }}</span>
                                 </div>
                             </div>
 
@@ -264,13 +267,29 @@
                                         :id="$id('dropdown-button')"
                                         class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
                                     >
-                                        <button
-                                            @click="close($refs.button)"
-                                            class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                        >
-                                            @icon('eye', 'w-5 h-5 text-gray-500')
-                                            {{ __('specimens.view_details') }}
-                                        </button>
+                                        @if (data_get($specimen, 'id'))
+                                            <a
+                                                href="{{
+                                                    $prepersonId
+                                                    ? route('prepersons.specimens.view', [legalEntity(), 'preperson' => $prepersonId, 'specimen' => data_get($specimen, 'id')])
+                                                    : route('persons.specimens.view', [legalEntity(), 'person' => $personId, 'specimen' => data_get($specimen, 'id')])
+                                                }}"
+                                                class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                            >
+                                                @icon('eye', 'w-5 h-5 text-gray-500')
+                                                {{ __('patients.view_details') }}
+                                            </a>
+                                        @else
+                                            {{-- Found through the eHealth search: the record is stored on the way to its page --}}
+                                            <button
+                                                type="button"
+                                                wire:click="view('{{ data_get($specimen, 'uuid') }}')"
+                                                class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                            >
+                                                @icon('eye', 'w-5 h-5 text-gray-500')
+                                                {{ __('patients.view_details') }}
+                                            </button>
+                                        @endif
 
                                         @if ($status !== SpecimenStatus::ENTERED_IN_ERROR)
                                             <button
@@ -343,7 +362,7 @@
                                     </div>
                                     <div>
                                         <div class="record-inner-label text-[10px] uppercase">
-                                            {{ __('specimens.electronic_referral') }}
+                                            {{ __('patients.electronic') }}
                                         </div>
                                         <div class="record-inner-value font-semibold">
                                             @forelse (data_get($specimen, 'request', []) as $request)

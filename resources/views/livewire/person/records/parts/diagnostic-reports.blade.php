@@ -41,7 +41,7 @@
                         <div>
                             <div class="record-inner-label">{{ __('forms.category') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($this->dictionaries, 'eHealth/diagnostic_report_categories.' . data_get($diagnosticReport, 'category.0.coding.0.code'), '-') }}
+                                {{ $this->dictionaryLabel($diagnosticReport, 'category.0') }}
                             </div>
                         </div>
                         <div>

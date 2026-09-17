@@ -9,6 +9,7 @@ use App\Enums\Person\Gender;
 use App\Enums\Preperson\Status;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Episode;
+use App\Models\MedicalEvents\Sql\Specimen;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -84,6 +85,16 @@ class Preperson extends Model
     public function devices(): HasMany
     {
         return $this->hasMany(Device::class);
+    }
+
+    /**
+     * Specimens collected from this preperson.
+     *
+     * @return HasMany
+     */
+    public function specimens(): HasMany
+    {
+        return $this->hasMany(Specimen::class);
     }
 
     /**

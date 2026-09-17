@@ -102,7 +102,7 @@
                 uuid: specimen.uuid,
                 name: [
                     specimenTypes[specimen.typeCode],
-                    specimen.collectedDate ? `{{ __('specimens.collected_at') }}: ${specimen.collectedDate} ${specimen.collectedTime}` : ''
+                    specimen.collectedDate ? `{{ __('specimens.collection') }}: ${specimen.collectedDate} ${specimen.collectedTime}` : ''
                 ].filter(Boolean).join(', ')
             }));
             const packageSpecimenIds = packageSpecimens.map((specimen) => specimen.uuid);

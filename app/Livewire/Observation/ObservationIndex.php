@@ -95,7 +95,8 @@ class ObservationIndex extends BasePatientComponent
         'eHealth/hair_length',
         'GENDER',
         'eHealth/rankin_scale',
-        'eHealth/vaccination_covid_groups'
+        'eHealth/vaccination_covid_groups',
+        'eHealth/occupation_type'
     ];
 
     protected function getSyncStatus(string $entityType): ?string
@@ -309,7 +310,7 @@ class ObservationIndex extends BasePatientComponent
     {
         $directValue = $this->resolveObservationValue($observation);
 
-        if ($directValue !== null) {
+        if (filled($directValue)) {
             return $directValue;
         }
 

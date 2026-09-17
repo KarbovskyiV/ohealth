@@ -16,7 +16,7 @@
                 <div class="record-inner-column flex-1">
                     <div class="record-inner-label">{{ __('forms.code') }}</div>
                     <div class="record-inner-value text-[16px] font-semibold dark:text-gray-100">
-                        {{ data_get($this->dictionaries, 'eHealth/clinical_impression_patient_categories.' . data_get($clinicalImpression, 'code.coding.0.code'), data_get($clinicalImpression, 'code.coding.0.code', '-')) }}
+                        {{ $this->dictionaryLabel($clinicalImpression, 'code') }}
                     </div>
                 </div>
 
