@@ -138,7 +138,7 @@ class Specimen extends Model
      *
      * @return BelongsToMany
      */
-    public function parents(): BelongsToMany
+    public function parent(): BelongsToMany
     {
         return $this->belongsToMany(Identifier::class, 'specimen_parents')->withTimestamps();
     }
@@ -148,7 +148,7 @@ class Specimen extends Model
      *
      * @return BelongsToMany
      */
-    public function requests(): BelongsToMany
+    public function request(): BelongsToMany
     {
         return $this->belongsToMany(Identifier::class, 'specimen_requests')->withTimestamps();
     }
@@ -158,7 +158,7 @@ class Specimen extends Model
      *
      * @return HasMany
      */
-    public function containers(): HasMany
+    public function container(): HasMany
     {
         return $this->hasMany(SpecimenContainer::class);
     }
@@ -189,12 +189,12 @@ class Specimen extends Model
             'registeredBy.type.coding',
             'context.type.coding',
             'statusReason.coding',
-            'parents.type.coding',
-            'requests.type.coding',
-            'containers.type.coding',
-            'containers.capacity',
-            'containers.specimenQuantity',
-            'containers.additiveCodeableConcept.coding',
+            'parent.type.coding',
+            'request.type.coding',
+            'container.type.coding',
+            'container.capacity',
+            'container.specimenQuantity',
+            'container.additiveCodeableConcept.coding',
             'collection.procedure.type.coding',
             'collection.collector.type.coding',
             'collection.collectedPeriod',

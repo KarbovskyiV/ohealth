@@ -108,6 +108,7 @@ return [
         'condition' => 50,
         'diagnostic_report' => 50,
         'device' => 50,
+        'specimen' => 50,
         'employee_role' => 50,
         'party_request' => 30,
         'declaration' => [

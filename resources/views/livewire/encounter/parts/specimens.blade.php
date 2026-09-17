@@ -4,6 +4,9 @@
     x-data="{
         specimens: $wire.entangle('specimenForm.specimens'),
         procedures: $wire.entangle('procedureForm.procedures'),
+        selectedRecords: $wire.entangle('selectedRecords.specimens'),
+        cancelledRecords: $wire.cancelledRecords.specimens,
+        canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
         employees: @js($employees),
         currentEmployee: @js($deviceDispenseEmployee),
         specimenTypesDictionary: $wire.dictionaries['specimen_types'],
@@ -142,9 +145,15 @@
                             type="checkbox"
                             :id="`specimenRecord${index}`"
                             class="default-checkbox h-5 w-5"
-                            disabled
+                            :value="specimen.uuid"
+                            x-model="selectedRecords"
+                            :disabled="! canCancelRecords || ! specimen.uuid || cancelledRecords.includes(specimen.uuid)"
                         />
                     </div>
+
+                    <template x-if="cancelledRecords.includes(specimen.uuid)">
+                        <span class="record-inner-badge-error"> {{ __('specimens.statuses.entered_in_error') }} </span>
+                    </template>
 
                     <div class="record-inner-column flex-1">
                         <div
@@ -172,7 +181,7 @@
                                     if (! this.openDropdown) return;
                                     this.openDropdown = false;
                                     focusAfter && focusAfter.focus();
-                                },
+                                }
                             }"
                             @keydown.escape.prevent.stop="close($refs.button)"
                             @focusin.window="$refs.panel && ! $refs.panel.contains($event.target) && close()"

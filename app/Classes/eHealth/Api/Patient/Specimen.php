@@ -1,0 +1,170 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Classes\eHealth\Api\Patient;
+
+use App\Classes\eHealth\EHealthResponse;
+use App\Classes\eHealth\ValidationRuleBuilder;
+use App\Enums\Specimen\Status;
+use App\Exceptions\EHealth\EHealthConnectionException;
+use App\Exceptions\EHealth\EHealthResponseException;
+use App\Exceptions\EHealth\EHealthValidationException;
+use GuzzleHttp\Promise\PromiseInterface;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+
+class Specimen extends PatientApiBase
+{
+    /**
+     * Get specimens of the patient by search params.
+     *
+     * @param  string  $patientId
+     * @param array{
+     *     status?: string,
+     *     type?: string,
+     *     registered_by?: string,
+     *     collected_from?: string,
+     *     collected_to?: string,
+     *     container_identifier?: string,
+     *     container_type?: string,
+     *     parent?: string,
+     *     request?: string,
+     *     encounter?: string,
+     *     page?: int,
+     *     page_size?: int
+     * } $query
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/specimen/get-specimen-by-search-params
+     */
+    public function getBySearchParams(string $patientId, array $query = []): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateSpecimens(...));
+        $this->setDefaultPageSize();
+
+        $mergedQuery = array_merge(
+            $this->options['query'],
+            $this->format($query, ['collected_from', 'collected_to'])
+        );
+
+        return $this->get(self::URL . "/$patientId/specimens", $mergedQuery);
+    }
+
+    /**
+     * Validate specimens collection from eHealth API.
+     *
+     * @param  EHealthResponse  $response
+     * @return array
+     */
+    protected function validateSpecimens(EHealthResponse $response): array
+    {
+        $data = $response->getData();
+
+        if (empty($data)) {
+            return [];
+        }
+
+        $replaced = [];
+
+        foreach ($data as $item) {
+            $replaced[] = $this->replaceEHealthPropNames($item);
+        }
+
+        $rules = collect($this->specimenValidationRules())
+            ->mapWithKeys(static fn (array $rule, string $key): array => ["*.$key" => $rule])
+            ->toArray();
+
+        $validator = Validator::make($replaced, $rules);
+
+        if ($validator->fails()) {
+            Log::channel('e_health_errors')->error(
+                'Specimen validation failed: ' . implode(', ', $validator->errors()->all())
+            );
+        }
+
+        return $validator->validate();
+    }
+
+    /**
+     * List of validation rules for specimens from eHealth.
+     *
+     * @return array
+     */
+    protected function specimenValidationRules(): array
+    {
+        return ValidationRuleBuilder::merge(
+            // Basic fields
+            [
+                'uuid' => ['required', 'uuid'],
+                'accession_identifier' => ['nullable', 'string', 'max:255'],
+                'status' => ['required', Rule::in(Status::values())],
+                'note' => ['nullable', 'string'],
+                'received_time' => ['nullable', 'date'],
+                'explanatory_letter' => ['nullable', 'string', 'max:255'],
+                'ehealth_inserted_at' => ['required', 'date'],
+                'ehealth_inserted_by' => ['required', 'uuid'],
+                'ehealth_updated_at' => ['required', 'date'],
+                'ehealth_updated_by' => ['required', 'uuid']
+            ],
+
+            // Identifier relationships
+            ValidationRuleBuilder::identifierRules('subject', true),
+            ValidationRuleBuilder::identifierRules('managing_organization', true),
+            ValidationRuleBuilder::identifierRules('registered_by', true),
+            ValidationRuleBuilder::identifierRules('context', true),
+            ValidationRuleBuilder::identifierCollectionRules('parent'),
+            ValidationRuleBuilder::identifierCollectionRules('request'),
+
+            // Codeable concept relationships
+            ValidationRuleBuilder::codeableConceptRules('type', true),
+            ValidationRuleBuilder::codeableConceptRules('condition'),
+            ValidationRuleBuilder::codeableConceptRules('status_reason'),
+
+            // Containers the specimen is kept in
+            [
+                'container' => ['required', 'array'],
+                'container.*.identifier' => ['required', 'string', 'max:255'],
+                'container.*.description' => ['nullable', 'string', 'max:255']
+            ],
+            ValidationRuleBuilder::codeableConceptRules('container.*.type'),
+            ValidationRuleBuilder::codeableConceptRules('container.*.additive_codeable_concept'),
+            $this->quantityRules('container.*.capacity'),
+            $this->quantityRules('container.*.specimen_quantity'),
+
+            // Collection details, carrying either a moment or a period
+            [
+                'collection' => ['required', 'array'],
+                'collection.collected_date_time' => ['nullable', 'date']
+            ],
+            ValidationRuleBuilder::periodRules('collection.collected_period'),
+            ValidationRuleBuilder::identifierRules('collection.collector', true),
+            ValidationRuleBuilder::identifierRules('collection.procedure'),
+            ValidationRuleBuilder::codeableConceptRules('collection.method'),
+            ValidationRuleBuilder::codeableConceptRules('collection.body_site'),
+            ValidationRuleBuilder::codeableConceptRules('collection.fasting_status_codeable_concept'),
+            $this->quantityRules('collection.duration'),
+            $this->quantityRules('collection.quantity')
+        );
+    }
+
+    /**
+     * Generate validation rules for a quantity held by a specimen.
+     *
+     * @param  string  $field
+     * @return array
+     */
+    private function quantityRules(string $field): array
+    {
+        return [
+            $field => ['nullable', 'array'],
+            "$field.value" => ["required_with:$field", 'numeric'],
+            "$field.comparator" => ['nullable', 'string', 'max:255'],
+            "$field.unit" => ["required_with:$field", 'string', 'max:255'],
+            "$field.system" => ['nullable', 'string', 'max:255'],
+            "$field.code" => ['nullable', 'string', 'max:255']
+        ];
+    }
+}

@@ -14,6 +14,7 @@ use App\Enums\Person\EncounterStatus;
 use App\Enums\Person\ImmunizationStatus;
 use App\Enums\Person\ObservationStatus;
 use App\Enums\Person\ProcedureStatus;
+use App\Enums\Specimen\Status as SpecimenStatus;
 use App\Models\MedicalEvents\Sql\ClinicalImpression;
 use App\Models\MedicalEvents\Sql\Condition;
 use App\Models\MedicalEvents\Sql\DetectedIssue;
@@ -26,6 +27,7 @@ use App\Models\MedicalEvents\Sql\EncounterDiagnose;
 use App\Models\MedicalEvents\Sql\Immunization;
 use App\Models\MedicalEvents\Sql\Observation;
 use App\Models\MedicalEvents\Sql\Procedure;
+use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use Illuminate\Support\Facades\DB;
@@ -180,7 +182,11 @@ class EncounterRepository extends BaseRepository
         Immunization::class => ['status', ImmunizationStatus::ENTERED_IN_ERROR],
         DiagnosticReport::class => ['status', DiagnosticReportStatus::ENTERED_IN_ERROR],
         Procedure::class => ['status', ProcedureStatus::ENTERED_IN_ERROR],
-        ClinicalImpression::class => ['status', ClinicalImpressionStatus::ENTERED_IN_ERROR]
+        ClinicalImpression::class => ['status', ClinicalImpressionStatus::ENTERED_IN_ERROR],
+        Device::class => ['status', DeviceStatus::ENTERED_IN_ERROR],
+        DeviceAssociation::class => ['status', DeviceAssociationStatus::ENTERED_IN_ERROR],
+        DetectedIssue::class => ['status', DetectedIssueStatus::ENTERED_IN_ERROR],
+        Specimen::class => ['status', SpecimenStatus::ENTERED_IN_ERROR]
     ];
 
     /**
@@ -197,7 +203,8 @@ class EncounterRepository extends BaseRepository
         'clinicalImpressions' => [ClinicalImpression::class, 'status', ClinicalImpressionStatus::ENTERED_IN_ERROR],
         'devices' => [Device::class, 'status', DeviceStatus::ENTERED_IN_ERROR],
         'deviceAssociations' => [DeviceAssociation::class, 'status', DeviceAssociationStatus::ENTERED_IN_ERROR],
-        'detectedIssues' => [DetectedIssue::class, 'status', DetectedIssueStatus::ENTERED_IN_ERROR]
+        'detectedIssues' => [DetectedIssue::class, 'status', DetectedIssueStatus::ENTERED_IN_ERROR],
+        'specimens' => [Specimen::class, 'status', SpecimenStatus::ENTERED_IN_ERROR]
     ];
 
     /**
@@ -218,7 +225,8 @@ class EncounterRepository extends BaseRepository
         'clinicalImpressions' => 'encounter',
         'devices' => 'context',
         'deviceAssociations' => 'context',
-        'detectedIssues' => 'encounter'
+        'detectedIssues' => 'encounter',
+        'specimens' => 'context'
     ];
 
     /**
@@ -478,8 +486,8 @@ class EncounterRepository extends BaseRepository
                 $episode = $this->syncIdentifier($existing, $data['episode'], 'episode');
                 $incomingReferralData = $data['incoming_referral'] ?? null;
 
-                if ($incomingReferralData && $existing?->incomingReferral?->display_value) {
-                    $incomingReferralData['display_value'] = $existing->incomingReferral->display_value;
+                if ($incomingReferralData && $existing?->incomingReferral?->displayValue) {
+                    $incomingReferralData['display_value'] = $existing->incomingReferral->displayValue;
                 }
 
                 $incomingReferral = $this->syncIdentifier(
