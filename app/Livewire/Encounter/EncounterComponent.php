@@ -377,7 +377,8 @@ class EncounterComponent extends Component
         'clinicalImpressions' => [],
         'devices' => [],
         'deviceAssociations' => [],
-        'detectedIssues' => []
+        'detectedIssues' => [],
+        'specimens' => []
     ];
 
     /**
@@ -1279,7 +1280,7 @@ class EncounterComponent extends Component
 
         $heldSpecialities = $employee->loadMissing('specialities')
             ->specialities
-            ->where('speciality_officio', true)
+            ->where('specialityOfficio', true)
             ->pluck('speciality')
             ->all();
 

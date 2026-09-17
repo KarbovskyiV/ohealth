@@ -39,7 +39,8 @@ class SyncNotification extends Notification
         'diagnostic_report' => 'Синхронізація діагностичних звітів',
         'procedure' => 'Синхронізація процедур',
         'party_verification' => 'Синхронізація верифікацій працівників',
-        'device' => 'Синхронізація медичних виробів'
+        'device' => 'Синхронізація медичних виробів',
+        'specimen' => 'Синхронізація зразків біоматеріалу'
     ];
 
     /** @var array Sync action statuses mapping with Ukrainian descriptions */

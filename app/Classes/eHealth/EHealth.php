@@ -41,6 +41,7 @@ use App\Classes\eHealth\Api\Patient\Episode;
 use App\Classes\eHealth\Api\Patient\Immunization;
 use App\Classes\eHealth\Api\Patient\Observation;
 use App\Classes\eHealth\Api\Patient\Procedure;
+use App\Classes\eHealth\Api\Patient\Specimen;
 use App\Classes\eHealth\Api\Person;
 use App\Classes\eHealth\Api\PersonRequest;
 use App\Classes\eHealth\Api\Preperson;
@@ -294,5 +295,10 @@ final class EHealth
     public static function device(): Device
     {
         return app(Device::class);
+    }
+
+    public static function specimen(): Specimen
+    {
+        return app(Specimen::class);
     }
 }

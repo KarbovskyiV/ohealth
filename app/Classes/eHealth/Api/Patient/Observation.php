@@ -197,7 +197,7 @@ class Observation extends PatientApiBase
             // Identifier relationships
             ValidationRuleBuilder::identifierRules('diagnostic_report'),
             ValidationRuleBuilder::identifierRules('context'),
-            ValidationRuleBuilder::identifierRules('performer'),
+            ValidationRuleBuilder::identifierCollectionRules('performer'),
             ValidationRuleBuilder::identifierRules('specimen'),
             ValidationRuleBuilder::identifierRules('device'),
             ValidationRuleBuilder::identifierRules('based_on'),

@@ -19,6 +19,7 @@ use App\Jobs\LegalEntitySync;
 use App\Jobs\ObservationSync;
 use App\Jobs\PersonAuthMethodSync;
 use App\Jobs\RemoteEHealthLinksProcessing;
+use App\Jobs\SpecimenSync;
 use App\Livewire\Hooks\IgnoreSpuriousToJsonCalls;
 use App\Rules\TranslatedDateValidator;
 use Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider;
@@ -174,6 +175,11 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for(
             'ehealth-device-get',
             static fn (DeviceSync $job) => Limit::perMinute(config('ehealth.rate_limit.device'))->by($job->user->id)
+        );
+
+        RateLimiter::for(
+            'ehealth-specimen-get',
+            static fn (SpecimenSync $job) => Limit::perMinute(config('ehealth.rate_limit.specimen'))->by($job->user->id)
         );
 
         RateLimiter::for(

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
+use Livewire\WithFileUploads;
 use Throwable;
 
 /**
@@ -28,6 +29,9 @@ use Throwable;
  */
 trait HandlesEncounterCancellation
 {
+    // The signature modal takes the key container as an upload, so every page that cancels also handles files
+    use WithFileUploads;
+
     public bool $showCancellationModal = false;
 
     public bool $showSignatureModal = false;

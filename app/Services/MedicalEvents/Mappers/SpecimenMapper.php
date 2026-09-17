@@ -103,7 +103,7 @@ class SpecimenMapper implements FhirMapperContract
             'receivedDate' => $receivedTime ? convertToAppDateFormat($receivedTime) : '',
             'receivedTime' => $receivedTime ? CarbonImmutable::parse($receivedTime)->format('H:i') : '',
             'note' => data_get($data, 'note', ''),
-            'parentIds' => collect(data_get($data, 'parents', []))
+            'parentIds' => collect(data_get($data, 'parent', []))
                 ->map(static fn (array $parent): string => data_get($parent, 'identifier.value', ''))
                 ->filter()
                 ->values()
@@ -127,7 +127,7 @@ class SpecimenMapper implements FhirMapperContract
             'bodySiteCode' => data_get($data, 'collection.bodySite.coding.0.code', ''),
             'fastingStatusCode' => data_get($data, 'collection.fastingStatusCodeableConcept.coding.0.code', ''),
             'procedureId' => data_get($data, 'collection.procedure.identifier.value', ''),
-            'containers' => collect(data_get($data, 'containers', []))
+            'containers' => collect(data_get($data, 'container', []))
                 ->map(static fn (array $container): array => [
                     'identifier' => data_get($container, 'identifier', ''),
                     'description' => data_get($container, 'description', ''),

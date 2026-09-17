@@ -33,7 +33,8 @@ class PatientApiBase extends Request
             'id' => 'uuid',
             'inserted_at' => 'ehealth_inserted_at',
             'inserted_by' => 'ehealth_inserted_by',
-            'updated_at' => 'ehealth_updated_at'
+            'updated_at' => 'ehealth_updated_at',
+            'updated_by' => 'ehealth_updated_by'
         ];
     }
 }

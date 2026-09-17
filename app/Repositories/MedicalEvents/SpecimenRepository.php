@@ -115,13 +115,13 @@ class SpecimenRepository extends BaseRepository
 
                 $this->syncPivot(
                     $specimen,
-                    'parents',
-                    $this->syncIdentifiers($existing, $data['parent'] ?? [], 'parents')
+                    'parent',
+                    $this->syncIdentifiers($existing, $data['parent'] ?? [], 'parent')
                 );
                 $this->syncPivot(
                     $specimen,
-                    'requests',
-                    $this->syncIdentifiers($existing, $data['request'] ?? [], 'requests')
+                    'request',
+                    $this->syncIdentifiers($existing, $data['request'] ?? [], 'request')
                 );
                 $this->syncCollection($specimen, $data['collection']);
                 $this->syncContainers($specimen, $data['container']);
@@ -188,7 +188,7 @@ class SpecimenRepository extends BaseRepository
      */
     private function syncContainers(Specimen $specimen, array $containers): void
     {
-        $existingContainers = $specimen->wasRecentlyCreated ? collect() : $specimen->containers;
+        $existingContainers = $specimen->wasRecentlyCreated ? collect() : $specimen->container;
 
         foreach ($containers as $index => $container) {
             $existingContainer = $existingContainers[$index] ?? null;
@@ -222,7 +222,7 @@ class SpecimenRepository extends BaseRepository
                 continue;
             }
 
-            $specimen->containers()->create($containerData);
+            $specimen->container()->create($containerData);
         }
 
         foreach ($existingContainers->slice(count($containers)) as $extraContainer) {

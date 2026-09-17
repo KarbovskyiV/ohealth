@@ -191,7 +191,7 @@ class Procedure extends PatientApiBase
             ValidationRuleBuilder::identifierRules('code', true),
             ValidationRuleBuilder::periodRules('performed_period'),
             ValidationRuleBuilder::identifierRules('recorded_by', true),
-            ValidationRuleBuilder::identifierRules('performer'),
+            ValidationRuleBuilder::identifierCollectionRules('performer'),
             ValidationRuleBuilder::codeableConceptRules('report_origin'),
             ValidationRuleBuilder::identifierRules('division'),
             ValidationRuleBuilder::identifierRules('managing_organization', true),
