@@ -311,22 +311,24 @@ class ConditionForm extends Form
                 return;
             }
 
-            $specialities = $asserter
-                ->loadMissing('specialities')
-                ->specialities
-                ->where('speciality_officio', true);
-
             $codeCode = data_get($value, 'codeCode');
 
-            $allowedCodes = $specialities
-                ->map(static fn (Speciality $speciality): mixed => config(
-                    "ehealth.icd10am_speciality_conditions_allowed.$speciality->speciality"
-                ))
-                ->filter(static fn (mixed $codes): bool => is_array($codes))
-                ->flatten();
+            $allowedSpecialities = collect(config('ehealth.icd10am_speciality_conditions_allowed', []))
+                ->filter(static fn (array $codes): bool => in_array($codeCode, $codes, true))
+                ->keys();
 
-            // A speciality the config does not list is restricted by nothing, so any code stands
-            if ($allowedCodes->isEmpty() || $allowedCodes->contains($codeCode)) {
+            // A code no speciality list mentions is open to every asserter
+            if ($allowedSpecialities->isEmpty()) {
+                return;
+            }
+
+            $hasAllowedSpeciality = $asserter
+                ->loadMissing('specialities')
+                ->specialities
+                ->where('specialityOfficio', true)
+                ->contains(static fn (Speciality $speciality): bool => $allowedSpecialities->contains($speciality->speciality));
+
+            if ($hasAllowedSpeciality) {
                 return;
             }
 

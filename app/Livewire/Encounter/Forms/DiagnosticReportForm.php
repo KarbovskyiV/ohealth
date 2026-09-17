@@ -128,6 +128,25 @@ class DiagnosticReportForm extends Form
                 new InDictionary('eHealth/ICD10_AM/condition_codes')
             ],
             'diagnosticReports.*.conclusion' => ['nullable', 'string', 'max:3000'],
+            'diagnosticReports.*.specimenIds' => ['nullable', 'array'],
+            'diagnosticReports.*.specimenIds.*' => [
+                'required',
+                'uuid',
+                'distinct',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $diagnosticReportsWithSpecimen = collect($this->diagnosticReports)
+                        ->filter(static fn (array $diagnosticReport): bool => in_array($value, $diagnosticReport['specimenIds'] ?? [], true))
+                        ->count();
+
+                    if ($diagnosticReportsWithSpecimen > 1) {
+                        $fail(__('specimens.validation.used_in_another_diagnostic_report'));
+
+                        return;
+                    }
+
+                    $this->component->specimenForm->validateReference($value, $fail);
+                }
+            ],
             'diagnosticReports.*.usedReferences' => ['nullable', 'array'],
             'diagnosticReports.*.usedReferences.*.id' => [
                 'nullable',

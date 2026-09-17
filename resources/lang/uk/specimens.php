@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Зразки біологічного матеріалу',
     'sidebar_title' => 'Зразки біоматеріалу',
@@ -21,18 +23,14 @@ return [
     'electronic_referral' => 'Електронне направлення',
     'encounter' => 'Взаємодія',
     'label' => 'Зразок біологічного матеріалу',
-
     'add_specimen' => 'Додати зразок біологічного матеріалу',
     'general_info' => 'Загальна інформація',
     'specimen_type' => 'Тип зразка',
-    'clarification' => 'Уточнення',
-    'add_clarification' => '+ Додати уточнення',
     'specimen_condition' => 'Стан зразка',
     'identifier' => 'Ідентифікатор',
     'date_time_received' => 'Дата/час отримання для дослідження',
     'time' => 'Час',
     'unavailability_reason' => 'Причина недоступності',
-    'add_electronic_referral' => '+ Додати електронне направлення',
     'add_parent_specimen' => '+ Додати батьківський зразок',
     'note' => 'Нотатка',
     'material_collection' => 'Забір матеріалу',
@@ -46,10 +44,8 @@ return [
     'period' => 'Період',
     'date_time' => 'Дата/час',
     'collection_duration' => 'Тривалість забору',
-    'minutes' => 'хвилин',
     'collection_method' => 'Метод забору',
     'material_amount' => 'Кількість матеріалу',
-    'ml' => 'мл',
     'body_site' => 'Частина тіла',
     'fasting_status' => 'Статус голодування',
     'procedure_during_collection' => 'Процедура, під час якої отримано зразок',
@@ -60,10 +56,42 @@ return [
     'additive' => 'Добавка / домішка',
     'biomaterial_amount_in_container' => 'Кількість біоматеріалу в контейнері',
     'add_container' => '+ Додати контейнер',
-    'cancel' => 'Скасувати',
     'add_specimen_btn' => 'Додати зразок',
+    'edit_specimen' => 'Редагування зразка',
+    'period_start' => 'Час початку',
+    'period_end' => 'Час завершення',
+    'unit' => 'Одиниця виміру',
+    'select_specimen' => 'Обрати зразок',
+    'collected_at' => 'Забір',
+    'containers' => 'Контейнери',
+    'specimen_position' => 'зразок №:position',
+    'container_position' => 'контейнер №:position',
     'collection_date_range' => 'Дата забору від - до',
     'created_by_employee' => 'Працівник, що створив',
     'container_id' => 'ID контейнера',
     'group_actions' => 'Групові дії',
+
+    'statuses' => [
+        'available' => 'Доступний',
+        'unsatisfactory' => 'Непридатний',
+        'unavailable' => 'Недоступний',
+        'entered_in_error' => 'Внесений помилково'
+    ],
+
+    'validation' => [
+        'collector_not_found' => 'Зразок №:position: обраного виконавця забору не знайдено серед активних працівників закладу.',
+        'collector_not_current_patient' => 'Зразок №:position: виконавцем забору може бути лише поточний пацієнт.',
+        'procedure_not_found' => 'Зразок №:position: обрана процедура відсутня у взаємодії.',
+        'not_found' => 'Обраний зразок біоматеріалу не знайдено серед зразків пацієнта.',
+        'not_available' => 'Обраний зразок біоматеріалу вже недоступний.',
+        'parent' => [
+            'not_found' => 'Зразок №:position: обраний батьківський зразок не знайдено серед зразків пацієнта.',
+            'not_available' => 'Зразок №:position: обраний батьківський зразок вже недоступний.'
+        ],
+        'used_in_another_diagnostic_report' => 'Зразок біоматеріалу вже використано в іншому діагностичному звіті.',
+        'collected_period_outside_encounter' => 'Поле :attribute має бути в межах періоду взаємодії — :date.',
+        'containers_quantity_exceeds_collected' => 'Зразок №:position: кількість біоматеріалу в контейнерах не може перевищувати зібрану кількість.',
+        'container_identifier_not_unique' => 'Зразок №:position, контейнер №:second-position: контейнер з таким ідентифікатором уже є в цьому зразку.',
+        'container_quantity_code_mismatch' => 'Зразок №:position, контейнер №:second-position: одиниця виміру біоматеріалу в контейнері має збігатися з одиницею зібраної кількості.'
+    ]
 ];

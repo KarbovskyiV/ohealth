@@ -364,6 +364,7 @@ return [
         'episode_period_start' => 'дата відкриття епізоду',
         'issued' => 'час внесення',
         'effective_period_start' => 'час початку прийому',
+        'collected_period_start' => 'час початку забору',
         'encounter_period_start' => 'час початку взаємодії',
         'encounter_period_end' => 'час завершення взаємодії',
         'performed_period_start' => 'час початку процедури',

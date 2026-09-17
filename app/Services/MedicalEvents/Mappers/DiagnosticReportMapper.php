@@ -86,7 +86,16 @@ class DiagnosticReportMapper implements FhirMapperContract
                 ->toCodeableConcept();
         }
 
-        // todo: specimens
+        if (!empty($data['specimenIds'])) {
+            $result['specimens'] = collect($data['specimenIds'])
+                ->map(
+                    static fn (string $specimenId): array => FhirResource::make()
+                        ->coding('eHealth/resources', 'specimen')
+                        ->toIdentifier($specimenId)
+                )
+                ->values()
+                ->toArray();
+        }
 
         if (!empty($data['usedReferences'])) {
             $result['usedReferences'] = collect($data['usedReferences'])
@@ -183,6 +192,11 @@ class DiagnosticReportMapper implements FhirMapperContract
                     'id' => data_get($usedReference, 'identifier.value', ''),
                 ])
                 ->filter(static fn (array $usedReference) => !empty($usedReference['id']))
+                ->values()
+                ->toArray(),
+            'specimenIds' => collect(data_get($data, 'specimens', []))
+                ->map(static fn (array $specimen): string => data_get($specimen, 'identifier.value', ''))
+                ->filter()
                 ->values()
                 ->toArray(),
             'resultsInterpreterEmployeeId' => $resultsInterpreterEmployeeId,

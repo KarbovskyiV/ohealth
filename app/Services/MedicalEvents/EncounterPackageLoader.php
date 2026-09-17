@@ -29,6 +29,7 @@ class EncounterPackageLoader
             'observations' => $this->loadObservations($encounterId),
             'procedures' => $this->loadProcedures($encounterId),
             'deviceDispenses' => $this->loadDeviceDispenses($encounterId),
+            'specimens' => $this->loadSpecimens($encounterId),
             'devices' => $this->loadDevices($encounterId),
             'deviceAssociations' => $this->loadDeviceAssociations($encounterId),
             'detectedIssues' => $this->loadDetectedIssues($encounterId),
@@ -160,6 +161,19 @@ class EncounterPackageLoader
     }
 
     /**
+     * Load specimens created within the encounter as flat form data.
+     *
+     * @param  string  $encounterId
+     * @return array
+     */
+    private function loadSpecimens(string $encounterId): array
+    {
+        return collect(Repository::specimen()->get($encounterId))
+            ->map(static fn (array $specimen): array => Fhir::specimen()->fromFhir($specimen))
+            ->toArray();
+    }
+
+    /**
      * @param  string  $encounterId
      * @return array
      */
@@ -177,7 +191,8 @@ class EncounterPackageLoader
 
         $uuidsByType = $allSupportingInfo
             ->groupBy(static fn (array $item) => data_get($item, 'identifier.type.coding.0.code'))
-            ->map(static fn ($group) => 
+            ->map(
+                static fn ($group) =>
                 $group
                     ->pluck('identifier.value')
                     ->filter()
@@ -187,24 +202,12 @@ class EncounterPackageLoader
             );
 
         $detailsMap = array_merge(
-            Repository::condition()->getDetailsMapByUuids(
-                $uuidsByType->get('condition', [])
-            ),
-            Repository::observation()->getDetailsMapByUuids(
-                $uuidsByType->get('observation', [])
-            ),
-            Repository::diagnosticReport()->getDetailsMapByUuids(
-                $uuidsByType->get('diagnostic_report', [])
-            ),
-            Repository::procedure()->getDetailsMapByUuids(
-                $uuidsByType->get('procedure', [])
-            ),
-            Repository::encounter()->getDetailsMapByUuids(
-                $uuidsByType->get('encounter', [])
-            ),
-            Repository::episode()->getDetailsMapByUuids(
-                $uuidsByType->get('episode', [])
-            )
+            Repository::condition()->getDetailsMapByUuids($uuidsByType->get('condition', [])),
+            Repository::observation()->getDetailsMapByUuids($uuidsByType->get('observation', [])),
+            Repository::diagnosticReport()->getDetailsMapByUuids($uuidsByType->get('diagnostic_report', [])),
+            Repository::procedure()->getDetailsMapByUuids($uuidsByType->get('procedure', [])),
+            Repository::encounter()->getDetailsMapByUuids($uuidsByType->get('encounter', [])),
+            Repository::episode()->getDetailsMapByUuids($uuidsByType->get('episode', []))
         );
 
         return collect($deviceDispenses)
@@ -238,7 +241,8 @@ class EncounterPackageLoader
      * @param  string  $encounterId
      * @return array
      */
-    private function loadDetectedIssues(string $encounterId): array {
+    private function loadDetectedIssues(string $encounterId): array
+    {
         return collect(Repository::detectedIssue()->get($encounterId))
             ->map(static fn (array $detectedIssue): array => Fhir::detectedIssue()->fromFhir($detectedIssue))
             ->toArray();

@@ -13,6 +13,7 @@ use App\Enums\Person\ClinicalImpressionStatus;
 use App\Enums\Person\ImmunizationStatus;
 use App\Enums\Person\ObservationStatus;
 use App\Enums\Person\ServiceRequestStatus;
+use App\Enums\Specimen\Status as SpecimenStatus;
 use App\Enums\Status;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
@@ -28,6 +29,7 @@ use App\Livewire\Encounter\Forms\DiagnosticReportForm;
 use App\Livewire\Encounter\Forms\ImmunizationForm;
 use App\Livewire\Encounter\Forms\ObservationForm;
 use App\Livewire\Encounter\Forms\ProcedureForm;
+use App\Livewire\Encounter\Forms\SpecimenForm;
 use App\Livewire\Encounter\Forms\EncounterForm as Form;
 use App\Models\Employee\Employee;
 use App\Models\Equipment;
@@ -35,6 +37,7 @@ use App\Models\Icd10;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Immunization;
+use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Models\MedicalEvents\Sql\Episode;
@@ -65,6 +68,8 @@ class EncounterComponent extends Component
     public DeviceForm $deviceForm;
 
     public DeviceDispenseForm $deviceDispenseForm;
+
+    public SpecimenForm $specimenForm;
 
     public ClinicalImpressionForm $clinicalImpressionForm;
 
@@ -209,12 +214,19 @@ class EncounterComponent extends Component
     public array $observationValueMap;
 
     /**
-     * Allowed condition codes per code system for the current user, based on employee type and speciality.
+     * Allowed condition codes per code system for the current user, based on employee type.
      * Key absent = no restriction; key present with empty array = system forbidden; key present with codes = allowed codes.
      *
      * @var array
      */
     public array $allowedConditionCodesBySystem = [];
+
+    /**
+     * ICD-10 AM condition codes reserved for specialities the current user does not hold.
+     *
+     * @var array
+     */
+    public array $forbiddenIcd10ConditionCodes = [];
 
     /**
      * List of values for codeable concept.
@@ -287,7 +299,14 @@ class EncounterComponent extends Component
     public array $patientDevices = [];
 
     /**
-     * 
+     * Specimens already registered for the patient, offered for reference alongside the ones this package adds.
+     *
+     * @var array
+     */
+    public array $patientSpecimens = [];
+
+    /**
+     *
      *
      * @var array
      */
@@ -451,6 +470,13 @@ class EncounterComponent extends Component
         'eHealth/body_structures',
         'detected_issue_statuses',
         'detected_issue_codes',
+        'specimen_types',
+        'specimen_conditions',
+        'specimen_invalidate_reasons',
+        'specimen_collection_methods',
+        'specimen_container_types',
+        'specimen_container_additives',
+        'fasting_statuses',
         'POSITION'
     ];
 
@@ -577,6 +603,10 @@ class EncounterComponent extends Component
             $query->whereIn('code', $allowedCodes);
         }
 
+        if ($this->forbiddenIcd10ConditionCodes !== []) {
+            $query->whereNotIn('code', $this->forbiddenIcd10ConditionCodes);
+        }
+
         $this->results = $query->get(['code', 'description'])->toArray();
     }
 
@@ -661,6 +691,7 @@ class EncounterComponent extends Component
 
         $encounterWriterEmployee = $authUser->getEncounterWriterEmployee();
         $this->allowedConditionCodesBySystem = $this->computeAllowedConditionCodesBySystem($encounterWriterEmployee);
+        $this->forbiddenIcd10ConditionCodes = $this->computeForbiddenIcd10ConditionCodes($encounterWriterEmployee);
 
         $this->equipmentOptions = Equipment::whereLegalEntityId(legalEntity()->id)
             ->where('availability_status', AvailabilityStatus::AVAILABLE)
@@ -688,6 +719,18 @@ class EncounterComponent extends Component
             ->map(static fn (Device $device): array => [
                 'uuid' => $device->uuid,
                 'name' => $device->names->first()?->value ?? $device->uuid
+            ])
+            ->values()
+            ->toArray();
+
+        $this->patientSpecimens = Specimen::forPatient($this->patient())
+            ->whereNot('status', SpecimenStatus::ENTERED_IN_ERROR)
+            ->with('type.coding')
+            ->get(['id', 'uuid', 'status', 'type_id'])
+            ->map(static fn (Specimen $specimen): array => [
+                'uuid' => $specimen->uuid,
+                'status' => $specimen->status->value,
+                'typeCode' => $specimen->type->coding->first()?->code ?? ''
             ])
             ->values()
             ->toArray();
@@ -1203,9 +1246,8 @@ class EncounterComponent extends Component
     }
 
     /**
-     * Compute allowed condition codes per code system for the current user.
+     * Compute allowed condition codes per code system for the current user from employee-type restrictions.
      * Key absent means no restriction; empty array means the system is forbidden; non-empty array lists the allowed codes.
-     * Combines employee-type restrictions with officio-speciality restrictions, intersecting ICD-10 AM when both apply.
      *
      * @param  Employee  $employee
      * @return array
@@ -1214,35 +1256,41 @@ class EncounterComponent extends Component
     {
         $employeeTypeRestrictions = config("ehealth.employee_type_conditions_allowed.$employee->employeeType");
 
-        $speciality = $employee->loadMissing('specialities')
+        if ($employeeTypeRestrictions === null) {
+            return [];
+        }
+
+        return [
+            'eHealth/ICD10_AM/condition_codes' => $employeeTypeRestrictions['eHealth/ICD10_AM/condition_codes'] ?? [],
+            'eHealth/ICPC2/condition_codes' => $employeeTypeRestrictions['eHealth/ICPC2/condition_codes'] ?? []
+        ];
+    }
+
+    /**
+     * Compute ICD-10 AM condition codes reserved for specialities the employee does not hold as officio.
+     * A code listed for several specialities stays allowed when the employee holds any of them.
+     *
+     * @param  Employee  $employee
+     * @return array
+     */
+    private function computeForbiddenIcd10ConditionCodes(Employee $employee): array
+    {
+        $specialityCodes = config('ehealth.icd10am_speciality_conditions_allowed', []);
+
+        $heldSpecialities = $employee->loadMissing('specialities')
             ->specialities
-            ->firstWhere('speciality_officio', true)
-            ?->speciality;
-        $specialityIcd10Codes = $speciality
-            ? config("ehealth.icd10am_speciality_conditions_allowed.$speciality")
-            : null;
+            ->where('speciality_officio', true)
+            ->pluck('speciality')
+            ->all();
 
-        $result = [];
-        $icd10Key = 'eHealth/ICD10_AM/condition_codes';
-        $icpc2Key = 'eHealth/ICPC2/condition_codes';
+        $allowedCodes = collect($specialityCodes)->only($heldSpecialities)->flatten();
 
-        $employeeIcd10Codes = $employeeTypeRestrictions !== null
-            ? ($employeeTypeRestrictions[$icd10Key] ?? [])
-            : null;
-
-        if ($employeeIcd10Codes !== null && $specialityIcd10Codes !== null) {
-            $result[$icd10Key] = array_values(array_intersect($employeeIcd10Codes, $specialityIcd10Codes));
-        } elseif ($employeeIcd10Codes !== null) {
-            $result[$icd10Key] = $employeeIcd10Codes;
-        } elseif ($specialityIcd10Codes !== null) {
-            $result[$icd10Key] = $specialityIcd10Codes;
-        }
-
-        if ($employeeTypeRestrictions !== null) {
-            $result[$icpc2Key] = $employeeTypeRestrictions[$icpc2Key] ?? [];
-        }
-
-        return $result;
+        return collect($specialityCodes)
+            ->flatten()
+            ->unique()
+            ->diff($allowedCodes)
+            ->values()
+            ->all();
     }
 
     /**

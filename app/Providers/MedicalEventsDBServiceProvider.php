@@ -26,6 +26,7 @@ use App\Repositories\MedicalEvents\ProcedureRepository;
 use App\Repositories\MedicalEvents\ServiceRequestRequestRepository;
 use App\Repositories\MedicalEvents\DetectedIssueRepository;
 use App\Repositories\MedicalEvents\DeviceDispenseRepository;
+use App\Repositories\MedicalEvents\SpecimenRepository;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
@@ -52,6 +53,7 @@ class MedicalEventsDBServiceProvider extends ServiceProvider
         $this->bindRepository(DetectedIssueRepository::class);
         $this->bindRepository(DeviceAssociationRepository::class);
         $this->bindRepository(DeviceDispenseRepository::class);
+        $this->bindRepository(SpecimenRepository::class);
         $this->bindRepository(PaperReferralRepository::class);
         $this->bindRepository(PeriodRepository::class);
         $this->bindRepository(ClinicalImpressionRepository::class);
@@ -116,6 +118,7 @@ class MedicalEventsDBServiceProvider extends ServiceProvider
             DetectedIssueRepository::class,
             DeviceAssociationRepository::class,
             DeviceDispenseRepository::class,
+            SpecimenRepository::class,
             PaperReferralRepository::class,
             PeriodRepository::class,
             ClinicalImpressionRepository::class,

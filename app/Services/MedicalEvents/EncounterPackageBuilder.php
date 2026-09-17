@@ -150,6 +150,22 @@ class EncounterPackageBuilder
             ->values()
             ->toArray();
 
+        $referencedSpecimenIds = collect($data['observations'] ?? [])
+            ->pluck('specimenId')
+            ->merge(collect($data['diagnosticReports'] ?? [])->pluck('specimenIds')->flatten())
+            ->filter()
+            ->unique()
+            ->all();
+
+        $fhirSpecimens = collect($data['specimens'] ?? [])
+            ->map(static function (array $specimen) use ($referencedSpecimenIds, $uuids): array {
+                $specimen['isReferenced'] = in_array($specimen['uuid'], $referencedSpecimenIds, true);
+
+                return Fhir::specimen()->toFhir($specimen, $uuids);
+            })
+            ->values()
+            ->toArray();
+
         $encounterData = $data['encounter'];
 
         return [
@@ -163,6 +179,7 @@ class EncounterPackageBuilder
             'devices' => $fhirDevices,
             'deviceAssociations' => $fhirDeviceAssociations,
             'deviceDispenses' => $fhirDeviceDispenses,
+            'specimens' => $fhirSpecimens,
             'clinicalImpressions' => $fhirClinicalImpressions
         ];
     }

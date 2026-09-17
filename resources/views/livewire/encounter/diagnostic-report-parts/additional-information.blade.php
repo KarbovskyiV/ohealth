@@ -590,6 +590,57 @@
                     {{ __('equipments.add') }}
                 </button>
             </div>
+
+            @if ($isEncounterContext ?? false)
+                <div class="w-full max-w-107.5">
+                    <p class="label-modal mb-2 block text-sm">{{ __('specimens.sidebar_title') }}</p>
+
+                    <div class="space-y-4">
+                        <template
+                            x-for="(specimenId, specimenIndex) in modalDiagnosticReport.specimenIds"
+                            :key="specimenIndex"
+                        >
+                            <div class="flex items-end gap-3">
+                                <div class="form-group group flex-1">
+                                    <select
+                                        x-model="modalDiagnosticReport.specimenIds[specimenIndex]"
+                                        :id="`diagnosticReportSpecimen${specimenIndex}`"
+                                        class="input-select peer"
+                                    >
+                                        <option value="" selected>{{ __('forms.select') }}</option>
+                                        <template x-for="specimen in specimenOptions()" :key="specimen.uuid">
+                                            <option :value="specimen.uuid" x-text="specimen.name"></option>
+                                        </template>
+                                    </select>
+                                    <label :for="`diagnosticReportSpecimen${specimenIndex}`" class="label">
+                                        {{ __('specimens.select_specimen') }}
+                                    </label>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    @click.prevent="modalDiagnosticReport.specimenIds.splice(specimenIndex, 1)"
+                                    class="text-error shrink-0 hover:opacity-80"
+                                >
+                                    @icon('delete', 'w-5 h-5')
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+
+                    @error($diagnosticReportErrorPath . '.specimenIds.*')
+                        <p class="text-error mt-2">{{ $message }}</p>
+                    @enderror
+
+                    <button
+                        type="button"
+                        @click.prevent="modalDiagnosticReport.specimenIds.push('')"
+                        class="item-add mt-4"
+                    >
+                        {{ __('specimens.add_specimen') }}
+                    </button>
+                </div>
+            @endif
         </div>
     @endif
 </fieldset>

@@ -73,6 +73,20 @@
         </div>
     </div>
 
+    @if ($isEncounterContext)
+        <div class="form-row-modal">
+            <div>
+                <label for="observationSpecimen" class="label-modal">{{ __('specimens.label') }}</label>
+                <select x-model="modalObservation.specimenId" id="observationSpecimen" class="input-modal">
+                    <option value="" selected>{{ __('forms.select') }}</option>
+                    <template x-for="specimen in specimenOptions()" :key="specimen.uuid">
+                        <option :value="specimen.uuid" x-text="specimen.name"></option>
+                    </template>
+                </select>
+            </div>
+        </div>
+    @endif
+
     <div class="form-row-4">
         <div>
             <label for="observationIssuedDate" class="label-modal"> {{ __('observations.result_received_at') }} </label>

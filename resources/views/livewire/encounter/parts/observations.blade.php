@@ -15,12 +15,14 @@
             reactionImmunizations: $wire.entangle('reactionImmunizations'),
             selectedRecords: $wire.entangle('selectedRecords.observations'),
             cancelledRecords: $wire.cancelledRecords.observations,
+            patientSpecimens: $wire.patientSpecimens,
         @else
             currentImmunizations: [],
             currentEpisodeId: '',
             reactionImmunizations: [],
             selectedRecords: [],
             cancelledRecords: [],
+            patientSpecimens: [],
         @endif
         canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
         openModal: false,
@@ -37,6 +39,25 @@
         observationInterpretationsDictionary: $wire.dictionaries['eHealth/observation_interpretations'],
         vaccineCodesDictionary: @if($isEncounterContext) $wire.dictionaries['eHealth/vaccine_codes'] @else {} @endif,
         reactionEpisodeId: '',
+
+        specimenOptions() {
+            const specimenTypes = $wire.dictionaries['specimen_types'] ?? {};
+            const packageSpecimens = ($wire.specimenForm?.specimens ?? []).map((specimen) => ({
+                uuid: specimen.uuid,
+                name: [
+                    specimenTypes[specimen.typeCode],
+                    specimen.collectedDate ? `{{ __('specimens.collected_at') }}: ${specimen.collectedDate} ${specimen.collectedTime}` : ''
+                ].filter(Boolean).join(', ')
+            }));
+            const packageSpecimenIds = packageSpecimens.map((specimen) => specimen.uuid);
+
+            return [
+                ...packageSpecimens,
+                ...this.patientSpecimens
+                    .filter((specimen) => specimen.status === 'available' && ! packageSpecimenIds.includes(specimen.uuid))
+                    .map((specimen) => ({ uuid: specimen.uuid, name: specimenTypes[specimen.typeCode] || specimen.uuid }))
+            ];
+        },
         showReactionDrawer: false,
         reactionLoading: false,
         reactionHasSearched: false,
@@ -450,6 +471,7 @@
         interpretationCode = '';
         bodySiteCode = '';
         deviceId = '';
+        specimenId = '';
         reactionOn = '';
         valueQuantityValue = '';
         valueQuantityComparator = '';
