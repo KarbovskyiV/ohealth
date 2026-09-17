@@ -1,4 +1,4 @@
-@use(App\Enums\LegalEntity\States)
+    @use(App\Enums\LegalEntity\ConnectionStatus)
 
 <div x-data="{ openGrantAccessDrawer: false, showSignatureModal: $wire.entangle('showSignatureModal') }">
     <livewire:components.x-message :key="time()" />
@@ -18,13 +18,15 @@
                 {{ __('legal-entity-connection.btn_grant_access') }}
             </button>
 
-            <button type="button"
-                wire:click="sync"
-                class="button-sync flex items-center gap-2 whitespace-nowrap"
-            >
-                @icon('refresh', 'w-4 h-4')
-                <span>{{ __('legal-entity-connection.sync_data') }}</span>
-            </button>
+            @can('create', Connection::class)
+                <button type="button"
+                    wire:click="sync"
+                    class="button-sync flex items-center gap-2 whitespace-nowrap"
+                >
+                    @icon('refresh', 'w-4 h-4')
+                    <span>{{ __('legal-entity-connection.sync_data') }}</span>
+                </button>
+            @endcan
         </div>
     </x-header-navigation>
 
@@ -64,11 +66,11 @@
                                 <td class="index-table-td !whitespace-nowrap">
                                     {{-- status-alert-* classes are full-width alert blocks, use their badge-* (pill) equivalent here --}}
                                     @php
-                                        $legalEntityState = States::tryFrom($connection->legalEntity->status);
-                                        $badgeClass = str_replace('status-alert-', 'badge-', $legalEntityState?->cssClass() ?? 'status-alert-default');
+                                        $connectionStatus = ConnectionStatus::tryFrom($connection->status);
+                                        $badgeClass = str_replace('status-alert-', 'badge-', $connectionStatus?->color() ?? 'status-alert-default');
                                     @endphp
                                     <span class="{{ $badgeClass }} whitespace-nowrap">
-                                        {{ $legalEntityState?->label() ?? __('forms.unknown') }}
+                                        {{ $connectionStatus?->label() ?? __('forms.unknown') }}
                                     </span>
                                 </td>
                                 <td class="index-table-td">
@@ -136,7 +138,7 @@
                                                 </button>
                                                 @endcan
 
-                                                @can('updateConnection', $connection)
+                                                @can('update', $connection)
                                                 <button type="button" @click="close(); isCallbackUpdated = false; openUpdateCallbackDrawer = true" class="flex items-center gap-2 w-full last-of-type:rounded-b-md px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
                                                     @icon('refresh', 'w-5 h-5 text-gray-600 dark:text-gray-300') {{ __('legal-entity-connection.btn_update_callback_short') }}
                                                 </button>
@@ -167,13 +169,23 @@
             <span class="text-xl font-semibold">{{ __('legal-entity-connection.btn_grant_access') }}</span>
         </x-slot>
 
-        <form class="space-y-6 mt-6">
+        <form
+            class="space-y-6 mt-6"
+            x-data="{
+                clientUuid: '',
+                showSignatureModal: $wire.entangle('showSignatureModal')
+            }"
+            x-on:client-uuid-changed.debounce.500ms="$wire.clientUuid = clientUuid"
+        >
             <div class="flex flex-col gap-6 max-w-2xl">
                 <div class="form-group group top-3 grow">
                     <input type="text"
+                        required
                         id="client_id"
                         placeholder=" "
                         class="input peer"
+                        x-model="clientUuid"
+                        x-on:input.debounce.300ms="$dispatch('client-uuid-changed')"
                     >
                     <label for="client_id" class="label">
                         {{ __('legal-entity-connection.client_id_label_lower') }}
@@ -188,12 +200,16 @@
                 >
                     {{ __('legal-entity-connection.btn_back') }}
                 </button>
-                <button type="button"
-                        @click="openGrantAccessDrawer = false; showSignatureModal = true"
-                        class="button-primary px-6"
-                >
-                    {{ __('legal-entity-connection.btn_sign') }}
-                </button>
+
+                @can('create', Connection::class)
+                    <button type="button"
+                            @click="openGrantAccessDrawer = false; $wire.create(clientUuid)"
+                            class="button-primary px-6"
+                            x-bind:disabled="!clientUuid"
+                    >
+                        {{ __('legal-entity-connection.btn_sign') }}
+                    </button>
+                @endcan
             </div>
         </form>
     </x-dialog-drawer>
@@ -316,14 +332,12 @@
 
             <div class="mt-12 flex flex-row items-center gap-4 border-t border-gray-200 pt-6 max-w-2xl">
                 <button type="button"
-
                         @click="$wire.showSignatureModal = false"
-
                         class="button-minor"
-
                 >
                     {{ __('legal-entity-connection.btn_cancel') }}
                 </button>
+
                 <button wire:click="sign"
                         type="button"
                         class="button-primary"

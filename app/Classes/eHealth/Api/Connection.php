@@ -18,6 +18,8 @@ class Connection extends Request
 {
     public const string URL = '/api/clients';
 
+    public const string URL_CREATE = '/api/connections';
+
     /**
      * Get the list of clients (legal entities) associated with the configured eHealth connection.
      *
@@ -101,6 +103,27 @@ class Connection extends Request
     }
 
     /**
+     * Create a new connection with the specified redirect URI.
+     *
+     * @param  string  $signedData  The signed data required to create the connection.
+     *
+     * @return PromiseInterface|EHealthResponse
+     *
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     */
+    public function createConnection(string $signedData): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateConnectionDetails(...));
+
+        $body = [
+            'signed_content' => $signedData,
+            'signed_content_encoding' => 'base64'
+        ];
+
+        return parent::post(self::URL_CREATE, $body);
+    }
+
+    /**
      * Update connection's redirect URI.
      *
      * @param  string  $clientId  The unique identifier of the client.
@@ -134,8 +157,6 @@ class Connection extends Request
      */
     public function deleteConnection(string $clientId, string $connectionId): PromiseInterface|EHealthResponse
     {
-        $this->setValidator($this->validateConnectionDetails(...));
-
         return parent::delete(self::URL . '/' . $clientId . '/connections/' . $connectionId);
     }
 
@@ -212,7 +233,7 @@ class Connection extends Request
 
         $clientsList = $response->getData();
 
-        $validationRules = ['*' => 'required|array'];
+        $validationRules = ['*' => 'nullable|array'];
 
         foreach ($this->getValidationConnectionRules() as $key => $rule) {
             $validationRules["*.{$key}"] = $rule;

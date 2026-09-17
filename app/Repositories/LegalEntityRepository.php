@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
+use App\Enums\LegalEntity\ConnectionStatus;
 use Illuminate\Database\Eloquent\Collection;
 
 class LegalEntityRepository
@@ -315,10 +316,9 @@ class LegalEntityRepository
         try {
             DB::transaction(function () use ($connection, $secret) {
                 $connection->update(['secret' => $secret]);
-            });
 
-            $connection->legalEntity->update(['client_secret' => $secret]);
-            $connection->legalEntity->refresh();
+                $this->updateLegalEntitySecret($connection->legalEntity, $secret);
+            });
         } catch (Exception $exception) {
             $this->handleDatabaseErrors($exception, __('Error occurred while trying to update connection secret'), __('Error occurred while trying to update connection\'s secret'));
 
@@ -326,5 +326,43 @@ class LegalEntityRepository
         }
 
         return true;
+    }
+
+    /**
+     * Synchronize the Connection's status for a given connection when delete
+     *
+     * @param  Connection  $connection  The connection instance to update.
+     *
+     * @return bool  Returns true if the update was successful, false otherwise.
+     *
+     * @throws Exception  If a database error occurs during the update process.
+     */
+    public function syncConnectionDelete(Connection $connection): bool
+    {
+        try {
+            DB::transaction(function () use ($connection) {
+                $connection->update(['status' => ConnectionStatus::TERMINATED->value]);
+            });
+        } catch (Exception $exception) {
+            $this->handleDatabaseErrors($exception, __('Error occurred while trying to update connection termination'), __('Error occurred while trying to update connection termination'));
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Update the client secret stored for a legal entity.
+     *
+     * @param  LegalEntity  $legalEntity  The legal entity to update.
+     * @param  string  $secret  The new client secret.
+     *
+     * @return void
+     */
+    public function updateLegalEntitySecret(LegalEntity $legalEntity, string $secret): void
+    {
+        $legalEntity->update(['client_secret' => $secret]);
+        $legalEntity->refresh();
     }
 }

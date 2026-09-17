@@ -10,6 +10,10 @@ use App\Models\LegalEntity;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\Repository;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Redirect;
+use Livewire\Features\SupportRedirects\Redirector;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 
@@ -35,13 +39,6 @@ class LegalEntityConnectionComponent extends Component
      * @var bool
      */
     public bool $showSignatureModal = false;
-
-    /**
-     * Form data for the connection.
-     *
-     * @var array
-     */
-    public array $form = [];
 
     /**
      * The legal entity model instance.
@@ -106,6 +103,12 @@ class LegalEntityConnectionComponent extends Component
      */
     public function refreshSecret(Connection $connection): void
     {
+        if (Auth::user()->cannot('updateSecret', $connection)) {
+            session()->flash('error', __('legal-entity-connection.policy.restrict.update_secret'));
+
+            return;
+        }
+
         try {
             $response = EHealth::connection()->refreshConnectionToken($connection->legalEntity->uuid, $connection->uuid);
 
@@ -145,6 +148,12 @@ class LegalEntityConnectionComponent extends Component
      */
     public function update(Connection $connection, string $redirectUri): void
     {
+        if (Auth::user()->cannot('update', $connection)) {
+            session()->flash('error', __('legal-entity-connection.policy.restrict.update_connection'));
+
+            return;
+        }
+
         try {
             $response = EHealth::connection()->updateConnectionRedirectUri($connection->legalEntity->uuid, $connection->uuid, $redirectUri);
 
@@ -171,16 +180,61 @@ class LegalEntityConnectionComponent extends Component
         session()->flash('success', __('legal-entity-connection.callback_updated_title'));
     }
 
-    public function sign()
+     /**
+     * Deletes a connection in eHealth and synchronizes it with the local database.
+     *
+     * @param  Connection  $connection  The connection model instance to delete
+     *
+     * @return RedirectResponse|Redirector|null
+     *
+     * @throws EHealthResponseException  If eHealth API returns a server error
+     * @throws EHealthValidationException  If eHealth API returns a validation error
+     */
+    public function deleteConnection(Connection $connection): RedirectResponse|Redirector|null
     {
-        $this->showSignatureModal = false;
+        if (Auth::user()->cannot('delete', $connection)) {
+            session()->flash('error', __('legal-entity-connection.policy.restrict.delete'));
 
-        session()->flash('success', 'Зв\'язок успішно встановлений!');
+            return null;
+        }
 
-        return redirect()->route('legal-entity-connection.show', [
-            'legalEntity' => $this->legalEntity ?? 1,
-            'id' => 'conn-13-1312qe11'
-        ]);
+        $clientUuid = $connection->legalEntity->uuid;
+
+        try {
+            $response = EHealth::connection()->deleteConnection($clientUuid, $connection->uuid);
+
+            if ($response->getStatusCode() < 200 || $response->getStatusCode() > 299) {
+                throw new EHealthResponseException($response);
+            }
+        } catch (EHealthResponseException $err) {
+            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $err->getDetails()]);
+            session()->flash('error', __('errors.ehealth.messages.server_error'));
+
+            return null;
+        } catch (EHealthValidationException $err) {
+            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $err->getDetails()]);
+
+            session()->flash('error', __('errors.ehealth.messages.validation_error'));
+
+            return null;
+        }
+
+        $connectionsData = $this->getClientConnections();
+
+        if (!$connectionsData) {
+            return null;
+        }
+
+        // If termination was successful, the connection uuid should no longer exist in the eHealth system.
+        $isSuccessfulTermination = !in_array($connection->uuid, array_column($connectionsData['responseData'], 'uuid'), true);
+
+        if ($isSuccessfulTermination && Repository::legalEntity()->syncConnectionDelete($connection)) {
+            $connection->refresh();
+        }
+
+        return $isSuccessfulTermination
+            ? Redirect::route('connection.index', [legalEntity()])->with('success', __('legal-entity-connection.terminate_success')) ?? null
+            : Redirect::route('connection.index', [legalEntity()])->with('error', __('legal-entity-connection.sync.error.terminate')) ?? null;
     }
 
      /**
@@ -221,5 +275,43 @@ class LegalEntityConnectionComponent extends Component
         $client->refresh();
 
         return true;
+    }
+
+    /**
+     * Retrieves the legal entity's client connections from eHealth.
+     *
+     * @return array{response: mixed, responseData: array}|null
+     *
+     * @throws EHealthResponseException
+     * @throws EHealthValidationException
+     */
+    protected function getClientConnections(): array|null
+    {
+        $syncQuery = [
+            'page' => 1,
+            'page_size' => config('ehealth.api.page_size_le_connections_max')
+        ];
+
+        try {
+            $response = EHealth::connection()->getClientConnections(clientId: $this->legalEntity->uuid, query: $syncQuery);
+
+            $responseData = $response->validate();
+        } catch (EHealthResponseException $err) {
+            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $err->getDetails()]);
+            session()->flash('error', __('errors.ehealth.messages.server_error'));
+
+            return null;
+        } catch (EHealthValidationException $err) {
+            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $err->getDetails()]);
+
+            session()->flash('error', __('errors.ehealth.messages.validation_error'));
+
+            return null;
+        }
+
+        return [
+            'response' => $response,
+            'responseData' => $responseData
+        ];
     }
 }

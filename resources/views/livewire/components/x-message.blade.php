@@ -49,7 +49,7 @@
 
             <button
                 type="button"
-                @click="showAlertMessage= false"
+                @click.stop="showAlertMessage= false"
                 aria-label="Close"
                 class="absolute -top-2 -right-1 inline-flex items-center justify-center rounded-full border border-red-300 hover:border-2 hover:border-red-400 active:border-red-600 bg-white/90 hover:bg-white drop-shadow-sm shadow-lg text-gray-600 hover:text-gray-800 w-6 h-6 cursor-pointer transition-all z-[100000]"
             >

@@ -28,8 +28,8 @@ class LegalEntityConnectionShow extends LegalEntityConnectionComponent
     {
         $user = Auth::user();
 
-        if ($user->cannot('sync', Connection::class)) {
-            Session::flash('error', __('legal-entity.policy.deny.sync'));
+        if ($user->cannot('syncConnection', $this->connection)) {
+            Session::flash('error', __('legal-entity-connection.policy.restrict.sync_connection'));
 
             return;
         }
