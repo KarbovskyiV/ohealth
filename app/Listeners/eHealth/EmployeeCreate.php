@@ -181,6 +181,18 @@ class EmployeeCreate
                     continue;
                 }
 
+                // Do not re-apply an older request while a newer pending edit exists for the same
+                // employee (yesterday APPROVED / today still NEW after a fresh signature).
+                if ($this->hasNewerPendingEdit($employeeRequest, $employeeRequests)) {
+                    Log::info('[EmployeeCreate] Skip stale request apply; newer pending edit exists.', [
+                        'user_id' => $user->id,
+                        'request_id' => $employeeRequest->id,
+                        'employee_id' => $employeeRequest->employeeId,
+                    ]);
+
+                    continue;
+                }
+
                 // If the employee type is OWNER, we need to check if the current owner is different from the one in EHealth.
                 if ($eHealthEmployee['employee_type'] === Role::OWNER->value) {
                     $currOwner = $event->legalEntity->getOwner();
@@ -312,6 +324,38 @@ class EmployeeCreate
     }
 
     /**
+     * True when another pending edit for the same employee was created later than $request.
+     * Prevents login from re-applying yesterday's revision over a newer unsigned/unconfirmed edit.
+     *
+     * @param  Collection<int, EmployeeRequest>  $employeeRequests
+     */
+    private function hasNewerPendingEdit(EmployeeRequest $request, Collection $employeeRequests): bool
+    {
+        if (blank($request->employeeId)) {
+            return false;
+        }
+
+        return $employeeRequests->contains(
+            function (EmployeeRequest $other) use ($request): bool {
+                if ($other->id === $request->id) {
+                    return false;
+                }
+
+                if (!$this->shouldSkipPendingEditOnLogin($other)) {
+                    return false;
+                }
+
+                if ((int) $other->employeeId !== (int) $request->employeeId) {
+                    return false;
+                }
+
+                return $other->created_at > $request->created_at
+                    || ((string) $other->created_at === (string) $request->created_at && $other->id > $request->id);
+            }
+        );
+    }
+
+    /**
      * @param  Collection<int, string>  $taxIds
      * @return list<array<string, mixed>>
      */
@@ -376,69 +420,73 @@ class EmployeeCreate
             ->where('position', $employee['position'])
             ->where('employee_type', $employee['employee_type']);
 
-        return $candidates->first(function (EmployeeRequest $employeeRequest) use ($employee) {
-            $party = $employeeRequest->revision->data['party'];
-            $namesMatch = $party['first_name'] === $employee['party']['first_name']
-                && $party['last_name'] === $employee['party']['last_name']
-                && $party['second_name'] === $employee['party']['second_name'];
+        return $candidates
+            ->filter(function (EmployeeRequest $employeeRequest) use ($employee) {
+                $party = $employeeRequest->revision->data['party'];
+                $namesMatch = $party['first_name'] === $employee['party']['first_name']
+                    && $party['last_name'] === $employee['party']['last_name']
+                    && $party['second_name'] === $employee['party']['second_name'];
 
-            $eHealthDateString = $employee['start_date'] ?? null;
+                $eHealthDateString = $employee['start_date'] ?? null;
 
-            if (is_null($eHealthDateString)) {
-                return false;
-            }
-
-            // If start date is not provided in the request or names do not match, one cannot be sure that it's the same employee,
-            // so we will try to find any employee with the same position and employee type and with the same party data,
-            // and if there is only one such employee, we will assume that it's the same employee and use its start date
-            // for comparison, otherwise we will return false because of ambiguity.
-            if (is_null($employeeRequest->startDate) || !$namesMatch) {
-                $partyUuid = $employee['party']['uuid'] ?? null;
-                $party = Party::where('uuid', $partyUuid)->first();
-
-                if (!$party) {
+                if (is_null($eHealthDateString)) {
                     return false;
                 }
 
-                $matchedEmployee = Employee::matchingEmployee(
-                    legalEntityUuid: $employeeRequest->legalEntityUuid,
-                    employeeType: $employeeRequest->employeeType,
-                    position: $employeeRequest->position,
-                    partyId: $party->id,
-                )->first();
+                // If start date is not provided in the request or names do not match, one cannot be sure that it's the same employee,
+                // so we will try to find any employee with the same position and employee type and with the same party data,
+                // and if there is only one such employee, we will assume that it's the same employee and use its start date
+                // for comparison, otherwise we will return false because of ambiguity.
+                if (is_null($employeeRequest->startDate) || !$namesMatch) {
+                    $partyUuid = $employee['party']['uuid'] ?? null;
+                    $party = Party::where('uuid', $partyUuid)->first();
 
-                if (!$matchedEmployee) {
-                    return false;
+                    if (!$party) {
+                        return false;
+                    }
+
+                    $matchedEmployee = Employee::matchingEmployee(
+                        legalEntityUuid: $employeeRequest->legalEntityUuid,
+                        employeeType: $employeeRequest->employeeType,
+                        position: $employeeRequest->position,
+                        partyId: $party->id,
+                    )->first();
+
+                    if (!$matchedEmployee) {
+                        return false;
+                    }
+
+                    // Owner/party edits often leave employee_requests.start_date NULL and may omit
+                    // employee_request_data.start_date in revision JSON — never use bare ['start_date'].
+                    $fallbackStartDate = data_get($employeeRequest->revision?->data, 'employee_request_data.start_date')
+                        ?? data_get($employeeRequest->revision?->data, 'employee.start_date');
+
+                    if (!is_string($fallbackStartDate) || $fallbackStartDate === '') {
+                        $localStart = $matchedEmployee->startDate;
+                        $fallbackStartDate = $localStart instanceof \DateTimeInterface
+                            ? $localStart->format('Y-m-d')
+                            : (is_string($localStart) && $localStart !== '' ? $localStart : null);
+                    }
+
+                    if (!$fallbackStartDate) {
+                        return false;
+                    }
+
+                    $employeeRequest->startDate = $fallbackStartDate;
+                    $namesMatch = true; // If we have found the employee by other parameters and got the start date,
+                    // we can assume that names match because of the uniqueness of the employee record
+
                 }
 
-                // Owner/party edits often leave employee_requests.start_date NULL and may omit
-                // employee_request_data.start_date in revision JSON — never use bare ['start_date'].
-                $fallbackStartDate = data_get($employeeRequest->revision?->data, 'employee_request_data.start_date')
-                    ?? data_get($employeeRequest->revision?->data, 'employee.start_date');
+                $datesMatch = EmployeeRequestMatcher::datesMatchSameDay(
+                    $employeeRequest->startDate,
+                    $eHealthDateString
+                );
 
-                if (!is_string($fallbackStartDate) || $fallbackStartDate === '') {
-                    $localStart = $matchedEmployee->startDate;
-                    $fallbackStartDate = $localStart instanceof \DateTimeInterface
-                        ? $localStart->format('Y-m-d')
-                        : (is_string($localStart) && $localStart !== '' ? $localStart : null);
-                }
-
-                if (!$fallbackStartDate) {
-                    return false;
-                }
-
-                $employeeRequest->startDate = $fallbackStartDate;
-                $namesMatch = true; // If we have found the employee by other parameters and got the start date,
-                // we can assume that names match because of the uniqueness of the employee record
-
-            }
-
-            $datesMatch = EmployeeRequestMatcher::datesMatchSameDay(
-                $employeeRequest->startDate,
-                $eHealthDateString
-            );
-
-            return $namesMatch && $datesMatch;
-        });
+                return $namesMatch && $datesMatch;
+            })
+            // Prefer the newest matching request when several exist for the same employee.
+            ->sortByDesc(fn (EmployeeRequest $request) => [$request->created_at?->timestamp ?? 0, $request->id])
+            ->first();
     }
 }

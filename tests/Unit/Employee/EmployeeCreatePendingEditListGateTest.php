@@ -71,52 +71,28 @@ class EmployeeCreatePendingEditListGateTest extends TestCase
     }
 
     #[Test]
-    public function find_matching_local_request_tolerates_null_start_date_without_revision_key(): void
+    public function has_newer_pending_edit_detects_stale_candidate(): void
     {
-        $listener = new EmployeeCreate();
-        $method = new ReflectionMethod(EmployeeCreate::class, 'findMatchingLocalRequest');
+        $older = new EmployeeRequest([
+            'uuid' => (string) Str::uuid(),
+            'status' => RequestStatus::APPROVED,
+            'employee_id' => 55,
+        ]);
+        $older->id = 1;
+        $older->created_at = now()->subDay();
 
-        $request = new EmployeeRequest([
+        $newerPending = new EmployeeRequest([
             'uuid' => (string) Str::uuid(),
             'status' => RequestStatus::NEW,
-            'position' => 'P2',
-            'employee_type' => 'OWNER',
-            'start_date' => null,
-            'legal_entity_uuid' => (string) Str::uuid(),
+            'employee_id' => 55,
         ]);
-        $request->setRelation('revision', new \App\Models\Revision([
-            'data' => [
-                'party' => [
-                    'tax_id' => '1234567890',
-                    'first_name' => 'New',
-                    'last_name' => 'Name',
-                    'second_name' => null,
-                ],
-                // Intentionally no employee_request_data.start_date — Owner party edit case.
-                'employee_request_data' => [
-                    'position' => 'P2',
-                    'employee_type' => 'OWNER',
-                ],
-            ],
-        ]));
+        $newerPending->id = 2;
+        $newerPending->created_at = now();
 
-        $remoteEmployee = [
-            'uuid' => (string) Str::uuid(),
-            'position' => 'P2',
-            'employee_type' => 'OWNER',
-            'start_date' => '2020-01-01',
-            'party' => [
-                'uuid' => (string) Str::uuid(),
-                'tax_id' => '1234567890',
-                'first_name' => 'Old',
-                'last_name' => 'Name',
-                'second_name' => null,
-            ],
-        ];
+        $listener = new EmployeeCreate();
+        $method = new ReflectionMethod(EmployeeCreate::class, 'hasNewerPendingEdit');
 
-        // No local Party/Employee for fallback → must return null without throwing.
-        $matched = $method->invoke($listener, collect([$request]), $remoteEmployee);
-
-        $this->assertNull($matched);
+        $this->assertTrue($method->invoke($listener, $older, collect([$older, $newerPending])));
+        $this->assertFalse($method->invoke($listener, $newerPending, collect([$older, $newerPending])));
     }
 }
