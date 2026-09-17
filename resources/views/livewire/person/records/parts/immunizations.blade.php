@@ -16,7 +16,7 @@
                 <div class="record-inner-column flex-1">
                     <div class="record-inner-label">{{ __('immunizations.vaccine') }}</div>
                     <div class="record-inner-value text-[16px]">
-                        {{ data_get($this->dictionaries, 'eHealth/vaccine_codes.' . data_get($immunization, 'vaccineCode.coding.0.code'), data_get($immunization, 'vaccineCode.coding.0.code', '-')) }}
+                        {{ $this->dictionaryLabel($immunization, 'vaccineCode') }}
                     </div>
                 </div>
 
@@ -47,13 +47,13 @@
                         <div>
                             <div class="record-inner-label">{{ __('immunizations.route') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($this->dictionaries, 'eHealth/vaccination_routes.' . data_get($immunization, 'route.coding.0.code'), '-') }}
+                                {{ $this->dictionaryLabel($immunization, 'route') }}
                             </div>
                         </div>
                         <div>
                             <div class="record-inner-label">{{ __('patients.reason') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($this->dictionaries, 'eHealth/reason_explanations.' . data_get($immunization, 'explanation.reasons.0.coding.0.code'), '-') }}
+                                {{ $this->dictionaryLabel($immunization, 'explanation.reasons.0') }}
                             </div>
                         </div>
                         <div>
@@ -75,9 +75,7 @@
                         </div>
                         <div>
                             <div class="record-inner-label">{{ __('patients.body_part') }}</div>
-                            <div class="record-inner-subvalue">
-                                {{ data_get($this->dictionaries, 'eHealth/vaccination_routes.' . data_get($immunization, 'site.coding.0.code'), '-') }}
-                            </div>
+                            <div class="record-inner-subvalue">{{ $this->dictionaryLabel($immunization, 'site') }}</div>
                         </div>
                         <div>
                             <div class="record-inner-label">{{ __('immunizations.was_performed') }}</div>

@@ -181,7 +181,7 @@
                                     if (! this.openDropdown) return;
                                     this.openDropdown = false;
                                     focusAfter && focusAfter.focus();
-                                }
+                                },
                             }"
                             @keydown.escape.prevent.stop="close($refs.button)"
                             @focusin.window="$refs.panel && ! $refs.panel.contains($event.target) && close()"
@@ -253,7 +253,7 @@
                     <div class="record-inner-grid-container">
                         <div class="grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-4">
                             <div>
-                                <div class="record-inner-label uppercase">{{ __('specimens.status') }}</div>
+                                <div class="record-inner-label uppercase">{{ __('forms.status.label') }}</div>
                                 <div class="record-inner-subvalue" x-text="statusName(specimen.uuid)"></div>
                             </div>
                             <div>
@@ -270,7 +270,7 @@
                                 <div class="record-inner-label uppercase">{{ __('specimens.collector') }}</div>
                                 <div
                                     class="record-inner-subvalue"
-                                    x-text="specimen.collectorType === 'patient' ? '{{ __('specimens.patient') }}' : employeeName(specimen.collectorId)"
+                                    x-text="specimen.collectorType === 'patient' ? '{{ __('forms.patient') }}' : employeeName(specimen.collectorId)"
                                 ></div>
                             </div>
                             <div>
@@ -343,7 +343,7 @@
                                 :value="statusName(modalSpecimen.uuid)"
                                 disabled
                             />
-                            <label for="specimenStatus" class="label">{{ __('specimens.status') }}</label>
+                            <label for="specimenStatus" class="label">{{ __('forms.status.label') }}</label>
                         </div>
 
                         <div
@@ -366,7 +366,7 @@
                                 >{{ __('specimens.date_time_received') }}</label>
                             </div>
                             <div class="relative -ml-px w-32">
-                                <label for="specimenReceivedTime" class="sr-only">{{ __('specimens.time') }}</label>
+                                <label for="specimenReceivedTime" class="sr-only">{{ __('patients.time') }}</label>
                                 <input
                                     x-model="modalSpecimen.receivedTime"
                                     type="time"
@@ -469,7 +469,7 @@
                             >
                                 <option value="current">{{ __('specimens.current_employee') }}</option>
                                 <option value="other">{{ __('specimens.other_employee') }}</option>
-                                <option value="patient">{{ __('specimens.patient') }}</option>
+                                <option value="patient">{{ __('forms.patient') }}</option>
                             </select>
                             <label for="collectionCollectorType" class="label">{{ __('specimens.collector') }}</label>
                         </div>
@@ -563,7 +563,7 @@
                                 >{{ __('specimens.date_time') }}</label>
                             </div>
                             <div class="relative -ml-px w-32">
-                                <label for="specimenCollectedTime" class="sr-only">{{ __('specimens.time') }}</label>
+                                <label for="specimenCollectedTime" class="sr-only">{{ __('patients.time') }}</label>
                                 <input
                                     x-model="modalSpecimen.collectedTime"
                                     type="time"
@@ -603,7 +603,7 @@
                             <label
                                 for="specimenCollectedPeriodStartTime"
                                 class="label"
-                            >{{ __('specimens.period_start') }}</label>
+                            >{{ __('forms.start_time') }}</label>
                         </div>
 
                         <div class="form-group group relative">
@@ -709,7 +709,7 @@
                                     <option value="{{ $code }}">{{ $bodySite }}</option>
                                 @endforeach
                             </select>
-                            <label for="collectionBodySite" class="label">{{ __('specimens.body_site') }}</label>
+                            <label for="collectionBodySite" class="label">{{ __('patients.body_part') }}</label>
                         </div>
                     </div>
 

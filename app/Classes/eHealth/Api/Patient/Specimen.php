@@ -54,6 +54,86 @@ class Specimen extends PatientApiBase
     }
 
     /**
+     * Get details of the patient specimen by its ID.
+     *
+     * @param  string  $patientId
+     * @param  string  $specimenId
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/specimen/get-specimen-details
+     */
+    public function getDetails(string $patientId, string $specimenId): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateSpecimen(...));
+
+        return $this->get(self::URL . "/$patientId/specimens/$specimenId");
+    }
+
+    /**
+     * Get a specimen by its human-readable accession identifier.
+     *
+     * @param  string  $accessionIdentifier
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/specimen/get-specimen-by-accession-identifier
+     */
+    public function getByAccessionIdentifier(string $accessionIdentifier): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateSpecimenWithIdentity(...));
+
+        return $this->get("/api/specimens/$accessionIdentifier");
+    }
+
+    /**
+     * Validate a single specimen.
+     *
+     * @param  EHealthResponse  $response
+     * @return array
+     */
+    protected function validateSpecimen(EHealthResponse $response): array
+    {
+        return $this->runSpecimenValidation($response, $this->specimenValidationRules());
+    }
+
+    /**
+     * Validate a single specimen together with the identity of its subject.
+     *
+     * @param  EHealthResponse  $response
+     * @return array
+     */
+    protected function validateSpecimenWithIdentity(EHealthResponse $response): array
+    {
+        return $this->runSpecimenValidation($response, [
+            ...$this->specimenValidationRules(),
+            'identity' => ['required', 'array'],
+            'identity.gender' => ['required', 'string'],
+            'identity.age' => ['required', 'integer']
+        ]);
+    }
+
+    /**
+     * Apply the given rules to a single specimen from the eHealth API response.
+     *
+     * @param  EHealthResponse  $response
+     * @param  array  $rules
+     * @return array
+     */
+    private function runSpecimenValidation(EHealthResponse $response, array $rules): array
+    {
+        $validator = Validator::make($this->replaceEHealthPropNames($response->getData()), $rules);
+
+        if ($validator->fails()) {
+            Log::channel('e_health_errors')->error(
+                'Specimen validation failed: ' . implode(', ', $validator->errors()->all())
+            );
+        }
+
+        return $validator->validate();
+    }
+
+    /**
      * Validate specimens collection from eHealth API.
      *
      * @param  EHealthResponse  $response

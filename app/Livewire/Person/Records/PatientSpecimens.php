@@ -232,6 +232,66 @@ class PatientSpecimens extends BasePatientComponent
         $this->resetPage();
     }
 
+    /**
+     * Open the page of a specimen found through the eHealth search, storing it first when it is not in the database yet.
+     * A specimen that is already stored is opened as it is, without going to eHealth again.
+     *
+     * @param  string  $specimenId
+     * @return void
+     */
+    public function view(string $specimenId): void
+    {
+        $specimen = Specimen::forPatient($this->patient())->whereUuid($specimenId)->first()
+            ?? $this->storeSearchedSpecimen($specimenId);
+
+        if ($specimen === null) {
+            return;
+        }
+
+        if ($this->prepersonId !== null) {
+            $this->redirectRoute(
+                'prepersons.specimens.view',
+                [legalEntity(), 'preperson' => $this->prepersonId, 'specimen' => $specimen->id],
+                navigate: true
+            );
+
+            return;
+        }
+
+        $this->redirectRoute(
+            'persons.specimens.view',
+            [legalEntity(), 'person' => $this->personId, 'specimen' => $specimen->id],
+            navigate: true
+        );
+    }
+
+    /**
+     * Store a specimen found through the eHealth search, so that it has a page to open.
+     *
+     * @param  string  $specimenId
+     * @return Specimen|null
+     */
+    protected function storeSearchedSpecimen(string $specimenId): ?Specimen
+    {
+        try {
+            $response = EHealth::specimen()->getDetails($this->uuid, $specimenId);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error while loading the specimen');
+
+            return null;
+        }
+
+        try {
+            Repository::specimen()->sync($this->patient(), [$response->validate()]);
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Error while storing the specimen');
+
+            return null;
+        }
+
+        return Specimen::forPatient($this->patient())->whereUuid($specimenId)->first();
+    }
+
     public function resetFilters(): void
     {
         $this->reset([
@@ -262,7 +322,10 @@ class PatientSpecimens extends BasePatientComponent
             ->latest('ehealth_inserted_at')
             ->paginate(config('pagination.per_page'));
 
-        $paginator->setCollection(collect(Arr::toCamelCase($paginator->getCollection()->toArray())));
+        // The id is hidden on the model but the list links to the specimen page by it
+        $paginator->setCollection(
+            collect(Arr::toCamelCase($paginator->getCollection()->makeVisible('id')->toArray()))
+        );
 
         return $paginator;
     }

@@ -11,6 +11,7 @@ use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Episode;
+use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Relations\ConfidantPerson;
 use App\Models\Relations\PersonName;
 use App\Models\Relations\PersonVerificationDetail;
@@ -50,6 +51,11 @@ class Person extends BasePerson
     public function devices(): HasMany
     {
         return $this->hasMany(Device::class);
+    }
+
+    public function specimens(): HasMany
+    {
+        return $this->hasMany(Specimen::class);
     }
 
     public function declarations(): HasMany

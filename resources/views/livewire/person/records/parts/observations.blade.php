@@ -1,4 +1,5 @@
 @use(App\Enums\Person\ObservationStatus)
+@use(Carbon\CarbonImmutable)
 
 @php
     $limit = $limit ?? null;
@@ -22,6 +23,28 @@
 
                     $categoryLabel = $this->dictionaries[$categorySystem][$categoryCode] ?? $categoryCode;
                     $codeLabel = $this->dictionaries[$codeSystem][$codeValue] ?? $codeValue;
+
+                    $observationValue = collect([
+                        data_get($observation, 'value'),
+                        ...collect(data_get($observation, 'components', []))->pluck('value')
+                    ])
+                        ->filter()
+                        ->map(fn (array $value): ?string => match (true) {
+                            data_get($value, 'valueBoolean') !== null => data_get($value, 'valueBoolean') ? __('forms.yes') : __('forms.no'),
+                            data_get($value, 'valueString') !== null => data_get($value, 'valueString'),
+                            data_get($value, 'valueDateTime') !== null => CarbonImmutable::parse(data_get($value, 'valueDateTime'))
+                                ->setTimezone(config('app.timezone'))
+                                ->format('d.m.Y H:i'),
+                            data_get($value, 'valueQuantity') !== null => collect([
+                                data_get($value, 'valueQuantity.comparator'),
+                                data_get($value, 'valueQuantity.value'),
+                                data_get($value, 'valueQuantity.unit')
+                            ])->filter()->implode(' '),
+                            data_get($value, 'valueCodeableConcept') !== null => $this->dictionaryLabel($value, 'valueCodeableConcept'),
+                            default => null
+                        })
+                        ->filter()
+                        ->implode(', ');
                 @endphp
                 <div class="record-inner-column flex-1">
                     <div class="record-inner-label">{{ __('patients.category_and_code') }}</div>
@@ -49,18 +72,18 @@
                         <div>
                             <div class="record-inner-label">{{ __('medical-events.information_source') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($this->dictionaries, 'eHealth/report_origins.' . data_get($observation, 'reportOrigin.coding.0.code'), '-') }}
+                                {{ $this->dictionaryLabel($observation, 'reportOrigin') }}
                             </div>
                         </div>
                         <div>
                             <div class="record-inner-label">{{ __('patients.method') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($this->dictionaries, 'eHealth/observation_methods.' . data_get($observation, 'method.coding.0.code'), '-') }}
+                                {{ $this->dictionaryLabel($observation, 'method') }}
                             </div>
                         </div>
                         <div>
                             <div class="record-inner-label">{{ __('observations.value') }}</div>
-                            <div class="record-inner-subvalue">5 мкмоль/л</div>
+                            <div class="record-inner-subvalue">{{ $observationValue ?: '-' }}</div>
                         </div>
                         <div>
                             <div class="record-inner-label">{{ __('observations.getting_indicators') }}</div>
@@ -82,13 +105,13 @@
                         <div>
                             <div class="record-inner-label">{{ __('observations.interpretation') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($this->dictionaries, 'eHealth/observation_interpretations.' . data_get($observation, 'components.0.interpretation.coding.0.code'), '-') }}
+                                {{ $this->dictionaryLabel($observation, 'components.0.interpretation') }}
                             </div>
                         </div>
                         <div>
                             <div class="record-inner-label">{{ __('patients.body_part') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($this->dictionaries, 'eHealth/body_sites.' . data_get($observation, 'bodySite.coding.0.code'), '-') }}
+                                {{ $this->dictionaryLabel($observation, 'bodySite') }}
                             </div>
                         </div>
                         <div>

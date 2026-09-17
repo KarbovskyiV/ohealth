@@ -24,4 +24,18 @@ enum Status: string
     {
         return __('specimens.statuses.' . $this->value);
     }
+
+    /**
+     * Badge CSS class representing the status color.
+     *
+     * @return string
+     */
+    public function color(): string
+    {
+        return match ($this) {
+            self::AVAILABLE => 'badge-green',
+            self::UNSATISFACTORY => 'badge-yellow',
+            self::UNAVAILABLE, self::ENTERED_IN_ERROR => 'badge-red'
+        };
+    }
 }

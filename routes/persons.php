@@ -54,6 +54,7 @@ use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\Procedure;
+use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Person\Person;
 use App\Models\Person\PersonRequest;
 use App\Models\Preperson;
@@ -87,8 +88,13 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
                     ->can('view', PersonVerificationDetail::class)
                     ->name('verification');
                 Route::get('/{person}/summary', PatientSummary::class)->can('view', Person::class)->name('summary');
-                Route::get('/{person}/specimens', PatientSpecimens::class)->name('specimens');
-                Route::get('/{person}/specimens/{specimenId}', PatientSpecimenView::class)->name('specimens.view');
+                Route::get('/{person}/specimens/{specimen:id}', PatientSpecimenView::class)
+                    ->can('view', Specimen::class)
+                    ->whereNumber('specimen')
+                    ->name('specimens.view');
+                Route::get('/{person}/specimens', PatientSpecimens::class)
+                    ->can('view', Specimen::class)
+                    ->name('specimens');
                 Route::get('/{person}/episodes', EpisodeIndex::class)->can('view', Episode::class)->name('episodes');
                 Route::get('/{person}/episodes/create', EpisodeCreate::class)
                     ->can('create', Episode::class)
@@ -198,9 +204,12 @@ Route::prefix('prepersons')
             ->name('summary');
         Route::get('/{preperson}/specimens', PatientSpecimens::class)
             ->can('view', 'preperson')
+            ->can('view', Specimen::class)
             ->name('specimens');
-        Route::get('/{preperson}/specimens/{specimenId}', PatientSpecimenView::class)
+        Route::get('/{preperson}/specimens/{specimen:id}', PatientSpecimenView::class)
             ->can('view', 'preperson')
+            ->can('view', Specimen::class)
+            ->whereNumber('specimen')
             ->name('specimens.view');
         Route::get('/{preperson}/episodes', EpisodeIndex::class)->can('view', 'preperson')->name('episodes');
         Route::get('/{preperson}/episodes/create', EpisodeCreate::class)

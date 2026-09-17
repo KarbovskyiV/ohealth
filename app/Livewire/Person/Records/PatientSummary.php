@@ -150,6 +150,7 @@ class PatientSummary extends BasePatientComponent
         'eHealth/observation_methods',
         'eHealth/observation_interpretations',
         'eHealth/body_sites',
+        'eHealth/occupation_type',
         'eHealth/ICPC2/condition_codes',
         'eHealth/ICD10/condition_codes',
         'eHealth/diagnosis_roles',
@@ -666,11 +667,21 @@ class PatientSummary extends BasePatientComponent
         }
     }
 
-    public function syncAssociatedDevices(): void {}
-    public function syncDeviceAssociations(): void {}
-    public function syncDeviceIssues(): void {}
-    public function syncDeviceDispenses(): void {}
-    public function syncSpecimens(): void {}
+    public function syncAssociatedDevices(): void
+    {
+    }
+    public function syncDeviceAssociations(): void
+    {
+    }
+    public function syncDeviceIssues(): void
+    {
+    }
+    public function syncDeviceDispenses(): void
+    {
+    }
+    public function syncSpecimens(): void
+    {
+    }
 
     public function syncDevices(): void
     {

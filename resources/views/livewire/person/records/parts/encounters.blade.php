@@ -41,14 +41,14 @@
                         <div class="min-w-0">
                             <div class="record-inner-label">{{ __('patients.class') }}</div>
                             <div class="record-inner-value truncate">
-                                {{ data_get($this->dictionaries, 'eHealth/encounter_classes.' . data_get($encounter, 'class.code'), data_get($encounter, 'class.code', '-')) }}
+                                {{ $this->dictionaryLabel($encounter, 'class') }}
                             </div>
                         </div>
 
                         <div class="min-w-0">
                             <div class="record-inner-label">{{ __('forms.type') }}</div>
                             <div class="record-inner-value truncate">
-                                {{ data_get($this->dictionaries, 'eHealth/encounter_types.' . data_get($encounter, 'type.coding.0.code'), data_get($encounter, 'type.coding.0.code', '-')) }}
+                                {{ $this->dictionaryLabel($encounter, 'type') }}
                             </div>
                         </div>
 
