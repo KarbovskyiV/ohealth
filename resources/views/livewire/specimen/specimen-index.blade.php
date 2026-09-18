@@ -142,37 +142,37 @@
                                             <li>
                                                 <button
                                                     type="button"
-                                                    class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 whitespace-nowrap text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                    @click="$wire.showReceivedForResearchModal = true; $wire.openReceivedForResearchModal('{{ data_get($specimen, 'uuid') }}'); close($refs.button)" class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 whitespace-nowrap text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
                                                 >
-                                                    @icon('check-circle', 'w-5 h-5')
+                                                    @icon('checkmark-circle', 'w-5 h-5 shrink-0')
                                                     {{ __('specimens.received_for_research') }}
                                                 </button>
                                             </li>
                                             <li class="mt-1 border-t border-gray-100 pt-1 dark:border-gray-600">
                                                 <button
                                                     type="button"
-                                                    class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
+                                                    @click="$wire.showMarkUnavailableModal = true; $wire.openMarkUnavailableModal('{{ data_get($specimen, 'uuid') }}'); close($refs.button)" class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
                                                 >
-                                                    @icon('close-circle', 'w-5 h-5')
+                                                    @icon('cancel', 'w-5 h-5 shrink-0')
                                                     <span>{{ __('specimens.mark_unavailable') }}</span>
                                                 </button>
                                             </li>
                                             <li>
                                                 <button
                                                     type="button"
-                                                    class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
+                                                    @click="$wire.showMarkUnsatisfactoryModal = true; $wire.openMarkUnsatisfactoryModal('{{ data_get($specimen, 'uuid') }}'); close($refs.button)" class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
                                                 >
-                                                    @icon('close-circle', 'w-5 h-5')
+                                                    @icon('cancel', 'w-5 h-5 shrink-0')
                                                     <span>{{ __('specimens.mark_unsatisfactory') }}</span>
                                                 </button>
                                             </li>
                                             <li>
                                                 <button
                                                     type="button"
-                                                    class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
+                                                    @click="$wire.showMarkEnteredInErrorModal = true; $wire.openMarkEnteredInErrorModal('{{ data_get($specimen, 'uuid') }}'); close($refs.button)" class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
                                                 >
-                                                    @icon('close-circle', 'w-5 h-5')
-                                                    <span>{{ __('medical-events.mark_as_error') }}</span>
+                                                    @icon('cancel', 'w-5 h-5 shrink-0')
+                                                    <span>{{ __('specimens.mark_entered_in_error') }}</span>
                                                 </button>
                                             </li>
                                         </ul>
@@ -268,4 +268,9 @@
 
         <x-forms.loading />
     </section>
+
+    @include('livewire.specimen.parts.modals.received-for-research-modal')
+    @include('livewire.specimen.parts.modals.mark-unavailable-modal')
+    @include('livewire.specimen.parts.modals.mark-unsatisfactory-modal')
+    @include('livewire.specimen.parts.modals.mark-entered-in-error-modal')
 </div>
