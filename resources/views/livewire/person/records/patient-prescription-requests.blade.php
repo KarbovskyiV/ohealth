@@ -3,7 +3,10 @@
         <button type="button" class="button-primary-outline px-5 py-2 text-sm whitespace-nowrap">
             {{ __('patients.data_access') }}
         </button>
-        <button type="button" class="button-sync flex items-center gap-2 px-5 py-2 text-sm shadow-sm transition-colors whitespace-nowrap">
+        <button
+            type="button"
+            class="button-sync flex items-center gap-2 px-5 py-2 text-sm whitespace-nowrap shadow-sm transition-colors"
+        >
             @icon('refresh', 'w-4 h-4')
             {{ __('legal-entity-connection.sync_data') }}
         </button>
@@ -41,14 +44,26 @@
             </div>
 
             <div class="mb-9 flex flex-wrap gap-2">
-                <button type="button" wire:click.prevent="applyFilters" class="button-primary flex items-center gap-2 px-5 py-2.5 text-sm shadow-sm">
+                <button
+                    type="button"
+                    wire:click.prevent="applyFilters"
+                    class="button-primary flex items-center gap-2 px-5 py-2.5 text-sm shadow-sm"
+                >
                     @icon('search', 'w-4 h-4')
                     <span>{{ __('forms.search') }}</span>
                 </button>
-                <button type="button" wire:click.prevent="resetFilters" class="button-primary-outline-red px-5 py-2.5 text-sm">
-                    {{ __('patients.reset_filters') }}
+                <button
+                    type="button"
+                    wire:click.prevent="resetFilters"
+                    class="button-primary-outline-red px-5 py-2.5 text-sm"
+                >
+                    {{ __('forms.reset_all_filters') }}
                 </button>
-                <button type="button" class="button-minor flex items-center gap-2 px-5 py-2.5 text-sm whitespace-nowrap" @click.prevent="showAdditionalParams = !showAdditionalParams">
+                <button
+                    type="button"
+                    class="button-minor flex items-center gap-2 px-5 py-2.5 text-sm whitespace-nowrap"
+                    @click.prevent="showAdditionalParams = ! showAdditionalParams"
+                >
                     @icon('adjustments', 'w-4 h-4 text-gray-500')
                     <span>{{ __('forms.additional_search_parameters') }}</span>
                 </button>
@@ -57,27 +72,82 @@
             <div x-show="showAdditionalParams" x-transition x-cloak>
                 <div class="form-row-3 mb-6">
                     <div class="form-group group">
-                        <input id="filterInteractionId" type="text" class="input peer" wire:model="filterInteractionId" placeholder=" " autocomplete="off" />
-                        <label class="label" for="filterInteractionId">ID {{ __('medication-requests.vzaiemodiyi') }}</label>
-                        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" wire:click="$set('filterInteractionId', '')">✕</button>
+                        <input
+                            id="filterInteractionId"
+                            type="text"
+                            class="input peer"
+                            wire:model="filterInteractionId"
+                            placeholder=" "
+                            autocomplete="off"
+                        />
+                        <label class="label" for="filterInteractionId"
+                            >ID {{ __('medication-requests.vzaiemodiyi') }}</label>
+                        <button
+                            type="button"
+                            class="absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            wire:click="$set('filterInteractionId', '')"
+                        >
+                            ✕
+                        </button>
                     </div>
                     <div class="form-group group">
-                        <input id="filterCarePlanId" type="text" class="input peer" wire:model="filterCarePlanId" placeholder=" " autocomplete="off" />
-                        <label class="label" for="filterCarePlanId">ID {{ __('medication-requests.planu_likuvannia') }}</label>
-                        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" wire:click="$set('filterCarePlanId', '')">✕</button>
+                        <input
+                            id="filterCarePlanId"
+                            type="text"
+                            class="input peer"
+                            wire:model="filterCarePlanId"
+                            placeholder=" "
+                            autocomplete="off"
+                        />
+                        <label class="label" for="filterCarePlanId"
+                            >ID {{ __('medication-requests.planu_likuvannia') }}</label>
+                        <button
+                            type="button"
+                            class="absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            wire:click="$set('filterCarePlanId', '')"
+                        >
+                            ✕
+                        </button>
                     </div>
                     <div class="form-group group">
-                        <input id="filterAppointmentId" type="text" class="input peer" wire:model="filterAppointmentId" placeholder=" " autocomplete="off" />
-                        <label class="label" for="filterAppointmentId">ID {{ __('medication-requests.priznachennia') }}</label>
-                        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" wire:click="$set('filterAppointmentId', '')">✕</button>
+                        <input
+                            id="filterAppointmentId"
+                            type="text"
+                            class="input peer"
+                            wire:model="filterAppointmentId"
+                            placeholder=" "
+                            autocomplete="off"
+                        />
+                        <label class="label" for="filterAppointmentId"
+                            >ID {{ __('medication-requests.priznachennia') }}</label>
+                        <button
+                            type="button"
+                            class="absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            wire:click="$set('filterAppointmentId', '')"
+                        >
+                            ✕
+                        </button>
                     </div>
                 </div>
-                
+
                 <div class="form-row-3 mb-9">
                     <div class="form-group group">
-                        <input id="filterEpisodeId" type="text" class="input peer" wire:model="filterEpisodeId" placeholder=" " autocomplete="off" />
+                        <input
+                            id="filterEpisodeId"
+                            type="text"
+                            class="input peer"
+                            wire:model="filterEpisodeId"
+                            placeholder=" "
+                            autocomplete="off"
+                        />
                         <label class="label" for="filterEpisodeId">ID {{ __('medication-requests.epizodu') }}</label>
-                        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" wire:click="$set('filterEpisodeId', '')">✕</button>
+                        <button
+                            type="button"
+                            class="absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            wire:click="$set('filterEpisodeId', '')"
+                        >
+                            ✕
+                        </button>
                     </div>
                 </div>
             </div>
@@ -92,7 +162,9 @@
 
                             <div class="record-inner-column flex-1">
                                 <div class="record-inner-label">{{ $request['requestNumber'] ?? '—' }}</div>
-                                <div class="record-inner-value text-[16px]">{{ $request['medicationName'] ?? '—' }}</div>
+                                <div class="record-inner-value text-[16px]">
+                                    {{ $request['medicationName'] ?? '—' }}
+                                </div>
                             </div>
 
                             <div class="record-inner-column-bordered w-full shrink-0 md:w-36">
@@ -137,7 +209,7 @@
                                         >
                                             @icon('edit-user-outline', 'w-5 h-5 text-gray-700 dark:text-gray-300')
                                         </button>
-                                        
+
                                         <div
                                             x-show="open"
                                             x-cloak
@@ -147,16 +219,24 @@
                                             :id="$id('dropdown-button')"
                                             class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-md dark:border-gray-600 dark:bg-gray-700"
                                         >
-                                            <span class="flex w-full cursor-not-allowed opacity-50 items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-600 dark:text-gray-200">
+                                            <span class="flex w-full cursor-not-allowed items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-600 opacity-50 dark:text-gray-200">
                                                 @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300')
-                                                {{ __('patients.view_details') }}
+                                                {{ __('forms.view_details') }}
                                             </span>
-                                            <button @click="close($refs.button)" type="button" class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600">
+                                            <button
+                                                @click="close($refs.button)"
+                                                type="button"
+                                                class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                            >
                                                 @icon('check-circle', 'w-5 h-5 text-gray-600 dark:text-gray-300')
                                                 {{ __('declarations.sign_declaration_request') }}
                                             </button>
-                                            <div class="border-t border-gray-100 dark:border-gray-600 my-1"></div>
-                                            <button @click="close($refs.button)" type="button" class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30">
+                                            <div class="my-1 border-t border-gray-100 dark:border-gray-600"></div>
+                                            <button
+                                                @click="close($refs.button)"
+                                                type="button"
+                                                class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
+                                            >
                                                 @icon('cancel', 'w-5 h-5 text-red-500 dark:text-red-400')
                                                 {{ __('medication-requests.vidminiti_zaiavku') }}
                                             </button>
@@ -190,28 +270,43 @@
                                         <div class="record-inner-value">{{ $request['legalEntityName'] ?? '—' }}</div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('legal-entity-connection.table_created') }}</div>
+                                        <div class="record-inner-label">
+                                            {{ __('legal-entity-connection.table_created') }}
+                                        </div>
                                         <div class="record-inner-value">{{ $request['createdAt'] ?? '—' }}</div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('medication-requests.dostupnii_do_otrimannia') }}</div>
-                                        <div class="record-inner-value">{{ $request['dispensePeriodLabel'] ?? $request['periodLabel'] ?? '—' }}</div>
+                                        <div class="record-inner-label">
+                                            {{ __('medication-requests.dostupnii_do_otrimannia') }}
+                                        </div>
+                                        <div class="record-inner-value">
+                                            {{ $request['dispensePeriodLabel'] ?? $request['periodLabel'] ?? '—' }}
+                                        </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('medication-requests.id_priznachennia') }}</div>
-                                        <div class="record-inner-value truncate" title="{{ $request['appointmentId'] ?? '—' }}">{{ $request['appointmentId'] ?? '—' }}</div>
+                                        <div class="record-inner-label">
+                                            {{ __('medication-requests.id_priznachennia') }}
+                                        </div>
+                                        <div
+                                            class="record-inner-value truncate"
+                                            title="{{ $request['appointmentId'] ?? '—' }}"
+                                        >
+                                            {{ $request['appointmentId'] ?? '—' }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="record-inner-id-col">
-                                <div class="min-w-0 mb-3">
+                                <div class="mb-3 min-w-0">
                                     <div class="record-inner-label">{{ __('medication-requests.id_vzaiemodiyi') }}</div>
                                     <div class="record-inner-id-value">{{ $request['encounterId'] ?? '—' }}</div>
                                 </div>
                                 <div class="min-w-0">
                                     <div class="record-inner-label">{{ __('medication-requests.bazuiet_sia_na') }}</div>
-                                    <div class="record-inner-id-value">{{ $request['basisLabel'] ?? '—' }}<br>{{ $request['basisId'] ?? '—' }}</div>
+                                    <div class="record-inner-id-value">
+                                        {{ $request['basisLabel'] ?? '—' }}<br />{{ $request['basisId'] ?? '—' }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -222,6 +317,4 @@
             </div>
         </div>
     </div>
-
-
 </x-layouts.patient>

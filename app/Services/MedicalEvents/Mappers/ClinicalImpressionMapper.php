@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\MedicalEvents\Mappers;
 
 use App\Contracts\FhirMapperContract;
-use App\Enums\Person\ClinicalImpressionStatus;
+use App\Enums\ClinicalImpression\Status;
 use App\Services\MedicalEvents\FhirResource;
 use Illuminate\Support\Str;
 
@@ -24,7 +24,7 @@ class ClinicalImpressionMapper implements FhirMapperContract
 
         $result = [
             'id' => $data['uuid'] ?? Str::uuid()->toString(),
-            'status' => $data['status'] ?? ClinicalImpressionStatus::COMPLETED->value,
+            'status' => $data['status'] ?? Status::COMPLETED->value,
             'code' => FhirResource::make()
                 ->coding('eHealth/clinical_impression_patient_categories', $data['codeCode'])
                 ->toCodeableConcept(),
@@ -134,7 +134,7 @@ class ClinicalImpressionMapper implements FhirMapperContract
 
         return [
             'uuid' => data_get($data, 'uuid'),
-            'status' => data_get($data, 'status', ClinicalImpressionStatus::COMPLETED->value),
+            'status' => data_get($data, 'status', Status::COMPLETED->value),
             'codeCode' => data_get($data, 'code.coding.0.code'),
             'description' => data_get($data, 'description', ''),
             'effectivePeriodStartDate' => data_get($data, 'effectivePeriodStartDate', ''),

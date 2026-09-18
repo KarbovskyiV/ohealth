@@ -6,10 +6,10 @@ namespace App\Classes\eHealth\Api\Patient;
 
 use App\Classes\eHealth\EHealthResponse;
 use App\Classes\eHealth\ValidationRuleBuilder;
-use App\Enums\Person\ClinicalImpressionStatus;
+use App\Enums\ClinicalImpression\Status;
+use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
-use App\Exceptions\EHealth\EHealthConnectionException;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -146,7 +146,7 @@ class ClinicalImpression extends PatientApiBase
             // Basic fields
             [
                 'uuid' => ['required', 'uuid'],
-                'status' => ['required', Rule::in(ClinicalImpressionStatus::values())],
+                'status' => ['required', Rule::in(Status::values())],
                 'description' => ['nullable', 'string'],
                 'note' => ['nullable', 'string'],
                 'summary' => ['nullable', 'string'],

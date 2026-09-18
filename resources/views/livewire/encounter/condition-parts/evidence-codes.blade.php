@@ -179,7 +179,8 @@
                                 <div class="form-row-modal">
                                     <div>
                                         <label for="evidenceCode" class="label-modal">
-                                            {{ __('patients.icpc-2_status_code') }}<span class="text-red-600"> *</span>
+                                            {{ __('medical-events.icpc2_status_code') }}<span class="text-red-600">
+                                                *</span>
                                         </label>
                                         <x-select2
                                             modelPath="modalEvidenceCode.code"

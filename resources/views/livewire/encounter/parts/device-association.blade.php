@@ -38,7 +38,7 @@
 >
     @if (($canCancelRecords ?? false) && !empty($this->deviceAssociationForm->deviceAssociations))
         <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            {{ __('encounters.messages.cancel_device_group_note') }}
+            {{ __('medical-events.messages.cancel_device_group_note') }}
         </p>
     @endif
 

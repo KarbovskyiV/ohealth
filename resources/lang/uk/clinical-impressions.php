@@ -17,22 +17,26 @@ return [
     'label' => 'Клінічна оцінка',
     'plural' => 'Клінічні оцінки',
     'search' => 'Пошук клінічних оцінок',
-    'conclusion' => 'Заключення по оцінці',
-    'summary' => 'Підсумок',
     'set_of_rule_engines' => 'Набір механізмів правил',
-    'previous' => 'Попередня клінічна оцінка',
-    'appropriate_patient_assessment' => 'Відповідна оцінка стану пацієнта',
-    'what_was_identified' => 'Що було ідентифіковано',
-    'finding_basis' => 'Обґрунтування знахідки',
-    'supporting_medical_information' => 'Підтверджуючі медичні дані',
-    'employee_who_created' => 'Працівник, який створив',
-    'reception_start_date_and_time' => 'Дата та час початку прийому',
-    'reception_end_date_and_time' => 'Дата та час завершення прийому',
     'filter_effective_date_range' => 'Дата ефективності від - до',
+    'assessor' => 'Працівник, який створив',
+    'code' => 'Код',
+    'description' => 'Опис',
+    'effective_period_start' => 'Дата та час початку прийому',
+    'effective_period_end' => 'Дата та час завершення прийому',
+    'findings' => 'Що було ідентифіковано',
+    'findings_basis' => 'Обґрунтування знахідки',
+    'note' => 'Коментар',
+    'previous' => 'Попередня клінічна оцінка',
+    'problems' => 'Відповідна оцінка стану пацієнта',
+    'summary' => 'Підсумок',
+    'supporting_info' => 'Підтверджуючі медичні дані',
+    'episode_id' => 'ID епізоду',
+    'inserted_at' => 'Створено',
 
     'status' => [
-        'completed' => 'Завершений',
-        'entered_in_error' => 'Внесений помилково'
+        'completed' => 'Виконана',
+        'entered_in_error' => 'Внесена помилково'
     ],
 
     // Outcomes reported to the user after an action

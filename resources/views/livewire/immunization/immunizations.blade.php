@@ -13,7 +13,7 @@
                 class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
             >
                 @icon('plus', 'w-4 h-4')
-                {{ __('patients.start_interacting') }}
+                {{ __('encounters.start') }}
             </a>
         @endcan
 
@@ -63,7 +63,7 @@
                         wire:click="resetFilters"
                         class="button-primary-outline-red px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.reset_filters') }}
+                        {{ __('forms.reset_all_filters') }}
                     </button>
 
                     <button
@@ -82,7 +82,7 @@
                         @click="openGroupActions = ! openGroupActions"
                         class="button-primary-outline px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.group_actions') }}
+                        {{ __('forms.group_actions') }}
                     </button>
 
                     <div
@@ -153,7 +153,7 @@
                                 autocomplete="off"
                             />
 
-                            <label class="wrapped-label"> {{ __('patients.filter_date_range') }} </label>
+                            <label class="wrapped-label"> {{ __('forms.filter_date_range') }} </label>
                         </div>
                     </div>
 
@@ -249,7 +249,7 @@
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('eye', 'w-5 h-5 text-gray-500')
-                                            {{ __('patients.view_details') }}
+                                            {{ __('forms.view_details') }}
                                         </button>
 
                                         @if ($status !== ImmunizationStatus::ENTERED_IN_ERROR)
@@ -259,7 +259,7 @@
                                                 class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                                {{ __('immunizations.status.entered_in_error') }}
+                                                {{ __('medical-events.mark_as_error') }}
                                             </button>
                                         @endif
                                     </div>
@@ -273,7 +273,7 @@
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px]">
-                                                {{ __('patients.dosage') }}
+                                                {{ __('immunizations.dose_quantity') }}
                                             </div>
 
                                             <div class="record-inner-value font-semibold">
@@ -315,7 +315,7 @@
 
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px]">
-                                                {{ __('patients.body_part') }}
+                                                {{ __('immunizations.site') }}
                                             </div>
 
                                             <div class="record-inner-value font-semibold wrap-break-word">
@@ -325,7 +325,7 @@
 
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px]">
-                                                {{ __('patients.date_time_entered') }}
+                                                {{ __('immunizations.inserted_at') }}
                                             </div>
 
                                             <div class="record-inner-value font-semibold">
@@ -337,7 +337,7 @@
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px]">
-                                                {{ __('patients.reason') }}
+                                                {{ __('immunizations.explanation') }}
                                             </div>
 
                                             <div class="record-inner-value font-semibold wrap-break-word">
@@ -476,7 +476,7 @@
                                 </div>
 
                                 <div class="min-w-0">
-                                    <div class="record-inner-label">{{ __('patients.medical_record_id') }}</div>
+                                    <div class="record-inner-label">{{ __('medical-events.medical_record_id') }}</div>
 
                                     <div class="record-inner-id-value">
                                         {{ data_get($immunization, 'context.identifier.value', '—') }}

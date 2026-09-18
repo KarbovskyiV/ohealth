@@ -205,7 +205,7 @@
                         <div class="record-inner-value">
                             <template x-if="immunization.notGiven === false">
                                 <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-green-600/20 ring-inset dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20">
-                                    {{ __('patients.status_completed') }}
+                                    {{ __('immunizations.given') }}
                                 </span>
                             </template>
                             <template x-if="immunization.notGiven === true">
@@ -332,7 +332,7 @@
                         <div class="grid w-full grid-cols-1 gap-6 lg:grid-cols-12">
                             <div class="grid grid-cols-2 gap-x-4 gap-y-4 lg:col-span-6">
                                 <div>
-                                    <div class="record-inner-label">{{ __('patients.dosage') }}</div>
+                                    <div class="record-inner-label">{{ __('immunizations.dose_quantity') }}</div>
                                     <div
                                         class="record-inner-subvalue"
                                         x-text="
@@ -379,7 +379,7 @@
                                     ></div>
                                 </div>
                                 <div>
-                                    <div class="record-inner-label">{{ __('patients.body_part') }}</div>
+                                    <div class="record-inner-label">{{ __('immunizations.site') }}</div>
                                     <div
                                         class="record-inner-subvalue"
                                         x-text="
@@ -404,7 +404,7 @@
                                     ></div>
                                 </div>
                                 <div>
-                                    <div class="record-inner-label">{{ __('forms.date') }}</div>
+                                    <div class="record-inner-label">{{ __('immunizations.date') }}</div>
                                     <div
                                         class="record-inner-subvalue"
                                         x-text="`${immunization.date} ${immunization.time}`"
@@ -654,7 +654,9 @@
                                     @endunless
                                 </div>
                                 <template x-if="showDuplicateCodeWarning">
-                                    <p class="text-error text-right">{!! __('patients.duplicate_code_warning') !!}</p>
+                                    <p class="text-error text-right">
+                                        {!! __('medical-events.duplicate_code_warning') !!}
+                                    </p>
                                 </template>
                             </fieldset>
                         </form>

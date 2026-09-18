@@ -18,7 +18,7 @@
                 <div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div class="form-group group md:col-span-2">
                         <label for="encounterReferralServiceSearch" class="label required">
-                            {{ __('care-plan.service') }}
+                            {{ __('encounters.service') }}
                         </label>
                         <div class="flex gap-2">
                             <input
@@ -49,7 +49,7 @@
                                         {{ ($service['code'] ?? '') }} — {{ $service['name'] ?? 'Послуга' }}
                                     </div>
                                     @php
-                                        $serviceCategoryKey = 'care-plan.referral_category.'.strtolower((string) ($service['category'] ?? ''));
+                                        $serviceCategoryKey = 'encounters.referral_category.'.strtolower((string) ($service['category'] ?? ''));
                                     @endphp
                                     @if (\Illuminate\Support\Facades\Lang::has($serviceCategoryKey))
                                         <div class="text-xs text-gray-500">{{ __($serviceCategoryKey) }}</div>
@@ -69,7 +69,7 @@
                             id="encounterReferralSelectedService"
                             class="input peer w-full"
                             value="{{ !empty($encounterReferralSelectedService) ? (($encounterReferralSelectedService['code'] ?? '') . ' — ' . ($encounterReferralSelectedService['name'] ?? '')) : '' }}"
-                            placeholder="{{ __('care-plan.select_service') }}"
+                            placeholder="{{ __('encounters.select_service') }}"
                             readonly
                         />
                     </div>
@@ -80,11 +80,11 @@
                             class="input-select peer w-full"
                             wire:model="encounterReferralForm.category"
                         >
-                            @foreach (__('care-plan.referral_category') as $code => $label)
+                            @foreach (__('encounters.referral_category') as $code => $label)
                                 <option value="{{ $code }}">{{ $label }}</option>
                             @endforeach
-                            <option value="counselling">{{ __('care-plan.referral_category.counseling') }}</option>
-                            <option value="transfer_of_care">{{ __('care-plan.referral_category.transfer') }}</option>
+                            <option value="counselling">{{ __('encounters.referral_category.counseling') }}</option>
+                            <option value="transfer_of_care">{{ __('encounters.referral_category.transfer') }}</option>
                         </select>
                     </div>
                     <div class="form-group group">
@@ -146,10 +146,10 @@
                             class="input-select peer w-full"
                             wire:model="encounterReferralForm.priority"
                         >
-                            <option value="routine">{{ __('care-plan.priority_options.routine') }}</option>
-                            <option value="urgent">{{ __('care-plan.priority_options.urgent') }}</option>
-                            <option value="asap">{{ __('care-plan.priority_options.asap') }}</option>
-                            <option value="stat">{{ __('care-plan.priority_options.stat') }}</option>
+                            <option value="routine">{{ __('encounters.priority_options.routine') }}</option>
+                            <option value="urgent">{{ __('encounters.priority_options.urgent') }}</option>
+                            <option value="asap">{{ __('encounters.priority_options.asap') }}</option>
+                            <option value="stat">{{ __('encounters.priority_options.stat') }}</option>
                         </select>
                     </div>
                 </div>

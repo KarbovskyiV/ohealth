@@ -14,7 +14,7 @@
                 class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
             >
                 @icon('plus', 'w-4 h-4')
-                {{ __('patients.starts_interacting') }}
+                {{ __('encounters.new') }}
             </a>
         @endcan
 
@@ -58,7 +58,7 @@
                             autocomplete="off"
                         />
                         <label for="filterStartDateRange" class="wrapped-label">
-                            {{ __('patients.filter_period_start_range') }}
+                            {{ __('forms.filter_period_start_range') }}
                         </label>
                     </div>
 
@@ -79,7 +79,7 @@
                             autocomplete="off"
                         />
                         <label for="filterEndDateRange" class="wrapped-label">
-                            {{ __('patients.filter_period_end_range') }}
+                            {{ __('forms.filter_period_end_range') }}
                         </label>
                     </div>
 
@@ -112,7 +112,7 @@
                         wire:click="resetFilters"
                         class="button-primary-outline-red px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.reset_filters') }}
+                        {{ __('forms.reset_all_filters') }}
                     </button>
                     <button
                         type="button"
@@ -130,7 +130,7 @@
                         @click="openGroupActions = ! openGroupActions"
                         class="button-primary-outline px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.group_actions') }}
+                        {{ __('forms.group_actions') }}
                     </button>
 
                     <div
@@ -162,7 +162,7 @@
                         bind="filterIncomingReferralId"
                         bindValue="uuid"
                         bindParam="displayValue"
-                        :label="__('patients.referrals')"
+                        :label="__('encounters.incoming_referral')"
                     />
 
                     <x-forms.combobox
@@ -170,7 +170,7 @@
                         bind="filterOriginEpisodeId"
                         bindValue="uuid"
                         bindParam="displayValue"
-                        :label="__('episodes.origin')"
+                        :label="__('encounters.origin_episode')"
                     />
                 </div>
             </div>
@@ -192,7 +192,7 @@
                             </div>
 
                             <div class="record-inner-column flex-1">
-                                <div class="record-inner-label">{{ __('forms.date') }}</div>
+                                <div class="record-inner-label">{{ __('encounters.period') }}</div>
                                 <div class="record-inner-value text-[16px]">
                                     {{ data_get($encounter, 'period.start') }} - {{ data_get($encounter, 'period.end') }}
                                 </div>
@@ -259,7 +259,7 @@
                                                 class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('eye', 'w-5 h-5 text-gray-500')
-                                                {{ __('patients.view_details') }}
+                                                {{ __('forms.view_details') }}
                                             </a>
                                         @endif
 
@@ -269,7 +269,7 @@
                                                 class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                                {{ __('encounters.status.entered_in_error') }}
+                                                {{ __('medical-events.mark_as_error') }}
                                             </button>
                                         @endif
                                     </div>
@@ -281,25 +281,27 @@
                             <div class="record-inner-grid-container">
                                 <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('patients.class') }}</div>
+                                        <div class="record-inner-label">{{ __('encounters.interaction_class') }}</div>
                                         <div class="record-inner-value">
                                             {{ $this->dictionaryLabel($encounter, 'class') }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('forms.type') }}</div>
+                                        <div class="record-inner-label">{{ __('encounters.interaction_type') }}</div>
                                         <div class="record-inner-value">
                                             {{ $this->dictionaryLabel($encounter, 'type') }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('patients.doctor_speciality') }}</div>
+                                        <div class="record-inner-label">
+                                            {{ __('encounters.performer_speciality') }}
+                                        </div>
                                         <div class="record-inner-value">
                                             {{ data_get($encounter, 'performer.displayValue') ?? '-' }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('patients.referrals') }}</div>
+                                        <div class="record-inner-label">{{ __('encounters.incoming_referral') }}</div>
                                         <div class="record-inner-value">
                                             {{ data_get($encounter, 'referralDisplay', '-') }}
                                         </div>
@@ -309,11 +311,11 @@
 
                             <div class="record-inner-id-col">
                                 <div class="min-w-0">
-                                    <div class="record-inner-label">{{ __('patients.filter_code') }}</div>
+                                    <div class="record-inner-label">{{ __('forms.ehealth_id') }}</div>
                                     <div class="record-inner-id-value">{{ data_get($encounter, 'uuid', '-') }}</div>
                                 </div>
                                 <div class="min-w-0">
-                                    <div class="record-inner-label">ID {{ __('care-plan.episode') }}</div>
+                                    <div class="record-inner-label">{{ __('encounters.episode_id') }}</div>
                                     <div class="record-inner-id-value">
                                         {{ data_get($encounter, 'episode.identifier.value', '-') }}
                                     </div>

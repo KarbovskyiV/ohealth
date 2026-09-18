@@ -81,7 +81,7 @@
                         type="button"
                         class="button-primary-outline-red px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.reset_filters') }}
+                        {{ __('forms.reset_all_filters') }}
                     </button>
                     <button
                         type="button"
@@ -103,7 +103,7 @@
                         @click="openGroupActions = ! openGroupActions"
                         class="button-primary-outline px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.group_actions') }}
+                        {{ __('forms.group_actions') }}
                     </button>
 
                     <div
@@ -176,7 +176,7 @@
                         bind="filterRequest"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('patients.electronic')"
+                        :label="__('specimens.electronic_referral')"
                     />
                     <x-forms.combobox
                         :options="$encounters"
@@ -277,7 +277,7 @@
                                                 class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('eye', 'w-5 h-5 text-gray-500')
-                                                {{ __('patients.view_details') }}
+                                                {{ __('forms.view_details') }}
                                             </a>
                                         @else
                                             {{-- Found through the eHealth search: the record is stored on the way to its page --}}
@@ -287,7 +287,7 @@
                                                 class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('eye', 'w-5 h-5 text-gray-500')
-                                                {{ __('patients.view_details') }}
+                                                {{ __('forms.view_details') }}
                                             </button>
                                         @endif
 
@@ -298,7 +298,7 @@
                                                 class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                                {{ __('specimens.statuses.entered_in_error') }}
+                                                {{ __('medical-events.mark_as_error') }}
                                             </button>
                                         @endif
                                     </div>
@@ -362,7 +362,7 @@
                                     </div>
                                     <div>
                                         <div class="record-inner-label text-[10px] uppercase">
-                                            {{ __('patients.electronic') }}
+                                            {{ __('specimens.electronic_referral') }}
                                         </div>
                                         <div class="record-inner-value font-semibold">
                                             @forelse (data_get($specimen, 'request', []) as $request)

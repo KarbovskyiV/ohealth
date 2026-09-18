@@ -14,7 +14,7 @@
                     class="button-primary flex items-center gap-2 px-4 py-2 text-sm shadow-sm"
                 >
                     @icon('plus', 'w-4 h-4')
-                    {{ __('patients.starts_interacting') }}
+                    {{ __('encounters.new') }}
                 </a>
             @endcan
 
@@ -168,7 +168,17 @@
                  }
              }
          }"
-         x-effect="document.body.style.overflow = (showConfidantPersonDrawer || showDeactivateConfidantPersonDrawer || showDocumentDrawer || showAuthDrawer || showSignatureDrawer || showTerminateModal) ? 'hidden' : ''"
+        x-effect="
+            document.body.style.overflow =
+                showConfidantPersonDrawer ||
+                showDeactivateConfidantPersonDrawer ||
+                showDocumentDrawer ||
+                showAuthDrawer ||
+                showSignatureDrawer ||
+                showTerminateModal
+                    ? 'hidden'
+                    : ''
+        "
     >
         <div id="accordion-open" data-accordion="open" class="flex flex-col gap-4">
             <div

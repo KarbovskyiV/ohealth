@@ -14,7 +14,7 @@
                 </div>
 
                 <div class="record-inner-column flex-1">
-                    <div class="record-inner-label">{{ __('forms.date') }}</div>
+                    <div class="record-inner-label">{{ __('encounters.period') }}</div>
                     <div class="record-inner-value text-[20px] font-semibold">
                         {{ data_get($encounter, 'period.start', '-') }}
                     </div>
@@ -39,21 +39,21 @@
                 <div class="record-inner-grid-container">
                     <div class="grid grid-cols-2 gap-4">
                         <div class="min-w-0">
-                            <div class="record-inner-label">{{ __('patients.class') }}</div>
+                            <div class="record-inner-label">{{ __('encounters.interaction_class') }}</div>
                             <div class="record-inner-value truncate">
                                 {{ $this->dictionaryLabel($encounter, 'class') }}
                             </div>
                         </div>
 
                         <div class="min-w-0">
-                            <div class="record-inner-label">{{ __('forms.type') }}</div>
+                            <div class="record-inner-label">{{ __('encounters.interaction_type') }}</div>
                             <div class="record-inner-value truncate">
                                 {{ $this->dictionaryLabel($encounter, 'type') }}
                             </div>
                         </div>
 
                         <div class="min-w-0">
-                            <div class="record-inner-label">{{ __('patients.doctor_speciality') }}</div>
+                            <div class="record-inner-label">{{ __('encounters.performer_speciality') }}</div>
                             <div class="record-inner-value truncate">
                                 {{ $this->dictionaries['SPECIALITY_TYPE'][data_get($encounter, 'performerSpeciality.coding.0.code')] ?? '-' }}
                             </div>
@@ -67,7 +67,7 @@
                         <div class="record-inner-id-value">{{ data_get($encounter, 'uuid', '-') }}</div>
                     </div>
                     <div class="min-w-0">
-                        <div class="record-inner-label">{{ __('episodes.id') }}</div>
+                        <div class="record-inner-label">{{ __('encounters.episode_id') }}</div>
                         <div class="record-inner-id-value">
                             {{ data_get($encounter, 'episode.identifier.value', '-') }}
                         </div>
@@ -79,7 +79,7 @@
 
     @if ($hasLimit)
         <div x-show="limit < {{ count($this->encounters) }}" class="mt-4 flex justify-start">
-            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
+            <button type="button" @click="limit += 5" class="item-add">{{ __('general.show_more') }}</button>
         </div>
     @endif
 </div>

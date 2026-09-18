@@ -1,4 +1,4 @@
-@use('App\Enums\Person\ClinicalImpressionStatus')
+@use('App\Enums\ClinicalImpression\Status')
 @use('App\Models\MedicalEvents\Sql\Encounter')
 
 <x-layouts.patient :personId="$personId" :prepersonId="$prepersonId" :patientFullName="$patientFullName">
@@ -13,7 +13,7 @@
                 class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
             >
                 @icon('plus', 'w-4 h-4')
-                {{ __('patients.starts_interacting') }}
+                {{ __('encounters.new') }}
             </a>
         @endcan
 
@@ -62,7 +62,7 @@
                         wire:click="resetFilters"
                         class="button-primary-outline-red px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.reset_filters') }}
+                        {{ __('forms.reset_all_filters') }}
                     </button>
                     <button
                         type="button"
@@ -80,7 +80,7 @@
                         @click="openGroupActions = ! openGroupActions"
                         class="button-primary-outline px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.group_actions') }}
+                        {{ __('forms.group_actions') }}
                     </button>
 
                     <div
@@ -93,7 +93,7 @@
                             <button
                                 type="button"
                                 @click="openGroupActions = false"
-                                class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                class="dropdown-button flex! w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                             >
                                 <span class="text-gray-500">
                                     @icon('close', 'w-4 h-4')
@@ -131,7 +131,7 @@
                             class="input-select peer w-full"
                         >
                             <option value="" selected>{{ __('forms.select') }}</option>
-                            @foreach (ClinicalImpressionStatus::options() as $value => $label)
+                            @foreach (Status::options() as $value => $label)
                                 <option value="{{ $value }}">{{ $label }}</option>
                             @endforeach
                         </select>
@@ -201,7 +201,7 @@
                             </div>
 
                             <div class="record-inner-column flex-1">
-                                <div class="record-inner-label">{{ __('forms.code') }}</div>
+                                <div class="record-inner-label">{{ __('clinical-impressions.code') }}</div>
                                 <div class="record-inner-value text-[16px] font-semibold dark:text-gray-100">
                                     {{ $this->dictionaryLabel($clinicalImpression, 'code') }}
                                 </div>
@@ -211,7 +211,7 @@
                                 <div class="record-inner-label">{{ __('forms.status.label') }}</div>
                                 <div>
                                     @php
-                                        $status = ClinicalImpressionStatus::from(data_get($clinicalImpression, 'status'));
+                                        $status = Status::from(data_get($clinicalImpression, 'status'));
                                     @endphp
                                     <span @class([$status->color()])> {{ $status->label() ?? '-' }} </span>
                                 </div>
@@ -265,17 +265,17 @@
                                                 class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('eye', 'w-5 h-5 text-gray-500')
-                                                {{ __('patients.view_details') }}
+                                                {{ __('forms.view_details') }}
                                             </button>
 
-                                            @if ($status !== ClinicalImpressionStatus::ENTERED_IN_ERROR)
+                                            @if ($status !== Status::ENTERED_IN_ERROR)
                                                 <button
                                                     wire:click="openRecordCancellation('clinicalImpressions', '{{ data_get($clinicalImpression, 'uuid') }}')"
                                                     @click="close($refs.button)"
                                                     class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                                 >
                                                     @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                                    {{ __('clinical-impressions.status.entered_in_error') }}
+                                                    {{ __('medical-events.mark_as_error') }}
                                                 </button>
                                             @endif
                                         </div>
@@ -288,33 +288,37 @@
                             <div class="record-inner-grid-container">
                                 <div class="[&>div]:min-w-0 [&_.record-inner-value]:wrap-break-word grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-5">
                                     <div>
-                                        <div class="record-inner-label">{{ __('patients.created') }}</div>
+                                        <div class="record-inner-label">
+                                            {{ __('clinical-impressions.inserted_at') }}
+                                        </div>
                                         <div class="record-inner-value">
                                             {{ data_get($clinicalImpression, 'ehealthInsertedAt') ?? '-' }}
                                         </div>
                                     </div>
                                     <div>
-                                        <div class="record-inner-label">{{ __('forms.start') }}</div>
+                                        <div class="record-inner-label">
+                                            {{ __('clinical-impressions.effective_period_start') }}
+                                        </div>
                                         <div class="record-inner-value">
                                             {{ data_get($clinicalImpression, 'effectivePeriod.start') ?? '-' }}
                                         </div>
                                     </div>
                                     <div>
-                                        <div class="record-inner-label">{{ __('forms.end') }}</div>
+                                        <div class="record-inner-label">
+                                            {{ __('clinical-impressions.effective_period_end') }}
+                                        </div>
                                         <div class="record-inner-value">
                                             {{ data_get($clinicalImpression, 'effectivePeriod.end') ?? '-' }}
                                         </div>
                                     </div>
                                     <div>
-                                        <div class="record-inner-label">{{ __('patients.doctor') }}</div>
+                                        <div class="record-inner-label">{{ __('clinical-impressions.assessor') }}</div>
                                         <div class="record-inner-value">
                                             {{ data_get($clinicalImpression, 'assessor.displayValue') ?? '-' }}
                                         </div>
                                     </div>
                                     <div>
-                                        <div class="record-inner-label">
-                                            {{ __('clinical-impressions.conclusion') }}
-                                        </div>
+                                        <div class="record-inner-label">{{ __('clinical-impressions.summary') }}</div>
                                         <div class="record-inner-value">
                                             {{ data_get($clinicalImpression, 'summary') ?? '-' }}
                                         </div>
@@ -328,7 +332,7 @@
                                     <div class="record-inner-id-value">{{ data_get($clinicalImpression, 'uuid') }}</div>
                                 </div>
                                 <div class="min-w-0">
-                                    <div class="record-inner-label">{{ __('episodes.id') }}</div>
+                                    <div class="record-inner-label">{{ __('clinical-impressions.episode_id') }}</div>
                                     <div class="record-inner-id-value">
                                         @php
                                             $episodeValue = '';

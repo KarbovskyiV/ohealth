@@ -19,7 +19,6 @@ return [
     'model_number' => '№ моделі',
     'lot_number' => '№ закупівлі',
     'label' => 'Обладнання',
-    'add' => 'Додати обладнання',
     'search' => 'Пошук обладнання',
     'name_or_inventory_number' => 'Назва або інвентарний №',
     'inserted_at' => 'Дата внесення даних',
@@ -75,6 +74,5 @@ return [
     'validation' => [
         'availability_status_unchanged' => 'Новий статус доступності повинен відрізнятися від поточного.',
         'not_belongs_to_division' => 'Обладнання не належить вибраному місцю надання послуг.',
-        'no_equipment_in_division' => 'У вибраному МНП немає доступного обладнання.',
     ]
 ];

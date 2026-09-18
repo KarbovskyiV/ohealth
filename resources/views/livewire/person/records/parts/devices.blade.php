@@ -15,7 +15,7 @@
                 </div>
 
                 <div class="record-inner-column flex-1">
-                    <div class="record-inner-label">{{ __('forms.name') }}</div>
+                    <div class="record-inner-label">{{ __('devices.name') }}</div>
                     <div class="record-inner-value text-[16px]">{{ data_get($device, 'names.0.value') ?? '-' }}</div>
                 </div>
 
@@ -49,7 +49,7 @@
                         </div>
 
                         <div>
-                            <div class="record-inner-label">{{ __('patients.lot_number') }}</div>
+                            <div class="record-inner-label">{{ __('devices.lot_number') }}</div>
                             <div class="record-inner-subvalue">{{ data_get($device, 'lotNumber') ?? '-' }}</div>
                         </div>
 
@@ -59,7 +59,7 @@
                         </div>
 
                         <div>
-                            <div class="record-inner-label">{{ __('forms.comment') }}</div>
+                            <div class="record-inner-label">{{ __('devices.notes') }}</div>
                             <div class="record-inner-subvalue">{{ data_get($device, 'note') ?? '-' }}</div>
                         </div>
 
@@ -91,14 +91,14 @@
                         </div>
 
                         <div>
-                            <div class="record-inner-label">{{ __('patients.doctor') }}</div>
+                            <div class="record-inner-label">{{ __('devices.doctor') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($device, 'recorder.displayValue') ?? '-' }}
                             </div>
                         </div>
 
                         <div>
-                            <div class="record-inner-label">{{ __('patients.expiration_date') }}</div>
+                            <div class="record-inner-label">{{ __('devices.expiration_date') }}</div>
                             <div class="record-inner-subvalue">{{ data_get($device, 'expirationDate') ?? '-' }}</div>
                         </div>
 
@@ -118,7 +118,7 @@
                     </div>
 
                     <div class="min-w-0">
-                        <div class="record-inner-label">{{ __('patients.medical_record_id') }}</div>
+                        <div class="record-inner-label">{{ __('medical-events.medical_record_id') }}</div>
                         <div class="record-inner-id-value">
                             {{ data_get($device, 'context.identifier.value') ?? '-' }}
                         </div>
@@ -130,7 +130,7 @@
 
     @if ($hasLimit)
         <div x-show="limit < {{ count($this->devices) }}" class="mt-4 flex justify-start">
-            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
+            <button type="button" @click="limit += 5" class="item-add">{{ __('general.show_more') }}</button>
         </div>
     @endif
 </div>

@@ -29,7 +29,7 @@
 
     <div class="form-row-modal">
         <div class="form-group group">
-            <label for="lotNumber" class="label-modal"> {{ __('patients.lot_number') }} </label>
+            <label for="lotNumber" class="label-modal"> {{ __('immunizations.lot_number') }} </label>
             <input
                 x-model="modalImmunization.lotNumber"
                 type="text"
@@ -55,7 +55,7 @@
 
     <div class="form-row-3">
         <div class="form-group group">
-            <label for="expirationDate" class="label-modal"> {{ __('patients.expiration_date') }} </label>
+            <label for="expirationDate" class="label-modal"> {{ __('immunizations.expiration_date') }} </label>
             <div class="relative flex items-center">
                 @icon('calendar-week', 'svg-input absolute left-2.5 pointer-events-none')
                 <input
@@ -171,7 +171,7 @@
 
     <div class="form-row-3">
         <div class="form-group group">
-            <label for="bodyPart" class="label-modal"> {{ __('patients.body_part') }} </label>
+            <label for="bodyPart" class="label-modal"> {{ __('immunizations.site') }} </label>
             <select
                 type="text"
                 x-model="modalImmunization.siteCode"

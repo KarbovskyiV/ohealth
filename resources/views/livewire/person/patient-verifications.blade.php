@@ -185,7 +185,7 @@
                                             class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
                                         >
                                             @icon('plus', 'w-4 h-4 text-blue-600')
-                                            <span>{{ __('patients.start_interacting') }}</span>
+                                            <span>{{ __('encounters.start') }}</span>
                                         </a>
                                     @endcan
                                 </div>

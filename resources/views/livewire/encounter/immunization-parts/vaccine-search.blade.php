@@ -36,9 +36,9 @@
             <table class="table-input w-inherit">
                 <thead class="thead-input">
                     <tr>
-                        <th scope="col" class="th-input">{{ __('patients.lot_number') }}</th>
+                        <th scope="col" class="th-input">{{ __('immunizations.lot_number') }}</th>
                         <th scope="col" class="th-input">{{ __('immunizations.vaccine_name') }}</th>
-                        <th scope="col" class="th-input">{{ __('patients.expiration_date') }}</th>
+                        <th scope="col" class="th-input">{{ __('immunizations.expiration_date') }}</th>
                         <th scope="col" class="th-input text-center">{{ __('forms.action') }}</th>
                     </tr>
                 </thead>
@@ -129,7 +129,7 @@
             </button>
 
             <button type="button" @click.prevent="resetVaccineSearch()" class="button-primary-outline-red">
-                {{ __('patients.reset_filters') }}
+                {{ __('forms.reset_all_filters') }}
             </button>
         </div>
 

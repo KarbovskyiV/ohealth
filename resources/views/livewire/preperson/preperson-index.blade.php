@@ -164,7 +164,7 @@
                                 class="flex cursor-pointer items-center gap-1.5 font-medium text-blue-600 hover:text-blue-800"
                             >
                                 @icon('plus', 'w-4 h-4')
-                                <span class="text-sm">{{ __('patients.start_interacting') }}</span>
+                                <span class="text-sm">{{ __('encounters.start') }}</span>
                             </a>
                             @can('create', Episode::class)
                                 <a

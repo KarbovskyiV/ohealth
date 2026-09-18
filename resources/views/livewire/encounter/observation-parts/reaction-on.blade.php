@@ -1,11 +1,11 @@
 <fieldset class="fieldset">
-    <legend class="legend">{{ __('immunizations.reaction_on') }}</legend>
+    <legend class="legend">{{ __('observations.reaction_on') }}</legend>
 
     <div>
         @unless ($isReadonly)
             <template x-if="! modalObservation.reactionOn">
                 <button type="button" class="item-add my-5" @click.prevent="openReactionDrawer()">
-                    {{ __('immunizations.add') }}
+                    {{ __('observations.reaction_on_add') }}
                 </button>
             </template>
         @endunless
@@ -65,11 +65,11 @@
     zIndex="70"
     panelZIndex="71"
 >
-    <x-slot name="title">{{ __('care-plan.search_medical_records') }}</x-slot>
+    <x-slot name="title">{{ __('observations.search_medical_records') }}</x-slot>
 
     <div class="mt-2 mb-4 flex items-center gap-1.5 pl-1 font-bold text-gray-900 dark:text-gray-100">
         @icon('search-outline', 'w-5 h-5 text-gray-800 dark:text-gray-200')
-        <span class="text-base">{{ __('care-plan.search') }}</span>
+        <span class="text-base">{{ __('observations.records_search') }}</span>
     </div>
 
     <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">

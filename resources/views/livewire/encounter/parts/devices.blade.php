@@ -75,7 +75,7 @@
 >
     @if (($canCancelRecords ?? false) && !empty($this->deviceForm->devices))
         <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            {{ __('encounters.messages.cancel_device_group_note') }}
+            {{ __('medical-events.messages.cancel_device_group_note') }}
         </p>
     @endif
 
@@ -210,11 +210,11 @@
                                 ></div>
                             </div>
                             <div>
-                                <div class="record-inner-label">{{ __('forms.employee') }}</div>
+                                <div class="record-inner-label">{{ __('devices.recorder') }}</div>
                                 <div class="record-inner-subvalue">{{ $employeeFullName }}</div>
                             </div>
                             <div>
-                                <div class="record-inner-label">{{ __('forms.created_at') }}</div>
+                                <div class="record-inner-label">{{ __('devices.record_creation_date') }}</div>
                                 <div
                                     class="record-inner-subvalue"
                                     x-text="$wire.form.encounter.periodDate || '-'"
@@ -833,7 +833,7 @@
 
                         <div class="form-row-1 mt-4">
                             <div>
-                                <label for="deviceNote" class="label-modal mb-2 block">{{ __('forms.comment') }}</label>
+                                <label for="deviceNote" class="label-modal mb-2 block">{{ __('devices.notes') }}</label>
                                 <div>
                                     <textarea
                                         x-model="modalDevice.note"

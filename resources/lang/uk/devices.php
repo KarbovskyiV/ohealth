@@ -42,6 +42,7 @@ return [
     'legal_entity' => 'СГУСОЗ',
     'definition_full' => 'Модель виробу з довідника/Посилання на ідентифікатор медичного виробу',
     'recorder' => 'Автор запису',
+    'doctor' => 'Лікар',
     'report_origin' => 'Джерело інформації',
     'primary_source' => 'Первинне джерело інформації',
     'source_data' => 'Дані про джерело *',
@@ -60,6 +61,9 @@ return [
     'properties' => 'Властивості',
     'manufacturer_and_serial' => 'Виробник, серійний',
     'record_creation_date' => 'Дата створення запису',
+    'inserted_at' => 'Створено',
+    'updated_at' => 'Оновлено',
+    'context_id' => 'ID взаємодії',
 
     'status' => [
         'active' => 'Активний',

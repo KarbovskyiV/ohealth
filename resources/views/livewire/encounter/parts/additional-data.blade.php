@@ -134,7 +134,7 @@
                     required
                     autocomplete="off"
                 />
-                <label for="date" class="wrapped-label required"> {{ __('forms.date') }} </label>
+                <label for="date" class="wrapped-label required"> {{ __('encounters.period_date') }} </label>
             </div>
             @error('form.encounter.periodDate')
                 <p class="text-error">{{ $message }}</p>
@@ -156,7 +156,7 @@
                     required
                     autocomplete="off"
                 />
-                <label for="periodStart" class="wrapped-label required"> {{ __('forms.start_time') }} </label>
+                <label for="periodStart" class="wrapped-label required"> {{ __('encounters.period_start') }} </label>
             </div>
             @error('form.encounter.periodStart')
                 <p class="text-error">{{ $message }}</p>
@@ -214,12 +214,12 @@
             id="priority"
             class="input-select peer @error('form.encounter.priorityCode') input-error @enderror"
         >
-            <option value="" selected>{{ __('forms.select') }} {{ mb_strtolower(__('patients.priority')) }}</option>
+            <option value="" selected>{{ __('forms.select') }} {{ mb_strtolower(__('encounters.priority')) }}</option>
             @foreach ($this->dictionaries['eHealth/encounter_priority'] as $key => $encounterPriority)
                 <option value="{{ $key }}">{{ $encounterPriority }}</option>
             @endforeach
         </select>
-        <label for="priority" class="label"> {{ __('patients.priority') }} </label>
+        <label for="priority" class="label"> {{ __('encounters.priority') }} </label>
         @error('form.encounter.priorityCode')
             <p class="text-error">{{ $message }}</p>
         @enderror
@@ -405,7 +405,7 @@
                             placeholder=" "
                             autocomplete="off"
                         />
-                        <label :for="'service_' + index" class="label">{{ __('care-plan.services') }}</label>
+                        <label :for="'service_' + index" class="label">{{ __('encounters.services') }}</label>
 
                         <div
                             x-show="serviceDropdowns[index]"
@@ -456,7 +456,7 @@
                 class="ml-1 flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
             >
                 @icon('plus', 'w-4 h-4')
-                <span>{{ __('care-plan.add_service') }}</span>
+                <span>{{ __('encounters.add_service') }}</span>
             </button>
             @error('form.encounter.actionReferences.0')
                 <p class="text-error">{{ $message }}</p>
@@ -540,7 +540,7 @@
 
     <div class="space-y-4 border-t border-gray-100 pt-4 dark:border-gray-700">
         <h3 class="text-[15px] font-bold text-gray-900 dark:text-white">
-            {{ __('care-plan.search_medical_records') }}
+            {{ __('encounters.search_medical_records') }}
         </h3>
 
         <div x-show="selectedReferences.length > 0" x-cloak class="my-3 overflow-x-auto">

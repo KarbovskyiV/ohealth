@@ -16,7 +16,7 @@
                 class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
             >
                 @icon('plus', 'w-4 h-4')
-                {{ __('patients.start_interacting') }}
+                {{ __('encounters.start') }}
             </a>
         @endcan
 
@@ -60,7 +60,7 @@
                         <option value="icd10">ICD-10-AM</option>
                         <option value="icpc2">ICPC-2</option>
                     </select>
-                    <label class="label">{{ __('forms.type') }}</label>
+                    <label class="label">{{ __('conditions.code_system') }}</label>
                 </div>
 
                 <div class="form-group group" x-show="dictionary">
@@ -107,7 +107,7 @@
                             class="input-select peer w-full"
                         />
                     </div>
-                    <label class="label">{{ __('forms.code') }}</label>
+                    <label class="label">{{ __('conditions.code') }}</label>
                 </div>
             </div>
 
@@ -126,7 +126,7 @@
                         wire:click="resetFilters"
                         class="button-primary-outline-red px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.reset_filters') }}
+                        {{ __('forms.reset_all_filters') }}
                     </button>
                     <button
                         type="button"
@@ -144,7 +144,7 @@
                         @click="openGroupActions = ! openGroupActions"
                         class="button-primary-outline px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.group_actions') }}
+                        {{ __('forms.group_actions') }}
                     </button>
 
                     <div
@@ -157,7 +157,7 @@
                             <button
                                 type="button"
                                 @click="openGroupActions = false"
-                                class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                class="dropdown-button flex! w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                             >
                                 <span class="text-gray-500">
                                     @icon('close', 'w-4 h-4')
@@ -257,7 +257,7 @@
                             </div>
 
                             <div class="record-inner-column-bordered w-full shrink-0 md:w-36">
-                                <div class="record-inner-label">{{ __('patients.status_clinical') }}</div>
+                                <div class="record-inner-label">{{ __('conditions.clinical_status') }}</div>
                                 <div>
                                     @php($status = ConditionClinicalStatus::from(data_get($condition, 'clinicalStatus')))
                                     <span @class([$status->color()])> {{ $status->label() ?? '-' }} </span>
@@ -311,7 +311,7 @@
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('eye', 'w-5 h-5 text-gray-500')
-                                            {{ __('patients.view_details') }}
+                                            {{ __('forms.view_details') }}
                                         </button>
 
                                         <button
@@ -319,7 +319,7 @@
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                            {{ __('conditions.status.entered_in_error') }}
+                                            {{ __('medical-events.mark_as_error') }}
                                         </button>
                                     </div>
                                 </div>
@@ -330,19 +330,19 @@
                             <div class="record-inner-grid-container">
                                 <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('forms.type') }}</div>
+                                        <div class="record-inner-label">{{ __('conditions.report_origin') }}</div>
                                         <div class="record-inner-value">
                                             {{ $this->dictionaryLabel($condition, 'reportOrigin') ?? '-' }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('patients.doctor') }}</div>
+                                        <div class="record-inner-label">{{ __('conditions.doctor') }}</div>
                                         <div class="record-inner-value wrap-break-word">
                                             {{ data_get($condition, 'asserter.displayValue') ?? '-' }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('patients.verification_status') }}</div>
+                                        <div class="record-inner-label">{{ __('conditions.verification_status') }}</div>
                                         <div class="record-inner-value uppercase">
                                             @php($verificationStatus = ConditionVerificationStatus::from(data_get($condition, 'verificationStatus')))
                                             <span @class([$verificationStatus->color()])>
@@ -357,7 +357,7 @@
                                         </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('patients.body_part') }}</div>
+                                        <div class="record-inner-label">{{ __('conditions.body_sites') }}</div>
                                         <div class="record-inner-value wrap-break-word">
                                             @forelse (data_get($condition, 'bodySites', []) as $bodySite)
                                                 <div>{{ $this->dictionaryLabel($bodySite, 'coding.0') }}</div>
@@ -367,11 +367,11 @@
                                         </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('forms.start_date') }}</div>
+                                        <div class="record-inner-label">{{ __('conditions.onset_date') }}</div>
                                         <div class="record-inner-value">{{ data_get($condition, 'onsetDate') }}</div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('patients.created') }}</div>
+                                        <div class="record-inner-label">{{ __('conditions.asserted_date') }}</div>
                                         <div class="record-inner-value">
                                             {{ data_get($condition, 'assertedDate') ?? '-' }}
                                         </div>
@@ -430,7 +430,7 @@
                                     <div class="record-inner-id-value">{{ data_get($condition, 'uuid') }}</div>
                                 </div>
                                 <div class="min-w-0">
-                                    <div class="record-inner-label">{{ __('patients.medical_record_id') }}</div>
+                                    <div class="record-inner-label">{{ __('medical-events.medical_record_id') }}</div>
                                     <div class="record-inner-id-value">
                                         {{ data_get($condition, 'context.identifier.value') ?? '-' }}
                                     </div>

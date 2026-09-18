@@ -627,7 +627,7 @@
                                                         wire:navigate
                                                     >
                                                         @icon('eye', 'w-5 h-5 text-gray-500')
-                                                        {{ __('patients.view_details') }}
+                                                        {{ __('forms.view_details') }}
                                                     </a>
 
                                                     @if (!$this->isTerminalCarePlan && in_array(strtoupper($activityStatus), ['NEW', 'DRAFT']))

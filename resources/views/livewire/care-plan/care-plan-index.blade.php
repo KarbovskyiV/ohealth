@@ -96,7 +96,7 @@
                             wire:click="resetFilters"
                             class="button-primary-outline-red px-5 py-2.5 text-sm"
                         >
-                            {{ __('patients.reset_filters') }}
+                            {{ __('forms.reset_all_filters') }}
                         </button>
                         <button
                             type="button"
@@ -300,7 +300,7 @@
                                                 class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('eye', 'w-5 h-5 text-gray-500')
-                                                {{ __('patients.view_details') }}
+                                                {{ __('forms.view_details') }}
                                             </a>
                                         @endif
                                     </div>
@@ -313,7 +313,7 @@
                                 <div class="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-3 lg:grid-cols-6">
                                     <div class="min-w-0">
                                         <div class="record-inner-label text-[10px] uppercase">
-                                            {{ __('patients.created') }}
+                                            {{ __('forms.created') }}
                                         </div>
                                         <div class="record-inner-value font-semibold break-words">{{ $created }}</div>
                                     </div>

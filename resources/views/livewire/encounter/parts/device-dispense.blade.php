@@ -16,7 +16,7 @@
         item: 0,
 
         activeDeviceRequests() {
-            return this.deviceRequests.filter((deviceRequest) => String(deviceRequest.status).toLowerCase() === 'active' && !deviceRequest.programId);
+            return this.deviceRequests.filter((deviceRequest) => String(deviceRequest.status).toLowerCase() === 'active' && ! deviceRequest.programId);
         },
 
         carePlanId(id) {
@@ -127,12 +127,8 @@
             <div class="record-inner-card">
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
-                    <label for="deviceDispenseRecord" class="sr-only">{{ __('forms.select') }}</label>
-                        <input
-                            type="checkbox" id="deviceDispenseRecord"
-                            class="default-checkbox h-5 w-5"
-                            disabled
-                        />
+                        <label for="deviceDispenseRecord" class="sr-only">{{ __('forms.select') }}</label>
+                        <input type="checkbox" id="deviceDispenseRecord" class="default-checkbox h-5 w-5" disabled />
                     </div>
 
                     <div class="record-inner-column flex-1">
@@ -230,12 +226,17 @@
                                 <div class="record-inner-label">{{ __('device-dispenses.date_and_time') }}</div>
                                 <div
                                     class="record-inner-subvalue"
-                                    x-text="`${deviceDispense.whenHandedOverDate || '-'} ${deviceDispense.whenHandedOverTime || ''}`"
+                                    x-text="
+                                        `${deviceDispense.whenHandedOverDate || '-'} ${deviceDispense.whenHandedOverTime || ''}`
+                                    "
                                 ></div>
                             </div>
                             <div>
                                 <div class="record-inner-label">{{ __('device-dispenses.procedure_id') }}</div>
-                                <div class="record-inner-subvalue break-all" x-text="deviceDispense.partOfId || '-'"></div>
+                                <div
+                                    class="record-inner-subvalue break-all"
+                                    x-text="deviceDispense.partOfId || '-'"
+                                ></div>
                             </div>
                             <div>
                                 <div class="record-inner-label">{{ __('device-dispenses.care_plan_id') }}</div>
@@ -295,16 +296,11 @@
                                                 : '{{ __('device-dispenses.device_type') }}'
                                         "
                                     ></div>
-                                    <div
-                                        class="record-inner-subvalue"
-                                        x-text="deviceName(deviceDispense)"
-                                    ></div>
+                                    <div class="record-inner-subvalue" x-text="deviceName(deviceDispense)"></div>
                                 </div>
 
                                 <div class="col-span-2 xl:col-span-4">
-                                    <div class="record-inner-label">
-                                        {{ __('device-dispenses.supporting_info') }}
-                                    </div>
+                                    <div class="record-inner-label">{{ __('device-dispenses.supporting_info') }}</div>
 
                                     <template x-if="! deviceDispense.supportingInfo?.length">
                                         <div class="record-inner-subvalue">-</div>
@@ -324,10 +320,7 @@
                                         </div>
                                     </template>
                                 </div>
-                                <div
-                                    class="record-inner-subvalue"
-                                    x-text="statusName(deviceDispense.status)"
-                                ></div>
+                                <div class="record-inner-subvalue" x-text="statusName(deviceDispense.status)"></div>
                             </div>
                         </div>
                     </div>
@@ -337,11 +330,7 @@
     </div>
 
     @unless ($isReadonly ?? false)
-        <button
-            type="button"
-            @click.prevent="createDeviceDispense()"
-            class="item-add my-5"
-        >
+        <button type="button" @click.prevent="createDeviceDispense()" class="item-add my-5">
             {{ __('device-dispenses.dispense') }}
         </button>
     @endunless
@@ -362,7 +351,11 @@
                             <template x-for="deviceRequest in activeDeviceRequests()" :key="deviceRequest.uuid">
                                 <option
                                     :value="deviceRequest.uuid"
-                                    x-text="[deviceRequest.requestNumber, deviceRequest.itemName].filter(Boolean).join(' — ')"
+                                    x-text="
+                                        [deviceRequest.requestNumber, deviceRequest.itemName]
+                                            .filter(Boolean)
+                                            .join(' — ')
+                                    "
                                 ></option>
                             </template>
                         </select>
@@ -382,9 +375,7 @@
                                 <option :value="procedure.uuid" x-text="procedureLabel(procedure)"></option>
                             </template>
                         </select>
-                        <label for="deviceDispenseProcedure" class="label">
-                            {{ __('procedures.link') }}
-                        </label>
+                        <label for="deviceDispenseProcedure" class="label"> {{ __('procedures.link') }} </label>
                     </div>
                 </div>
 
@@ -468,7 +459,7 @@
                         <button
                             type="button"
                             @click="modalDeviceDispense.quantity = null"
-                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+                            class="absolute top-1/2 right-2.5 -translate-y-1/2 text-gray-400"
                             tabindex="-1"
                         >
                             @icon('close', 'h-4 w-4')
@@ -565,7 +556,7 @@
                                 class="textarea"
                                 rows="4"
                                 maxlength="3000"
-                                placeholder="{{ __('encounters.text_for_input') }}"
+                                placeholder="{{ __('forms.text_for_input') }}"
                             ></textarea>
                         </div>
                     </div>

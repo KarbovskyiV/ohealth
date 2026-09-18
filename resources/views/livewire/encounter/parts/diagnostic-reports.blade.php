@@ -349,21 +349,21 @@
                     <div class="record-inner-grid-container">
                         <div class="grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-3">
                             <div>
-                                <div class="record-inner-label">{{ __('forms.category') }}</div>
+                                <div class="record-inner-label">{{ __('diagnostic-reports.category') }}</div>
                                 <div
                                     class="record-inner-subvalue"
                                     x-text="diagnosticReportCategoriesDictionary[diagnosticReport.categoryCode] || '-'"
                                 ></div>
                             </div>
                             <div>
-                                <div class="record-inner-label">{{ __('forms.date') }}</div>
+                                <div class="record-inner-label">{{ __('diagnostic-reports.issued') }}</div>
                                 <div
                                     class="record-inner-subvalue"
                                     x-text="`${diagnosticReport.issuedDate} ${diagnosticReport.issuedTime}`"
                                 ></div>
                             </div>
                             <div>
-                                <div class="record-inner-label">{{ __('forms.comment') }}</div>
+                                <div class="record-inner-label">{{ __('diagnostic-reports.conclusion') }}</div>
                                 <div class="record-inner-subvalue" x-text="diagnosticReport.conclusion || '-'"></div>
                             </div>
                         </div>

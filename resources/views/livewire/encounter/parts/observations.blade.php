@@ -167,7 +167,7 @@
                     </template>
 
                     <div class="record-inner-column flex-1">
-                        <div class="record-inner-label">{{ __('forms.code') }}</div>
+                        <div class="record-inner-label">{{ __('observations.code') }}</div>
                         <div
                             class="record-inner-value text-[16px]"
                             x-text="
@@ -292,7 +292,7 @@
                     <div class="record-inner-grid-container">
                         <div class="grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-3">
                             <div>
-                                <div class="record-inner-label">{{ __('forms.category') }}</div>
+                                <div class="record-inner-label">{{ __('observations.category') }}</div>
                                 <div
                                     class="record-inner-subvalue"
                                     x-text="
@@ -322,7 +322,7 @@
                                 ></div>
                             </div>
                             <div>
-                                <div class="record-inner-label">{{ __('forms.date') }}</div>
+                                <div class="record-inner-label">{{ __('observations.issued') }}</div>
                                 <div class="record-inner-subvalue" x-text="observation.issuedDate || '-'"></div>
                             </div>
                         </div>
@@ -443,7 +443,9 @@
                                     @endunless
                                 </div>
                                 <template x-if="showDuplicateCodeWarning">
-                                    <p class="text-error text-right">{!! __('patients.duplicate_code_warning') !!}</p>
+                                    <p class="text-error text-right">
+                                        {!! __('medical-events.duplicate_code_warning') !!}
+                                    </p>
                                 </template>
                             </fieldset>
                         </form>

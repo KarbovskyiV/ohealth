@@ -7,7 +7,7 @@
 >
     <x-slot name="headerActions"></x-slot>
 
-    <div class="shift-content pl-3.5 mt-8 max-w-6xl">
+    <div class="shift-content mt-8 max-w-6xl pl-3.5">
         <fieldset class="fieldset">
             <div class="form-row-2">
                 <div class="form-group group">
@@ -29,7 +29,7 @@
                         class="input peer"
                         disabled
                     />
-                    <label class="label">{{ __('forms.type') }}</label>
+                    <label class="label">{{ __('episodes.type') }}</label>
                 </div>
 
                 <div class="hidden md:block"></div>
@@ -41,18 +41,18 @@
                         <input
                             value="{{ $episode->ehealthInsertedDate ?: '-' }}"
                             type="text"
-                            class="peer input pl-10 appearance-none text-gray-500 dark:text-gray-400"
+                            class="peer input appearance-none pl-10 text-gray-500 dark:text-gray-400"
                             placeholder=" "
                             disabled
                         />
-                        <label class="wrapped-label">{{ __('forms.created_at') }}</label>
+                        <label class="wrapped-label">{{ __('episodes.created_at_date') }}</label>
                     </div>
                     <div class="form-group relative w-full">
                         @icon('clock', 'w-5 h-5 text-gray-500 dark:text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none')
                         <input
                             value="{{ $episode->ehealthInsertedTime ?: '-' }}"
                             type="text"
-                            class="peer input pl-10 appearance-none text-gray-500 dark:text-gray-400"
+                            class="peer input appearance-none pl-10 text-gray-500 dark:text-gray-400"
                             placeholder=" "
                             disabled
                         />
@@ -65,7 +65,7 @@
                         <input
                             value="{{ $episode->ehealthUpdatedDate ?: '-' }}"
                             type="text"
-                            class="peer input pl-10 appearance-none text-gray-500 dark:text-gray-400"
+                            class="peer input appearance-none pl-10 text-gray-500 dark:text-gray-400"
                             placeholder=" "
                             disabled
                         />
@@ -76,7 +76,7 @@
                         <input
                             value="{{ $episode->ehealthUpdatedTime ?: '-' }}"
                             type="text"
-                            class="peer input pl-10 appearance-none text-gray-500 dark:text-gray-400"
+                            class="peer input appearance-none pl-10 text-gray-500 dark:text-gray-400"
                             placeholder=" "
                             disabled
                         />
@@ -123,7 +123,7 @@
                 </div>
             </div>
 
-            <div class="text-xl font-bold text-gray-800 dark:text-gray-200 mt-10 mb-6">
+            <div class="mt-10 mb-6 text-xl font-bold text-gray-800 dark:text-gray-200">
                 {{ __('episodes.period_title') }}
             </div>
 
@@ -132,7 +132,7 @@
                     <input
                         value="{{ convertToAppDateFormat($episode->period?->start) ?: '-' }}"
                         type="text"
-                        class="peer input pl-10 appearance-none text-gray-500 dark:text-gray-400"
+                        class="peer input appearance-none pl-10 text-gray-500 dark:text-gray-400"
                         placeholder=" "
                         disabled
                     />
@@ -143,7 +143,7 @@
                     <input
                         value="{{ convertToAppDateFormat($episode->period?->end) ?: '-' }}"
                         type="text"
-                        class="peer input pl-10 appearance-none text-gray-500 dark:text-gray-400"
+                        class="peer input appearance-none pl-10 text-gray-500 dark:text-gray-400"
                         placeholder=" "
                         disabled
                     />
@@ -151,11 +151,11 @@
                 </div>
             </div>
 
-            <div class="text-xl font-bold text-gray-800 dark:text-gray-200 mt-10 mb-6">
+            <div class="mt-10 mb-6 text-xl font-bold text-gray-800 dark:text-gray-200">
                 {{ __('episodes.current_diagnosis_title') }}
             </div>
 
-            @if($currentMainDiagnosis)
+            @if ($currentMainDiagnosis)
                 <div class="form-row-2">
                     <div class="form-group group">
                         <input
@@ -200,24 +200,22 @@
                     </div>
                 </div>
             @else
-                <div class="text-gray-500 dark:text-gray-400 py-2">
-                    {{ __('episodes.no_current_diagnosis') }}
-                </div>
+                <div class="py-2 text-gray-500 dark:text-gray-400">{{ __('episodes.no_current_diagnosis') }}</div>
             @endif
 
-            <div class="text-xl font-bold text-gray-800 dark:text-gray-200 mt-10 mb-6">
+            <div class="mt-10 mb-6 text-xl font-bold text-gray-800 dark:text-gray-200">
                 {{ __('episodes.diagnosis_history_title') }}
             </div>
 
-            @forelse($episode->diagnosesHistory as $history)
-                @foreach($history->diagnoses as $diagnose)
-                    <div class="mb-8 last:mb-0 space-y-4" wire:key="diagnosis-{{ $history->id }}-{{ $diagnose->id }}">
+            @forelse ($episode->diagnosesHistory as $history)
+                @foreach ($history->diagnoses as $diagnose)
+                    <div class="mb-8 space-y-4 last:mb-0" wire:key="diagnosis-{{ $history->id }}-{{ $diagnose->id }}">
                         <div class="form-row-2">
                             <div class="form-group datepicker-wrapper relative w-full">
                                 <input
                                     value="{{ convertToAppDateFormat($history->date) ?: '-' }}"
                                     type="text"
-                                    class="peer input pl-10 appearance-none text-gray-500 dark:text-gray-400"
+                                    class="peer input appearance-none pl-10 text-gray-500 dark:text-gray-400"
                                     placeholder=" "
                                     disabled
                                 />
@@ -260,24 +258,17 @@
                             </div>
 
                             <div class="form-group group">
-                                <input
-                                    value="{{ $diagnose->rank ?: '-' }}"
-                                    type="text"
-                                    class="input peer"
-                                    disabled
-                                />
+                                <input value="{{ $diagnose->rank ?: '-' }}" type="text" class="input peer" disabled />
                                 <label class="label">{{ __('episodes.diagnosis_rank') }}</label>
                             </div>
                         </div>
                     </div>
                 @endforeach
             @empty
-                <div class="text-gray-500 dark:text-gray-400 py-2">
-                    {{ __('episodes.diagnosis_history_empty') }}
-                </div>
+                <div class="py-2 text-gray-500 dark:text-gray-400">{{ __('episodes.diagnosis_history_empty') }}</div>
             @endforelse
 
-            <div class="flex gap-4 pt-8 mt-8 border-t border-gray-100 dark:border-gray-700">
+            <div class="mt-8 flex gap-4 border-t border-gray-100 pt-8 dark:border-gray-700">
                 <button type="button" @click="history.back()" class="button-minor cursor-pointer">
                     {{ __('forms.back') }}
                 </button>

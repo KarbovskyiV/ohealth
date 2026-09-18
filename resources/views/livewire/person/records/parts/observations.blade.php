@@ -47,7 +47,7 @@
                         ->implode(', ');
                 @endphp
                 <div class="record-inner-column flex-1">
-                    <div class="record-inner-label">{{ __('patients.category_and_code') }}</div>
+                    <div class="record-inner-label">{{ __('observations.category_and_code') }}</div>
                     <div class="record-inner-value text-[16px]">{{ $categoryLabel }} {{ $codeLabel }}</div>
                 </div>
 
@@ -76,7 +76,7 @@
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.method') }}</div>
+                            <div class="record-inner-label">{{ __('observations.method') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ $this->dictionaryLabel($observation, 'method') }}
                             </div>
@@ -98,7 +98,7 @@
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.updated') }}</div>
+                            <div class="record-inner-label">{{ __('observations.updated_at') }}</div>
                             <div class="record-inner-subvalue">{{ data_get($observation, 'ehealthUpdatedAt') }}</div>
                         </div>
 
@@ -109,19 +109,19 @@
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.body_part') }}</div>
+                            <div class="record-inner-label">{{ __('observations.body_site') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ $this->dictionaryLabel($observation, 'bodySite') }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.doctor') }}</div>
+                            <div class="record-inner-label">{{ __('observations.doctor') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($observation, 'performer.displayValue') ?? '-' }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.created') }}</div>
+                            <div class="record-inner-label">{{ __('observations.inserted_at') }}</div>
                             <div class="record-inner-subvalue">{{ data_get($observation, 'ehealthInsertedAt') }}</div>
                         </div>
                     </div>
@@ -132,7 +132,7 @@
                         <div class="record-inner-id-value">{{ data_get($observation, 'uuid') }}</div>
                     </div>
                     <div class="min-w-0">
-                        <div class="record-inner-label">{{ __('patients.medical_record_id') }}</div>
+                        <div class="record-inner-label">{{ __('medical-events.medical_record_id') }}</div>
                         <div class="record-inner-id-value">
                             {{ data_get($observation, 'context.identifier.value', '-') }}
                         </div>
@@ -144,7 +144,7 @@
 
     @if ($hasLimit)
         <div x-show="limit < {{ count($this->observations) }}" class="mt-4 flex justify-start">
-            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
+            <button type="button" @click="limit += 5" class="item-add">{{ __('general.show_more') }}</button>
         </div>
     @endif
 </div>

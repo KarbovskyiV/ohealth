@@ -136,7 +136,7 @@
                                                     class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 whitespace-nowrap text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
                                                 >
                                                     @icon('eye', 'w-5 h-5')
-                                                    {{ __('patients.view_details') }}
+                                                    {{ __('forms.view_details') }}
                                                 </button>
                                             </li>
                                             <li>
@@ -172,7 +172,7 @@
                                                     class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
                                                 >
                                                     @icon('close-circle', 'w-5 h-5')
-                                                    <span>{{ __('specimens.mark_entered_in_error') }}</span>
+                                                    <span>{{ __('medical-events.mark_as_error') }}</span>
                                                 </button>
                                             </li>
                                         </ul>
@@ -237,7 +237,7 @@
                                     </div>
                                     <div>
                                         <div class="record-inner-label text-[10px] uppercase">
-                                            {{ __('patients.electronic') }}
+                                            {{ __('specimens.electronic_referral') }}
                                         </div>
                                         <div class="record-inner-value font-semibold">
                                             @forelse (data_get($specimen, 'request', []) as $request)

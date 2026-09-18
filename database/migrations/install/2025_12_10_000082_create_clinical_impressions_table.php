@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\Person\ClinicalImpressionStatus;
+use App\Enums\ClinicalImpression\Status;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -20,7 +20,7 @@ return new class extends Migration
             $table->foreignId('person_id')->nullable()->constrained('persons');
             $table->foreignId('preperson_id')->nullable()->constrained('prepersons');
             $table->foreignId('encounter_internal_id')->nullable()->constrained('encounters');
-            $table->enum('status', ClinicalImpressionStatus::values());
+            $table->enum('status', Status::values());
             $table->text('description')->nullable()->comment('Some description of the clinical impression');
             $table->foreignId('code_id')->constrained('codeable_concepts');
             $table->foreignId('encounter_id')->constrained('identifiers');

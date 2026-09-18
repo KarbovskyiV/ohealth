@@ -7,7 +7,7 @@
     $canCancelRecords = $this instanceof EncounterEdit && $this->canBeCancelled;
 
     $mainGroups = [
-        ['id' => 'referral', 'label' => __('patients.referrals'), 'icon' => 'arrow-right', 'view' => 'livewire.encounter.parts.referral'],
+        ['id' => 'referral', 'label' => __('encounters.incoming_referral'), 'icon' => 'arrow-right', 'view' => 'livewire.encounter.parts.referral'],
         ['id' => 'main-data', 'label' => __('forms.main_information'), 'icon' => 'pie-chart', 'view' => 'livewire.encounter.parts.main-data'],
         ['id' => 'conditions', 'label' => __('patients.diagnoses'), 'icon' => 'file', 'view' => 'livewire.encounter.parts.conditions'],
         ['id' => 'reasons', 'label' => __('encounters.reasons_for_visit'), 'icon' => 'person', 'view' => 'livewire.encounter.parts.reasons'],
@@ -63,7 +63,7 @@
                         @click="openGroupActions = ! openGroupActions"
                         class="button-primary-outline px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.group_actions') }}
+                        {{ __('forms.group_actions') }}
                     </button>
 
                     <div
@@ -82,7 +82,9 @@
                                 <span class="!text-red-500 dark:!text-red-400">
                                     @icon('close', 'w-4 h-4')
                                 </span>
-                                <span class="!text-red-500 dark:!text-red-400"> {{ __('forms.mark_as_error') }} </span>
+                                <span class="!text-red-500 dark:!text-red-400">
+                                    {{ __('medical-events.mark_as_error') }}
+                                </span>
                             </button>
                         </div>
                     </div>
@@ -234,7 +236,7 @@
 
                 participantLabel(participant) {
                     const sourceLabels = {
-                        diagnosis: {!! $escapeForAlpineAttribute(__('patients.diagnosis_performer')) !!},
+                        diagnosis: {!! $escapeForAlpineAttribute(__('encounters.diagnosis_performer')) !!},
                         procedure: {!! $escapeForAlpineAttribute(__('procedures.performer')) !!},
                         diagnosticReport: {!! $escapeForAlpineAttribute(__('diagnostic-reports.performer')) !!},
                     };

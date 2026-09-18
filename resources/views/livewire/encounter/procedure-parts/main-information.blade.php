@@ -22,7 +22,7 @@
                         tabindex="-1"
                     />
                     <label class="default-p" for="procedureReferralAvailable">
-                        {{ __('encounters.referral_available') }}
+                        {{ __('medical-events.referral.available') }}
                     </label>
                 </div>
             </div>
@@ -33,7 +33,10 @@
             <div class="form-group group">
                 <div class="form-row-2" x-cloak>
                     <div>
-                        <label for="procedureReferralType" class="sr-only">{{ __('patients.requisition_type') }}</label>
+                        <label
+                            for="procedureReferralType"
+                            class="sr-only"
+                        >{{ __('medical-events.referral.requisition_type') }}</label>
                         <select
                             x-model="modalProcedure.referralType"
                             id="procedureReferralType"
@@ -42,10 +45,10 @@
                             required
                         >
                             <option selected value="">
-                                {{ __('forms.select') }} {{ mb_strtolower(__('patients.requisition_type')) }} *
+                                {{ __('forms.select') }} {{ mb_strtolower(__('medical-events.referral.requisition_type')) }} *
                             </option>
-                            <option value="electronic">{{ __('patients.electronic') }}</option>
-                            <option value="paper">{{ __('patients.paper') }}</option>
+                            <option value="electronic">{{ __('medical-events.referral.electronic') }}</option>
+                            <option value="paper">{{ __('medical-events.referral.paper') }}</option>
                         </select>
 
                         @error('procedureForm.procedures.*.referralType')
@@ -66,7 +69,9 @@
                                 required
                                 autocomplete="off"
                             />
-                            <label for="procedureBasedOnIdentifier" class="label"> {{ __('forms.number') }} </label>
+                            <label for="procedureBasedOnIdentifier" class="label">
+                                {{ __('medical-events.referral.number') }}
+                            </label>
                         </div>
                     </template>
                 </div>
@@ -85,7 +90,9 @@
                                     placeholder=" "
                                     autocomplete="off"
                                 />
-                                <label for="procedureRequisition" class="label"> {{ __('forms.number') }} </label>
+                                <label for="procedureRequisition" class="label">
+                                    {{ __('medical-events.referral.number') }}
+                                </label>
 
                                 @error($procedureErrorPath . '.paperReferralRequisition')
                                     <p class="text-error">{{ $message }}</p>
@@ -103,7 +110,7 @@
                                     autocomplete="off"
                                 />
                                 <label for="procedureRequesterEmployeeName" class="label">
-                                    {{ __('patients.author') }}
+                                    {{ __('medical-events.referral.author') }}
                                 </label>
 
                                 @error($procedureErrorPath . '.paperReferralRequesterEmployeeName')
@@ -126,7 +133,7 @@
                                     required
                                 />
                                 <label for="procedureRequesterLegalEntityEdrpou" class="label">
-                                    {{ __('patients.edrpou_of_the_issuing_institution') }}
+                                    {{ __('medical-events.referral.edrpou_of_the_issuing_institution') }}
                                 </label>
 
                                 @error($procedureErrorPath . '.paperReferralRequesterLegalEntityEdrpou')
@@ -145,7 +152,7 @@
                                     autocomplete="off"
                                 />
                                 <label for="procedureRequesterLegalEntityName" class="label">
-                                    {{ __('patients.name_of_the_institution_that_issued_it') }}
+                                    {{ __('medical-events.referral.name_of_the_institution_that_issued_it') }}
                                 </label>
 
                                 @error($procedureErrorPath . '.paperReferralRequesterLegalEntityName')
@@ -168,7 +175,7 @@
                                         autocomplete="off"
                                     />
                                     <label for="procedureServiceRequestDate" class="wrapped-label">
-                                        {{ __('forms.date') }}
+                                        {{ __('medical-events.referral.date') }}
                                     </label>
 
                                     @error($procedureErrorPath . '.paperReferralServiceRequestDate')
@@ -187,7 +194,7 @@
                                     placeholder=" "
                                     autocomplete="off"
                                 />
-                                <label for="paperNote" class="label"> {{ __('patients.notes') }} </label>
+                                <label for="paperNote" class="label"> {{ __('medical-events.referral.notes') }} </label>
 
                                 @error($procedureErrorPath . '.paperReferralNote')
                                     <p class="text-error">{{ $message }}</p>
@@ -202,7 +209,7 @@
         {{-- Category --}}
         <div class="form-row-2">
             <div class="form-group group">
-                <label for="category" class="sr-only">{{ __('forms.category') }}</label>
+                <label for="category" class="sr-only">{{ __('procedures.category') }}</label>
                 <select
                     x-model="modalProcedure.categoryCode"
                     id="category"
@@ -211,7 +218,7 @@
                     required
                 >
                     <option selected value="">
-                        {{ __('forms.select') }} {{ mb_strtolower(__('forms.category')) }} *
+                        {{ __('forms.select') }} {{ mb_strtolower(__('procedures.category')) }} *
                     </option>
                     @foreach ($this->dictionaries['eHealth/procedure_categories'] as $key => $category)
                         <option value="{{ $key }}">{{ $category }}</option>
@@ -268,7 +275,7 @@
                     class="input peer"
                 />
                 <label for="serviceCode" class="label">
-                    {{ __('forms.select') }} {{ mb_strtolower(__('forms.services')) }} *
+                    {{ __('forms.select') }} {{ mb_strtolower(__('procedures.code')) }} *
                 </label>
 
                 @error($procedureErrorPath . '.codeValue')
@@ -280,7 +287,7 @@
         {{-- Divisions --}}
         <div class="form-row-2">
             <div class="form-group group">
-                <label for="procedureDivision" class="sr-only">{{ __('forms.division_name') }}</label>
+                <label for="procedureDivision" class="sr-only">{{ __('procedures.division') }}</label>
                 <select
                     x-model="modalProcedure.divisionId"
                     @change="modalProcedure.usedReferences = []"
@@ -291,7 +298,7 @@
                     class="input-select peer"
                 >
                     <option selected value="">
-                        {{ __('forms.select') }} {{ mb_strtolower(__('forms.division_name')) }}
+                        {{ __('forms.select') }} {{ mb_strtolower(__('procedures.division')) }}
                     </option>
                     @foreach ($divisions as $key => $division)
                         <option value="{{ $division['uuid'] }}">{{ $division['name'] }}</option>

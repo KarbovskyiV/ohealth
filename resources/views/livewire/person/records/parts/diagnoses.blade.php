@@ -65,7 +65,7 @@
 
     @if ($hasLimit)
         <div x-show="limit < {{ count($this->diagnoses) }}" class="mt-4 flex justify-start">
-            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
+            <button type="button" @click="limit += 5" class="item-add">{{ __('general.show_more') }}</button>
         </div>
     @endif
 </div>

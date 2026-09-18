@@ -72,7 +72,7 @@
                     :checked="episodeType === 'existing'"
                 />
                 <label for="existingEpisode" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                    {{ __('episodes.existing') }}
+                    {{ __('encounters.episode_existing') }}
                 </label>
             </div>
             <div class="flex items-center">
@@ -91,7 +91,7 @@
                     :checked="episodeType === 'new'"
                 />
                 <label for="newEpisode" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                    {{ __('episodes.new') }}
+                    {{ __('encounters.episode_new') }}
                 </label>
             </div>
         </div>
@@ -109,7 +109,7 @@
                         required
                         autocomplete="off"
                     />
-                    <label for="episodeName" class="label required"> {{ __('episodes.name') }} </label>
+                    <label for="episodeName" class="label required"> {{ __('encounters.episode_name') }} </label>
 
                     @error('form.episode.name')
                         <p class="text-error">{{ $message }}</p>
@@ -128,7 +128,7 @@
                             <option value="{{ $key }}">{{ $episodeType }}</option>
                         @endforeach
                     </select>
-                    <label for="episodeType" class="label required"> {{ __('episodes.type') }} </label>
+                    <label for="episodeType" class="label required"> {{ __('encounters.episode_type') }} </label>
 
                     @error('form.episode.typeCode')
                         <p class="text-error">{{ $message }}</p>
@@ -151,7 +151,9 @@
                             <option value="{{ $episode['uuid'] }}">{{ $episode['name'] }}</option>
                         @endforeach
                     </select>
-                    <label for="existingEpisodeId" class="label required"> {{ __('episodes.existing') }} </label>
+                    <label for="existingEpisodeId" class="label required">
+                        {{ __('encounters.episode_existing') }}
+                    </label>
 
                     @error('form.episode.id')
                         <p class="text-error">{{ $message }}</p>

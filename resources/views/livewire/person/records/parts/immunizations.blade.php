@@ -39,9 +39,9 @@
                 <div class="record-inner-grid-container">
                     <div class="[&>div]:min-w-0 [&_.record-inner-subvalue]:wrap-break-word grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-5">
                         <div>
-                            <div class="record-inner-label">{{ __('patients.dosage') }}</div>
+                            <div class="record-inner-label">{{ __('immunizations.dose_quantity') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($immunization, 'doseQuantity.value', '') . ' ' . data_get($immunization, 'doseQuantity.unit', '') ?: '-' }}
+                                {{ trim(data_get($immunization, 'doseQuantity.value', '') . ' ' . data_get($immunization, 'doseQuantity.unit', '')) ?: '-' }}
                             </div>
                         </div>
                         <div>
@@ -51,14 +51,21 @@
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.reason') }}</div>
+                            <div class="record-inner-label">{{ __('immunizations.explanation') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ $this->dictionaryLabel($immunization, 'explanation.reasons.0') }}
                             </div>
                         </div>
                         <div>
                             <div class="record-inner-label">{{ __('immunizations.reactions') }}</div>
-                            <div class="record-inner-subvalue">-</div>
+                            <div class="record-inner-subvalue">
+                                {{
+                                    collect(data_get($immunization, 'reactions', []))
+                                        ->map(static fn (array $reaction): ?string => data_get($reaction, 'detail.displayValue') ?: data_get($reaction, 'detail.value'))
+                                        ->filter()
+                                        ->implode(', ') ?: '-'
+                                }}
+                            </div>
                         </div>
                         <div>
                             <div class="record-inner-label">{{ __('medical-events.performer') }}</div>
@@ -70,11 +77,11 @@
                         <div>
                             <div class="record-inner-label">{{ __('immunizations.manufacturer_and_lot_number') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($immunization, 'manufacturer', '') . ' ' . data_get($immunization, 'lotNumber', '') ?: '-' }}
+                                {{ trim(data_get($immunization, 'manufacturer', '') . ' ' . data_get($immunization, 'lotNumber', '')) ?: '-' }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.body_part') }}</div>
+                            <div class="record-inner-label">{{ __('immunizations.site') }}</div>
                             <div class="record-inner-subvalue">{{ $this->dictionaryLabel($immunization, 'site') }}</div>
                         </div>
                         <div>
@@ -86,11 +93,11 @@
                         <div>
                             <div class="record-inner-label">{{ __('immunizations.date_time_performed') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($immunization, 'date', '') . ' ' . data_get($immunization, 'time', '') ?: '-' }}
+                                {{ trim(data_get($immunization, 'date', '') . ' ' . data_get($immunization, 'time', '')) ?: '-' }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.date_time_entered') }}</div>
+                            <div class="record-inner-label">{{ __('immunizations.inserted_at') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($immunization, 'ehealthInsertedAt', '-') }}
                             </div>
@@ -104,7 +111,7 @@
                         <div class="record-inner-id-value">{{ data_get($immunization, 'uuid', '-') }}</div>
                     </div>
                     <div class="min-w-0">
-                        <div class="record-inner-label">{{ __('patients.medical_record_id') }}</div>
+                        <div class="record-inner-label">{{ __('medical-events.medical_record_id') }}</div>
                         <div class="record-inner-id-value">
                             {{ data_get($immunization, 'context.identifier.value', '-') }}
                         </div>
@@ -116,7 +123,7 @@
 
     @if ($hasLimit)
         <div x-show="limit < {{ count($this->immunizations) }}" class="mt-4 flex justify-start">
-            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
+            <button type="button" @click="limit += 5" class="item-add">{{ __('general.show_more') }}</button>
         </div>
     @endif
 </div>

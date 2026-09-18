@@ -43,7 +43,7 @@
                 <div class="record-inner-grid-container">
                     <div class="[&>div]:min-w-0 [&_.record-inner-subvalue]:wrap-break-word grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-3">
                         <div>
-                            <div class="record-inner-label">{{ __('forms.category') }}</div>
+                            <div class="record-inner-label">{{ __('procedures.category') }}</div>
                             <div class="record-inner-subvalue">
                                 {{
                                     data_get(
@@ -63,14 +63,14 @@
                         </div>
 
                         <div>
-                            <div class="record-inner-label">{{ __('patients.created') }}</div>
+                            <div class="record-inner-label">{{ __('procedures.inserted_at') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($procedure, 'performedDate') ?: data_get($procedure, 'performedPeriodStartDate', '-') }}
                             </div>
                         </div>
 
                         <div>
-                            <div class="record-inner-label">{{ __('patients.referrals') }}</div>
+                            <div class="record-inner-label">{{ __('procedures.paper_referral_requisition') }}</div>
                             <div class="record-inner-subvalue">
                                 {{
                                     data_get($procedure, 'paperReferral.requisition')
@@ -80,7 +80,7 @@
                         </div>
 
                         <div>
-                            <div class="record-inner-label">{{ __('patients.result') }}</div>
+                            <div class="record-inner-label">{{ __('procedures.outcome_result') }}</div>
                             <div class="record-inner-subvalue">
                                 {{
                                     data_get(
@@ -93,7 +93,7 @@
                         </div>
 
                         <div>
-                            <div class="record-inner-label">{{ __('patients.notes') }}</div>
+                            <div class="record-inner-label">{{ __('procedures.note') }}</div>
                             <div class="record-inner-subvalue">{{ data_get($procedure, 'note', '-') }}</div>
                         </div>
                     </div>
@@ -106,7 +106,7 @@
                     </div>
 
                     <div class="min-w-0">
-                        <div class="record-inner-label">{{ __('patients.medical_record_id') }}</div>
+                        <div class="record-inner-label">{{ __('medical-events.medical_record_id') }}</div>
                         <div class="record-inner-id-value">
                             {{ data_get($procedure, 'encounter.identifier.value', '-') }}
                         </div>
@@ -118,7 +118,7 @@
 
     @if ($hasLimit)
         <div x-show="limit < {{ count($this->procedures) }}" class="mt-4 flex justify-start">
-            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
+            <button type="button" @click="limit += 5" class="item-add">{{ __('general.show_more') }}</button>
         </div>
     @endif
 </div>
