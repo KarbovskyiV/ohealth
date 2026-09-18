@@ -13,6 +13,11 @@ return [
     'received_for_research' => 'Отримано для дослідження',
     'mark_unavailable' => 'Позначити недоступним',
     'mark_unsatisfactory' => 'Позначити незадовільним',
+    'mark_entered_in_error' => 'Позначити внесеним помилково',
+    'mark_entered_in_error_title' => 'Позначити зразок внесеним помилково',
+    'mark_received_title' => 'Позначити зразок отриманим для дослідження',
+    'mark_unavailable_title' => 'Позначити зразок недоступним',
+    'mark_unsatisfactory_title' => 'Позначити зразок незадовільним',
     'collection' => 'Забір',
     'parent_specimen' => 'Батьківський зразок',
     'containers_and_type' => 'Контейнери та їх тип',
@@ -39,6 +44,8 @@ return [
     'identifier' => 'Ідентифікатор',
     'date_time_received' => 'Дата/час отримання для дослідження',
     'unavailability_reason' => 'Причина недоступності',
+    'unsatisfactory_reason' => 'Причина незадовільності',
+    'entered_in_error_reason' => 'Причина позначення внесеним помилково',
     'add_parent_specimen' => '+ Додати батьківський зразок',
     'note' => 'Нотатка',
     'material_collection' => 'Забір матеріалу',
@@ -78,7 +85,16 @@ return [
         'available' => 'Доступний',
         'unsatisfactory' => 'Непридатний',
         'unavailable' => 'Недоступний',
-        'entered_in_error' => 'Внесений помилково'
+        'entered_in_error' => 'Внесений помилково',
+        'in_process' => 'В обробці',
+        'completed' => 'Завершено'
+    ],
+
+    'fake_data' => [
+        'blood' => 'Кров',
+        'urine' => 'Сеча',
+        'saliva' => 'Слина',
+        'encounter' => 'Візит'
     ],
 
     'messages' => [

@@ -88,7 +88,7 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
                     ->can('view', PersonVerificationDetail::class)
                     ->name('verification');
                 Route::get('/{person}/summary', PatientSummary::class)->can('view', Person::class)->name('summary');
-                Route::get('/{person}/specimens/{specimen:id}', PatientSpecimenView::class)
+                Route::get('/{person}/specimens/{specimen}', PatientSpecimenView::class)
                     ->can('view', Specimen::class)
                     ->whereNumber('specimen')
                     ->name('specimens.view');
@@ -206,7 +206,7 @@ Route::prefix('prepersons')
             ->can('view', 'preperson')
             ->can('view', Specimen::class)
             ->name('specimens');
-        Route::get('/{preperson}/specimens/{specimen:id}', PatientSpecimenView::class)
+        Route::get('/{preperson}/specimens/{specimen}', PatientSpecimenView::class)
             ->can('view', 'preperson')
             ->can('view', Specimen::class)
             ->whereNumber('specimen')

@@ -33,13 +33,27 @@ class SpecimenIndex extends Component
 
     protected array $dictionaryNames = [
         'specimen_types',
-        'specimen_container_types'
+        'specimen_container_types',
+        'specimen_invalidate_reasons',
+        'specimen_reject_reasons',
+        'specimen_cancel_reasons'
     ];
 
+    public bool $showReceivedForResearchModal = false;
+    public bool $showMarkUnavailableModal = false;
+    public bool $showMarkUnsatisfactoryModal = false;
+    public bool $showMarkEnteredInErrorModal = false;
+
+    public ?string $receivedForResearchDate = null;
+    public ?string $receivedForResearchTime = null;
+    public ?string $unavailabilityReason = null;
+    public ?string $unsatisfactoryReason = null;
+    public ?string $enteredInErrorReason = null;
+
+    public ?string $selectedSpecimenId = null;
+
     /**
-     * Load the dictionaries used to display the specimen.
-     *
-     * @return void
+     * Component mount.
      */
     public function mount(): void
     {
@@ -138,6 +152,59 @@ class SpecimenIndex extends Component
         return Specimen::forPatient($patient)->whereUuid($specimenId)->first();
     }
 
+    public function openReceivedForResearchModal(string $id): void
+    {
+        $this->selectedSpecimenId = $id;
+        $this->receivedForResearchDate = now()->format('d.m.Y');
+        $this->receivedForResearchTime = now()->format('H:i');
+        $this->showReceivedForResearchModal = true;
+    }
+
+    public function openMarkUnavailableModal(string $id): void
+    {
+        $this->selectedSpecimenId = $id;
+        $this->unavailabilityReason = null;
+        $this->showMarkUnavailableModal = true;
+    }
+
+    public function openMarkUnsatisfactoryModal(string $id): void
+    {
+        $this->selectedSpecimenId = $id;
+        $this->unsatisfactoryReason = null;
+        $this->showMarkUnsatisfactoryModal = true;
+    }
+
+    public function openMarkEnteredInErrorModal(string $id): void
+    {
+        $this->selectedSpecimenId = $id;
+        $this->enteredInErrorReason = null;
+        $this->showMarkEnteredInErrorModal = true;
+    }
+
+    public function markReceivedForResearch(): void
+    {
+        // TODO: implement actual logic
+        $this->showReceivedForResearchModal = false;
+    }
+
+    public function markUnavailable(): void
+    {
+        // TODO: implement actual logic
+        $this->showMarkUnavailableModal = false;
+    }
+
+    public function markUnsatisfactory(): void
+    {
+        // TODO: implement actual logic
+        $this->showMarkUnsatisfactoryModal = false;
+    }
+
+    public function markEnteredInError(): void
+    {
+        // TODO: implement actual logic
+        $this->showMarkEnteredInErrorModal = false;
+    }
+
     /**
      * Render the component.
      *
@@ -145,6 +212,8 @@ class SpecimenIndex extends Component
      */
     public function render(): View
     {
-        return view('livewire.specimen.specimen-index');
+        return view('livewire.specimen.specimen-index')->with([
+            'dictionaries' => $this->dictionaries
+        ]);
     }
 }
