@@ -1,4 +1,5 @@
 @use(App\Enums\Person\ProcedureStatus)
+@use(App\Repositories\MedicalEvents\Repository)
 
 @php
     $limit = $limit ?? null;
@@ -65,17 +66,24 @@
                         <div>
                             <div class="record-inner-label">{{ __('procedures.inserted_at') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($procedure, 'performedDate') ?: data_get($procedure, 'performedPeriodStartDate', '-') }}
+                                @if (data_get($procedure, 'performedDate'))
+                                    {{ data_get($procedure, 'performedDate') }} {{ data_get($procedure, 'performedTime') }}
+                                @elseif (data_get($procedure, 'performedPeriodStartDate'))
+                                    {{ data_get($procedure, 'performedPeriodStartDate') }}
+                                    {{ data_get($procedure, 'performedPeriodStartTime') }}
+                                    -
+                                    {{ data_get($procedure, 'performedPeriodEndDate') }}
+                                    {{ data_get($procedure, 'performedPeriodEndTime') }}
+                                @else
+                                    -
+                                @endif
                             </div>
                         </div>
 
                         <div>
                             <div class="record-inner-label">{{ __('procedures.paper_referral_requisition') }}</div>
                             <div class="record-inner-subvalue">
-                                {{
-                                    data_get($procedure, 'paperReferral.requisition')
-                                    ?: data_get($procedure, 'basedOn.identifier.value', '-')
-                                }}
+                                {{ Repository::serviceRequest()->procedureReferralLabel($procedure) }}
                             </div>
                         </div>
 

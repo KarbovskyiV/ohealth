@@ -85,11 +85,13 @@ return [
     'service_catalog' => [
         'title' => 'Каталог послуг',
         'search_services' => 'Пошук послуг',
-        'search_placeholder' => 'Киснева терапія',
+        'search_placeholder' => 'Код / назва',
         'service_category' => 'Категорія послуг',
         'service_active' => 'Послуга активна',
         'service_group_active' => 'Група послуг активна',
         'allowed_for_en' => 'Дозволяється використання у ЕН',
+        'search_service' => 'Пошук послуги',
+        'choose_from_catalog' => 'Обрати з довідника',
 
         'categories' => [
             'nervous_system' => 'Процедури на нервовій системі',

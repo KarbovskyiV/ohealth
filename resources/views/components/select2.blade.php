@@ -183,7 +183,7 @@
                                     value: service.id,
                                     code: service.code,
                                     label: service.name,
-                                    searchText: `${service.name ?? ''} ${service.code ?? ''} ${service.id ?? ''}`.toLowerCase()
+                                    searchText: `${service.name ?? ''} ${service.code ?? ''}`.toLowerCase()
                                 }));
 
                             this.buildOptionsMap();

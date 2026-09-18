@@ -103,18 +103,7 @@ class EncounterPackageBuilder
             ->toArray();
 
         $fhirProcedures = collect($data['procedures'] ?? [])
-            ->map(
-                function (array $procedure) use ($data, $uuids): array {
-                    if (($procedure['performedType'] ?? null) === 'period') {
-                        $procedure['performedPeriodStartDate'] = data_get($data, 'encounter.periodDate');
-                        $procedure['performedPeriodStartTime'] = data_get($data, 'encounter.periodStart');
-                        $procedure['performedPeriodEndDate'] = data_get($data, 'encounter.periodDate');
-                        $procedure['performedPeriodEndTime'] = data_get($data, 'encounter.periodEnd');
-                    }
-
-                    return Fhir::procedure()->toFhir($procedure, $uuids);
-                }
-            )
+            ->map(fn (array $procedure): array => Fhir::procedure()->toFhir($procedure, $uuids))
             ->values()
             ->toArray();
 

@@ -8,6 +8,8 @@
         x-data="{
                 modalProcedure: new Procedure(@js($this->form->procedure)),
                 procedureEmployees: @js($procedureEmployees),
+                openServiceCatalog: false,
+                selectedServiceFromCatalog: null,
 
                 prepareProcedureForSubmit() {
                     this.modalProcedure.usedReferences = this.modalProcedure.usedReferences
@@ -22,6 +24,13 @@
 
                 removeUsedReference(index) {
                     this.modalProcedure.usedReferences.splice(index, 1);
+                },
+
+                selectProcedureService(service) {
+                    this.modalProcedure.categoryCode = service.category;
+                    this.modalProcedure.codeValue = service.id;
+                    this.selectedServiceFromCatalog = service;
+                    this.openServiceCatalog = false;
                 },
 
                 setPerformedType(type) {
@@ -79,6 +88,7 @@
                     this.modalProcedure.performedPeriodEndTime = '';
                 }
           }"
+          @procedure-service-selected.window="selectProcedureService($event.detail.service)"
     >
         <fieldset @disabled($isReadonly) @class(['pointer-events-none opacity-80' => $isReadonly])>
             @include('livewire.encounter.procedure-parts.main-information', ['context' => 'procedure'])
@@ -89,6 +99,34 @@
                 @include('livewire.encounter.procedure-parts.complication-details', ['context' => 'procedure'])
             @endif
         </fieldset>
+
+        @unless ($isReadonly)
+            <x-dialog-drawer
+                x-model="openServiceCatalog"
+                onCloseClick="openServiceCatalog = false"
+                maxWidth="4/5"
+                overlayWidth="100%"
+                zIndex="50"
+            >
+                <livewire:dictionary.service-catalog
+                    :legal-entity="legalEntity()"
+                    :selection-mode="true"
+                    selection-event="procedure-service-selected"
+                    :allowed-categories="array_keys($this->dictionaries['eHealth/procedure_categories'] ?? [])"
+                    :key="'procedure-service-catalog'"
+                />
+
+                <div class="mt-8">
+                    <button
+                        type="button"
+                        @click="openServiceCatalog = false"
+                        class="button-minor"
+                    >
+                        {{ __('forms.cancel') }}
+                    </button>
+                </div>
+            </x-dialog-drawer>
+        @endunless
 
         <div class="flex gap-8">
             <a href="{{ url()->previous() }}" type="submit" class="button-minor"> {{ __('forms.back') }} </a>

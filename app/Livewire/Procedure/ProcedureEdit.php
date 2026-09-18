@@ -8,6 +8,7 @@ use App\Core\Arr;
 use App\Models\Division;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Procedure;
+use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
@@ -72,6 +73,15 @@ class ProcedureEdit extends ProcedureComponent
 
         $this->form->procedure = Fhir::procedure()->fromFhir($procedureData, $detailsMap);
 
+        if (!empty($this->form->procedure['basedOnIdentifier'])) {
+            $this->form->procedure['isReferralAvailable'] = true;
+            $this->form->procedure['referralType'] = 'electronic';
+
+            $this->loadSelectedElectronicReferral(
+                $this->form->procedure['basedOnIdentifier']
+            );
+        }
+
         $divisionUuid = data_get($this->form->procedure, 'divisionId');
 
         if ($divisionUuid && !collect($this->divisions)->contains('uuid', $divisionUuid)) {
@@ -83,6 +93,27 @@ class ProcedureEdit extends ProcedureComponent
         }
 
         $this->loadIcd10Descriptions($this->form->procedure['reasonReferences'] ?? []);
+    }
+
+    private function loadSelectedElectronicReferral(string $uuid): void
+    {
+        $referral = ServiceRequestRequest::query()
+            ->where('uuid', $uuid)
+            ->first();
+
+        if ($referral === null) {
+            return;
+        }
+
+        $this->availableReferrals = [
+            [
+                'id' => $referral->uuid,
+                'requisition' => $referral->requestNumber ?: $referral->uuid,
+                'category' => $referral->category ?: __('procedures.electronic_referral'),
+            ],
+        ];
+
+        $this->referralsLoaded = true;
     }
 
     /**

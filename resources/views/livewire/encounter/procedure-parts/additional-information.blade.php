@@ -180,33 +180,37 @@
         </div>
     </div>
 
-    @if (($context ?? null) !== 'encounter')
-        {{-- Start effective period datetime --}}
-        <div x-show="modalProcedure.status === 'completed' && modalProcedure.performedType === 'period'" x-cloak>
-            <div class="form-row-3">
-                <div class="form-group group">
-                    <div class="datepicker-wrapper">
-                        <input
-                            x-model="modalProcedure.performedPeriodStartDate"
+    {{-- Start effective period datetime --}}
+    <div x-show="modalProcedure.status === 'completed' && modalProcedure.performedType === 'period'" x-cloak>
+        <div class="form-row-3">
+            <div class="form-group group">
+                <div class="datepicker-wrapper">
+                    <input
+                        x-model="modalProcedure.performedPeriodStartDate"
+                        @if ($context === 'encounter')
+                            :datepicker-min-date="encounter.periodDate"
+                            :datepicker-max-date="encounter.periodDate"
+                        @else
                             datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
-                            type="text"
-                            name="performedPeriodStartDate"
-                            id="performedPeriodStartDate"
-                            class="datepicker-input with-leading-icon input peer"
-                            placeholder=" "
-                            :required="modalProcedure.status === 'completed' &&
-                            modalProcedure.performedType === 'period'"
-                            autocomplete="off"
-                        />
-                        <label for="performedPeriodStartDate" class="wrapped-label">
-                            {{ __('procedures.start_date_and_time') }}
-                        </label>
+                        @endif
+                        type="text"
+                        name="performedPeriodStartDate"
+                        id="performedPeriodStartDate"
+                        class="datepicker-input with-leading-icon input peer"
+                        placeholder=" "
+                        :required="modalProcedure.status === 'completed' &&
+                        modalProcedure.performedType === 'period'"
+                        autocomplete="off"
+                    />
+                    <label for="performedPeriodStartDate" class="wrapped-label">
+                        {{ __('procedures.start_date_and_time') }}
+                    </label>
 
-                        @error($procedureErrorPath . '.performedPeriodStartDate')
-                            <p class="text-error">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    @error($procedureErrorPath . '.performedPeriodStartDate')
+                        <p class="text-error">{{ $message }}</p>
+                    @enderror
                 </div>
+            </div>
 
                 <div
                     class="form-group group !w-1/2"
@@ -229,39 +233,44 @@
                         />
                     </div>
 
-                    @error($procedureErrorPath . '.performedPeriodStartTime')
+                @error($procedureErrorPath . '.performedPeriodStartTime')
+                    <p class="text-error">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+    </div>
+
+    {{-- End effective period datetime --}}
+    <div x-show="modalProcedure.status === 'completed' && modalProcedure.performedType === 'period'" x-cloak>
+        <div class="form-row-3">
+            <div class="form-group group">
+                <div class="datepicker-wrapper">
+                    <input
+                        x-model="modalProcedure.performedPeriodEndDate"
+                        @if ($context === 'encounter')
+                            :datepicker-min-date="encounter.periodDate"
+                            :datepicker-max-date="encounter.periodDate"
+                        @else
+                            datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
+                        @endif
+                        type="text"
+                        name="performedPeriodEndDate"
+                        id="performedPeriodEndDate"
+                        class="datepicker-input with-leading-icon input peer"
+                        placeholder=" "
+                        :required="modalProcedure.status === 'completed' &&
+                        modalProcedure.performedType === 'period'"
+                        autocomplete="off"
+                    />
+                    <label for="performedPeriodEndDate" class="wrapped-label">
+                        {{ __('procedures.end_date_and_time') }}
+                    </label>
+
+                    @error($procedureErrorPath . '.performedPeriodEndDate')
                         <p class="text-error">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
-        </div>
-
-        {{-- End effective period datetime --}}
-        <div x-show="modalProcedure.status === 'completed' && modalProcedure.performedType === 'period'" x-cloak>
-            <div class="form-row-3">
-                <div class="form-group group">
-                    <div class="datepicker-wrapper">
-                        <input
-                            x-model="modalProcedure.performedPeriodEndDate"
-                            datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
-                            type="text"
-                            name="performedPeriodEndDate"
-                            id="performedPeriodEndDate"
-                            class="datepicker-input with-leading-icon input peer"
-                            placeholder=" "
-                            :required="modalProcedure.status === 'completed' &&
-                            modalProcedure.performedType === 'period'"
-                            autocomplete="off"
-                        />
-                        <label for="performedPeriodEndDate" class="wrapped-label">
-                            {{ __('procedures.end_date_and_time') }}
-                        </label>
-
-                        @error($procedureErrorPath . '.performedPeriodEndDate')
-                            <p class="text-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                </div>
 
                 <div
                     class="form-group group !w-1/2"
@@ -284,12 +293,24 @@
                         />
                     </div>
 
-                    @error($procedureErrorPath . '.performedPeriodEndTime')
-                        <p class="text-error">{{ $message }}</p>
-                    @enderror
-                </div>
+                @error($procedureErrorPath . '.performedPeriodEndTime')
+                    <p class="text-error">{{ $message }}</p>
+                @enderror
             </div>
         </div>
+    </div>
+
+    @if ($context === 'encounter')
+        <p
+            x-show="
+                modalProcedure.status === 'completed'
+                && procedurePerformedOutsideEncounterPeriod()
+            "
+            x-cloak
+            class="text-error"
+        >
+            {{ __('procedures.validation.performed_outside_encounter_period') }}
+        </p>
     @endif
 
     {{-- Note --}}

@@ -1,135 +1,26 @@
 <div>
-    <x-header-navigation x-data="{ showFilter: false }" class="breadcrumb-form">
-        <x-slot name="title">
-            {{ __('dictionaries.service_catalog.title') }}
-        </x-slot>
+    @if ($selectionMode)
+        <div class="mb-8">
+            <h3 class="modal-header !border-b-0 pb-0 mb-8">
+                {{ __('dictionaries.service_catalog.search_service') }}
+            </h3>
 
-        <x-slot name="navigation">
-            <div class="flex flex-col -my-4" x-data="{ showFilter: false }">
+            @include('livewire.dictionary.parts.service-catalog-filters')
+        </div>
+    @else
+        <x-header-navigation class="breadcrumb-form">
+            <x-slot name="title">
+                {{ __('dictionaries.service_catalog.title') }}
+            </x-slot>
 
-                <div class="flex mb-4 flex-col w-full">
-                    <div class="w-full lg:w-96">
-                        <label for="serviceSearchDropdown"
-                               class="text-sm font-medium text-gray-900 dark:text-white block mb-2 flex items-center gap-1"
-                        >
-                            @icon('search-outline', 'w-4.5 h-4.5')
-                            <span>{{ __('dictionaries.service_catalog.search_services') }}</span>
-                        </label>
+            <x-slot name="navigation">
+                @include('livewire.dictionary.parts.service-catalog-filters')
+            </x-slot>
+        </x-header-navigation>
+    @endif
 
-                        <div class="form-group group w-full">
-                            <input type="text"
-                                   id="serviceSearch"
-                                   class="input peer w-full"
-                                   placeholder=" "
-                                   wire:model="searchBy"
-                            />
-                            <label for="serviceSearch" class="label">
-                                {{ __('dictionaries.service_catalog.search_placeholder') }}
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mb-4 mt-6 flex flex-col gap-2 w-full sm:flex-row">
-                    <button type="button"
-                            wire:click="search"
-                            class="flex items-center gap-2 button-primary"
-                    >
-                        @icon('search', 'w-4 h-4')
-                        <span>{{ __('forms.search') }}</span>
-                    </button>
-                    <button type="button"
-                            wire:click="resetFilters"
-                            class="button-primary-outline-red me-0"
-                    >
-                        {{ __('forms.reset_all_filters') }}
-                    </button>
-                    <button type="button"
-                            class="button-minor flex items-center gap-2"
-                            @click="showFilter = !showFilter"
-                    >
-                        @icon('adjustments', 'w-4 h-4')
-                        <span>{{ __('forms.additional_search_parameters') }}</span>
-                    </button>
-                </div>
-
-                {{-- Filters --}}
-                <div x-cloak
-                     x-show="showFilter"
-                     x-transition
-                     class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 w-full mt-4 mb-9 md:mb-5"
-                >
-                    <div class="form-group group">
-                        <select wire:model="serviceCategory"
-                                id="filterServiceCategory"
-                                class="peer input-select w-full"
-                        >
-                            <option value="" selected>{{ __('forms.select') }}</option>
-                            @if(!empty($this->dictionaries['SERVICE_CATEGORY']))
-                                @foreach($this->dictionaries['SERVICE_CATEGORY'] as $key => $value)
-                                    <option value="{{ $key }}">{{ $value }}</option>
-                                @endforeach
-                            @endif
-                        </select>
-                        <label for="filterServiceCategory"
-                               class="label peer-focus:text-blue-600 peer-valid:text-blue-600"
-                        >
-                            {{ __('dictionaries.service_catalog.service_category') }}
-                        </label>
-                    </div>
-                    <div class="form-group group">
-                        <select wire:model="serviceGroupActive"
-                                id="filterServiceGroupActive"
-                                class="peer input-select w-full"
-                        >
-                            <option value="" selected>{{ __('forms.select') }}</option>
-                            <option value="1">{{ __('forms.yes') }}</option>
-                            <option value="0">{{ __('forms.no') }}</option>
-                        </select>
-                        <label for="filterServiceGroupActive"
-                               class="label peer-focus:text-blue-600 peer-valid:text-blue-600"
-                        >
-                            {{ __('dictionaries.service_catalog.service_group_active') }}
-                        </label>
-                    </div>
-                    <div class="form-group group">
-                        <select wire:model="serviceActive"
-                                id="filterServiceActive"
-                                class="peer input-select w-full"
-                        >
-                            <option value="" selected>{{ __('forms.select') }}</option>
-                            <option value="1">{{ __('forms.yes') }}</option>
-                            <option value="0">{{ __('forms.no') }}</option>
-                        </select>
-                        <label for="filterServiceActive"
-                               class="label peer-focus:text-blue-600 peer-valid:text-blue-600"
-                        >
-                            {{ __('dictionaries.service_catalog.service_active') }}
-                        </label>
-                    </div>
-                    <div class="form-group group">
-                        <select wire:model="allowedForEn"
-                                id="filterAllowedForEn"
-                                class="peer input-select w-full"
-                        >
-                            <option value="" selected>{{ __('forms.select') }}</option>
-                            <option value="1">{{ __('forms.yes') }}</option>
-                            <option value="0">{{ __('forms.no') }}</option>
-                        </select>
-                        <label
-                            for="filterAllowedForEn"
-                            class="label peer-focus:text-blue-600 peer-valid:text-blue-600"
-                        >
-                            {{ __('dictionaries.service_catalog.allowed_for_en') }}
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </x-slot>
-    </x-header-navigation>
-
-    <div class="flow-root mt-8 shift-content pl-3.5">
-        <div class="max-w-screen-xl">
+    <div @class(['flow-root mt-8 pl-3.5', 'shift-content' => !$selectionMode,])>
+        <div @class(['max-w-screen-xl' => !$selectionMode, 'w-full' => $selectionMode])>
             <div class="index-table-wrapper">
                 <table class="index-table">
                     <thead class="index-table-thead">
@@ -146,6 +37,11 @@
                         <th class="index-table-th w-[20%]">
                             {{ __('forms.status.label') }}
                         </th>
+                        @if ($selectionMode)
+                            <th class="index-table-th w-[10%] text-center">
+                                {{ __('forms.action') }}
+                            </th>
+                        @endif
                     </tr>
                     </thead>
 
@@ -246,6 +142,20 @@
                                             </span>
                                         @endif
                                     </td>
+                                    @if ($selectionMode)
+                                        <td class="index-table-td text-center">
+                                            @if (!empty($service['is_active']))
+                                                <button
+                                                    type="button"
+                                                    wire:click="selectService(@js($service['id']))"
+                                                    class="inline-flex cursor-pointer items-center justify-center"
+                                                    title="{{ __('forms.select') }}"
+                                                >
+                                                    @icon('plus-circle', 'w-6 h-6')
+                                                </button>
+                                            @endif
+                                        </td>
+                                    @endif
                                 </tr>
                             @endforeach
                         @endif
@@ -313,6 +223,9 @@
                                             </span>
                                         @endif
                                     </td>
+                                    @if ($selectionMode)
+                                        <td class="index-table-td"></td>
+                                    @endif
                                 </tr>
 
                                 {{-- Subgroups --}}
@@ -426,6 +339,20 @@
                                                             </span>
                                                         @endif
                                                     </td>
+                                                    @if ($selectionMode)
+                                                        <td class="index-table-td text-center">
+                                                            @if (!empty($service['is_active']))
+                                                                <button
+                                                                    type="button"
+                                                                    wire:click="selectService(@js($service['id']))"
+                                                                    class="inline-flex cursor-pointer items-center justify-center"
+                                                                    title="{{ __('forms.select') }}"
+                                                                >
+                                                                    @icon('plus-circle', 'w-6 h-6')
+                                                                </button>
+                                                            @endif
+                                                        </td>
+                                                    @endif
                                                 </tr>
                                             @endforeach
                                         @endif
@@ -479,6 +406,20 @@
                                                     </span>
                                                 @endif
                                             </td>
+                                            @if ($selectionMode)
+                                                <td class="index-table-td text-center">
+                                                    @if (!empty($service['is_active']))
+                                                        <button
+                                                            type="button"
+                                                            wire:click="selectService(@js($service['id']))"
+                                                            class="inline-flex cursor-pointer items-center justify-center"
+                                                            title="{{ __('forms.select') }}"
+                                                        >
+                                                            @icon('plus-circle', 'w-6 h-6')
+                                                        </button>
+                                                    @endif
+                                                </td>
+                                            @endif
                                         </tr>
                                     @endforeach
                                 @endif

@@ -24,11 +24,17 @@ class ServiceCatalog extends Component
     public string $serviceActive = '';
     public string $serviceGroupActive = '';
     public string $allowedForEn = '';
+    public bool $selectionMode = false;
+    public string $selectionEvent = 'service-selected';
+    public array $allowedCategories = [];
 
     public array $dictionaryNames = ['SERVICE_CATEGORY'];
 
-    public function mount(LegalEntity $legalEntity): void
-    {
+    public function mount(LegalEntity $legalEntity, bool $selectionMode = false, string $selectionEvent = 'service-selected', array $allowedCategories = []): void {
+        $this->selectionMode = $selectionMode;
+        $this->selectionEvent = $selectionEvent;
+        $this->allowedCategories = $allowedCategories;
+
         $this->getDictionary();
     }
 
@@ -37,6 +43,13 @@ class ServiceCatalog extends Component
     {
         // Get full collection from dictionary service
         $allServices = dictionary()->services();
+
+        if ($this->allowedCategories !== []) {
+            $allServices = $allServices
+                ->map(fn (array $item) => $this->filterItemByAllowedCategories($item))
+                ->filter()
+                ->values();
+        }
 
         // Apply filters
         $filteredServices = $allServices->filter(function ($item) {
@@ -356,6 +369,50 @@ class ServiceCatalog extends Component
         }
 
         return false;
+    }
+
+    private function filterItemByAllowedCategories(array $item): ?array
+    {
+        foreach (['groups', 'services'] as $key) {
+            if (!empty($item[$key])) {
+                $item[$key] = collect($item[$key])
+                    ->map(fn (array $child) => $this->filterItemByAllowedCategories($child))
+                    ->filter()
+                    ->values()
+                    ->all();
+            }
+        }
+
+        $hasChildren = !empty($item['groups']) || !empty($item['services']);
+
+        if ($hasChildren) {
+            return $item;
+        }
+
+        return $this->isCategoryAllowed($item['category'] ?? null) ? $item : null;
+    }
+
+    private function isCategoryAllowed(?string $category): bool
+    {
+        return $this->allowedCategories === [] || ($category !== null && in_array($category, $this->allowedCategories, true));
+    }
+
+    public function selectService(string $serviceId): void
+    {
+        if (!$this->selectionMode) {
+            return;
+        }
+
+        $service = dictionary()
+            ->services()
+            ->flattened()
+            ->firstWhere('id', $serviceId);
+
+        if ($service === null || !$this->isCategoryAllowed($service['category'] ?? null)) {
+            return;
+        }
+
+        $this->dispatch($this->selectionEvent, service: $service);
     }
 
     public function render(): View

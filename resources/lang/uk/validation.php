@@ -38,7 +38,7 @@ return [
     'date_format' => 'Поле :attribute не відповідає формату :format.',
     'declined_if' => 'Поле :attribute має бути відхилено, якщо :other є :value.',
     'different' => 'Поля :attribute та :other повинні бути різними.',
-    'digits' => 'Довжина цифрового поля :attribute повинна дорівнювати :digits.',
+    'digits_between' => 'Поле «:attribute» має містити від :min до :max цифр.',
     'dimensions' => 'Поле :attribute містить неприпустимі розміри зображення.',
     'distinct' => 'Поле :attribute містить значення, яке дублюється.',
     'email' => 'Поле :attribute повинне містити коректну електронну адресу.',
@@ -702,6 +702,7 @@ return [
         'form.doctor.qualifications.0.institutionName' => 'Кваліфікація (назва закладу)',
         'form.doctor.scienceDegrees.0.city' => 'Науковий ступінь (місто)',
         'form.doctor.scienceDegrees.0.institutionName' => 'Науковий ступінь (назва закладу)',
+        'form.encounter.referralNumber' => 'направлення',
 
         // Documents
         'documents.*.expirationDate' => 'Дійсний до',

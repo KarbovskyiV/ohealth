@@ -1,15 +1,16 @@
 @use(App\Enums\JobStatus)
 @use(App\Enums\Person\ProcedureStatus)
-@use(App\Models\MedicalEvents\Sql\Procedure)
+@use(App\Models\MedicalEvents\Sql\Encounter)
+@use(App\Repositories\MedicalEvents\Repository)
 
 <x-layouts.patient :personId="$personId" :prepersonId="$prepersonId" :patientFullName="$patientFullName">
     <x-slot name="headerActions">
-        @can('create', Procedure::class)
+        @can('create', Encounter::class)
             <a
                 href="{{
                     $prepersonId
-                    ? route('prepersons.procedure.create', [legalEntity(), 'preperson' => $prepersonId])
-                    : route('procedure.create', [legalEntity(), 'person' => $personId])
+                    ? route('prepersons.encounter.create', [legalEntity(), 'preperson' => $prepersonId])
+                    : route('encounter.create', [legalEntity(), 'person' => $personId])
                 }}"
                 class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
             >
@@ -221,11 +222,13 @@
                             <div class="record-inner-column flex-1">
                                 <div class="record-inner-label">{{ __('medical-events.code_and_name') }}</div>
                                 <div class="record-inner-value text-[16px]">
-                                    {{
-                                        data_get($procedure, 'code.identifier.value') && data_get($procedure, 'code.displayValue')
-                                        ? data_get($procedure, 'code.identifier.value') . ' | ' . data_get($procedure, 'code.displayValue')
-                                        : '-'
-                                    }}
+                                    @php
+                                        $serviceId = data_get($procedure, 'code.identifier.value');
+                                        $serviceCode = $serviceCodes[$serviceId] ?? null;
+                                        $serviceName = data_get($procedure, 'code.displayValue');
+                                    @endphp
+
+                                    {{ $serviceCode && $serviceName ? $serviceCode . ' | ' . $serviceName : ($serviceCode ?: $serviceName ?: '-') }}
                                 </div>
                             </div>
 
@@ -337,7 +340,7 @@
                                                 {{ __('procedures.paper_referral_requisition') }}
                                             </div>
                                             <div class="record-inner-value font-semibold wrap-break-word">
-                                                {{ data_get($procedure, 'paperReferral.requisition', '—') }}
+                                                {{ Repository::serviceRequest()->procedureReferralLabel($procedure) }}
                                             </div>
                                         </div>
                                     </div>

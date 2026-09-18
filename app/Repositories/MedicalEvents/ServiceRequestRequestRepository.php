@@ -7,6 +7,7 @@ namespace App\Repositories\MedicalEvents;
 use App\Enums\Person\ServiceRequestStatus;
 use App\Models\CarePlanActivity;
 use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Lang;
 use Throwable;
@@ -248,5 +249,118 @@ class ServiceRequestRequestRepository extends BaseRepository
         }
 
         return $value;
+    }
+
+    /**
+     * @param  array<int, string>  $columns
+     * @return Collection<int, ServiceRequestRequest>
+     */
+    public function getByPersonIdAndStatus(int $personId, string $status, array $columns = ['*']): Collection
+    {
+        return $this->model
+            ->newQuery()
+            ->where('person_id', $personId)
+            ->where('status', $status)
+            ->get($columns);
+    }
+
+    /**
+     * @param  array<string, mixed>  $procedure
+     */
+    public function procedureReferralLabel(array $procedure): string
+    {
+        $paperReferral = data_get($procedure, 'paperReferral.requisition');
+
+        if (filled($paperReferral)) {
+            return (string) $paperReferral;
+        }
+
+        $uuid = data_get($procedure, 'basedOn.identifier.value')
+            ?: data_get($procedure, 'basedOn.0.identifier.value');
+
+        if (blank($uuid)) {
+            return '-';
+        }
+
+        $displayValue = data_get($procedure, 'basedOn.identifier.displayValue')
+            ?: data_get($procedure, 'basedOn.0.identifier.displayValue');
+
+        if (filled($displayValue) && $displayValue !== $uuid) {
+            return (string) $displayValue;
+        }
+
+        $requestNumber = $this->model
+            ->newQuery()
+            ->where('uuid', $uuid)
+            ->value('request_number');
+
+        return $requestNumber ?: (string) $uuid;
+    }
+
+    /**
+     * @param  array<string, mixed>  $encounter
+     * @param  array<string, string>  $requestNumbersByUuid
+     */
+    public function encounterReferralLabel(array $encounter, array $requestNumbersByUuid = []): string
+    {
+        $paperReferral = data_get($encounter, 'paperReferral.requisition');
+
+        if (filled($paperReferral)) {
+            return (string) $paperReferral;
+        }
+
+        $uuid = $this->incomingReferralUuid($encounter);
+        $displayValue = data_get($encounter, 'incomingReferral.displayValue')
+            ?: data_get($encounter, 'incomingReferral.display_value');
+
+        if (filled($displayValue) && (string) $displayValue !== (string) $uuid) {
+            return (string) $displayValue;
+        }
+
+        if (filled($uuid) && isset($requestNumbersByUuid[$uuid]) && $requestNumbersByUuid[$uuid] !== '') {
+            return $requestNumbersByUuid[$uuid];
+        }
+
+        if (filled($displayValue)) {
+            return (string) $displayValue;
+        }
+
+        return $uuid ?? '-';
+    }
+
+    /**
+     * @param  iterable<int, array<string, mixed>>  $encounters
+     * @return array<string, string>
+     */
+    public function requestNumbersForEncounters(iterable $encounters): array
+    {
+        $uuids = collect($encounters)
+            ->map(fn (array $encounter): ?string => $this->incomingReferralUuid($encounter))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($uuids === []) {
+            return [];
+        }
+
+        return $this->model
+            ->newQuery()
+            ->whereIn('uuid', $uuids)
+            ->whereNotNull('request_number')
+            ->pluck('request_number', 'uuid')
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $encounter
+     */
+    private function incomingReferralUuid(array $encounter): ?string
+    {
+        $uuid = data_get($encounter, 'incomingReferral.identifier.value')
+            ?: data_get($encounter, 'incomingReferral.value');
+
+        return filled($uuid) ? (string) $uuid : null;
     }
 }
