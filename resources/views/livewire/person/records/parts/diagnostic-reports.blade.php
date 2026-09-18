@@ -39,7 +39,7 @@
                 <div class="record-inner-grid-container">
                     <div class="[&>div]:min-w-0 [&_.record-inner-subvalue]:wrap-break-word grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-3">
                         <div>
-                            <div class="record-inner-label">{{ __('forms.category') }}</div>
+                            <div class="record-inner-label">{{ __('diagnostic-reports.category') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ $this->dictionaryLabel($diagnosticReport, 'category.0') }}
                             </div>
@@ -51,20 +51,22 @@
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.created') }}</div>
+                            <div class="record-inner-label">{{ __('diagnostic-reports.inserted_at') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($diagnosticReport, 'ehealthInsertedAt') }}
                             </div>
                         </div>
 
                         <div>
-                            <div class="record-inner-label">{{ __('patients.referrals') }}</div>
+                            <div class="record-inner-label">
+                                {{ __('diagnostic-reports.paper_referral_requisition') }}
+                            </div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($diagnosticReport, 'paperReferral.requisition', '-') }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('medical-events.conclusion') }}</div>
+                            <div class="record-inner-label">{{ __('diagnostic-reports.conclusion') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($diagnosticReport, 'conclusion', '-') }}
                             </div>
@@ -78,7 +80,7 @@
                         <div class="record-inner-id-value">{{ data_get($diagnosticReport, 'uuid') }}</div>
                     </div>
                     <div class="min-w-0">
-                        <div class="record-inner-label">{{ __('patients.medical_record_id') }}</div>
+                        <div class="record-inner-label">{{ __('medical-events.medical_record_id') }}</div>
                         <div class="record-inner-id-value">
                             {{ data_get($diagnosticReport, 'encounter.identifier.value', '-') }}
                         </div>
@@ -90,7 +92,7 @@
 
     @if ($hasLimit)
         <div x-show="limit < {{ count($this->diagnosticReports) }}" class="mt-4 flex justify-start">
-            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
+            <button type="button" @click="limit += 5" class="item-add">{{ __('general.show_more') }}</button>
         </div>
     @endif
 </div>

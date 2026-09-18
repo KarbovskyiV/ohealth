@@ -80,7 +80,7 @@
 
         <div class="form-row-modal">
             <div>
-                <label for="performerCategories" class="label-modal"> {{ __('forms.category') }} </label>
+                <label for="performerCategories" class="label-modal"> {{ __('observations.category') }} </label>
                 <select
                     class="input-modal"
                     x-model="modalObservation.categoryCode"
@@ -115,7 +115,7 @@
             </div>
 
             <div>
-                <label for="performerCode" class="label-modal"> {{ __('forms.code') }} </label>
+                <label for="performerCode" class="label-modal"> {{ __('observations.code') }} </label>
 
                 {{-- Show select2 when code is laboratory (loinc) --}}
                 <template x-if="modalObservation.categoryCode === 'laboratory' && modalObservation.codingSystem === 'loinc'">
@@ -432,7 +432,7 @@
         <template x-if="valueMap[modalObservation.codeCode] && valueMap[modalObservation.codeCode][1] === 'valueDateTime'">
             <div class="form-row-3">
                 <div>
-                    <label for="valueDate" class="label-modal"> {{ __('forms.date') }} </label>
+                    <label for="valueDate" class="label-modal"> {{ __('observations.value_date') }} </label>
                     <div class="relative flex items-center">
                         @icon('calendar-week', 'svg-input absolute left-2.5 pointer-events-none')
                         <input
@@ -453,7 +453,7 @@
                 </div>
 
                 <div class="w-1/2" onclick="document.getElementById('valueTime').showPicker()">
-                    <label for="valueTime" class="label-modal"> {{ __('patients.time') }} </label>
+                    <label for="valueTime" class="label-modal"> {{ __('forms.time') }} </label>
 
                     <div class="relative flex items-center">
                         @icon('mingcute-time-fill', 'svg-input left-2.5')

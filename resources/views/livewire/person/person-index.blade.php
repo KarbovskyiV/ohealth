@@ -123,7 +123,7 @@
                                         type="button"
                                     >
                                         @icon('plus', 'w-4 h-4 text-blue-600')
-                                        <span>{{ __('patients.start_interacting') }}</span>
+                                        <span>{{ __('encounters.start') }}</span>
                                     </button>
                                 @endcan
                             @endif

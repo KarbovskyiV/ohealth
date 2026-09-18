@@ -15,7 +15,7 @@
                 value="{{ $employeeFullName }}"
             />
 
-            <label for="assessor" class="label"> {{ __('clinical-impressions.employee_who_created') }} </label>
+            <label for="assessor" class="label"> {{ __('clinical-impressions.assessor') }} </label>
         </div>
     </div>
 
@@ -35,13 +35,13 @@
                     autocomplete="off"
                 />
                 <label for="effectivePeriodStartDate" class="wrapped-label">
-                    {{ __('clinical-impressions.reception_start_date_and_time') }}
+                    {{ __('clinical-impressions.effective_period_start') }}
                 </label>
             </div>
         </div>
 
         <div class="form-group group !w-1/2" onclick="document.getElementById('effectivePeriodStartTime').showPicker()">
-            <label for="effectivePeriodStartTime" class="sr-only">{{ __('patients.time') }}</label>
+            <label for="effectivePeriodStartTime" class="sr-only">{{ __('forms.time') }}</label>
             <div class="relative flex items-center">
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
                 <input
@@ -75,13 +75,13 @@
                     autocomplete="off"
                 />
                 <label for="effectivePeriodEndDate" class="wrapped-label">
-                    {{ __('clinical-impressions.reception_end_date_and_time') }}
+                    {{ __('clinical-impressions.effective_period_end') }}
                 </label>
             </div>
         </div>
 
         <div class="form-group group !w-1/2" onclick="document.getElementById('effectivePeriodEndTime').showPicker()">
-            <label for="effectivePeriodEndTime" class="sr-only">{{ __('patients.time') }}</label>
+            <label for="effectivePeriodEndTime" class="sr-only">{{ __('forms.time') }}</label>
             <div class="relative flex items-center">
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
                 <input
@@ -101,7 +101,7 @@
 
     <div class="form-row">
         <div>
-            <label for="note" class="label-modal"> {{ __('forms.comment') }} </label>
+            <label for="note" class="label-modal"> {{ __('clinical-impressions.note') }} </label>
             <div>
                 <textarea
                     rows="4"

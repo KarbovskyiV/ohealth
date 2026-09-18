@@ -36,7 +36,7 @@
                 </div>
 
                 <div class="record-inner-column flex-1">
-                    <div class="record-inner-label">{{ __('forms.name') }}</div>
+                    <div class="record-inner-label">{{ __('episodes.name') }}</div>
                     <div class="record-inner-value text-[16px]">{{ data_get($episode, 'name', '-') }}</div>
                 </div>
 
@@ -98,7 +98,7 @@
                                         class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                     >
                                         @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300')
-                                        {{ __('patients.view_details') }}
+                                        {{ __('forms.view_details') }}
                                     </a>
                                 @else
                                     <button
@@ -108,7 +108,7 @@
                                         class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                     >
                                         @icon('eye', 'w-5 h-5 text-gray-600 dark:text-gray-300')
-                                        {{ __('patients.view_details') }}
+                                        {{ __('forms.view_details') }}
                                     </button>
                                 @endif
 
@@ -157,7 +157,7 @@
                                         class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                     >
                                         @icon('alert-circle', 'w-5 h-5 text-gray-600 dark:text-gray-300')
-                                        {{ __('episodes.status.entered_in_error') }}
+                                        {{ __('medical-events.mark_as_error') }}
                                     </button>
                                 @endif
                             </div>
@@ -170,19 +170,19 @@
                 <div class="record-inner-grid-container">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <div class="record-inner-label">{{ __('patients.date_opened') }}</div>
+                            <div class="record-inner-label">{{ __('episodes.period_start') }}</div>
                             <div class="record-inner-value">{{ data_get($episode, 'period.start', '-') }}</div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.date_closed') }}</div>
+                            <div class="record-inner-label">{{ __('episodes.period_end') }}</div>
                             <div class="record-inner-value">{{ data_get($episode, 'period.end') ?? '-' }}</div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.date_updated') }}</div>
+                            <div class="record-inner-label">{{ __('episodes.updated_at_date') }}</div>
                             <div class="record-inner-value">{{ data_get($episode, 'ehealthUpdatedAt', '-') }}</div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.doctor') }}</div>
+                            <div class="record-inner-label">{{ __('episodes.doctor') }}</div>
                             <div class="record-inner-value">
                                 {{ data_get($episode, 'careManager.displayValue') ?? '-' }}
                             </div>
@@ -192,7 +192,7 @@
 
                 <div class="record-inner-id-col">
                     <div class="min-w-0">
-                        <div class="record-inner-label">{{ __('patients.filter_code') }}</div>
+                        <div class="record-inner-label">{{ __('episodes.ehealth_id') }}</div>
                         <div class="record-inner-id-value">{{ data_get($episode, 'uuid', '-') }}</div>
                     </div>
                 </div>
@@ -202,7 +202,7 @@
 
     @if ($hasLimit)
         <div x-show="limit < {{ count($episodes) }}" class="mt-4 flex justify-start">
-            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
+            <button type="button" @click="limit += 5" class="item-add">{{ __('general.show_more') }}</button>
         </div>
     @endif
 </div>

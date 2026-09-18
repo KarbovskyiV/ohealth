@@ -1,4 +1,4 @@
-@use('App\Enums\Person\ClinicalImpressionStatus')
+@use('App\Enums\ClinicalImpression\Status')
 
 @php
     $limit = $limit ?? null;
@@ -14,7 +14,7 @@
                 </div>
 
                 <div class="record-inner-column flex-1">
-                    <div class="record-inner-label">{{ __('forms.code') }}</div>
+                    <div class="record-inner-label">{{ __('clinical-impressions.code') }}</div>
                     <div class="record-inner-value text-[16px] font-semibold dark:text-gray-100">
                         {{ $this->dictionaryLabel($clinicalImpression, 'code') }}
                     </div>
@@ -23,7 +23,7 @@
                 <div class="record-inner-column-bordered flex h-full w-full shrink-0 flex-col justify-center gap-1 md:w-36">
                     <div class="record-inner-label">{{ __('forms.status.label') }}</div>
                     <div>
-                        @php($status = ClinicalImpressionStatus::from(data_get($clinicalImpression, 'status')))
+                        @php($status = Status::from(data_get($clinicalImpression, 'status')))
                         <span @class([$status->color()])> {{ $status->label() }} </span>
                     </div>
                 </div>
@@ -76,7 +76,7 @@
                                     class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                 >
                                     @icon('eye', 'w-5 h-5 text-gray-500')
-                                    {{ __('patients.view_details') }}
+                                    {{ __('forms.view_details') }}
                                 </button>
 
                                 <button
@@ -84,7 +84,7 @@
                                     class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                 >
                                     @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                    {{ __('clinical-impressions.status.entered_in_error') }}
+                                    {{ __('medical-events.mark_as_error') }}
                                 </button>
                             </div>
                         </div>
@@ -96,31 +96,33 @@
                 <div class="record-inner-grid-container">
                     <div class="[&>div]:min-w-0 [&_.record-inner-value]:wrap-break-word grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-5">
                         <div>
-                            <div class="record-inner-label">{{ __('patients.created') }}</div>
+                            <div class="record-inner-label">{{ __('clinical-impressions.inserted_at') }}</div>
                             <div class="record-inner-value">
                                 {{ data_get($clinicalImpression, 'ehealthInsertedAt', '-') }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('forms.start') }}</div>
+                            <div class="record-inner-label">
+                                {{ __('clinical-impressions.effective_period_start') }}
+                            </div>
                             <div class="record-inner-value">
                                 {{ data_get($clinicalImpression, 'effectivePeriod.start', '-') }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('forms.end') }}</div>
+                            <div class="record-inner-label">{{ __('clinical-impressions.effective_period_end') }}</div>
                             <div class="record-inner-value">
                                 {{ data_get($clinicalImpression, 'effectivePeriod.end', '-') }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.doctor') }}</div>
+                            <div class="record-inner-label">{{ __('clinical-impressions.assessor') }}</div>
                             <div class="record-inner-value">
                                 {{ data_get($clinicalImpression, 'assessor.displayValue', '-') }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('clinical-impressions.conclusion') }}</div>
+                            <div class="record-inner-label">{{ __('clinical-impressions.summary') }}</div>
                             <div class="record-inner-value">{{ data_get($clinicalImpression, 'summary', '-') }}</div>
                         </div>
                     </div>
@@ -132,7 +134,7 @@
                         <div class="record-inner-id-value">{{ data_get($clinicalImpression, 'uuid', '-') }}</div>
                     </div>
                     <div class="min-w-0">
-                        <div class="record-inner-label">{{ __('episodes.id') }}</div>
+                        <div class="record-inner-label">{{ __('clinical-impressions.episode_id') }}</div>
                         <div class="record-inner-id-value">
                             @php
                                 $episodeValue = '';
@@ -154,7 +156,7 @@
 
     @if ($hasLimit)
         <div x-show="limit < {{ count($this->clinicalImpressions) }}" class="mt-4 flex justify-start">
-            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
+            <button type="button" @click="limit += 5" class="item-add">{{ __('general.show_more') }}</button>
         </div>
     @endif
 </div>

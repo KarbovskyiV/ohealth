@@ -32,7 +32,7 @@
                     class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
                 >
                     @icon('plus', 'w-4 h-4')
-                    {{ __('patients.starts_interacting') }}
+                    {{ __('encounters.new') }}
                 </a>
             @endcan
         @endif

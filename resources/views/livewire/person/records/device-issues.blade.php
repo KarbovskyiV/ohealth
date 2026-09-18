@@ -8,7 +8,7 @@
         <div class="flex flex-wrap items-center gap-2">
             <button type="button" class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm">
                 @icon('plus', 'w-4 h-4')
-                <span>{{ __('patients.starts_interacting') }}</span>
+                <span>{{ __('encounters.new') }}</span>
             </button>
             <button
                 type="button"
@@ -262,7 +262,7 @@
                                             class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('eye', 'w-5 h-5 text-gray-500')
-                                            {{ __('patients.view_details') }}
+                                            {{ __('forms.view_details') }}
                                         </button>
 
                                         <button
@@ -271,7 +271,7 @@
                                             class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                            {{ __('patients.status.entered_in_error') }}
+                                            {{ __('medical-events.mark_as_error') }}
                                         </button>
                                     </div>
                                 </div>

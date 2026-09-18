@@ -73,7 +73,7 @@
                     <div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div>
                 </div>
                 <div class="min-w-0">
-                    <div class="record-inner-label">{{ __('patients.medical_record_id') }}</div>
+                    <div class="record-inner-label">{{ __('medical-events.medical_record_id') }}</div>
                     <div class="record-inner-id-value">1231-adsadas-aqeqe-casdda</div>
                 </div>
             </div>

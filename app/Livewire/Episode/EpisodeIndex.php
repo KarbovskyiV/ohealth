@@ -205,7 +205,7 @@ class EpisodeIndex extends BasePatientComponent
         return [
             'filterCode' => __('patients.filter_code'),
             'filterStatus' => __('forms.status.label'),
-            'filterPeriodDateRange' => __('patients.filter_created_at_range')
+            'filterPeriodDateRange' => __('forms.filter_created_at_range')
         ];
     }
 

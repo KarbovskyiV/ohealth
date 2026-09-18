@@ -16,7 +16,7 @@
         }"
     >
         <legend class="legend">
-            <h2>{{ __('clinical-impressions.appropriate_patient_assessment') }}</h2>
+            <h2>{{ __('clinical-impressions.problems') }}</h2>
         </legend>
 
         <table class="table-input w-inherit">

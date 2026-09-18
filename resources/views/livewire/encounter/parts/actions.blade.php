@@ -142,7 +142,7 @@
                     <div class="record-inner-grid-container">
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div>
-                                <div class="record-inner-label">{{ __('forms.comment') }}</div>
+                                <div class="record-inner-label">{{ __('encounters.action_text') }}</div>
                                 <div class="record-inner-subvalue" x-text="action.text"></div>
                             </div>
                         </div>
@@ -197,7 +197,7 @@
                                 <div class="form-row-modal">
                                     <div>
                                         <label for="actionCode" class="label-modal">
-                                            {{ __('patients.icpc-2_status_code') }}
+                                            {{ __('medical-events.icpc2_status_code') }}
                                         </label>
                                         <x-select2
                                             modelPath="modalAction.code"
@@ -214,7 +214,10 @@
                                     </div>
 
                                     <div>
-                                        <label for="actionComment" class="sr-only">{{ __('forms.comment') }}</label>
+                                        <label
+                                            for="actionComment"
+                                            class="sr-only"
+                                        >{{ __('encounters.action_text') }}</label>
                                         <textarea
                                             x-model="modalAction.text"
                                             id="actionComment"
@@ -261,7 +264,7 @@
                                 @endunless
                             </div>
                             <template x-if="showDuplicateCodeWarning">
-                                <p class="text-error text-right">{!! __('patients.duplicate_code_warning') !!}</p>
+                                <p class="text-error text-right">{!! __('medical-events.duplicate_code_warning') !!}</p>
                             </template>
                         </form>
                     </div>

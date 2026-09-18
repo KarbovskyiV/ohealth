@@ -158,7 +158,7 @@
         </div>
 
         <div class="form-group group !w-1/2" onclick="document.getElementById('procedurePerformedTime').showPicker()">
-            <label for="procedurePerformedTime" class="sr-only">{{ __('patients.time') }}</label>
+            <label for="procedurePerformedTime" class="sr-only">{{ __('forms.time') }}</label>
             <div class="relative flex items-center">
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
 
@@ -212,7 +212,7 @@
                     class="form-group group !w-1/2"
                     onclick="document.getElementById('performedPeriodStartTime').showPicker()"
                 >
-                    <label for="performedPeriodStartTime" class="sr-only">{{ __('patients.time') }}</label>
+                    <label for="performedPeriodStartTime" class="sr-only">{{ __('forms.time') }}</label>
                     <div class="relative flex items-center">
                         @icon('mingcute-time-fill', 'svg-input left-2.5')
                         <input
@@ -267,7 +267,7 @@
                     class="form-group group !w-1/2"
                     onclick="document.getElementById('performedPeriodEndTime').showPicker()"
                 >
-                    <label for="performedPeriodEndTime" class="sr-only">{{ __('patients.time') }}</label>
+                    <label for="performedPeriodEndTime" class="sr-only">{{ __('forms.time') }}</label>
                     <div class="relative flex items-center">
                         @icon('mingcute-time-fill', 'svg-input left-2.5')
                         <input
@@ -295,7 +295,7 @@
     {{-- Note --}}
     <div class="form-row">
         <div>
-            <label for="procedureNote" class="label-modal"> {{ __('patients.notes') }} </label>
+            <label for="procedureNote" class="label-modal"> {{ __('procedures.note') }} </label>
             <div>
                 <textarea
                     rows="4"
@@ -326,7 +326,7 @@
                                         :options="$options"
                                         bindValue="uuid"
                                         bindParam="name"
-                                        :label="__('equipments.search')"
+                                        :label="__('medical-events.equipment_search')"
                                     />
                                 </div>
                             @endforeach
@@ -350,7 +350,9 @@
                                 )
                             "
                         >
-                            <p class="text-error mt-2">{{ __('equipments.validation.no_equipment_in_division') }}</p>
+                            <p class="text-error mt-2">
+                                {{ __('medical-events.validation.no_equipment_in_division') }}
+                            </p>
                         </template>
                         <button
                             type="button"
@@ -380,7 +382,7 @@
                 "
                 class="item-add mt-4 disabled:cursor-not-allowed disabled:opacity-50"
             >
-                {{ __('equipments.add') }}
+                {{ __('medical-events.equipment_add') }}
             </button>
         </div>
     </div>

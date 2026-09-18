@@ -9,7 +9,7 @@
         }"
     >
         <legend class="legend">
-            <h2>{{ __('clinical-impressions.supporting_medical_information') }}</h2>
+            <h2>{{ __('clinical-impressions.supporting_info') }}</h2>
         </legend>
 
         <table class="table-input w-inherit">
@@ -180,7 +180,7 @@
                                 <div class="form-row-modal">
                                     <div class="form-group group">
                                         <label for="supportingInfoType" class="sr-only">
-                                            {{ __('clinical-impressions.supporting_medical_information') }}
+                                            {{ __('clinical-impressions.supporting_info') }}
                                         </label>
                                         <select
                                             x-model="selectedSupportingInfoType"
@@ -192,7 +192,7 @@
                                             class="input-modal peer"
                                         >
                                             <option value="" selected>
-                                                {{ __('forms.select') }} {{ __('clinical-impressions.supporting_medical_information') }}
+                                                {{ __('forms.select') }} {{ __('clinical-impressions.supporting_info') }}
                                             </option>
                                             <option value="episodes">{{ __('episodes.plural') }}</option>
                                             <option value="encounter">{{ __('encounters.plural') }}</option>

@@ -92,7 +92,7 @@
     @if ($context === 'diagnostic-report')
         <div class="form-row-2">
             <div class="form-group group">
-                <label for="divisionNames" class="sr-only">{{ __('forms.division_name') }}</label>
+                <label for="divisionNames" class="sr-only">{{ __('diagnostic-reports.division') }}</label>
                 <select
                     x-model="modalDiagnosticReport.divisionId"
                     @change="modalDiagnosticReport.usedReferences = []"
@@ -119,7 +119,7 @@
                     type="text"
                 >
                     <option value="" selected>
-                        {{ __('forms.select') }} {{ mb_strtolower(__('forms.division_name')) }}
+                        {{ __('forms.select') }} {{ mb_strtolower(__('diagnostic-reports.division')) }}
                     </option>
                     @foreach ($divisions as $key => $division)
                         <option value="{{ $division['uuid'] }}">{{ $division['name'] }}</option>
@@ -284,7 +284,7 @@
                     required
                     autocomplete="off"
                 />
-                <label for="issuedDate" class="wrapped-label"> {{ __('patients.date_time_entered') }} </label>
+                <label for="issuedDate" class="wrapped-label"> {{ __('diagnostic-reports.issued') }} </label>
 
                 @error($diagnosticReportErrorPath . '.issuedDate')
                     <p class="text-error">{{ $message }}</p>
@@ -293,7 +293,7 @@
         </div>
 
         <div class="form-group group !w-1/2" onclick="document.getElementById('issuedTime').showPicker()">
-            <label for="issuedTime" class="sr-only">{{ __('patients.time') }}</label>
+            <label for="issuedTime" class="sr-only">{{ __('forms.time') }}</label>
             <div class="relative flex items-center">
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
                 <input
@@ -383,7 +383,7 @@
             class="form-group group !w-1/2"
             onclick="document.getElementById('diagnosticReportEffectiveTime').showPicker()"
         >
-            <label for="diagnosticReportEffectiveTime" class="sr-only">{{ __('patients.time') }}</label>
+            <label for="diagnosticReportEffectiveTime" class="sr-only">{{ __('forms.time') }}</label>
             <div class="relative flex items-center">
                 @icon(
                     'mingcute-time-fill',
@@ -440,7 +440,7 @@
                     class="form-group group !w-1/2"
                     onclick="document.getElementById('effectivePeriodStartTime').showPicker()"
                 >
-                    <label for="effectivePeriodStartTime" class="sr-only">{{ __('patients.time') }}</label>
+                    <label for="effectivePeriodStartTime" class="sr-only">{{ __('forms.time') }}</label>
                     <div class="relative flex items-center">
                         @icon('mingcute-time-fill', 'svg-input left-2.5')
 
@@ -491,7 +491,7 @@
                     class="form-group group !w-1/2"
                     onclick="document.getElementById('effectivePeriodEndTime').showPicker()"
                 >
-                    <label for="effectivePeriodEndTime" class="sr-only">{{ __('patients.time') }}</label>
+                    <label for="effectivePeriodEndTime" class="sr-only">{{ __('forms.time') }}</label>
                     <div class="relative flex items-center">
                         @icon('mingcute-time-fill', 'svg-input left-2.5')
 
@@ -536,7 +536,7 @@
                                         />
 
                                         <label :for="`usedReferencePlaceholder${index}`" class="label">
-                                            {{ __('equipments.search') }}
+                                            {{ __('medical-events.equipment_search') }}
                                         </label>
                                     </div>
                                 </template>
@@ -550,7 +550,7 @@
                                             :options="$options"
                                             bindValue="uuid"
                                             bindParam="name"
-                                            :label="__('equipments.search')"
+                                            :label="__('medical-events.equipment_search')"
                                         />
                                     </div>
                                 @endforeach
@@ -587,13 +587,13 @@
                 @enderror
 
                 <button type="button" @click.prevent="addUsedReference()" class="item-add mt-4">
-                    {{ __('equipments.add') }}
+                    {{ __('medical-events.equipment_add') }}
                 </button>
             </div>
 
             @if ($isEncounterContext ?? false)
                 <div class="w-full max-w-107.5">
-                    <p class="label-modal mb-2 block text-sm">{{ __('specimens.sidebar_title') }}</p>
+                    <p class="label-modal mb-2 block text-sm">{{ __('diagnostic-reports.specimens') }}</p>
 
                     <div class="space-y-4">
                         <template
@@ -613,7 +613,7 @@
                                         </template>
                                     </select>
                                     <label :for="`diagnosticReportSpecimen${specimenIndex}`" class="label">
-                                        {{ __('specimens.select_specimen') }}
+                                        {{ __('diagnostic-reports.select_specimen') }}
                                     </label>
                                 </div>
 
@@ -637,7 +637,7 @@
                         @click.prevent="modalDiagnosticReport.specimenIds.push('')"
                         class="item-add mt-4"
                     >
-                        {{ __('specimens.add_specimen') }}
+                        {{ __('diagnostic-reports.add_specimen') }}
                     </button>
                 </div>
             @endif

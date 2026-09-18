@@ -9,7 +9,7 @@ use App\Core\Arr;
 use App\Enums\Device\Status as DeviceStatus;
 use App\Enums\Episode\Status as EpisodeStatus;
 use App\Enums\Equipment\AvailabilityStatus;
-use App\Enums\Person\ClinicalImpressionStatus;
+use App\Enums\ClinicalImpression\Status as ClinicalImpressionStatus;
 use App\Enums\Person\ImmunizationStatus;
 use App\Enums\Person\ObservationStatus;
 use App\Enums\Person\ServiceRequestStatus;

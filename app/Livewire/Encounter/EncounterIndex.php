@@ -204,8 +204,8 @@ class EncounterIndex extends BasePatientComponent
     public function validationAttributes(): array
     {
         return [
-            'filterStartDateRange' => __('patients.filter_period_start_range'),
-            'filterEndDateRange' => __('patients.filter_period_end_range'),
+            'filterStartDateRange' => __('forms.filter_period_start_range'),
+            'filterEndDateRange' => __('forms.filter_period_end_range'),
             'filterEpisodeId' => __('episodes.label')
         ];
     }

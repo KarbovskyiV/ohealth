@@ -86,7 +86,7 @@
                         wire:click="resetFilters"
                         class="button-primary-outline-red px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.reset_filters') }}
+                        {{ __('forms.reset_all_filters') }}
                     </button>
                     <button
                         type="button"
@@ -104,7 +104,7 @@
                         @click="openGroupActions = ! openGroupActions"
                         class="button-primary-outline px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.group_actions') }}
+                        {{ __('forms.group_actions') }}
                     </button>
 
                     <div
@@ -253,7 +253,7 @@
                                 autocomplete="off"
                             />
 
-                            <label for="filterInsertedAt" class="wrapped-label">{{ __('patients.created') }}</label>
+                            <label for="filterInsertedAt" class="wrapped-label">{{ __('devices.inserted_at') }}</label>
                         </div>
                     </div>
                 </div>
@@ -280,7 +280,7 @@
                             </div>
 
                             <div class="record-inner-column flex-1">
-                                <div class="record-inner-label">{{ __('forms.name') }}</div>
+                                <div class="record-inner-label">{{ __('devices.name') }}</div>
                                 <div class="record-inner-value text-[16px] font-bold text-gray-900 dark:text-gray-100">
                                     {{ data_get($deviceNames, '0.value') ?? '-' }}
                                 </div>
@@ -345,7 +345,7 @@
                                                 class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('eye', 'w-5 h-5 text-gray-500')
-                                                {{ __('patients.view_details') }}
+                                                {{ __('forms.view_details') }}
                                             </a>
                                         @else
                                             {{-- Found through the eHealth search: the record is stored on the way to its page --}}
@@ -355,7 +355,7 @@
                                                 class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('eye', 'w-5 h-5 text-gray-500')
-                                                {{ __('patients.view_details') }}
+                                                {{ __('forms.view_details') }}
                                             </button>
                                         @endif
 
@@ -367,7 +367,7 @@
                                                 class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                                {{ __('devices.status.entered_in_error') }}
+                                                {{ __('medical-events.mark_as_error') }}
                                             </button>
                                         @endif
                                     </div>
@@ -433,13 +433,13 @@
                                         </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('patients.created') }}</div>
+                                        <div class="record-inner-label">{{ __('devices.inserted_at') }}</div>
                                         <div class="record-inner-value">
                                             {{ data_get($device, 'ehealthInsertedAt') ?? '-' }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="record-inner-label">{{ __('patients.updated') }}</div>
+                                        <div class="record-inner-label">{{ __('devices.updated_at') }}</div>
                                         <div class="record-inner-value">
                                             {{ data_get($device, 'ehealthUpdatedAt') ?? '-' }}
                                         </div>
@@ -511,7 +511,7 @@
                                     <div class="record-inner-id-value">{{ data_get($device, 'uuid') }}</div>
                                 </div>
                                 <div class="min-w-0">
-                                    <div class="record-inner-label">{{ __('patients.encounter_id') }}</div>
+                                    <div class="record-inner-label">{{ __('devices.context_id') }}</div>
                                     <div class="record-inner-id-value">
                                         {{ data_get($device, 'context.identifier.value') ?? '-' }}
                                     </div>
@@ -529,7 +529,7 @@
     </div>
 
     @include('livewire.encounter.encounter-cancellation', [
-        'note' => __('encounters.messages.cancel_device_group_warning')
+        'note' => __('medical-events.messages.cancel_device_group_warning')
     ])
 
     <x-forms.loading />

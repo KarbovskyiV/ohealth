@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Enums\Person;
+namespace App\Enums\ClinicalImpression;
 
 use App\Traits\EnumUtils;
 
 /**
  * see https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/18475090020/eHealth+clinical_impression_statuses
  */
-enum ClinicalImpressionStatus: string
+enum Status: string
 {
     use EnumUtils;
 

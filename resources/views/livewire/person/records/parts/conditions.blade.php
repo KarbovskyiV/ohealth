@@ -28,7 +28,7 @@
                 </div>
 
                 <div class="record-inner-column-bordered w-full shrink-0 md:w-36">
-                    <div class="record-inner-label">{{ __('patients.status_clinical') }}</div>
+                    <div class="record-inner-label">{{ __('conditions.clinical_status') }}</div>
                     <div>
                         @php($status = ConditionClinicalStatus::from(data_get($condition, 'clinicalStatus')))
                         <span @class([$status->color()])> {{ $status->label() ?? '-' }} </span>
@@ -46,13 +46,13 @@
                 <div class="record-inner-grid-container">
                     <div class="[&>div]:min-w-0 [&_.record-inner-subvalue]:wrap-break-word grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-4">
                         <div>
-                            <div class="record-inner-label">{{ __('forms.type') }}</div>
+                            <div class="record-inner-label">{{ __('conditions.report_origin') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ $this->dictionaryLabel($condition, 'reportOrigin') }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.verification_status') }}</div>
+                            <div class="record-inner-label">{{ __('conditions.verification_status') }}</div>
                             <div class="record-inner-subvalue">
                                 @php($verificationStatus = ConditionVerificationStatus::from(data_get($condition, 'verificationStatus')))
                                 <span @class([$verificationStatus->color()])>
@@ -61,18 +61,18 @@
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.body_part') }}</div>
+                            <div class="record-inner-label">{{ __('conditions.body_sites') }}</div>
                             <div class="record-inner-subvalue">
-                                {{ data_get($condition, 'bodySites.0.coding.0.code', '-') }}
+                                {{ $this->dictionaryLabel($condition, 'bodySites.0') }}
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('patients.created') }}</div>
+                            <div class="record-inner-label">{{ __('conditions.asserted_date') }}</div>
                             <div class="record-inner-subvalue">{{ data_get($condition, 'assertedDate', '-') }}</div>
                         </div>
 
                         <div>
-                            <div class="record-inner-label">{{ __('patients.doctor') }}</div>
+                            <div class="record-inner-label">{{ __('conditions.doctor') }}</div>
                             <div class="record-inner-subvalue">
                                 {{ data_get($condition, 'asserter.displayValue', '-') }}
                             </div>
@@ -84,8 +84,8 @@
                             </div>
                         </div>
                         <div>
-                            <div class="record-inner-label">{{ __('forms.start_date') }}</div>
-                            <div class="record-inner-subvalue">{{ data_get($condition, 'ehealthInsertedAt') }}</div>
+                            <div class="record-inner-label">{{ __('conditions.onset_date') }}</div>
+                            <div class="record-inner-subvalue">{{ data_get($condition, 'onsetDate') }}</div>
                         </div>
                     </div>
                 </div>
@@ -96,7 +96,7 @@
                         <div class="record-inner-id-value">{{ $condition['uuid'] }}</div>
                     </div>
                     <div class="min-w-0">
-                        <div class="record-inner-label">{{ __('patients.medical_record_id') }}</div>
+                        <div class="record-inner-label">{{ __('medical-events.medical_record_id') }}</div>
                         <div class="record-inner-id-value">{{ $condition['context']['identifier']['value'] }}</div>
                     </div>
                 </div>
@@ -106,7 +106,7 @@
 
     @if ($hasLimit)
         <div x-show="limit < {{ count($this->conditions) }}" class="mt-4 flex justify-start">
-            <button type="button" @click="limit += 5" class="item-add">{{ __('patients.show_more') }}</button>
+            <button type="button" @click="limit += 5" class="item-add">{{ __('general.show_more') }}</button>
         </div>
     @endif
 </div>

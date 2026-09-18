@@ -148,7 +148,7 @@
 >
     @if (($canCancelRecords ?? false) && !empty($this->detectedIssueForm->detectedIssues))
         <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            {{ __('encounters.messages.cancel_device_group_note') }}
+            {{ __('medical-events.messages.cancel_device_group_note') }}
         </p>
     @endif
 
@@ -423,7 +423,7 @@
                             </div>
 
                             <div class="relative -ml-px w-32">
-                                <label for="detectedIssueTime" class="sr-only">{{ __('patients.time') }}</label>
+                                <label for="detectedIssueTime" class="sr-only">{{ __('forms.time') }}</label>
                                 <input
                                     x-model="modalDetectedIssue.identifiedTime"
                                     type="time"

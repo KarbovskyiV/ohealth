@@ -112,7 +112,7 @@
                         </div>
                     </div>
                     <div class="group relative mb-0! w-24! shrink-0">
-                        <label for="specimenReceivedTime" class="sr-only">{{ __('patients.time') }}</label>
+                        <label for="specimenReceivedTime" class="sr-only">{{ __('forms.time') }}</label>
                         <div class="relative flex w-full items-center">
                             @icon('mingcute-time-fill', 'absolute top-2.5 right-12 w-4 h-4 text-gray-500')
                             <input
@@ -146,7 +146,7 @@
                         </div>
                     </div>
                     <div class="group relative mb-0! w-24! shrink-0">
-                        <label for="specimenInsertedTime" class="sr-only">{{ __('patients.time') }}</label>
+                        <label for="specimenInsertedTime" class="sr-only">{{ __('forms.time') }}</label>
                         <div class="relative flex w-full items-center">
                             @icon('mingcute-time-fill', 'absolute top-2.5 right-12 w-4 h-4 text-gray-500')
                             <input
@@ -178,7 +178,7 @@
                         </div>
                     </div>
                     <div class="group relative mb-0! w-24! shrink-0">
-                        <label for="specimenUpdatedTime" class="sr-only">{{ __('patients.time') }}</label>
+                        <label for="specimenUpdatedTime" class="sr-only">{{ __('forms.time') }}</label>
                         <div class="relative flex w-full items-center">
                             @icon('mingcute-time-fill', 'absolute top-2.5 right-12 w-4 h-4 text-gray-500')
                             <input
@@ -223,7 +223,7 @@
                         value="{{ collect(data_get($specimen, 'request', []))->pluck('value')->implode(', ') ?: '-' }}"
                         disabled
                     />
-                    <label for="specimenRequest" class="label">{{ __('patients.electronic') }}</label>
+                    <label for="specimenRequest" class="label">{{ __('specimens.electronic_referral') }}</label>
                 </div>
                 <div class="form-group group">
                     <input
@@ -367,7 +367,7 @@
                         value="{{ $this->dictionaryLabel($specimen, 'collection.bodySite') }}"
                         disabled
                     />
-                    <label for="collectionBodySite" class="label">{{ __('patients.body_part') }}</label>
+                    <label for="collectionBodySite" class="label">{{ __('specimens.body_site') }}</label>
                 </div>
                 <div class="form-group group flex items-start gap-4">
                     <div class="relative flex-1">

@@ -12,7 +12,7 @@
         {{-- Category --}}
         <div class="form-row-2">
             <div class="form-group group">
-                <label for="diagnosticCategory" class="sr-only">{{ __('forms.category') }}</label>
+                <label for="diagnosticCategory" class="sr-only">{{ __('diagnostic-reports.category') }}</label>
                 <select
                     x-model="modalDiagnosticReport.categoryCode"
                     id="diagnosticCategory"
@@ -21,7 +21,7 @@
                     required
                 >
                     <option value="" selected>
-                        {{ __('forms.select') }} {{ mb_strtolower(__('forms.category')) }} *
+                        {{ __('forms.select') }} {{ mb_strtolower(__('diagnostic-reports.category')) }} *
                     </option>
                     @foreach ($this->dictionaries['eHealth/diagnostic_report_categories'] as $key => $category)
                         <option value="{{ $key }}">{{ $category }}</option>
@@ -45,7 +45,7 @@
                     class="input peer"
                 />
                 <label for="codeValue" class="label">
-                    {{ __('forms.select') }} {{ mb_strtolower(__('forms.services')) }} *
+                    {{ __('forms.select') }} {{ mb_strtolower(__('diagnostic-reports.code')) }} *
                 </label>
 
                 @error($diagnosticReportErrorPath . '.codeValue')
@@ -66,7 +66,7 @@
                         class="default-checkbox mb-1"
                     />
                     <label class="default-p" for="isDiagnosticReferralAvailable">
-                        {{ __('encounters.referral_available') }}
+                        {{ __('medical-events.referral.available') }}
                     </label>
                 </div>
             </div>
@@ -77,7 +77,7 @@
                     <div class="form-row-2" x-cloak>
                         <div>
                             <label for="diagnosticReportReferralType" class="sr-only">
-                                {{ __('patients.requisition_type') }}
+                                {{ __('medical-events.referral.requisition_type') }}
                             </label>
                             <select
                                 id="diagnosticReportReferralType"
@@ -87,10 +87,10 @@
                                 required
                             >
                                 <option value="" selected>
-                                    {{ __('forms.select') }} {{ mb_strtolower(__('patients.requisition_type')) }}
+                                    {{ __('forms.select') }} {{ mb_strtolower(__('medical-events.referral.requisition_type')) }}
                                 </option>
-                                <option value="electronic">{{ __('patients.electronic') }}</option>
-                                <option value="paper">{{ __('patients.paper') }}</option>
+                                <option value="electronic">{{ __('medical-events.referral.electronic') }}</option>
+                                <option value="paper">{{ __('medical-events.referral.paper') }}</option>
                             </select>
                         </div>
 
@@ -109,7 +109,7 @@
                                 />
 
                                 <label for="basedOnIdentifier" class="label">
-                                    {{ __('encounters.electronic_referral_id') }}
+                                    {{ __('medical-events.referral.electronic_id') }}
                                 </label>
 
                                 @error($diagnosticReportErrorPath . '.basedOnIdentifier')
@@ -133,7 +133,9 @@
                                         placeholder=" "
                                         autocomplete="off"
                                     />
-                                    <label for="requisition" class="label"> {{ __('forms.number') }} </label>
+                                    <label for="requisition" class="label">
+                                        {{ __('medical-events.referral.number') }}
+                                    </label>
 
                                     @error($diagnosticReportErrorPath . '.paperReferralRequisition')
                                         <p class="text-error">{{ $message }}</p>
@@ -152,7 +154,7 @@
                                         required
                                     />
                                     <label for="requesterEmployeeName" class="label">
-                                        {{ __('patients.author') }} *
+                                        {{ __('medical-events.referral.author') }} *
                                     </label>
 
                                     @error($diagnosticReportErrorPath . '.paperReferralRequesterEmployeeName')
@@ -175,7 +177,7 @@
                                         required
                                     />
                                     <label for="requesterLegalEntityEdrpou" class="label">
-                                        {{ __('patients.edrpou_of_the_issuing_institution') }}
+                                        {{ __('medical-events.referral.edrpou_of_the_issuing_institution') }}
                                     </label>
 
                                     @error($diagnosticReportErrorPath . '.paperReferralRequesterLegalEntityEdrpou')
@@ -194,7 +196,7 @@
                                         autocomplete="off"
                                     />
                                     <label for="requesterLegalEntityName" class="label">
-                                        {{ __('patients.name_of_the_institution_that_issued_it') }}
+                                        {{ __('medical-events.referral.name_of_the_institution_that_issued_it') }}
                                     </label>
 
                                     @error($diagnosticReportErrorPath . '.paperReferralRequesterLegalEntityName')
@@ -217,7 +219,7 @@
                                             autocomplete="off"
                                         />
                                         <label for="serviceRequestDate" class="wrapped-label">
-                                            {{ __('forms.date') }}
+                                            {{ __('medical-events.referral.date') }}
                                         </label>
 
                                         @error($diagnosticReportErrorPath . '.paperReferralServiceRequestDate')
@@ -237,7 +239,7 @@
                                         autocomplete="off"
                                     />
                                     <label for="diagnosticReportPaperNote" class="label">
-                                        {{ __('patients.notes') }}
+                                        {{ __('medical-events.referral.notes') }}
                                     </label>
 
                                     @error($diagnosticReportErrorPath . '.paperReferralNote')
@@ -328,7 +330,7 @@
         {{-- Conclusion --}}
         <div class="form-row">
             <div>
-                <label for="conclusion" class="label-modal"> {{ __('medical-events.conclusion') }} </label>
+                <label for="conclusion" class="label-modal"> {{ __('diagnostic-reports.conclusion') }} </label>
                 <textarea
                     rows="4"
                     x-model="modalDiagnosticReport.conclusion"

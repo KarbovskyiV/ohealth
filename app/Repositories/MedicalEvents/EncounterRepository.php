@@ -7,7 +7,7 @@ namespace App\Repositories\MedicalEvents;
 use App\Enums\DetectedIssue\Status as DetectedIssueStatus;
 use App\Enums\Device\Status as DeviceStatus;
 use App\Enums\DeviceAssociation\Status as DeviceAssociationStatus;
-use App\Enums\Person\ClinicalImpressionStatus;
+use App\Enums\ClinicalImpression\Status as ClinicalImpressionStatus;
 use App\Enums\Person\ConditionVerificationStatus;
 use App\Enums\Person\DiagnosticReportStatus;
 use App\Enums\Person\EncounterStatus;

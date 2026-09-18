@@ -14,7 +14,7 @@
                 class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
             >
                 @icon('plus', 'w-4 h-4')
-                {{ __('patients.starts_interacting') }}
+                {{ __('encounters.new') }}
             </a>
         @endcan
 
@@ -53,14 +53,18 @@
                         name="filterCategory"
                         class="input-select peer w-full"
                     >
-                        <option value="">{{ __('forms.select') }} {{ mb_strtolower(__('forms.category')) }}</option>
+                        <option value="">
+                            {{ __('forms.select') }} {{ mb_strtolower(__('diagnostic-reports.category')) }}
+                        </option>
 
                         @foreach ($this->dictionaries['eHealth/diagnostic_report_categories'] as $key => $category)
                             <option value="{{ $key }}">{{ $category }}</option>
                         @endforeach
                     </select>
 
-                    <label for="filterCategory" class="label pointer-events-none"> {{ __('forms.category') }} </label>
+                    <label for="filterCategory" class="label pointer-events-none">
+                        {{ __('diagnostic-reports.category') }}
+                    </label>
                 </div>
 
                 <x-forms.combobox
@@ -69,7 +73,7 @@
                     bind="filterCode"
                     bindValue="id"
                     bindParam="name"
-                    :label="__('forms.services')"
+                    :label="__('diagnostic-reports.code')"
                 />
             </div>
 
@@ -88,7 +92,7 @@
                         wire:click="resetFilters"
                         class="button-primary-outline-red px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.reset_filters') }}
+                        {{ __('forms.reset_all_filters') }}
                     </button>
                     <button
                         type="button"
@@ -106,7 +110,7 @@
                         @click="openGroupActions = ! openGroupActions"
                         class="button-primary-outline px-5 py-2.5 text-sm"
                     >
-                        {{ __('patients.group_actions') }}
+                        {{ __('forms.group_actions') }}
                     </button>
 
                     <div
@@ -177,7 +181,7 @@
                                 autocomplete="off"
                             />
 
-                            <label class="wrapped-label"> {{ __('patients.filter_date_range') }} </label>
+                            <label class="wrapped-label"> {{ __('forms.filter_date_range') }} </label>
                         </div>
                     </div>
 
@@ -186,7 +190,7 @@
                         bind="filterSpecimenId"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('patients.specimen_id')"
+                        :label="__('diagnostic-reports.specimen_id')"
                     />
 
                     <x-forms.combobox
@@ -194,7 +198,7 @@
                         bind="filterBasedOn"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('patients.based_on')"
+                        :label="__('diagnostic-reports.based_on')"
                     />
                 </div>
 
@@ -208,7 +212,7 @@
                         bind="filterContextEpisodeId"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('episodes.context_id')"
+                        :label="__('diagnostic-reports.context_episode_id')"
                     />
 
                     <x-forms.combobox
@@ -216,7 +220,7 @@
                         bind="filterOriginEpisodeId"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('episodes.origin_id')"
+                        :label="__('diagnostic-reports.origin_episode_id')"
                     />
 
                     <x-forms.combobox
@@ -224,7 +228,7 @@
                         bind="filterEncounterId"
                         bindValue="uuid"
                         bindParam="name"
-                        :label="__('patients.encounter_id')"
+                        :label="__('diagnostic-reports.encounter_id')"
                     />
                 </div>
             </div>
@@ -309,7 +313,7 @@
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('eye', 'w-5 h-5 text-gray-500')
-                                            {{ __('patients.view_details') }}
+                                            {{ __('forms.view_details') }}
                                         </button>
 
                                         <button
@@ -321,7 +325,7 @@
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                            {{ __('diagnostic-reports.status.entered_in_error') }}
+                                            {{ __('medical-events.mark_as_error') }}
                                         </button>
                                     </div>
                                 </div>
@@ -334,7 +338,7 @@
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('forms.category') }}
+                                                {{ __('diagnostic-reports.category') }}
                                             </div>
                                             <div class="record-inner-value font-semibold wrap-break-word">
                                                 {{
@@ -348,7 +352,7 @@
                                         </div>
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.referrals') }}
+                                                {{ __('diagnostic-reports.paper_referral_requisition') }}
                                             </div>
                                             <div class="record-inner-value font-semibold wrap-break-word">
                                                 {{ data_get($diagnosticReport, 'paperReferral.requisition', '—') }}
@@ -367,7 +371,7 @@
                                         </div>
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('medical-events.conclusion') }}
+                                                {{ __('diagnostic-reports.conclusion') }}
                                             </div>
                                             <div class="record-inner-value font-semibold wrap-break-word">
                                                 {{ data_get($diagnosticReport, 'conclusion') ?? '-' }}
@@ -378,7 +382,7 @@
                                     <div class="min-w-0 space-y-2.5">
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.created') }}
+                                                {{ __('diagnostic-reports.inserted_at') }}
                                             </div>
                                             <div class="record-inner-value font-semibold wrap-break-word">
                                                 {{ optional(\Carbon\Carbon::make(data_get($diagnosticReport, 'ehealthInsertedAt')))->format('d.m.Y H:i') ?? '-' }}
@@ -386,7 +390,7 @@
                                         </div>
                                         <div class="min-w-0">
                                             <div class="record-inner-label text-[10px] uppercase">
-                                                {{ __('patients.doctor') }}
+                                                {{ __('diagnostic-reports.doctor') }}
                                             </div>
                                             <div class="record-inner-value font-semibold wrap-break-word">
                                                 {{ data_get($diagnosticReport, 'recordedBy.displayValue') ?? '-' }}
@@ -407,7 +411,7 @@
                                 </div>
                                 <div class="min-w-0">
                                     <div class="record-inner-label text-[10px] uppercase">
-                                        {{ __('patients.medical_record_id') }}
+                                        {{ __('medical-events.medical_record_id') }}
                                     </div>
                                     <div class="record-inner-id-value">
                                         {{ data_get($diagnosticReport, 'encounter.identifier.value') ?? '-' }}

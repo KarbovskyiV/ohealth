@@ -5,19 +5,19 @@ declare(strict_types=1);
 namespace App\Models\MedicalEvents\Sql;
 
 use App\Casts\EHealthDateCast;
-use App\Enums\Person\ClinicalImpressionStatus;
+use App\Enums\ClinicalImpression\Status;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use Carbon\CarbonImmutable;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
-use Illuminate\Database\Eloquent\Builder;
 
 class ClinicalImpression extends Model
 {
@@ -53,7 +53,7 @@ class ClinicalImpression extends Model
     ];
 
     protected $casts = [
-        'status' => ClinicalImpressionStatus::class,
+        'status' => Status::class,
         'ehealth_inserted_at' => EHealthDateCast::class,
         'ehealth_updated_at' => EHealthDateCast::class
     ];

@@ -39,7 +39,7 @@
 
     <div class="form-row-modal">
         <div>
-            <label for="bodySite" class="label-modal"> {{ __('patients.body_part') }} </label>
+            <label for="bodySite" class="label-modal"> {{ __('observations.body_site') }} </label>
             <select x-model="modalObservation.bodySiteCode" id="bodySite" class="input-modal" type="text" required>
                 <option value="" selected>{{ __('forms.select') }}</option>
                 @foreach ($this->dictionaries['eHealth/body_sites'] as $key => $bodySite)
@@ -110,7 +110,7 @@
         </div>
 
         <div class="w-3/5" onclick="document.getElementById('observationIssuedTime').showPicker()">
-            <label for="observationIssuedTime" class="hidden"> {{ __('patients.time') }} </label>
+            <label for="observationIssuedTime" class="hidden"> {{ __('forms.time') }} </label>
 
             <div class="relative mt-7 flex items-center">
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
@@ -186,7 +186,7 @@
         </div>
 
         <div class="w-3/5" onclick="document.getElementById('effectiveTime').showPicker()">
-            <label for="effectiveTime" class="hidden"> {{ __('patients.time') }} </label>
+            <label for="effectiveTime" class="hidden"> {{ __('forms.time') }} </label>
 
             <div class="relative mt-7 flex items-center">
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
@@ -263,7 +263,7 @@
 
     <div class="form-row">
         <div>
-            <label for="observationComment" class="label-modal"> {{ __('forms.comment') }} </label>
+            <label for="observationComment" class="label-modal"> {{ __('observations.comment') }} </label>
 
             <textarea
                 rows="4"

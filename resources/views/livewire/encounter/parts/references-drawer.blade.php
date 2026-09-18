@@ -32,7 +32,7 @@
             <div class="flex min-h-0 flex-1 flex-col">
                 <div class="mb-6 flex items-center pb-5">
                     <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-                        {{ __('care-plan.search_medical_records') }}
+                        {{ __('encounters.search_medical_records') }}
                     </h2>
                 </div>
 

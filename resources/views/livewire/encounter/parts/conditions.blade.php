@@ -343,7 +343,7 @@
                     <div class="record-inner-grid-container">
                         <div class="grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-4">
                             <div>
-                                <div class="record-inner-label">{{ __('forms.type') }}</div>
+                                <div class="record-inner-label">{{ __('conditions.role') }}</div>
                                 <div
                                     class="record-inner-subvalue"
                                     x-text="diagnosisRolesDictionary[diagnoses[index]?.roleCode] || '-'"
@@ -357,7 +357,7 @@
                                 ></div>
                             </div>
                             <div>
-                                <div class="record-inner-label">{{ __('patients.verification_status') }}</div>
+                                <div class="record-inner-label">{{ __('conditions.verification_status') }}</div>
                                 <div
                                     class="record-inner-subvalue"
                                     x-text="
@@ -366,7 +366,7 @@
                                 ></div>
                             </div>
                             <div>
-                                <div class="record-inner-label">{{ __('forms.comment') }}</div>
+                                <div class="record-inner-label">{{ __('conditions.asserter_text') }}</div>
                                 <div class="record-inner-subvalue" x-text="condition.asserterText || '-'"></div>
                             </div>
                         </div>
@@ -405,7 +405,7 @@
                                 for="codingSystem"
                                 class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
                             >
-                                {{ __('patients.coding_system') }}<span class="text-red-600"> *</span>
+                                {{ __('conditions.coding_system') }}<span class="text-red-600"> *</span>
                             </label>
                             <div class="relative">
                                 <select
@@ -416,7 +416,7 @@
                                     required
                                 >
                                     <option value="">
-                                        {{ __('forms.select') }} {{ __('patients.coding_system') }}*
+                                        {{ __('forms.select') }} {{ __('conditions.coding_system') }}*
                                     </option>
                                     <option
                                         value="eHealth/ICPC2/condition_codes"
@@ -476,7 +476,7 @@
                                     for="conditionReasonCode"
                                     class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
                                 >
-                                    {{ __('patients.icpc-2_status_code') }}<span class="text-red-600"> *</span>
+                                    {{ __('medical-events.icpc2_status_code') }}<span class="text-red-600"> *</span>
                                 </label>
                                 <div class="relative">
                                     <x-select2
@@ -562,7 +562,7 @@
                                     for="conditionCodePlaceholder"
                                     class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
                                 >
-                                    {{ __('forms.code') }}<span class="text-red-600"> *</span>
+                                    {{ __('conditions.code') }}<span class="text-red-600"> *</span>
                                 </label>
                                 <div class="relative">
                                     <input
@@ -582,7 +582,7 @@
                                 for="diagnoseCode"
                                 class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
                             >
-                                {{ __('forms.type') }}<span class="text-red-600"> *</span>
+                                {{ __('conditions.role') }}<span class="text-red-600"> *</span>
                             </label>
                             <div class="relative">
                                 <select
@@ -606,7 +606,7 @@
                                 for="verificationStatus"
                                 class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
                             >
-                                {{ __('patients.verification_status') }}<span class="text-red-600"> *</span>
+                                {{ __('conditions.verification_status') }}<span class="text-red-600"> *</span>
                             </label>
                             <div class="relative">
                                 <select
@@ -672,7 +672,7 @@
                                 for="onsetDate"
                                 class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
                             >
-                                {{ __('forms.start_date') }}<span class="text-red-600"> *</span>
+                                {{ __('conditions.onset_date') }}<span class="text-red-600"> *</span>
                             </label>
                             <div class="relative">
                                 <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center pl-1">
@@ -693,7 +693,7 @@
 
                         <div>
                             <label for="onsetTime" class="mb-1 block text-xs">
-                                &nbsp;<span class="sr-only">{{ __('patients.time') }}</span>
+                                &nbsp;<span class="sr-only">{{ __('forms.time') }}</span>
                             </label>
                             <div class="relative">
                                 <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center pl-1">
@@ -741,7 +741,7 @@
 
                         <div>
                             <label for="assertedTime" class="mb-1 block text-xs">
-                                &nbsp;<span class="sr-only">{{ __('patients.time') }}</span>
+                                &nbsp;<span class="sr-only">{{ __('forms.time') }}</span>
                             </label>
                             <div class="relative">
                                 <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center pl-1">
@@ -775,7 +775,7 @@
                                             class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
                                             :class="{ 'sr-only': bsIndex > 0 }"
                                         >
-                                            {{ __('patients.body_part') }}
+                                            {{ __('conditions.body_sites') }}
                                         </label>
                                         <div class="relative">
                                             <select
@@ -852,7 +852,7 @@
 
                         <div>
                             <label for="rank" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                                {{ __('patients.priority') }}
+                                {{ __('conditions.rank') }}
                             </label>
                             <div class="relative">
                                 <select
@@ -949,17 +949,14 @@
                     </div>
 
                     <div class="max-w-md flex-1">
-                        <label
-                            for="conditionAsserterText"
-                            class="sr-only"
-                        >{{ __('episodes.created_by_doctor') }}</label>
+                        <label for="conditionAsserterText" class="sr-only">{{ __('conditions.asserter_name') }}</label>
                         <input
                             type="text"
                             id="conditionAsserterText"
                             x-model="modalCondition.asserterText"
                             :disabled="modalCondition.primarySource === true"
                             class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2 px-3 text-sm text-gray-900 transition-colors focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:disabled:bg-gray-800"
-                            placeholder="{{ __('episodes.created_by_doctor') }}"
+                            placeholder="{{ __('conditions.asserter_name') }}"
                         />
                     </div>
                 </div>
@@ -997,7 +994,7 @@
                 <div x-show="modalCondition.primarySource === true" class="mt-8 transition-all">
                     <div class="form-group group">
                         <label for="doctorComment" class="mb-3 block text-sm font-bold text-gray-900 dark:text-white">
-                            {{ __('forms.comment') }}
+                            {{ __('conditions.asserter_text') }}
                         </label>
                         <textarea
                             rows="4"
@@ -1132,12 +1129,11 @@
         stopClickPropagation="true"
         wire:ignore
     >
-        <x-slot name="title">{{ __('encounters.add_observations_reports_conditions') }}</x-slot>
+        <x-slot name="title">{{ __('conditions.evidence_details') }}</x-slot>
 
-        {{-- Section Title "Пошук" --}}
         <div class="mt-2 mb-4 flex items-center gap-1.5 pl-1 font-bold text-gray-900 dark:text-gray-100">
             @icon('search-outline', 'w-5 h-5 text-gray-800 dark:text-gray-200')
-            <span class="text-base">{{ __('care-plan.search') }}</span>
+            <span class="text-base">{{ __('conditions.evidence_search') }}</span>
         </div>
 
         {{-- Filters (Type & Episode Select from mock) --}}

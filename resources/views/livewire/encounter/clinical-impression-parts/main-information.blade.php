@@ -4,9 +4,11 @@
     {{-- Code --}}
     <div class="form-row-modal" x-data="{ openModal: false }">
         <div class="form-group group">
-            <label for="code" class="sr-only">{{ __('forms.code') }}</label>
+            <label for="code" class="sr-only">{{ __('clinical-impressions.code') }}</label>
             <select x-model="modalClinicalImpression.codeCode" id="code" class="input-select peer" type="text" required>
-                <option value="" selected>{{ __('forms.select') }} {{ mb_strtolower(__('forms.code')) }} *</option>
+                <option value="" selected>
+                    {{ __('forms.select') }} {{ mb_strtolower(__('clinical-impressions.code')) }} *
+                </option>
                 @foreach ($this->dictionaries['eHealth/clinical_impression_patient_categories'] as $key => $clinicalImpressionPatientCategory)
                     <option value="{{ $key }}">{{ $clinicalImpressionPatientCategory }}</option>
                 @endforeach
@@ -98,7 +100,7 @@
                 placeholder=" "
                 autocomplete="off"
             />
-            <label for="description" class="label"> {{ __('forms.description') }} </label>
+            <label for="description" class="label"> {{ __('clinical-impressions.description') }} </label>
         </div>
     </div>
 

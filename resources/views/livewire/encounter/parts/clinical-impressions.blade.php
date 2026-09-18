@@ -165,7 +165,9 @@
                     <div class="record-inner-grid-container">
                         <div class="grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-3">
                             <div>
-                                <div class="record-inner-label">{{ __('forms.date') }}</div>
+                                <div class="record-inner-label">
+                                    {{ __('clinical-impressions.effective_period_start') }}
+                                </div>
                                 <div
                                     class="record-inner-subvalue"
                                     x-text="
@@ -174,11 +176,11 @@
                                 ></div>
                             </div>
                             <div>
-                                <div class="record-inner-label">{{ __('forms.description') }}</div>
+                                <div class="record-inner-label">{{ __('clinical-impressions.description') }}</div>
                                 <div class="record-inner-subvalue" x-text="clinicalImpression.description || '-'"></div>
                             </div>
                             <div>
-                                <div class="record-inner-label">{{ __('forms.comment') }}</div>
+                                <div class="record-inner-label">{{ __('clinical-impressions.note') }}</div>
                                 <div class="record-inner-subvalue" x-text="clinicalImpression.note || '-'"></div>
                             </div>
                         </div>
@@ -193,12 +195,12 @@
         @unless ($isReadonly)
             <button
                 @click.prevent="
-                        newClinicalImpression = true; {{-- We are adding a new clinicalImpression --}}
-                        modalClinicalImpression = new ClinicalImpression(); {{-- Replace the data of the previous clinicalImpression with a new one--}}
-                        $wire.problems = [];
-                        $wire.findings = [];
-                        openClinicalImpressionDrawer = true;
-                    "
+                    newClinicalImpression = true; {{-- We are adding a new clinicalImpression --}}
+                    modalClinicalImpression = new ClinicalImpression(); {{-- Replace the data of the previous clinicalImpression with a new one--}}
+                    $wire.problems = [];
+                    $wire.findings = [];
+                    openClinicalImpressionDrawer = true;
+                "
                 class="item-add my-5"
             >
                 {{ __('forms.add') }}

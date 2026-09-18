@@ -6,8 +6,8 @@ namespace App\Livewire\ClinicalImpression;
 
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
+use App\Enums\ClinicalImpression\Status;
 use App\Enums\JobStatus;
-use App\Enums\Person\ClinicalImpressionStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\ClinicalImpressionSync;
@@ -245,7 +245,7 @@ class ClinicalImpressionIndex extends BasePatientComponent
             'filterCode' => ['nullable', 'string', new InDictionary('eHealth/clinical_impression_patient_categories')],
             'filterEncounterId' => ['nullable', 'string', 'max:255'],
             'filterEpisodeId' => ['nullable', 'string', 'max:255'],
-            'filterStatus' => ['nullable', Rule::in(ClinicalImpressionStatus::values())],
+            'filterStatus' => ['nullable', Rule::in(Status::values())],
             'filterEffectiveDateFrom' => ['nullable', 'date_format:' . config('app.date_format')],
             'filterEffectiveDateTo' => ['nullable', 'date_format:' . config('app.date_format')],
         ];

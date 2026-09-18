@@ -6,10 +6,10 @@ namespace App\Services\MedicalEvents\Mappers;
 
 use App\Contracts\FhirMapperContract;
 use App\Core\Arr;
+use App\Enums\ClinicalImpression\Status;
 use App\Enums\DetectedIssue\Status as DetectedIssueStatus;
 use App\Enums\Device\Status as DeviceStatus;
 use App\Enums\DeviceAssociation\Status as DeviceAssociationStatus;
-use App\Enums\Person\ClinicalImpressionStatus;
 use App\Enums\Person\ConditionVerificationStatus;
 use App\Enums\Person\DiagnosticReportStatus;
 use App\Enums\Person\EncounterStatus;
@@ -33,7 +33,7 @@ class EncounterMapper implements FhirMapperContract
         'immunizations' => ['status', ImmunizationStatus::ENTERED_IN_ERROR],
         'diagnosticReports' => ['status', DiagnosticReportStatus::ENTERED_IN_ERROR],
         'procedures' => ['status', ProcedureStatus::ENTERED_IN_ERROR],
-        'clinicalImpressions' => ['status', ClinicalImpressionStatus::ENTERED_IN_ERROR],
+        'clinicalImpressions' => ['status', Status::ENTERED_IN_ERROR],
         'devices' => ['status', DeviceStatus::ENTERED_IN_ERROR],
         'deviceAssociations' => ['status', DeviceAssociationStatus::ENTERED_IN_ERROR],
         'detectedIssues' => ['status', DetectedIssueStatus::ENTERED_IN_ERROR],
@@ -51,7 +51,7 @@ class EncounterMapper implements FhirMapperContract
         'immunizations' => ['status', ImmunizationStatus::ENTERED_IN_ERROR],
         'diagnosticReports' => ['status', DiagnosticReportStatus::ENTERED_IN_ERROR],
         'procedures' => ['status', ProcedureStatus::ENTERED_IN_ERROR],
-        'clinicalImpressions' => ['status', ClinicalImpressionStatus::ENTERED_IN_ERROR],
+        'clinicalImpressions' => ['status', Status::ENTERED_IN_ERROR],
         'devices' => ['status', DeviceStatus::ENTERED_IN_ERROR],
         'deviceAssociations' => ['status', DeviceAssociationStatus::ENTERED_IN_ERROR],
         'detectedIssues' => ['status', DetectedIssueStatus::ENTERED_IN_ERROR],

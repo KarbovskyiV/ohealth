@@ -7,7 +7,7 @@
 >
     <x-slot name="headerActions"></x-slot>
 
-    <div class="breadcrumb-form p-4 sm:p-8 shift-content max-w-4xl">
+    <div class="breadcrumb-form shift-content max-w-4xl p-4 sm:p-8">
         <form
             class="space-y-6"
             x-data="{
@@ -23,7 +23,7 @@
                 onCareManagerChange(uuid) {
                     this.careManagerId = uuid;
 
-                    if (!this.isTypeAllowed($wire.form.typeCode)) {
+                    if (! this.isTypeAllowed($wire.form.typeCode)) {
                         this.$refs.typeCode.value = '';
                         $wire.set('form.typeCode', '', false);
                     }
@@ -45,7 +45,7 @@
                     <label for="name" class="label">{{ __('episodes.name') }}</label>
 
                     @error('form.name')
-                    <p class="text-error mt-1 text-xs">{{ $message }}</p>
+                        <p class="text-error mt-1 text-xs">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
@@ -61,12 +61,12 @@
                         required
                     >
                         <option value="" selected>{{ __('forms.select') }}</option>
-                        @foreach($episodeTypes as $code => $display)
+                        @foreach ($episodeTypes as $code => $display)
                             <option
                                 value="{{ $code }}"
                                 class="bg-white text-gray-900 dark:bg-gray-800 dark:text-white"
                                 x-show="isTypeAllowed('{{ $code }}')"
-                                x-bind:disabled="!isTypeAllowed('{{ $code }}')"
+                                x-bind:disabled="! isTypeAllowed('{{ $code }}')"
                             >
                                 {{ $display }}
                             </option>
@@ -75,7 +75,7 @@
                     <label for="typeCode" class="label">{{ __('episodes.type') }}</label>
 
                     @error('form.typeCode')
-                    <p class="text-error mt-1 text-xs">{{ $message }}</p>
+                        <p class="text-error mt-1 text-xs">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
@@ -84,7 +84,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="form-group group">
                         <div class="relative">
-                            <div class="absolute inset-y-0 start-0 flex items-center pointer-events-none ps-3">
+                            <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
                                 @icon('calendar-week', 'w-5 h-5 text-gray-400')
                             </div>
                             <input
@@ -98,17 +98,17 @@
                                 required
                                 autocomplete="off"
                             />
-                            <label for="startDate" class="wrapped-label">{{ __('forms.start_date') }}</label>
+                            <label for="startDate" class="wrapped-label">{{ __('episodes.period_start') }}</label>
                         </div>
 
                         @error('form.startDate')
-                        <p class="text-error mt-1 text-xs">{{ $message }}</p>
+                            <p class="text-error mt-1 text-xs">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <div class="form-group group">
                         <div class="relative">
-                            <div class="absolute inset-y-0 start-0 flex items-center pointer-events-none ps-3">
+                            <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
                                 @icon('mingcute-time-fill', 'w-5 h-5 text-gray-400')
                             </div>
                             <input
@@ -121,11 +121,11 @@
                                 required
                                 autocomplete="off"
                             />
-                            <label for="startTime" class="wrapped-label">{{ __('forms.start_time') }}</label>
+                            <label for="startTime" class="wrapped-label">{{ __('episodes.period_start_time') }}</label>
                         </div>
 
                         @error('form.startTime')
-                        <p class="text-error mt-1 text-xs">{{ $message }}</p>
+                            <p class="text-error mt-1 text-xs">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
@@ -142,8 +142,11 @@
                         required
                     >
                         <option value="" selected>{{ __('forms.select') }}</option>
-                        @foreach($employees as $employee)
-                            <option value="{{ $employee['uuid'] }}" class="bg-white text-gray-900 dark:bg-gray-800 dark:text-white">
+                        @foreach ($employees as $employee)
+                            <option
+                                value="{{ $employee['uuid'] }}"
+                                class="bg-white text-gray-900 dark:bg-gray-800 dark:text-white"
+                            >
                                 {{ $employee['name'] }} ({{ $this->dictionaries['POSITION'][$employee['position']] }})
                             </option>
                         @endforeach
@@ -151,17 +154,17 @@
                     <label for="careManagerId" class="label">{{ __('episodes.attending_doctor') }}</label>
 
                     @error('form.careManagerId')
-                    <p class="text-error mt-1 text-xs">{{ $message }}</p>
+                        <p class="text-error mt-1 text-xs">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
 
             <div class="form-row-3 pt-8">
-                <div class="flex gap-3 col-span-1">
+                <div class="col-span-1 flex gap-3">
                     <button
                         type="button"
                         wire:click="cancel"
-                        class="button-primary-outline-red flex-1 text-center py-2.5 text-sm rounded-lg"
+                        class="button-primary-outline-red flex-1 rounded-lg py-2.5 text-center text-sm"
                     >
                         {{ __('forms.delete') }}
                     </button>
@@ -171,7 +174,7 @@
                         wire:click="createLocally"
                         wire:loading.attr="disabled"
                         wire:loading.class="opacity-50 cursor-not-allowed"
-                        class="button-primary-outline flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm rounded-lg"
+                        class="button-primary-outline flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm"
                     >
                         @icon('file-text', 'w-4 h-4')
                         {{ __('forms.save') }}
@@ -182,7 +185,7 @@
                         wire:click="create"
                         wire:loading.attr="disabled"
                         wire:loading.class="opacity-50 cursor-not-allowed"
-                        class="button-primary flex-1 text-center py-2.5 text-sm rounded-lg"
+                        class="button-primary flex-1 rounded-lg py-2.5 text-center text-sm"
                     >
                         {{ __('forms.create') }}
                     </button>

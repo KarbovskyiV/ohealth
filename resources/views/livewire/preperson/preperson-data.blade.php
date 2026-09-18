@@ -1,6 +1,7 @@
 @use('App\Models\MedicalEvents\Sql\Encounter')
 
-<div x-data="{
+<div
+    x-data="{
     showMergePatientDrawer: false,
     showMergeAuthDrawer: false,
     showMergeConfirmationDrawer: false,
@@ -30,7 +31,8 @@
     deathPrepersonId: {{ $preperson->id }},
     showRegisterDeathModal: false,
     showRegisterDeathDateModal: false
-}">
+}"
+>
     <x-layouts.patient
         :prepersonId="$preperson->id"
         :patientFullName="$preperson->fullName"
@@ -39,11 +41,12 @@
     >
         <x-slot name="headerActions">
             @can('create', Encounter::class)
-                <a href="{{ route('prepersons.encounter.create', [legalEntity(), 'preperson' => $preperson->id]) }}"
-                   class="flex items-center gap-2 button-primary px-5 py-2 text-sm shadow-sm"
+                <a
+                    href="{{ route('prepersons.encounter.create', [legalEntity(), 'preperson' => $preperson->id]) }}"
+                    class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
                 >
                     @icon('plus', 'w-4 h-4')
-                    {{ __('patients.starts_interacting') }}
+                    {{ __('encounters.new') }}
                 </a>
             @endcan
 
@@ -54,7 +57,7 @@
                 wire:click="syncFromEHealth({{ $preperson->id }})"
                 wire:target="syncFromEHealth"
                 wire:loading.attr="disabled"
-                class="button-sync flex items-center gap-2 whitespace-nowrap px-5 py-2 text-sm shadow-sm"
+                class="button-sync flex items-center gap-2 px-5 py-2 text-sm whitespace-nowrap shadow-sm"
             >
                 @icon('refresh', 'w-4 h-4')
                 {{ __('forms.synchronise_with_eHealth') }}
@@ -64,11 +67,9 @@
         @include('livewire.preperson.parts.preperson-data')
     </x-layouts.patient>
 
-    @if($editingId)
+    @if ($editingId)
         @include('livewire.preperson.modals.edit-preperson')
     @endif
     @include('livewire.preperson.modals.register-death')
     @include('livewire.preperson.modals.register-death-date')
 </div>
-
-

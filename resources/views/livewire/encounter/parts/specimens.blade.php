@@ -366,7 +366,7 @@
                                 >{{ __('specimens.date_time_received') }}</label>
                             </div>
                             <div class="relative -ml-px w-32">
-                                <label for="specimenReceivedTime" class="sr-only">{{ __('patients.time') }}</label>
+                                <label for="specimenReceivedTime" class="sr-only">{{ __('forms.time') }}</label>
                                 <input
                                     x-model="modalSpecimen.receivedTime"
                                     type="time"
@@ -449,7 +449,7 @@
                                 id="specimenNote"
                                 class="textarea"
                                 rows="3"
-                                placeholder="{{ __('encounters.text_for_input') }}"
+                                placeholder="{{ __('forms.text_for_input') }}"
                             ></textarea>
                         </div>
                     </div>
@@ -563,7 +563,7 @@
                                 >{{ __('specimens.date_time') }}</label>
                             </div>
                             <div class="relative -ml-px w-32">
-                                <label for="specimenCollectedTime" class="sr-only">{{ __('patients.time') }}</label>
+                                <label for="specimenCollectedTime" class="sr-only">{{ __('forms.time') }}</label>
                                 <input
                                     x-model="modalSpecimen.collectedTime"
                                     type="time"
@@ -603,7 +603,7 @@
                             <label
                                 for="specimenCollectedPeriodStartTime"
                                 class="label"
-                            >{{ __('forms.start_time') }}</label>
+                            >{{ __('specimens.period_start') }}</label>
                         </div>
 
                         <div class="form-group group relative">
@@ -709,7 +709,7 @@
                                     <option value="{{ $code }}">{{ $bodySite }}</option>
                                 @endforeach
                             </select>
-                            <label for="collectionBodySite" class="label">{{ __('patients.body_part') }}</label>
+                            <label for="collectionBodySite" class="label">{{ __('specimens.body_site') }}</label>
                         </div>
                     </div>
 
