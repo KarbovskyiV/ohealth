@@ -18,6 +18,57 @@
                 </a>
             @endcan
 
+            <div x-data="{ open: false }" class="relative">
+                <button
+                    @click="open = ! open"
+                    @click.outside="open = false;"
+                    class="button-primary-outline flex items-center gap-2 px-4 py-2 text-sm shadow-sm"
+                    style="margin: 0 !important"
+                >
+                    {{ __('forms.actions') }}
+                    @icon('menu', 'w-4 h-4')
+                </button>
+
+                <div
+                    x-show="open"
+                    x-cloak
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="transform opacity-0 scale-95"
+                    x-transition:enter-end="transform opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-75"
+                    x-transition:leave-start="transform opacity-100 scale-100"
+                    x-transition:leave-end="transform opacity-0 scale-95"
+                    class="dropdown-menu right-0 flex max-h-87.5 w-max max-w-100 min-w-65 flex-col"
+                >
+                    <div class="custom-scrollbar overflow-y-auto">
+                        <a href="#" class="dropdown-item">
+                            @icon('file-text', 'w-4 h-4 text-gray-500 shrink-0')
+                            {{ __('patients.sign_declaration') }}
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            @icon('activity', 'w-4 h-4 text-gray-500 shrink-0')
+                            {{ __('diagnostic-reports.create') }}
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            @icon('settings', 'w-4 h-4 text-gray-500 shrink-0')
+                            {{ __('procedures.create') }}
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            @icon('book', 'w-4 h-4 text-gray-500 shrink-0')
+                            {{ __('episodes.create') }}
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            @icon('hospital-bed', 'w-4 h-4 text-gray-500 shrink-0')
+                            {{ __('patients.discharge_patient') }}
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            @icon('cancel', 'w-4 h-4 text-gray-500 shrink-0')
+                            {{ __('patients.hospitalization_refusal') }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <button
                 type="button"
                 class="button-primary-outline px-4 py-2 text-sm shadow-sm"
