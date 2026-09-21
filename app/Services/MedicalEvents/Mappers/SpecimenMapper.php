@@ -144,6 +144,54 @@ class SpecimenMapper implements FhirMapperContract
     }
 
     /**
+     * Build a FHIR structure out of the reason the specimen is marked as rejected.
+     *
+     * @param  array  $data  Flat specimen reject form data
+     * @return array
+     */
+    public function toRejectFhir(array $data): array
+    {
+        return [
+            'statusReason' => FhirResource::make()
+                ->coding('specimen_reject_reasons', $data['rejectReason'])
+                ->toCodeableConcept()
+        ];
+    }
+
+    /**
+     * Turn the specimen as eHealth returns it into the signed content that marks it as entered in error.
+     *
+     * @param  array  $specimen  Specimen details as returned by eHealth
+     * @param  string  $cancellationReason
+     * @return array
+     */
+    public function toCancellationPackage(array $specimen, string $cancellationReason): array
+    {
+        return [
+            ...$specimen,
+            'status' => Status::ENTERED_IN_ERROR->value,
+            'status_reason' => FhirResource::make()
+                ->coding('specimen_cancel_reasons', $cancellationReason)
+                ->toCodeableConcept()
+        ];
+    }
+
+    /**
+     * Build a FHIR structure out of the reason the specimen is marked as unavailable.
+     *
+     * @param  array  $data  Flat specimen invalidate form data
+     * @return array
+     */
+    public function toInvalidateFhir(array $data): array
+    {
+        return [
+            'statusReason' => FhirResource::make()
+                ->coding('specimen_invalidate_reasons', $data['invalidateReason'])
+                ->toCodeableConcept()
+        ];
+    }
+
+    /**
      * Build the collection details of the specimen.
      *
      * @param  array  $data

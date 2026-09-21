@@ -11,14 +11,12 @@ use App\Enums\Specimen\Status;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\SpecimenSync;
-use App\Livewire\Encounter\Forms\EncounterCancellationForm;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Specimen;
 use App\Repositories\MedicalEvents\Repository;
 use App\Rules\InDictionary;
 use App\Traits\BatchLegalEntityQueries;
-use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Session;
@@ -31,11 +29,8 @@ use Throwable;
 class PatientSpecimens extends BasePatientComponent
 {
     use BatchLegalEntityQueries;
-    use HandlesEncounterCancellation;
     use HandlesSyncBatch;
     use WithPagination;
-
-    public EncounterCancellationForm $form;
 
     public string $filterStatus = '';
 
@@ -90,7 +85,6 @@ class PatientSpecimens extends BasePatientComponent
     protected array $dictionaryNames = [
         'specimen_types',
         'specimen_container_types',
-        'eHealth/cancellation_reasons',
         'POSITION'
     ];
 
@@ -385,23 +379,6 @@ class PatientSpecimens extends BasePatientComponent
             'filterRequest' => ['nullable', 'uuid'],
             'filterEncounter' => ['nullable', 'uuid']
         ];
-    }
-
-    /**
-     * @inheritDoc
-     */
-    protected function encounterCancellationForm(): EncounterCancellationForm
-    {
-        return $this->form;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    protected function afterEncounterCancelled(): void
-    {
-        $this->isSearching = false;
-        $this->resetPage();
     }
 
     public function render(): View

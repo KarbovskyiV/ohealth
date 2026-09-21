@@ -1,4 +1,5 @@
 @use(App\Enums\Specimen\Status as SpecimenStatus)
+@use(App\Models\MedicalEvents\Sql\Specimen)
 
 <x-layouts.patient
     :personId="$personId"
@@ -291,16 +292,19 @@
                                             </button>
                                         @endif
 
-                                        @if ($status !== SpecimenStatus::ENTERED_IN_ERROR)
+                                        @can('cancel', [Specimen::class, $specimen])
                                             <button
-                                                wire:click="openRecordCancellation('specimens', '{{ data_get($specimen, 'uuid') }}')"
-                                                @click="close($refs.button)"
+                                                type="button"
+                                                @click="
+                                                    $dispatch('open-specimen-cancellation', { id: '{{ data_get($specimen, 'uuid') }}' });
+                                                    close($refs.button);
+                                                "
                                                 class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('alert-circle', 'w-5 h-5 text-gray-500')
                                                 {{ __('medical-events.mark_as_error') }}
                                             </button>
-                                        @endif
+                                        @endcan
                                     </div>
                                 </div>
                             </div>
@@ -394,5 +398,5 @@
         </div>
     </div>
 
-    @include('livewire.encounter.encounter-cancellation')
+    <livewire:specimen.specimen-cancellation :patient-id="$uuid" />
 </x-layouts.patient>

@@ -87,6 +87,54 @@ class Specimen extends PatientApiBase
     }
 
     /**
+     * Mark the patient specimen as rejected. Processed asynchronously.
+     *
+     * @param  string  $patientId
+     * @param  string  $specimenId
+     * @param  array  $payload
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/specimen/reject-specimen
+     */
+    public function reject(string $patientId, string $specimenId, array $payload): PromiseInterface|EHealthResponse
+    {
+        return $this->patch(self::URL . "/$patientId/specimens/$specimenId/actions/reject", $payload);
+    }
+
+    /**
+     * Mark the patient specimen as unavailable. Processed asynchronously.
+     *
+     * @param  string  $patientId
+     * @param  string  $specimenId
+     * @param  array  $payload
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/specimen/invalidate-specimen
+     */
+    public function invalidate(string $patientId, string $specimenId, array $payload): PromiseInterface|EHealthResponse
+    {
+        return $this->patch(self::URL . "/$patientId/specimens/$specimenId/actions/invalidate", $payload);
+    }
+
+    /**
+     * Mark the patient specimen as entered in error with a signed package. Processed asynchronously.
+     *
+     * @param  string  $patientId
+     * @param  string  $specimenId
+     * @param  array  $payload
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/specimen/cancel-specimen
+     */
+    public function cancel(string $patientId, string $specimenId, array $payload): PromiseInterface|EHealthResponse
+    {
+        return $this->patch(self::URL . "/$patientId/specimens/$specimenId/actions/cancel", $payload);
+    }
+
+    /**
      * Validate a single specimen.
      *
      * @param  EHealthResponse  $response

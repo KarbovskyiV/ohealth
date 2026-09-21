@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Classes\eHealth\EHealth;
 use App\Models\ConfigurationMetadata;
+use App\Models\ObservationConfig;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -43,7 +44,7 @@ class ConfigurationMetadataSync implements ShouldQueue
             foreach ($resources as $resource) {
                 $changed = $this->syncResource($resource['resource'], $resource['updated_at']);
 
-                if ($changed && $resource['resource'] === self::OBSERVATION_RESOURCE) {
+                if ($resource['resource'] === self::OBSERVATION_RESOURCE && ($changed || ObservationConfig::doesntExist())) {
                     ObservationConfigurationSync::dispatch();
                 }
             }
