@@ -172,7 +172,8 @@ class PatientData extends BasePatientComponent
 
         if (($this->isSyncing = $patient->isSyncing)) {
             $existingApproval = Approval::getByModel($patient)
-                ->whereStatus(Status::APPROVED->value)
+                ->whereNot('status', Status::EXPIRED->value)
+                ->where('is_verified', true)
                 ->whereNotNull('uuid')
                 ->first();
 
@@ -228,14 +229,13 @@ class PatientData extends BasePatientComponent
      * Initiate or resume the person data synchronisation flow with eHealth.
      *
      * **When a sync is already in progress** ({@see $isSyncing} is `true` and an
-     * {@see Status::APPROVED} approval exists), the method inspects the approval state:
+     * {@see not Status::EXPIRED and is verified - approval exists), the method inspects the approval state:
      * - Expired approval → marks it {@see Status::EXPIRED} and flashes an error.
      * - Alive but unverified → re-sends the OTP if the SMS window has closed, then
      *   re-opens the confirmation modal.
      * - Alive and verified → proceeds immediately to {@see syncPersonDataAfterGetApproval()}.
      *
-     * **When no sync is in progress**, a new approval is created via
-     * {@see HasApproval::createApproval()} using the best available authentication method
+     * **When no sync is in progress**, a new approval is created via using the best available authentication method
      * (OTP → THIRD_PERSON → OFFLINE). On success, {@see $isSyncing} is set to `true`,
      * persisted, and the confirmation modal is opened so the user can enter the OTP.
      *
@@ -251,9 +251,10 @@ class PatientData extends BasePatientComponent
 
         $person = Person::find($this->personId);
 
-        // Check if an Approval already exists for the current person and is in the APPROVED state
+        // Check if an Approval already exists for the current person and is in the verified and not expired state
         $existingApprovals = Approval::getByModel($person)
-            ->whereStatus(Status::APPROVED->value)
+            ->whereNot('status', Status::EXPIRED->value)
+            ->where('is_verified', true)
             ->whereNotNull('uuid')
             ->get();
 
