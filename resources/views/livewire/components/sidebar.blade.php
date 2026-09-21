@@ -2,9 +2,13 @@
     use App\Models\{Contracts\Contract,Contracts\ContractRequest,Declaration,DeclarationRequest,Division,Equipment,HealthcareService,LegalEntity,License};
     use App\Models\Employee\{Employee,EmployeeRequest};
     use App\Models\Person\{Person,PersonRequest};
-    use App\Models\Connection\Connection;
+    use App\Models\Connection;
     use App\Models\Preperson;
     use App\Models\Relations\PersonVerificationDetail;
+    use App\Enums\Status;
+    use Illuminate\Support\Facades\Auth;
+
+    $isLegalEntityNew = legalEntity()?->status === Status::NEW->value;
 @endphp
 
 <aside
@@ -20,8 +24,13 @@
                         @click="open = ! open"
                         type="button"
                         class="menu-item"
+                        @style([
+                            'cursor: default' => $isLegalEntityNew,
+                            'pointer-events: none' => $isLegalEntityNew,
+                        ])
                         aria-controls="dropdown-legal-entity"
                         :aria-expanded="open"
+                        @disabled($isLegalEntityNew)
                     >
                         @icon('institution')
                         <span>{{ __('forms.institution') }}</span>
@@ -101,19 +110,23 @@
                 </li>
             @endif
 
-            @if (legalEntity() && Auth::user()->cannot('limitedAction', LegalEntity::class))
-                @can('viewAny', Connection::class)
+            @if (legalEntity())
+                @canany(['create', 'viewAny'], Connection::class)
                     <li>
                         <a
-                            href="{{ route('connection.index', [legalEntity()]) }}"
-                            class="menu-item-simple {{ request()->routeIs('legal-entity-connection.*') ? 'menu-item-active' : '' }}"
+                            href="{{ Auth::user()->can('viewAny', Connection::class)
+                                ? route('connection.index', [legalEntity()])
+                                : route('connection.legal-entity.create', [legalEntity()]) }}"
+                            class="menu-item-simple {{ request()->routeIs('connection.*') ? 'menu-item-active' : '' }}"
                         >
                             @icon('connection-two-way')
-                            <span>{{ __('Зв\'язки МІС та СГуСОЗ') }}</span>
+                            <span>{{ __('legal-entity-connection.connection_sidebar') }}</span>
                         </a>
                     </li>
-                @endcan
+                @endcanany
+            @endif
 
+            @if (legalEntity() && Auth::user()->cannot('limitedAction', LegalEntity::class))
                 @can('viewAny', Division::class)
                     <li>
                         <a
@@ -570,6 +583,19 @@
                     </ul>
                 </li>
             @endif
+
+              {{-- Create connection for unauthorized (by eHealth) user --}}
+              @if (!legalEntity() && Auth::user()->can('create', Connection::class))
+                    <li>
+                        <a
+                            href="{{ route('connection.create') }}"
+                            class="menu-item-simple {{ request()->routeIs('connection.*') ? 'menu-item-active' : '' }}"
+                        >
+                            @icon('connection-two-way')
+                            <span>{{ __('legal-entity-connection.connection_sidebar') }}</span>
+                        </a>
+                    </li>
+              @endif
         </ul>
     </div>
 </aside>

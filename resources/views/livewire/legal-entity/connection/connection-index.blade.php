@@ -1,4 +1,5 @@
     @use(App\Enums\LegalEntity\ConnectionStatus)
+    @use(App\Models\Connection)
 
 <div x-data="{ openGrantAccessDrawer: false, showSignatureModal: $wire.entangle('showSignatureModal') }">
     <livewire:components.x-message :key="time()" />
@@ -10,15 +11,17 @@
         </x-slot>
 
         <div class="mt-3 ml-0 flex flex-col sm:flex-row sm:flex-wrap gap-2 self-start">
-            <button type="button"
-                @click="openGrantAccessDrawer = true"
-                class="button-primary flex items-center gap-2"
-            >
-                @icon('plus', 'w-4 h-4')
-                {{ __('legal-entity-connection.btn_grant_access') }}
-            </button>
-
             @can('create', Connection::class)
+                <button type="button"
+                    @click="openGrantAccessDrawer = true"
+                    class="button-primary flex items-center gap-2"
+                >
+                    @icon('plus', 'w-4 h-4')
+                    {{ __('legal-entity-connection.btn_grant_access') }}
+                </button>
+            @endcan
+
+            @can('sync', Connection::class)
                 <button type="button"
                     wire:click="sync"
                     class="button-sync flex items-center gap-2 whitespace-nowrap"
@@ -51,7 +54,7 @@
                         @foreach ($connections as $connection)
                             <tr wire:key="connection-{{ $connection->id }}" class="index-table-tr">
                                 <td class="index-table-td-primary">
-                                    <span class="font-bold">{{ $connection?->client->name ?? '-' }}</span><br>
+                                    <span class="font-bold">{{ $connection->client?->name ?: (data_get($connection->legalEntity?->edr, 'name') ?: '-') }}</span><br>
                                     <span class="text-gray-500 text-sm">{{ $connection->legalEntity->uuid }}</span>
                                 </td>
                                 <td class="index-table-td">
@@ -159,7 +162,7 @@
                     {{ $connections->links() }}
                 </div>
             @else
-                <x-nothing-found />
+                <x-nothing-found :description="null" />
             @endif
         </div>
     </div>
@@ -175,7 +178,6 @@
                 clientUuid: '',
                 showSignatureModal: $wire.entangle('showSignatureModal')
             }"
-            x-on:client-uuid-changed.debounce.500ms="$wire.clientUuid = clientUuid"
         >
             <div class="flex flex-col gap-6 max-w-2xl">
                 <div class="form-group group top-3 grow">
@@ -185,11 +187,14 @@
                         placeholder=" "
                         class="input peer"
                         x-model="clientUuid"
-                        x-on:input.debounce.300ms="$dispatch('client-uuid-changed')"
                     >
                     <label for="client_id" class="label">
                         {{ __('legal-entity-connection.client_id_label_lower') }}
                     </label>
+
+                    @error('form.clientUuid')
+                        <p class="text-error">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
@@ -203,7 +208,7 @@
 
                 @can('create', Connection::class)
                     <button type="button"
-                            @click="openGrantAccessDrawer = false; $wire.create(clientUuid)"
+                            @click="$wire.create(clientUuid).then(() => { if ($wire.showSignatureModal) openGrantAccessDrawer = false })"
                             class="button-primary px-6"
                             x-bind:disabled="!clientUuid"
                     >

@@ -25,6 +25,7 @@ use App\Notifications\SyncNotification;
 use Illuminate\Support\Facades\Session;
 use App\Repositories\AddressRepository;
 use App\Traits\BatchLegalEntityQueries;
+use App\Auth\EHealth\Services\TokenStorage;
 use Spatie\Permission\PermissionRegistrar;
 use App\Enums\License\Type as LicenseType;
 use App\Exceptions\EHealth\EHealthException;
@@ -398,6 +399,7 @@ class LegalEntityDetails extends LegalEntityComponent
         $legalEntity?->setEntityStatus(JobStatus::PROCESSING);
 
         $oldStatus = $this->legalEntity->status;
+        $oldTypeId = $this->legalEntity->legal_entity_type_id;
 
         try {
             $response = EHealth::legalEntity()->getDetails();
@@ -436,7 +438,7 @@ class LegalEntityDetails extends LegalEntityComponent
 
         $messages = [__('forms.sync_successfull')];
 
-        if ($legalEntityData['data']['status'] !== $oldStatus) {
+        if ($legalEntityData['data']['status'] !== $oldStatus || $this->legalEntity->legal_entity_type_id !== $oldTypeId) {
             Log::channel('e_health_warnings')->warning(
                 static::class . ': [syncLegalEntity]: Legal Entity type changed',
                 [
@@ -446,11 +448,15 @@ class LegalEntityDetails extends LegalEntityComponent
                 ]
             );
 
+            cache()->memo()->forget('le_type:' . $this->legalEntity->id);
+            cache()->memo()->forget('allowed_permissions:' . $this->legalEntity->id . ':' . Auth::getDefaultDriver());
+
             app(PermissionRegistrar::class)->forgetCachedPermissions();
 
             Auth::user()->unsetRelation('roles')->unsetRelation('permissions');
 
-            Auth::user()->syncPermissions(Auth::user()->getAllPermissions()->pluck('name')->toArray());
+            // Reapply this session's token scopes through the refreshed type filters without promoting inherited permissions.
+            Auth::user()->syncPermissions(app(TokenStorage::class)->getTokenScopes());
 
             if ($legalEntityData['data']['status'] === Status::REORGANIZED->value) {
                 $messages[] = __('forms.warn_reorganized');

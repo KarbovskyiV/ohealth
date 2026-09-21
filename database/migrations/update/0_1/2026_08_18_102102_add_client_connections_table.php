@@ -19,8 +19,8 @@ return new class extends Migration
                 $table->uuid('consumer_uuid')->nullable();
                 $table->string('redirect_uri')->nullable();
 
-                $table->date('ehealth_inserted_at')->nullable();
-                $table->date('ehealth_updated_at')->nullable();
+                $table->timestamp('ehealth_inserted_at')->nullable();
+                $table->timestamp('ehealth_updated_at')->nullable();
 
                 $table->timestamps();
             });
