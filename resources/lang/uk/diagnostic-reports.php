@@ -85,6 +85,7 @@ return [
 
     // Custom messages for validation rules
     'validation' => [
+        'referral_not_allowed' => 'Це направлення не підходить для створення діагностичного звіту.',
         'laborant_category' => 'Лаборант може створювати діагностичний звіт лише з категорією "Лабораторна процедура".',
         'performer_employee_not_found' => 'Працівника, вказаного як виконавця діагностичного звіту, не знайдено.',
         'performer_wrong_legal_entity' => 'Працівник :employee не належить вашому закладу.',

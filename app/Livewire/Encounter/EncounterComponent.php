@@ -539,10 +539,11 @@ class EncounterComponent extends Component
 
         $services = collect($this->dictionaries['custom/services'] ?? []);
         $procedureCategories = array_keys($this->dictionaries['eHealth/procedure_categories'] ?? []);
+        $diagnosticReportCategories = array_keys($this->dictionaries['eHealth/diagnostic_report_categories'] ?? []);
 
         $this->availableReferrals = MedicalEventsRepository::serviceRequest()
             ->getByPersonIdAndStatus($this->personId, ServiceRequestStatus::PROCESSED->value, ['uuid', 'request_number', 'service_id', 'category'])
-            ->map(static function (ServiceRequestRequest $referral) use ($services, $procedureCategories): array {
+            ->map(static function (ServiceRequestRequest $referral) use ($services, $procedureCategories, $diagnosticReportCategories): array {
                 $service = $services->firstWhere('id', $referral->serviceId);
 
                 return [
@@ -551,6 +552,7 @@ class EncounterComponent extends Component
                     'category' => $referral->category ? __('care-plan.referral_category.'.$referral->category) : __('encounters.electronic_referral'),
                     'service' => $service,
                     'isProcedureAllowed' => $service !== null && in_array($service['category'] ?? null, $procedureCategories, true),
+                    'isDiagnosticReportAllowed' => $service !== null && in_array($service['category'] ?? null, $diagnosticReportCategories, true),
                 ];
             })
             ->values()

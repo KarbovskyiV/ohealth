@@ -9,6 +9,7 @@ use App\Enums\User\Role;
 use App\Enums\Status;
 use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\Equipment\Status as EquipmentStatus;
+use App\Enums\Specimen\Status as SpecimenStatus;
 use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
 use App\Rules\PrimarySourceRequiredForAssistant;
@@ -258,6 +259,26 @@ class DiagnosticReportForm extends BaseForm
                 'string',
                 'max:1000',
             ],
+            'diagnosticReport.specimenIds' => ['nullable', 'array'],
+            'diagnosticReport.specimenIds.*' => [
+                'required',
+                'uuid',
+                'distinct',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $patientSpecimen = collect($this->component->patientSpecimens)
+                        ->firstWhere('uuid', $value);
+
+                    if ($patientSpecimen === null) {
+                        $fail(__('specimens.validation.not_found'));
+
+                        return;
+                    }
+
+                    if (($patientSpecimen['status'] ?? null) !== SpecimenStatus::AVAILABLE->value) {
+                        $fail(__('specimens.validation.not_available'));
+                    }
+                }
+            ],
             'diagnosticReport.usedReferences' => ['nullable', 'array'],
             'diagnosticReport.usedReferences.*.id' => [
                 'nullable',
@@ -294,7 +315,10 @@ class DiagnosticReportForm extends BaseForm
                 'required_without:diagnosticReport.resultsInterpreterEmployeeId',
                 'nullable',
                 'array',
-                'min:1'
+                Rule::when(
+                    empty(data_get($this->diagnosticReport, 'resultsInterpreterEmployeeId')),
+                    ['min:1']
+                )
             ],
             'diagnosticReport.performerEmployeeIds.*' => [
                 'required',

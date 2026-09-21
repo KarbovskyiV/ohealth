@@ -15,6 +15,11 @@
                 <label for="diagnosticCategory" class="sr-only">{{ __('diagnostic-reports.category') }}</label>
                 <select
                     x-model="modalDiagnosticReport.categoryCode"
+                    @unless ($isReadonly ?? false)
+                        :disabled="modalDiagnosticReport.referralType === 'electronic'"
+                        :class="modalDiagnosticReport.referralType === 'electronic' ? 'cursor-not-allowed pointer-events-none' : ''"
+                        :style="modalDiagnosticReport.referralType === 'electronic' ? 'color: rgb(107 114 128) !important; -webkit-text-fill-color: rgb(107 114 128) !important;' : ''"
+                    @endunless
                     id="diagnosticCategory"
                     class="input-select peer"
                     type="text"
@@ -37,21 +42,83 @@
         {{-- Services --}}
         <div class="form-row-2 relative z-1">
             <div class="form-group group">
-                <x-select2
-                    modelPath="modalDiagnosticReport.codeValue"
-                    dictionaryName="custom/services"
-                    id="codeValue"
-                    name="codeValue"
-                    class="input peer"
-                />
-                <label for="codeValue" class="label">
-                    {{ __('forms.select') }} {{ mb_strtolower(__('diagnostic-reports.code')) }} *
-                </label>
+                <template x-if="!selectedServiceFromCatalog">
+                    <div>
+                        <x-select2
+                            modelPath="modalDiagnosticReport.codeValue"
+                            dictionaryName="custom/services"
+                            id="codeValue"
+                            name="codeValue"
+                            class="input peer"
+                            ::disabled="modalDiagnosticReport.referralType === 'electronic'"
+                            ::class="modalDiagnosticReport.referralType === 'electronic' ? 'text-gray-400 cursor-not-allowed pointer-events-none dark:text-gray-500' : ''"
+                        />
+
+                        <label for="codeValue" class="label">
+                            {{ __('forms.select') }} {{ mb_strtolower(__('forms.services')) }} *
+                        </label>
+                    </div>
+                </template>
+
+                <template x-if="selectedServiceFromCatalog">
+                    <div class="relative">
+                        <input
+                            type="text"
+                            id="diagnosticReportServiceCodeFromCatalog"
+                            :value="`[${selectedServiceFromCatalog.code}] – ${selectedServiceFromCatalog.name}`"
+                            readonly
+                            :class="modalDiagnosticReport.referralType === 'electronic' ? 'text-gray-400 cursor-not-allowed pointer-events-none dark:text-gray-500' : ''"
+                            class="input"
+                        >
+
+                        <label for="diagnosticReportServiceCodeFromCatalog" class="label">
+                            {{ __('forms.select') }} {{ mb_strtolower(__('forms.services')) }} *
+                        </label>
+
+                        <button
+                            x-show="modalDiagnosticReport.referralType !== 'electronic'"
+                            type="button"
+                            @click="
+                                modalDiagnosticReport.codeValue = '';
+                                selectedServiceFromCatalog = null;
+                            "
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                            @icon('close', 'w-4 h-4')
+                        </button>
+                    </div>
+                </template>
 
                 @error($diagnosticReportErrorPath . '.codeValue')
                     <p class="text-error">{{ $message }}</p>
                 @enderror
             </div>
+
+            @unless ($isReadonly ?? false)
+                <button
+                    x-show="modalDiagnosticReport.referralType !== 'electronic'"
+                    type="button"
+                    @click.prevent="openServiceCatalog = true"
+                    class="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                    <svg
+                        class="h-5 w-5 shrink-0"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M8 4.667C8 3.96 7.719 3.281 7.219 2.781 6.719 2.281 6.041 2 5.333 2H1.333V12H6c.53 0 1.039.21 1.414.586.375.375.586.884.586 1.414M8 4.667V14m0-9.333c0-.707.281-1.386.781-1.886.5-.5 1.179-.781 1.886-.781h4V12h-4.667c-.53 0-1.039.21-1.414.586-.375.375-.586.884-.586 1.414"
+                            stroke="currentColor"
+                            stroke-width="1.2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+                    </svg>
+
+                    <span>{{ __('dictionaries.service_catalog.choose_from_catalog') }}</span>
+                </button>
+            @endunless
         </div>
 
         {{-- Is referral available --}}
@@ -84,6 +151,20 @@
                                 class="input-select peer"
                                 type="text"
                                 x-model="modalDiagnosticReport.referralType"
+                                @change="
+                                    if (modalDiagnosticReport.referralType === 'electronic') {
+                                        modalDiagnosticReport.paperReferralRequisition = '';
+                                        modalDiagnosticReport.paperReferralRequesterEmployeeName = '';
+                                        modalDiagnosticReport.paperReferralRequesterLegalEntityEdrpou = '';
+                                        modalDiagnosticReport.paperReferralRequesterLegalEntityName = '';
+                                        modalDiagnosticReport.paperReferralServiceRequestDate = '';
+                                        modalDiagnosticReport.paperReferralNote = '';
+                                    }
+
+                                    if (modalDiagnosticReport.referralType === 'paper') {
+                                        modalDiagnosticReport.basedOnIdentifier = '';
+                                    }
+                                "
                                 required
                             >
                                 <option value="" selected>
@@ -96,28 +177,164 @@
 
                         {{-- Electronic referral --}}
                         <template x-if="modalDiagnosticReport.referralType === 'electronic'" x-transition>
-                            <div class="form-group group">
-                                <input
-                                    x-model="modalDiagnosticReport.basedOnIdentifier"
-                                    type="text"
-                                    name="basedOnIdentifier"
-                                    id="basedOnIdentifier"
-                                    class="input-select peer"
-                                    placeholder=" "
-                                    required
-                                    autocomplete="off"
-                                />
+                            <div
+                                class="form-group group"
+                                x-data="{
+                                    showReferrals: false,
+                                    referralNumber: '',
+                                    referrals: @js($availableReferrals ?? []),
 
-                                <label for="basedOnIdentifier" class="label">
-                                    {{ __('medical-events.referral.electronic_id') }}
-                                </label>
+                                    init() {
+                                        const selectedReferral = this.referrals.find(
+                                            referral => referral.id === modalDiagnosticReport.basedOnIdentifier
+                                        );
+
+                                        if (selectedReferral) {
+                                            this.referralNumber = selectedReferral.requisition;
+
+                                            @unless ($isReadonly ?? false)
+                                                if (selectedReferral.service) {
+                                                    this.applyReferral(selectedReferral);
+                                                }
+                                            @endunless
+                                        }
+                                    },
+
+                                    normalize(value) {
+                                        return value
+                                            .replaceAll('-', '')
+                                            .replaceAll(' ', '')
+                                            .toUpperCase();
+                                    },
+
+                                    get filteredReferrals() {
+                                        const value = this.normalize(this.referralNumber);
+
+                                        if (!value) {
+                                            return this.referrals;
+                                        }
+
+                                        return this.referrals.filter(
+                                            referral => this.normalize(referral.requisition).includes(value)
+                                        );
+                                    },
+
+                                    applyReferral(referral) {
+                                        if (!referral?.isDiagnosticReportAllowed) {
+                                            modalDiagnosticReport.basedOnIdentifier = '';
+
+                                            return;
+                                        }
+
+                                        modalDiagnosticReport.basedOnIdentifier = referral.id;
+                                        modalDiagnosticReport.categoryCode = referral.service.category;
+                                        modalDiagnosticReport.codeValue = referral.service.id;
+                                        selectedServiceFromCatalog = referral.service;
+                                    },
+
+                                    syncReferral() {
+                                        const value = this.normalize(this.referralNumber);
+
+                                        const referral = this.referrals.find(
+                                            item => this.normalize(item.requisition) === value
+                                        );
+
+                                        this.applyReferral(referral);
+                                    },
+
+                                    selectReferral(referral) {
+                                        this.referralNumber = referral.requisition;
+                                        this.applyReferral(referral);
+                                        this.showReferrals = false;
+                                    },
+
+                                    clearReferral() {
+                                        this.referralNumber = '';
+                                        modalDiagnosticReport.basedOnIdentifier = '';
+                                        modalDiagnosticReport.categoryCode = '';
+                                        modalDiagnosticReport.codeValue = '';
+                                        selectedServiceFromCatalog = null;
+                                        this.showReferrals = true;
+                                    }
+                                }"
+                                @click.outside="showReferrals = false"
+                            >
+                                <div class="relative">
+                                    <input
+                                        x-model="referralNumber"
+                                        @unless ($isReadonly ?? false)
+                                            @focus="showReferrals = true"
+                                            @input="
+                                                referralNumber = $el.value.toUpperCase();
+                                                syncReferral();
+                                                showReferrals = true;
+                                            "
+                                        @endunless
+                                        type="text"
+                                        id="diagnosticReportBasedOnIdentifier"
+                                        class="input !pr-7 peer uppercase"
+                                        placeholder=" "
+                                        autocomplete="off"
+                                        x-mask="****-****-****-****"
+                                        required
+                                    />
+
+                                    <label for="diagnosticReportBasedOnIdentifier" class="label">
+                                        {{ __('medical-events.referral.number') }}
+                                    </label>
+
+                                    <div class="absolute inset-y-0 end-0 flex items-center">
+                                        <button
+                                            type="button"
+                                            @click="clearReferral()"
+                                            class="text-gray-400 hover:text-gray-600"
+                                        >
+                                            @icon('close', 'w-4 h-4')
+                                        </button>
+                                    </div>
+
+                                    <div
+                                        x-show="showReferrals && {{ ($isReadonly ?? false) ? 'false' : 'true' }}"
+                                        x-cloak
+                                        class="absolute top-full left-0 z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                                    >
+                                        <template x-for="referral in filteredReferrals" :key="referral.id">
+                                            <button
+                                                type="button"
+                                                @click="selectReferral(referral)"
+                                                :disabled="!referral.isDiagnosticReportAllowed"
+                                                :class="referral.isDiagnosticReportAllowed ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'cursor-not-allowed'"
+                                                class="w-full rounded-md px-3 py-2 text-left"
+                                            >
+                                                <div
+                                                    :class="referral.isDiagnosticReportAllowed ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'"
+                                                    class="font-medium"
+                                                    x-text="referral.requisition"
+                                                ></div>
+
+                                                <div
+                                                    x-show="!referral.isDiagnosticReportAllowed"
+                                                    class="mt-1 text-xs text-gray-400 dark:text-gray-500"
+                                                >
+                                                    {{ __('diagnostic-reports.validation.referral_not_allowed') }}
+                                                </div>
+                                            </button>
+                                        </template>
+
+                                        <div
+                                            x-show="filteredReferrals.length === 0"
+                                            class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400"
+                                        >
+                                            {{ __('encounters.messages.referral_not_found') }}
+                                        </div>
+                                    </div>
+                                </div>
 
                                 @error($diagnosticReportErrorPath . '.basedOnIdentifier')
                                     <p class="text-error">{{ $message }}</p>
                                 @enderror
                             </div>
                         </template>
-                    </div>
 
                     {{-- Paper referral --}}
                     <template x-if="modalDiagnosticReport.referralType === 'paper'" x-transition>

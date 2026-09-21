@@ -182,19 +182,29 @@ class DiagnosticReportForm extends Form
                 'uuid',
                 Rule::in([data_get($this->component->form->encounter, 'divisionId')])
             ],
-            'diagnosticReports.*.performerEmployeeIds' => [
-                'nullable',
-                'array',
-                static function (string $attribute, mixed $value, Closure $fail): void {
-                    $employeeIds = array_values(array_filter((array) $value));
+            'diagnosticReports.*.performerEmployeeIds' => Rule::forEach(
+                function (mixed $value, string $attribute): array {
+                    $index = (int) explode('.', $attribute)[1];
+                    $diagnosticReport = $this->diagnosticReports[$index] ?? [];
 
-                    if (count($employeeIds) !== count(array_unique($employeeIds))) {
-                        $fail(__('validation.distinct', [
-                            'attribute' => __('diagnostic-reports.attributes.performerEmployeeIds')
-                        ]));
-                    }
+                    return [
+                        'nullable',
+                        'array',
+                        Rule::when(
+                            ($diagnosticReport['primarySource'] ?? false) === true
+                            && empty($diagnosticReport['resultsInterpreterEmployeeId']),
+                            ['min:1']
+                        ),
+                        static function (string $attribute, mixed $value, Closure $fail): void {
+                            $employeeIds = array_values(array_filter((array) $value));
+
+                            if (count($employeeIds) !== count(array_unique($employeeIds))) {
+                                $fail(__('validation.distinct', ['attribute' => __('diagnostic-reports.attributes.performerEmployeeIds')]));
+                            }
+                        }
+                    ];
                 }
-            ],
+            ),
             'diagnosticReports.*.performerEmployeeIds.*' => [
                 'required',
                 'uuid',

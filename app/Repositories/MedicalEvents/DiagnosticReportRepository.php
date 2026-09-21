@@ -185,6 +185,25 @@ class DiagnosticReportRepository extends BaseRepository
                     ]);
                 }
 
+                if (!empty($datum['specimens'])) {
+                    $specimenIds = [];
+
+                    foreach ($datum['specimens'] as $specimenData) {
+                        $specimenUuid = data_get($specimenData, 'identifier.value');
+
+                        if (!$specimenUuid) {
+                            continue;
+                        }
+
+                        $identifier = Repository::identifier()->store($specimenUuid);
+                        Repository::codeableConcept()->attach($identifier, $specimenData);
+
+                        $specimenIds[] = $identifier->id;
+                    }
+
+                    $diagnosticReport->specimens()->attach($specimenIds);
+                }
+
                 if (isset($datum['resultsInterpreter'])) {
                     $reference = null;
                     if (isset($datum['resultsInterpreter']['reference'])) {
@@ -290,6 +309,7 @@ class DiagnosticReportRepository extends BaseRepository
             'reportOrigin.coding',
             'resultsInterpreter.reference.type.coding',
             'usedReferences.type.coding',
+            'specimens.type.coding',
         ])
             ->whereHas('encounter', fn (Builder $query) => $query->where('value', $encounterUuid))
             ->get()

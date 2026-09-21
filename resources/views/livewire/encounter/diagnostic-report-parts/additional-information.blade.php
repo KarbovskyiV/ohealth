@@ -9,6 +9,141 @@
 <fieldset class="fieldset">
     <legend class="legend">{{ __('forms.additional_info') }}</legend>
 
+    {{-- Used references / Equipment --}}
+    @if ($context === 'diagnostic-report')
+        <div class="form-row-2">
+            <div class="w-full max-w-107.5">
+                <p class="label-modal mb-2 block text-sm">{{ __('equipments.label') }}</p>
+
+                <div class="space-y-4">
+                    <template x-for="(usedReference, index) in modalDiagnosticReport.usedReferences" :key="index">
+                        <div class="flex items-end gap-3">
+                            <div class="flex-1">
+                                <template x-if="! modalDiagnosticReport.divisionId">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            :id="`usedReferencePlaceholder${index}`"
+                                            class="input peer"
+                                            placeholder=" "
+                                            disabled
+                                        />
+
+                                        <label :for="`usedReferencePlaceholder${index}`" class="label">
+                                            {{ __('medical-events.equipment_search') }}
+                                        </label>
+                                    </div>
+                                </template>
+
+                                @foreach ($equipmentOptionsByDivision as $divisionUuid => $options)
+                                    <div x-show="modalDiagnosticReport.divisionId === @js($divisionUuid)" x-cloak>
+                                        <x-forms.combobox
+                                            class="w-full"
+                                            model="usedReference"
+                                            modelKey="id"
+                                            :options="$options"
+                                            bindValue="uuid"
+                                            bindParam="name"
+                                            :label="__('medical-events.equipment_search')"
+                                        />
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <button
+                                type="button"
+                                @click.prevent="removeUsedReference(index)"
+                                class="text-error shrink-0 hover:opacity-80"
+                            >
+                                @icon('delete', 'w-5 h-5')
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+                @error($diagnosticReportErrorPath . '.usedReferences.*.id')
+                    <p class="text-error mt-2">{{ $message }}</p>
+                @enderror
+
+                <div class="mt-4">
+                    <template
+                        x-if="
+                            modalDiagnosticReport.divisionId
+                            && ! (@js($equipmentOptionsByDivision)[modalDiagnosticReport.divisionId]?.length)
+                        "
+                    >
+                        <p class="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                            {{ __('medical-events.validation.no_equipment_in_division') }}
+                        </p>
+                    </template>
+
+                    <button
+                        type="button"
+                        @click.prevent="addUsedReference()"
+                        :disabled="!modalDiagnosticReport.divisionId || !(@js($equipmentOptionsByDivision)[modalDiagnosticReport.divisionId]?.length)"
+                        class="item-add disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {{ __('medical-events.equipment_add') }}
+                    </button>
+                </div>
+            </div>
+
+            <div class="w-full max-w-107.5">
+                <p class="label-modal mb-2 block text-sm">{{ __('diagnostic-reports.specimens') }}</p>
+
+                <div class="space-y-4">
+                    <template
+                        x-for="(specimenId, specimenIndex) in modalDiagnosticReport.specimenIds"
+                        :key="specimenIndex"
+                    >
+                        <div class="flex items-end gap-3">
+                            <div class="form-group group flex-1">
+                                <select
+                                    x-model="modalDiagnosticReport.specimenIds[specimenIndex]"
+                                    :id="`diagnosticReportSpecimen${specimenIndex}`"
+                                    class="input-select peer"
+                                >
+                                    <option value="">{{ __('forms.select') }}</option>
+
+                                    <template x-for="specimen in specimenOptions()" :key="specimen.uuid">
+                                        <option
+                                            :value="specimen.uuid"
+                                            :selected="String(specimen.uuid) === String(specimenId)"
+                                            x-text="specimen.name"
+                                        ></option>
+                                    </template>
+                                </select>
+                                <label :for="`diagnosticReportSpecimen${specimenIndex}`" class="label">
+                                    {{ __('diagnostic-reports.select_specimen') }}
+                                </label>
+                            </div>
+
+                            <button
+                                type="button"
+                                @click.prevent="modalDiagnosticReport.specimenIds.splice(specimenIndex, 1)"
+                                class="text-error shrink-0 hover:opacity-80"
+                            >
+                                @icon('delete', 'w-5 h-5')
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+                @error($diagnosticReportErrorPath . '.specimenIds.*')
+                    <p class="text-error mt-2">{{ $message }}</p>
+                @enderror
+
+                <button
+                    type="button"
+                    @click.prevent="modalDiagnosticReport.specimenIds.push('')"
+                    class="item-add mt-4"
+                >
+                    {{ __('diagnostic-reports.add_specimen') }}
+                </button>
+            </div>
+        </div>
+    @endif
+
     @if ($isEncounterContext ?? false)
         {{-- Information source (doctor or patient) --}}
         <div class="mb-8 flex gap-20">
@@ -144,6 +279,10 @@
         <div class="form-group group">
             <label for="resultsInterpreter" class="mb-2 block text-sm font-medium text-gray-500 dark:text-gray-400">
                 {{ __('diagnostic-reports.interpreting_doctor') }}
+                <span
+                    x-show="['diagnostic_procedure', 'imaging'].includes(modalDiagnosticReport.categoryCode)"
+                    x-cloak
+                >*</span>
             </label>
 
             <select
@@ -151,7 +290,8 @@
                 @change="
                     modalDiagnosticReport.performerEmployeeIds = modalDiagnosticReport.performerEmployeeIds.filter(
                         (employeeId) =>
-                            String(employeeId) !== String(modalDiagnosticReport.resultsInterpreterEmployeeId),
+                            String(employeeId) === String(defaultDiagnosticReportPerformerEmployeeId)
+                            || String(employeeId) !== String(modalDiagnosticReport.resultsInterpreterEmployeeId),
                     )
                 "
                 id="resultsInterpreter"
@@ -215,6 +355,8 @@
                         <select
                             x-model="modalDiagnosticReport.performerEmployeeIds[index]"
                             :id="`diagnosticReportPerformer${index}`"
+                            :disabled="String(performerEmployeeId) === String(defaultDiagnosticReportPerformerEmployeeId)"
+                            :class="String(performerEmployeeId) === String(defaultDiagnosticReportPerformerEmployeeId) ? '!cursor-not-allowed !text-gray-500 dark:!text-gray-400' : ''"
                             class="input-select peer min-w-0 flex-1"
                         >
                             <option value="">{{ __('forms.select') }}</option>
@@ -238,6 +380,8 @@
                         </select>
 
                         <button
+                            x-show="String(performerEmployeeId) !== String(defaultDiagnosticReportPerformerEmployeeId)"
+                            x-cloak
                             type="button"
                             @click.prevent="modalDiagnosticReport.performerEmployeeIds.splice(index, 1)"
                             class="shrink-0"
@@ -514,133 +658,4 @@
             </div>
         </div>
     @endunless
-
-    {{-- Used references / Equipment --}}
-    @if ($context === 'diagnostic-report')
-        <div class="form-row-2">
-            <div class="w-full max-w-107.5">
-                <p class="label-modal mb-2 block text-sm">{{ __('equipments.label') }}</p>
-
-                <div class="space-y-4">
-                    <template x-for="(usedReference, index) in modalDiagnosticReport.usedReferences" :key="index">
-                        <div class="flex items-end gap-3">
-                            <div class="flex-1">
-                                <template x-if="! modalDiagnosticReport.divisionId">
-                                    <div class="form-group group">
-                                        <input
-                                            type="text"
-                                            :id="`usedReferencePlaceholder${index}`"
-                                            class="input peer"
-                                            placeholder=" "
-                                            disabled
-                                        />
-
-                                        <label :for="`usedReferencePlaceholder${index}`" class="label">
-                                            {{ __('medical-events.equipment_search') }}
-                                        </label>
-                                    </div>
-                                </template>
-
-                                @foreach ($equipmentOptionsByDivision as $divisionUuid => $options)
-                                    <div x-show="modalDiagnosticReport.divisionId === @js($divisionUuid)" x-cloak>
-                                        <x-forms.combobox
-                                            class="w-full"
-                                            model="usedReference"
-                                            modelKey="id"
-                                            :options="$options"
-                                            bindValue="uuid"
-                                            bindParam="name"
-                                            :label="__('medical-events.equipment_search')"
-                                        />
-                                    </div>
-                                @endforeach
-
-                                <template
-                                    x-if="
-                                        modalDiagnosticReport.divisionId
-                                        && ! Object.keys(
-                                            @js($equipmentOptionsByDivision)
-                                        ).includes(
-                                            modalDiagnosticReport.divisionId
-                                        )
-                                    "
-                                >
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        Немає доступного обладнання для обраного місця надання послуг
-                                    </p>
-                                </template>
-                            </div>
-
-                            <button
-                                type="button"
-                                @click.prevent="removeUsedReference(index)"
-                                class="text-error shrink-0 hover:opacity-80"
-                            >
-                                @icon('delete', 'w-5 h-5')
-                            </button>
-                        </div>
-                    </template>
-                </div>
-
-                @error($diagnosticReportErrorPath . '.usedReferences.*.id')
-                    <p class="text-error mt-2">{{ $message }}</p>
-                @enderror
-
-                <button type="button" @click.prevent="addUsedReference()" class="item-add mt-4">
-                    {{ __('medical-events.equipment_add') }}
-                </button>
-            </div>
-
-            @if ($isEncounterContext ?? false)
-                <div class="w-full max-w-107.5">
-                    <p class="label-modal mb-2 block text-sm">{{ __('diagnostic-reports.specimens') }}</p>
-
-                    <div class="space-y-4">
-                        <template
-                            x-for="(specimenId, specimenIndex) in modalDiagnosticReport.specimenIds"
-                            :key="specimenIndex"
-                        >
-                            <div class="flex items-end gap-3">
-                                <div class="form-group group flex-1">
-                                    <select
-                                        x-model="modalDiagnosticReport.specimenIds[specimenIndex]"
-                                        :id="`diagnosticReportSpecimen${specimenIndex}`"
-                                        class="input-select peer"
-                                    >
-                                        <option value="" selected>{{ __('forms.select') }}</option>
-                                        <template x-for="specimen in specimenOptions()" :key="specimen.uuid">
-                                            <option :value="specimen.uuid" x-text="specimen.name"></option>
-                                        </template>
-                                    </select>
-                                    <label :for="`diagnosticReportSpecimen${specimenIndex}`" class="label">
-                                        {{ __('diagnostic-reports.select_specimen') }}
-                                    </label>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    @click.prevent="modalDiagnosticReport.specimenIds.splice(specimenIndex, 1)"
-                                    class="text-error shrink-0 hover:opacity-80"
-                                >
-                                    @icon('delete', 'w-5 h-5')
-                                </button>
-                            </div>
-                        </template>
-                    </div>
-
-                    @error($diagnosticReportErrorPath . '.specimenIds.*')
-                        <p class="text-error mt-2">{{ $message }}</p>
-                    @enderror
-
-                    <button
-                        type="button"
-                        @click.prevent="modalDiagnosticReport.specimenIds.push('')"
-                        class="item-add mt-4"
-                    >
-                        {{ __('diagnostic-reports.add_specimen') }}
-                    </button>
-                </div>
-            @endif
-        </div>
-    @endif
 </fieldset>

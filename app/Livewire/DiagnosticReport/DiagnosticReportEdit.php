@@ -55,6 +55,8 @@ class DiagnosticReportEdit extends DiagnosticReportComponent
         if (!empty($diagnosticReportData['basedOnIdentifier'])) {
             $diagnosticReportData['isReferralAvailable'] = true;
             $diagnosticReportData['referralType'] = 'electronic';
+
+            $this->loadSelectedElectronicReferral($diagnosticReportData['basedOnIdentifier']);
         }
 
         $selectedEmployeeIds = collect($diagnosticReportData['performerEmployeeIds'] ?? [])
@@ -113,6 +115,40 @@ class DiagnosticReportEdit extends DiagnosticReportComponent
         $this->form->observations = collect(Repository::observation()->getByDiagnosticReportId($diagnosticReportId))
             ->map(fn (array $observation) => Fhir::observation()->fromFhir($observation))
             ->toArray();
+    }
+
+    protected function loadSelectedElectronicReferral(string $uuid): void
+    {
+        $referral = Repository::serviceRequest()->findByUuid($uuid);
+
+        if ($referral === null) {
+            return;
+        }
+
+        $services = collect($this->dictionaries['custom/services'] ?? []);
+        $diagnosticReportCategories = array_keys(
+            $this->dictionaries['eHealth/diagnostic_report_categories'] ?? []
+        );
+        $service = $services->firstWhere('id', $referral->serviceId);
+
+        $this->availableReferrals = [
+            [
+                'id' => $referral->uuid,
+                'requisition' => $referral->requestNumber ?: $referral->uuid,
+                'category' => $referral->category
+                    ? __('care-plan.referral_category.'.$referral->category)
+                    : __('encounters.electronic_referral'),
+                'service' => $service,
+                'isDiagnosticReportAllowed' => $service !== null
+                    && in_array(
+                        $service['category'] ?? null,
+                        $diagnosticReportCategories,
+                        true
+                    ),
+            ],
+        ];
+
+        $this->referralsLoaded = true;
     }
 
     /**

@@ -10,11 +10,14 @@
     <form
         class="form"
         x-data="{
-            modalDiagnosticReport: new DiagnosticReport(@js($this->form->diagnosticReport)),
+            modalDiagnosticReport: new DiagnosticReport(@js($this->form->diagnosticReport), @js(auth()->user()->getDiagnosticReportWriterEmployee()?->uuid)),
+            defaultDiagnosticReportPerformerEmployeeId: @js(auth()->user()->getDiagnosticReportWriterEmployee()?->uuid),
             equipmentOptions: @js($equipmentOptions),
             diagnosticReportEmployees: @js($employees),
             diagnosticReportCategoriesDictionary: $wire.dictionaries['eHealth/diagnostic_report_categories'],
             servicesDictionary: $wire.dictionaries['custom/services'],
+            openServiceCatalog: false,
+            selectedServiceFromCatalog: null,
             showSignatureModal: false,
 
             addUsedReference() {
@@ -25,6 +28,25 @@
 
             removeUsedReference(index) {
                 this.modalDiagnosticReport.usedReferences.splice(index, 1);
+            },
+
+            selectDiagnosticReportService(service) {
+                this.modalDiagnosticReport.categoryCode = service.category;
+                this.modalDiagnosticReport.codeValue = service.id;
+                this.selectedServiceFromCatalog = service;
+                this.openServiceCatalog = false;
+            },
+
+            specimenOptions() {
+                const specimenTypes = $wire.dictionaries['specimen_types'] ?? {};
+                const selectedSpecimenIds = this.modalDiagnosticReport.specimenIds ?? [];
+
+                return $wire.patientSpecimens
+                    .filter((specimen) => specimen.status === 'available' || selectedSpecimenIds.includes(specimen.uuid))
+                    .map((specimen) => ({
+                        uuid: specimen.uuid,
+                        name: specimenTypes[specimen.typeCode] || specimen.uuid
+                    }));
             },
             
             setEffectiveType(type) {
@@ -104,6 +126,7 @@
                 this.modalDiagnosticReport.effectivePeriodEndTime = '';
             }
         }"
+        @diagnostic-report-service-selected.window="selectDiagnosticReportService($event.detail.service)"
     >
         <fieldset @disabled($isReadonly) @class(['pointer-events-none opacity-80' => $isReadonly])>
             @include('livewire.encounter.diagnostic-report-parts.main-information', ['context' => 'diagnostic-report'])
@@ -114,6 +137,34 @@
                 @include('livewire.encounter.parts.observations', ['context' => 'diagnostic-report'])
             </fieldset>
         </fieldset>
+
+        @unless ($isReadonly)
+            <x-dialog-drawer
+                x-model="openServiceCatalog"
+                onCloseClick="openServiceCatalog = false"
+                maxWidth="4/5"
+                overlayWidth="100%"
+                zIndex="50"
+            >
+                <livewire:dictionary.service-catalog
+                    :legal-entity="legalEntity()"
+                    :selection-mode="true"
+                    selection-event="diagnostic-report-service-selected"
+                    :allowed-categories="array_keys($this->dictionaries['eHealth/diagnostic_report_categories'] ?? [])"
+                    :key="'diagnostic-report-service-catalog'"
+                />
+
+                <div class="mt-8">
+                    <button
+                        type="button"
+                        @click="openServiceCatalog = false"
+                        class="button-minor"
+                    >
+                        {{ __('forms.cancel') }}
+                    </button>
+                </div>
+            </x-dialog-drawer>
+        @endunless
 
         <div class="flex gap-8">
             <a href="{{ url()->previous() }}" type="submit" class="button-minor"> {{ __('forms.back') }} </a>
@@ -133,12 +184,31 @@
             @endif
 
             @unless ($isReadonly)
-                <button @click.prevent="$wire.save(modalDiagnosticReport)" type="submit" class="button-primary-outline">
+                <button
+                    @click.prevent="
+                        modalDiagnosticReport.performerEmployeeIds = modalDiagnosticReport.performerEmployeeIds.filter(Boolean);
+                        modalDiagnosticReport.specimenIds = modalDiagnosticReport.specimenIds.filter(Boolean);
+
+                        $wire.save(modalDiagnosticReport);
+                    "
+                    :disabled="['diagnostic_procedure', 'imaging'].includes(modalDiagnosticReport.categoryCode) && ! String(modalDiagnosticReport.resultsInterpreterEmployeeId ?? '').trim()"
+                    type="submit"
+                    class="button-primary-outline"
+                >
                     {{ __('forms.save') }}
                 </button>
 
                 <button
-                    @click="$wire.openSignatureModal(modalDiagnosticReport)"
+                    @click="
+                        modalDiagnosticReport.performerEmployeeIds = modalDiagnosticReport.performerEmployeeIds.filter(Boolean);
+                        modalDiagnosticReport.specimenIds = modalDiagnosticReport.specimenIds.filter(Boolean);
+
+                        $wire.openSignatureModal(modalDiagnosticReport);
+                    "
+                    :disabled="
+                        ['diagnostic_procedure', 'imaging'].includes(modalDiagnosticReport.categoryCode)
+                        && ! String(modalDiagnosticReport.resultsInterpreterEmployeeId ?? '').trim()
+                    "
                     type="button"
                     class="button-primary flex items-center gap-2"
                 >
@@ -162,7 +232,7 @@
      * Representation of the user's personal diagnostic report.
      */
     class DiagnosticReport {
-        constructor(obj = null) {
+        constructor(obj = null, defaultPerformerEmployeeId = '') {
             const now = new Date();
             const startTime = new Date(now.getTime() - 15 * 60 * 1000);
 
@@ -196,9 +266,10 @@
             this.reportOriginText = '';
 
             this.divisionId = '';
-            this.performerEmployeeIds = [];
+            this.performerEmployeeIds = defaultPerformerEmployeeId ? [defaultPerformerEmployeeId] : [];
             this.resultsInterpreterEmployeeId = '';
             this.usedReferences = [];
+            this.specimenIds = [];
 
             this.issuedDate = toFormattedDate(now);
             this.issuedTime = now.toLocaleTimeString('uk-UA', timeOptions);

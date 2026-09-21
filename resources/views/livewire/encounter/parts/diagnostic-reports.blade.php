@@ -8,8 +8,11 @@
          cancelledRecords: $wire.cancelledRecords.diagnosticReports,
          canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
          modalDiagnosticReport: new DiagnosticReport(),
+         defaultDiagnosticReportPerformerEmployeeId: conditionPerformer.uuid,
          newDiagnosticReport: false,
          openDiagnosticReportDrawer: false,
+         openServiceCatalog: false,
+         selectedServiceFromCatalog: null,
          item: 0,
          diagnosticReportCategoriesDictionary: $wire.dictionaries['eHealth/diagnostic_report_categories'],
          servicesDictionary: $wire.dictionaries['custom/services'],
@@ -96,8 +99,16 @@
             this.modalDiagnosticReport.usedReferences.splice(index, 1);
         },
 
+        selectDiagnosticReportService(service) {
+            this.modalDiagnosticReport.categoryCode = service.category;
+            this.modalDiagnosticReport.codeValue = service.id;
+            this.selectedServiceFromCatalog = service;
+            this.openServiceCatalog = false;
+        },
+
         specimenOptions() {
             const specimenTypes = $wire.dictionaries['specimen_types'] ?? {};
+            const selectedSpecimenIds = this.modalDiagnosticReport.specimenIds ?? [];
             const packageSpecimens = $wire.specimenForm.specimens.map((specimen) => ({
                 uuid: specimen.uuid,
                 name: [
@@ -110,8 +121,18 @@
             return [
                 ...packageSpecimens,
                 ...$wire.patientSpecimens
-                    .filter((specimen) => specimen.status === 'available' && ! packageSpecimenIds.includes(specimen.uuid))
-                    .map((specimen) => ({ uuid: specimen.uuid, name: specimenTypes[specimen.typeCode] || specimen.uuid }))
+                    .filter(
+                        (specimen) =>
+                            (
+                                specimen.status === 'available'
+                                || selectedSpecimenIds.includes(specimen.uuid)
+                            )
+                            && ! packageSpecimenIds.includes(specimen.uuid)
+                    )
+                    .map((specimen) => ({
+                        uuid: specimen.uuid,
+                        name: specimenTypes[specimen.typeCode] || specimen.uuid
+                    }))
             ];
         },
 
@@ -192,6 +213,7 @@
             this.modalDiagnosticReport.effectivePeriodEndTime = '';
         }
      }"
+     @diagnostic-report-service-selected.window="selectDiagnosticReportService($event.detail.service)"
 >
     {{-- Show saved data in table --}}
     <div class="space-y-4">
@@ -315,6 +337,7 @@
                                             @click.prevent.stop="
                                                 item = index;
                                                 modalDiagnosticReport = new DiagnosticReport(diagnosticReports[index]);
+                                                selectedServiceFromCatalog = null;
                                                 newDiagnosticReport = false;
                                                 issuedDateTimeInvalid = false;
 
@@ -394,7 +417,8 @@
             x-cloak
             @click.prevent="
                 newDiagnosticReport = true;
-                modalDiagnosticReport = new DiagnosticReport();
+                modalDiagnosticReport = new DiagnosticReport(null, conditionPerformer.uuid);
+                selectedServiceFromCatalog = null;
                 issuedDateTimeInvalid = false;
                 openDiagnosticReportDrawer = true;
             "
@@ -425,6 +449,7 @@
                                 }
 
                                 modalDiagnosticReport.specimenIds = modalDiagnosticReport.specimenIds.filter(Boolean);
+                                modalDiagnosticReport.performerEmployeeIds = modalDiagnosticReport.performerEmployeeIds.filter(Boolean);
 
                                 newDiagnosticReport !== false
                                     ? diagnosticReports.push(modalDiagnosticReport)
@@ -434,8 +459,12 @@
                             "
                             class="button-primary"
                             :disabled="! (
-                                String(modalDiagnosticReport.categoryCode ?? '').trim() &&
-                                String(modalDiagnosticReport.codeValue ?? '').trim()
+                                String(modalDiagnosticReport.categoryCode ?? '').trim()
+                                && String(modalDiagnosticReport.codeValue ?? '').trim()
+                                && (
+                                    ! ['diagnostic_procedure', 'imaging'].includes(modalDiagnosticReport.categoryCode)
+                                    || String(modalDiagnosticReport.resultsInterpreterEmployeeId ?? '').trim()
+                                )
                             )"
                         >
                             {{ __('forms.save') }}
@@ -445,6 +474,35 @@
             </fieldset>
         </form>
     </x-dialog-drawer>
+    @unless ($isReadonly)
+        <x-dialog-drawer
+            x-model="openServiceCatalog"
+            onCloseClick="openServiceCatalog = false"
+            maxWidth="4/5"
+            overlayWidth="100%"
+            backdropClickThrough="true"
+            stopClickPropagation="true"
+            zIndex="50"
+        >
+            <livewire:dictionary.service-catalog
+                :legal-entity="legalEntity()"
+                :selection-mode="true"
+                selection-event="diagnostic-report-service-selected"
+                :allowed-categories="array_keys($this->dictionaries['eHealth/diagnostic_report_categories'] ?? [])"
+                :key="'encounter-diagnostic-report-service-catalog'"
+            />
+
+            <div class="mt-8">
+                <button
+                    type="button"
+                    @click="openServiceCatalog = false"
+                    class="button-minor"
+                >
+                    {{ __('forms.cancel') }}
+                </button>
+            </div>
+        </x-dialog-drawer>
+    @endunless
 </div>
 
 <script>
@@ -452,7 +510,7 @@
      * Representation of the user's personal diagnostic report.
      */
     class DiagnosticReport {
-        constructor(obj = null) {
+        constructor(obj = null, defaultPerformerEmployeeId = '') {
             const now = new Date();
             const startTime = new Date(now.getTime() - 15 * 60 * 1000);
             const toFormattedDate = (date) => {
@@ -465,6 +523,7 @@
             this.codeValue = '';
             this.isReferralAvailable = false;
             this.referralType = '';
+            this.basedOnIdentifier = '';
             this.query = '';
             this.paperReferralRequisition = '';
             this.paperReferralRequesterEmployeeName = '';
@@ -478,7 +537,7 @@
             this.reportOriginCode = '';
             this.reportOriginText = '';
             this.divisionId = '';
-            this.performerEmployeeIds = [];
+            this.performerEmployeeIds = defaultPerformerEmployeeId ? [defaultPerformerEmployeeId] : [];
             this.effectiveType = 'period';
             this.effectiveDate = '';
             this.effectiveTime = '';
