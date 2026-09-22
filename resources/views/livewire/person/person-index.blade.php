@@ -252,11 +252,30 @@
                                             @else
                                                 <div
                                                     class="relative inline-block"
-                                                    x-data="{ openInteractionDropdown: false }"
-                                                    @click.outside="openInteractionDropdown = false"
+                                                    x-data="{
+                                                        open: false,
+                                                        toggle() {
+                                                            if (this.open) {
+                                                                return this.close();
+                                                            }
+                                                            this.$refs.button.focus();
+                                                            this.open = true;
+                                                        },
+                                                        close(focusAfter) {
+                                                            if (! this.open) return;
+                                                            this.open = false;
+                                                            focusAfter && focusAfter.focus();
+                                                        },
+                                                    }"
+                                                    @keydown.escape.prevent.stop="close($refs.button)"
+                                                    @focusin.window="! $refs.panel.contains($event.target) && close()"
+                                                    x-id="['dropdown-button']"
                                                 >
                                                     <button
-                                                        @click="openInteractionDropdown = ! openInteractionDropdown"
+                                                        @click="toggle()"
+                                                        x-ref="button"
+                                                        :aria-expanded="open"
+                                                        :aria-controls="$id('dropdown-button')"
                                                         class="inline-block cursor-pointer rounded-full p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
                                                         title="{{ __('forms.action') }}"
                                                         type="button"
@@ -265,18 +284,21 @@
                                                     </button>
 
                                                     <div
-                                                        x-show="openInteractionDropdown"
-                                                        x-transition
+                                                        x-show="open"
                                                         x-cloak
-                                                        class="absolute right-0 z-50 mt-2 w-64 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-md dark:border-gray-600 dark:bg-gray-700"
+                                                        x-ref="panel"
+                                                        x-transition.origin.top.right
+                                                        @click.outside="close($refs.button)"
+                                                        :id="$id('dropdown-button')"
+                                                        class="dropdown-menu right-0 w-64"
                                                     >
                                                         @can('create', PersonRequest::class)
                                                             <a
                                                                 wire:click="redirectTo('{{ $patient['id'] }}', 'persons.update')"
-                                                                class="dropdown-button !flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                                                @click="openInteractionDropdown = false"
+                                                                class="dropdown-item"
+                                                                @click="close($refs.button)"
                                                             >
-                                                                @icon('edit-user-outline', 'w-4 h-4 text-gray-400')
+                                                                @icon('edit-user-outline', 'w-5 h-5 text-gray-500')
                                                                 {{ __('forms.edit') }}
                                                             </a>
                                                         @endcan
@@ -284,10 +306,10 @@
                                                         @can('create', DeclarationRequest::class)
                                                             <a
                                                                 wire:click="redirectTo('{{ $patient['id'] }}', 'declaration.create')"
-                                                                class="dropdown-button !flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                                                @click="openInteractionDropdown = false"
+                                                                class="dropdown-item"
+                                                                @click="close($refs.button)"
                                                             >
-                                                                @icon('file-text', 'w-4 h-4 text-gray-400')
+                                                                @icon('file-text', 'w-5 h-5 text-gray-500')
                                                                 {{ __('patients.sign_declaration') }}
                                                             </a>
                                                         @endcan
@@ -295,10 +317,10 @@
                                                         @can('create', DiagnosticReport::class)
                                                             <a
                                                                 wire:click="redirectTo('{{ $patient['id'] }}', 'diagnostic-report.create')"
-                                                                class="dropdown-button !flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                                                @click="openInteractionDropdown = false"
+                                                                class="dropdown-item"
+                                                                @click="close($refs.button)"
                                                             >
-                                                                @icon('activity', 'w-4 h-4 text-gray-400')
+                                                                @icon('activity', 'w-5 h-5 text-gray-500')
                                                                 {{ __('diagnostic-reports.create') }}
                                                             </a>
                                                         @endcan
@@ -306,10 +328,10 @@
                                                         @can('create', Procedure::class)
                                                             <a
                                                                 wire:click="redirectTo('{{ $patient['id'] }}', 'procedure.create')"
-                                                                class="dropdown-button !flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                                                @click="openInteractionDropdown = false"
+                                                                class="dropdown-item"
+                                                                @click="close($refs.button)"
                                                             >
-                                                                @icon('settings', 'w-4 h-4 text-gray-400')
+                                                                @icon('settings', 'w-5 h-5 text-gray-500')
                                                                 {{ __('procedures.create') }}
                                                             </a>
                                                         @endcan
@@ -317,13 +339,29 @@
                                                         @can('create', Episode::class)
                                                             <a
                                                                 wire:click="redirectTo('{{ $patient['id'] }}', 'persons.episodes.create')"
-                                                                class="dropdown-button !flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                                                @click="openInteractionDropdown = false"
+                                                                class="dropdown-item"
+                                                                @click="close($refs.button)"
                                                             >
-                                                                @icon('book', 'w-4 h-4 text-gray-400')
+                                                                @icon('book', 'w-5 h-5 text-gray-500')
                                                                 {{ __('episodes.create') }}
                                                             </a>
                                                         @endcan
+
+                                                        <a
+                                                            class="dropdown-item"
+                                                            @click="close($refs.button)"
+                                                        >
+                                                            @icon('hospital-bed', 'w-5 h-5 text-gray-500')
+                                                            {{ __('patients.discharge_patient') }}
+                                                        </a>
+
+                                                        <a
+                                                            class="dropdown-item"
+                                                            @click="close($refs.button)"
+                                                        >
+                                                            @icon('cancel', 'w-5 h-5 text-gray-500')
+                                                            {{ __('patients.hospitalization_refusal') }}
+                                                        </a>
                                                     </div>
                                                 </div>
                                             @endif

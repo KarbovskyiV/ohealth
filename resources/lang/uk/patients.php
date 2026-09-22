@@ -259,6 +259,8 @@ return [
     'no_requests' => 'Запити відсутні',
     'main_info' => 'Основна інформація',
     'email_address' => 'Електронна адреса',
+    'discharge_patient' => 'Виписати пацієнта',
+    'hospitalization_refusal' => 'Відмова від госпіталізації',
 
     'errors' => [
         'cannot_have_self_auth_method' => 'Такий пацієнт не може мати метод самостійної автентифікації.',
@@ -343,5 +345,5 @@ return [
         'confidant_requests_list_updated' => 'Список даних про запити на створення законних представників оновлено.',
         'confidant_requests_list_update_failed' => 'Помилка при синхронізації запитів на створення законних представників.',
         'sync_auth_methods_and_try_again' => 'Будь ласка, синхронізуйте методи автентифікації та спробуйте знову.'
-    ]
+    ],
 ];
