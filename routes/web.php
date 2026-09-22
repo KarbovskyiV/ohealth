@@ -62,6 +62,7 @@ use App\Livewire\License\LicenseView;
 use App\Livewire\Party\PartyEdit;
 use App\Livewire\Party\PartyVerify;
 use App\Livewire\Party\PartyVerificationIndex;
+use App\Livewire\Specimen\SpecimenCreate;
 use App\Livewire\Specimen\SpecimenIndex;
 use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Relations\Party;
@@ -308,6 +309,9 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
             Route::get('/specimens', SpecimenIndex::class)
                 ->can('view', Specimen::class)
                 ->name('specimens.index');
+            Route::get('/specimens/create', SpecimenCreate::class)
+                ->can('create', Specimen::class)
+                ->name('specimens.create');
             Route::get('/care-plans/create/{personId?}', \App\Livewire\CarePlan\CarePlanCreate::class)
                 ->name('care-plans.create')
                 ->can('create', \App\Models\CarePlan::class);
