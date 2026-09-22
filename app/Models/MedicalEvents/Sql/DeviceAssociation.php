@@ -118,6 +118,18 @@ class DeviceAssociation extends Model
     }
 
     /**
+     * Leave out the device associations marked as entered in error.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function notEnteredInError(Builder $query): Builder
+    {
+        return $query->whereNot('status', Status::ENTERED_IN_ERROR);
+    }
+
+    /**
      * Filter device associations recorded within the given encounter, which is stored as the context identifier.
      *
      * @param  Builder  $query

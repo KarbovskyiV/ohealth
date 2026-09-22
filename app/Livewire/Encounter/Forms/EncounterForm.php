@@ -6,6 +6,7 @@ namespace App\Livewire\Encounter\Forms;
 
 use App\Core\BaseForm;
 use App\Enums\Status;
+use App\Models\LegalEntity;
 use App\Rules\InDictionary;
 use App\Rules\OnlyOnePrimaryDiagnosis;
 use App\Rules\PastDateTime;
@@ -30,6 +31,23 @@ class EncounterForm extends BaseForm
     ];
 
     public array $episode = ['id' => '', 'typeCode' => '', 'name' => ''];
+
+    /**
+     * Name the hospitalization fields the way the form labels them.
+     *
+     * @return array
+     */
+    public function validationAttributes(): array
+    {
+        return [
+            'encounter.hospitalization.admitSource' => __('encounters.hospitalization.admit_source'),
+            'encounter.hospitalization.reAdmission' => __('encounters.hospitalization.re_admission'),
+            'encounter.hospitalization.preAdmissionIdentifier' => __('encounters.hospitalization.pre_admission_identifier'),
+            'encounter.hospitalization.destination' => __('encounters.hospitalization.destination'),
+            'encounter.hospitalization.dischargeDisposition' => __('encounters.hospitalization.discharge_disposition'),
+            'encounter.hospitalization.dischargeDepartment' => __('encounters.hospitalization.discharge_department')
+        ];
+    }
 
     protected function rules(): array
     {
@@ -96,7 +114,50 @@ class EncounterForm extends BaseForm
                 'uuid',
                 Rule::prohibitedIf(in_array($this->encounter['typeCode'] ?? '', ['field', 'home']))
             ],
-
+            'encounter.hospitalization' => ['exclude_unless:encounter.classCode,INPATIENT', 'nullable', 'array'],
+            'encounter.hospitalization.admitSource' => [
+                'exclude_unless:encounter.classCode,INPATIENT',
+                'required_if:encounter.typeCode,discharge',
+                'nullable',
+                'string',
+                new InDictionary('eHealth/encounter_admit_source')
+            ],
+            'encounter.hospitalization.reAdmission' => [
+                'exclude_unless:encounter.classCode,INPATIENT',
+                'nullable',
+                'string',
+                new InDictionary('eHealth/encounter_re_admission')
+            ],
+            'encounter.hospitalization.preAdmissionIdentifier' => [
+                'exclude_unless:encounter.classCode,INPATIENT',
+                'nullable',
+                'string',
+                'max:255'
+            ],
+            'encounter.hospitalization.destination' => [
+                'exclude_unless:encounter.classCode,INPATIENT',
+                'nullable',
+                'uuid',
+                static function (string $attribute, mixed $value, Closure $fail): void {
+                    if (!LegalEntity::active()->whereUuid($value)->exists()) {
+                        $fail(__('validation.custom.encounter.hospitalization.destination_not_active'));
+                    }
+                }
+            ],
+            'encounter.hospitalization.dischargeDisposition' => [
+                'exclude_unless:encounter.classCode,INPATIENT',
+                'required_if:encounter.typeCode,discharge',
+                'nullable',
+                'string',
+                new InDictionary('eHealth/encounter_discharge_disposition')
+            ],
+            'encounter.hospitalization.dischargeDepartment' => [
+                'exclude_unless:encounter.classCode,INPATIENT',
+                'required_if:encounter.typeCode,discharge',
+                'nullable',
+                'string',
+                new InDictionary('eHealth/encounter_discharge_department')
+            ],
             'encounter.referralType' => ['nullable', 'string', Rule::in(['', 'electronic', 'paper'])],
             'encounter.referralNumber' => [
                 Rule::requiredIf(($this->encounter['referralType'] ?? '') === 'electronic'),
@@ -194,6 +255,9 @@ class EncounterForm extends BaseForm
             'encounter.diagnoses.required_unless' => __('validation.custom.encounter.diagnoses.required_unless'),
             'encounter.divisionId.required' => __('validation.custom.encounter.divisionId.required_if'),
             'encounter.divisionId.prohibited' => __('validation.custom.encounter.divisionId.prohibited'),
+            'encounter.hospitalization.admitSource.required_if' => __('validation.custom.encounter.hospitalization.admit_source_required_if'),
+            'encounter.hospitalization.dischargeDisposition.required_if' => __('validation.custom.encounter.hospitalization.discharge_disposition_required_if'),
+            'encounter.hospitalization.dischargeDepartment.required_if' => __('validation.custom.encounter.hospitalization.discharge_department_required_if'),
             'encounter.actions.required_if' => __('validation.custom.encounter.actions.required_if'),
             'encounter.actions.prohibited_unless' => __('validation.custom.encounter.actions.prohibited_unless'),
             'encounter.participant.min' => __('validation.custom.encounter.participant.concilium_min'),

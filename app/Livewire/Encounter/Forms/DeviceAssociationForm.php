@@ -255,7 +255,7 @@ class DeviceAssociationForm extends Form
                 'device',
                 static fn (Builder $device): Builder => $device->whereValue($association['deviceId'])
             )
-            ->whereNot('status', Status::ENTERED_IN_ERROR)
+            ->notEnteredInError()
             // A package saved as a draft is already stored, so the association continues the one before its own
             ->whereNot('uuid', $association['uuid'] ?? '')
             ->orderByDesc('recorded')

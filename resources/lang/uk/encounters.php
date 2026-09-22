@@ -47,6 +47,15 @@ return [
     'paper_referral_institution_short' => 'Найменування закладу',
     'paper_referral_date' => 'Дата направлення',
     'paper_referral_notes' => 'Нотатки',
+    'hospitalization' => [
+        'label' => 'Госпіталізація',
+        'admit_source' => 'Джерело госпіталізації',
+        're_admission' => 'Повторна госпіталізація',
+        'pre_admission_identifier' => 'Номер заявки ЕМД / ідентифікатор догоспіталізації',
+        'destination' => 'Заклад, куди направляється пацієнт після виписки',
+        'discharge_disposition' => 'Куди вибув пацієнт після виписки',
+        'discharge_department' => 'Відділення, з якого виписано пацієнта'
+    ],
     'reasons_for_visit' => 'Причини звернення',
     'reason_for_visit' => 'Причина звернення',
     'reason_text' => 'Коментар',

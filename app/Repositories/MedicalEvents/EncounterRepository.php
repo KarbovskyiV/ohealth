@@ -167,6 +167,32 @@ class EncounterRepository extends BaseRepository
                 }
             }
 
+            if (isset($data['hospitalization'])) {
+                $hospitalization = $data['hospitalization'];
+
+                if (isset($hospitalization['destination'])) {
+                    $destination = Repository::identifier()->store($hospitalization['destination']['identifier']['value']);
+                    Repository::codeableConcept()->attach($destination, $hospitalization['destination']);
+                }
+
+                $encounter->hospitalization()->create([
+                    'pre_admission_identifier' => $hospitalization['preAdmissionIdentifier'] ?? null,
+                    'admit_source_id' => isset($hospitalization['admitSource'])
+                        ? Repository::coding()->store($hospitalization['admitSource']['coding'][0])->id
+                        : null,
+                    're_admission_id' => isset($hospitalization['reAdmission'])
+                        ? Repository::coding()->store($hospitalization['reAdmission']['coding'][0])->id
+                        : null,
+                    'destination_id' => $destination->id ?? null,
+                    'discharge_disposition_id' => isset($hospitalization['dischargeDisposition'])
+                        ? Repository::coding()->store($hospitalization['dischargeDisposition']['coding'][0])->id
+                        : null,
+                    'discharge_department_id' => isset($hospitalization['dischargeDepartment'])
+                        ? Repository::coding()->store($hospitalization['dischargeDepartment']['coding'][0])->id
+                        : null
+                ]);
+            }
+
             return $encounter->id;
         });
     }

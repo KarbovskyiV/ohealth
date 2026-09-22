@@ -6,14 +6,12 @@ namespace App\Livewire\Encounter;
 
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
-use App\Enums\Device\Status as DeviceStatus;
 use App\Enums\Episode\Status as EpisodeStatus;
 use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\ClinicalImpression\Status as ClinicalImpressionStatus;
 use App\Enums\Person\ImmunizationStatus;
 use App\Enums\Person\ObservationStatus;
 use App\Enums\Person\ServiceRequestStatus;
-use App\Enums\Specimen\Status as SpecimenStatus;
 use App\Enums\Status;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
@@ -34,6 +32,7 @@ use App\Livewire\Encounter\Forms\EncounterForm as Form;
 use App\Models\Employee\Employee;
 use App\Models\Equipment;
 use App\Models\Icd10;
+use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Immunization;
@@ -126,6 +125,13 @@ class EncounterComponent extends Component
      * @var array
      */
     public array $divisions;
+
+    /**
+     * Names of the active legal entities a hospitalized patient can be sent to after discharge, keyed by UUID.
+     *
+     * @var array
+     */
+    public array $destinationLegalEntities = [];
 
     /**
      * List of existing patient episodes.
@@ -423,6 +429,10 @@ class EncounterComponent extends Component
         'eHealth/encounter_classes',
         'eHealth/encounter_types',
         'eHealth/encounter_priority',
+        'eHealth/encounter_admit_source',
+        'eHealth/encounter_re_admission',
+        'eHealth/encounter_discharge_disposition',
+        'eHealth/encounter_discharge_department',
         'eHealth/episode_types',
         'eHealth/ICPC2/condition_codes',
         'eHealth/ICPC2/reasons',
@@ -664,13 +674,7 @@ class EncounterComponent extends Component
         $this->diagnosticReportEmployees = Employee::whereLegalEntityId(legalEntity()->id)
             ->active()
             ->whereIn('employee_type', config('ehealth.encounter_package_allowed_diagnostic_report_performer_employee_types', []))
-            ->select([
-                'uuid',
-                'party_id',
-                'position',
-                'employee_type',
-                'division_uuid',
-            ])
+            ->select(['uuid', 'party_id', 'position', 'employee_type', 'division_uuid'])
             ->with('party:id,last_name,first_name,second_name')
             ->get()
             ->map(function (Employee $employee): array {
@@ -692,6 +696,11 @@ class EncounterComponent extends Component
 
         $this->legalEntityType = legalEntity()->type->name;
         $this->divisions = legalEntity()->divisions()->whereStatus(Status::ACTIVE)->get()->toArray();
+
+        $this->destinationLegalEntities = LegalEntity::active()
+            ->get(['uuid', 'edr', 'beneficiary'])
+            ->pluck('name', 'uuid')
+            ->all();
 
         $encounterWriterEmployee = $authUser->getEncounterWriterEmployee();
         $this->allowedConditionCodesBySystem = $this->computeAllowedConditionCodesBySystem($encounterWriterEmployee);
@@ -717,7 +726,7 @@ class EncounterComponent extends Component
             ->toArray();
 
         $this->patientDevices = Device::forPatient($this->patient())
-            ->whereNot('status', DeviceStatus::ENTERED_IN_ERROR)
+            ->notEnteredInError()
             ->with('names')
             ->get(['id', 'uuid'])
             ->map(static fn (Device $device): array => [
@@ -728,7 +737,7 @@ class EncounterComponent extends Component
             ->toArray();
 
         $this->patientSpecimens = Specimen::forPatient($this->patient())
-            ->whereNot('status', SpecimenStatus::ENTERED_IN_ERROR)
+            ->notEnteredInError()
             ->with('type.coding')
             ->get(['id', 'uuid', 'status', 'type_id'])
             ->map(static fn (Specimen $specimen): array => [

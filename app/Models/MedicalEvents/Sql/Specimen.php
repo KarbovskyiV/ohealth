@@ -220,6 +220,18 @@ class Specimen extends Model
     }
 
     /**
+     * Leave out the specimens marked as entered in error.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function notEnteredInError(Builder $query): Builder
+    {
+        return $query->whereNot('status', Status::ENTERED_IN_ERROR);
+    }
+
+    /**
      * Scope specimens to the given encounter.
      *
      * @param  Builder  $query
