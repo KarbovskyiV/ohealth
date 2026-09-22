@@ -1,4 +1,5 @@
 @use(App\Enums\Specimen\Status as SpecimenStatus)
+@use(App\Models\MedicalEvents\Sql\Specimen)
 
 <div>
     <livewire:components.x-message :key="time()" />
@@ -142,39 +143,76 @@
                                             <li>
                                                 <button
                                                     type="button"
-                                                    @click="$wire.showReceivedForResearchModal = true; $wire.openReceivedForResearchModal('{{ data_get($specimen, 'uuid') }}'); close($refs.button)" class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 whitespace-nowrap text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                    @click="
+                                                        $wire.set(
+                                                            'receivedForResearchDate',
+                                                            new Date().toLocaleDateString('uk-UA'),
+                                                            false,
+                                                        );
+                                                        $wire.set(
+                                                            'receivedForResearchTime',
+                                                            new Date().toLocaleTimeString('uk-UA', {
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                            }),
+                                                            false,
+                                                        );
+                                                        $wire.showReceivedForResearchModal = true;
+                                                        close($refs.button);
+                                                    "
+                                                    class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 whitespace-nowrap text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
                                                 >
                                                     @icon('checkmark-circle', 'w-5 h-5 shrink-0')
                                                     {{ __('specimens.received_for_research') }}
                                                 </button>
                                             </li>
-                                            <li class="mt-1 border-t border-gray-100 pt-1 dark:border-gray-600">
-                                                <button
-                                                    type="button"
-                                                    @click="$wire.showMarkUnavailableModal = true; $wire.openMarkUnavailableModal('{{ data_get($specimen, 'uuid') }}'); close($refs.button)" class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
-                                                >
-                                                    @icon('cancel', 'w-5 h-5 shrink-0')
-                                                    <span>{{ __('specimens.mark_unavailable') }}</span>
-                                                </button>
-                                            </li>
-                                            <li>
-                                                <button
-                                                    type="button"
-                                                    @click="$wire.showMarkUnsatisfactoryModal = true; $wire.openMarkUnsatisfactoryModal('{{ data_get($specimen, 'uuid') }}'); close($refs.button)" class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
-                                                >
-                                                    @icon('cancel', 'w-5 h-5 shrink-0')
-                                                    <span>{{ __('specimens.mark_unsatisfactory') }}</span>
-                                                </button>
-                                            </li>
-                                            <li>
-                                                <button
-                                                    type="button"
-                                                    @click="$wire.showMarkEnteredInErrorModal = true; $wire.openMarkEnteredInErrorModal('{{ data_get($specimen, 'uuid') }}'); close($refs.button)" class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
-                                                >
-                                                    @icon('cancel', 'w-5 h-5 shrink-0')
-                                                    <span>{{ __('specimens.mark_entered_in_error') }}</span>
-                                                </button>
-                                            </li>
+                                            @can('invalidate', [Specimen::class, $specimen])
+                                                <li class="mt-1 border-t border-gray-100 pt-1 dark:border-gray-600">
+                                                    <button
+                                                        type="button"
+                                                        @click="
+                                                            $wire.set('invalidateReason', '', false);
+                                                            $wire.showInvalidateModal = true;
+                                                            close($refs.button);
+                                                        "
+                                                        class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
+                                                    >
+                                                        @icon('cancel', 'w-5 h-5 shrink-0')
+                                                        <span>{{ __('specimens.invalidate') }}</span>
+                                                    </button>
+                                                </li>
+                                            @endcan
+                                            @can('reject', [Specimen::class, $specimen])
+                                                <li>
+                                                    <button
+                                                        type="button"
+                                                        @click="
+                                                            $wire.set('rejectReason', '', false);
+                                                            $wire.showRejectModal = true;
+                                                            close($refs.button);
+                                                        "
+                                                        class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
+                                                    >
+                                                        @icon('cancel', 'w-5 h-5 shrink-0')
+                                                        <span>{{ __('specimens.reject') }}</span>
+                                                    </button>
+                                                </li>
+                                            @endcan
+                                            @can('cancel', [Specimen::class, $specimen])
+                                                <li>
+                                                    <button
+                                                        type="button"
+                                                        @click="
+                                                            $dispatch('open-specimen-cancellation', { id: '{{ data_get($specimen, 'uuid') }}' });
+                                                            close($refs.button);
+                                                        "
+                                                        class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 text-left whitespace-nowrap text-red-600 transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
+                                                    >
+                                                        @icon('cancel', 'w-5 h-5 shrink-0')
+                                                        <span>{{ __('specimens.cancel') }}</span>
+                                                    </button>
+                                                </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </div>
@@ -220,7 +258,7 @@
                                         <div class="record-inner-value font-semibold">
                                             @forelse (data_get($specimen, 'container', []) as $container)
                                                 <div>
-                                                    {{ data_get($container, 'identifier') }}, {{ data_get($dictionaries, 'specimen_container_types.' . data_get($container, 'type.coding.0.code'), '-') }}
+                                                    {{ data_get($container, 'identifier') }} , {{ data_get($dictionaries, 'specimen_container_types.' . data_get($container, 'type.coding.0.code'), '-') }}
                                                 </div>
                                             @empty
                                                 -
@@ -261,6 +299,11 @@
                         </div>
                     </div>
                 </div>
+
+                <livewire:specimen.specimen-cancellation
+                    :patient-id="data_get($specimen, 'subject.identifier.value')"
+                    :key="'specimen-cancellation-' . data_get($specimen, 'uuid')"
+                />
             @else
                 <x-nothing-found :description="null" />
             @endif
@@ -270,7 +313,6 @@
     </section>
 
     @include('livewire.specimen.parts.modals.received-for-research-modal')
-    @include('livewire.specimen.parts.modals.mark-unavailable-modal')
-    @include('livewire.specimen.parts.modals.mark-unsatisfactory-modal')
-    @include('livewire.specimen.parts.modals.mark-entered-in-error-modal')
+    @include('livewire.specimen.parts.modals.invalidate')
+    @include('livewire.specimen.parts.modals.reject')
 </div>

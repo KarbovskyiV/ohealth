@@ -346,12 +346,8 @@
                     <div class="form-row-2">
                         <div class="form-group group">
                             <select x-model="modalDevice.status" id="deviceStatus" class="input-select peer" required>
-                                <option value="" selected>{{ __('forms.select') }}</option>
-                                <option value="{{ DeviceStatus::ACTIVE->value }}">
+                                <option value="{{ DeviceStatus::ACTIVE->value }}" selected>
                                     {{ __('devices.status.active') }}
-                                </option>
-                                <option value="{{ DeviceStatus::INACTIVE->value }}">
-                                    {{ __('devices.status.inactive') }}
                                 </option>
                             </select>
                             <label for="deviceStatus" class="label">{{ __('forms.status.label') }}</label>

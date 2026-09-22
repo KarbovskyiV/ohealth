@@ -12,7 +12,10 @@ use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
+use App\Rules\InDictionary;
+use App\Services\MedicalEvents\Fhir;
 use App\Traits\FormTrait;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
 use Livewire\Component;
@@ -35,22 +38,22 @@ class SpecimenIndex extends Component
         'specimen_types',
         'specimen_container_types',
         'specimen_invalidate_reasons',
-        'specimen_reject_reasons',
-        'specimen_cancel_reasons'
+        'specimen_reject_reasons'
     ];
 
     public bool $showReceivedForResearchModal = false;
-    public bool $showMarkUnavailableModal = false;
-    public bool $showMarkUnsatisfactoryModal = false;
-    public bool $showMarkEnteredInErrorModal = false;
+
+    public bool $showInvalidateModal = false;
+
+    public bool $showRejectModal = false;
 
     public ?string $receivedForResearchDate = null;
-    public ?string $receivedForResearchTime = null;
-    public ?string $unavailabilityReason = null;
-    public ?string $unsatisfactoryReason = null;
-    public ?string $enteredInErrorReason = null;
 
-    public ?string $selectedSpecimenId = null;
+    public ?string $receivedForResearchTime = null;
+
+    public ?string $invalidateReason = null;
+
+    public ?string $rejectReason = null;
 
     /**
      * Component mount.
@@ -152,57 +155,91 @@ class SpecimenIndex extends Component
         return Specimen::forPatient($patient)->whereUuid($specimenId)->first();
     }
 
-    public function openReceivedForResearchModal(string $id): void
-    {
-        $this->selectedSpecimenId = $id;
-        $this->receivedForResearchDate = now()->format('d.m.Y');
-        $this->receivedForResearchTime = now()->format('H:i');
-        $this->showReceivedForResearchModal = true;
-    }
-
-    public function openMarkUnavailableModal(string $id): void
-    {
-        $this->selectedSpecimenId = $id;
-        $this->unavailabilityReason = null;
-        $this->showMarkUnavailableModal = true;
-    }
-
-    public function openMarkUnsatisfactoryModal(string $id): void
-    {
-        $this->selectedSpecimenId = $id;
-        $this->unsatisfactoryReason = null;
-        $this->showMarkUnsatisfactoryModal = true;
-    }
-
-    public function openMarkEnteredInErrorModal(string $id): void
-    {
-        $this->selectedSpecimenId = $id;
-        $this->enteredInErrorReason = null;
-        $this->showMarkEnteredInErrorModal = true;
-    }
-
     public function markReceivedForResearch(): void
     {
         // TODO: implement actual logic
         $this->showReceivedForResearchModal = false;
     }
 
-    public function markUnavailable(): void
+    /**
+     * Send the request to mark the selected specimen as unavailable.
+     *
+     * @return void
+     */
+    public function invalidate(): void
     {
-        // TODO: implement actual logic
-        $this->showMarkUnavailableModal = false;
+        if (Auth::user()->cannot('invalidate', [Specimen::class, $this->specimen])) {
+            Session::flash('error', __('specimens.policy.invalidate'));
+
+            return;
+        }
+
+        $validated = $this->validate([
+            'invalidateReason' => ['required', new InDictionary('specimen_invalidate_reasons')]
+        ]);
+
+        try {
+            $response = EHealth::specimen()->invalidate(
+                data_get($this->specimen, 'subject.identifier.value'),
+                data_get($this->specimen, 'uuid'),
+                Arr::toSnakeCase(Fhir::specimen()->toInvalidateFhir($validated))
+            );
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error while invalidating the specimen');
+
+            return;
+        }
+
+        logger()->debug('Job ID to further debug', $response->getData());
+
+        $this->showInvalidateModal = false;
+        Session::flash('success', __('specimens.messages.invalidate_request_sent'));
     }
 
-    public function markUnsatisfactory(): void
+    /**
+     * Send the request to mark the selected specimen as rejected.
+     *
+     * @return void
+     */
+    public function reject(): void
     {
-        // TODO: implement actual logic
-        $this->showMarkUnsatisfactoryModal = false;
+        if (Auth::user()->cannot('reject', [Specimen::class, $this->specimen])) {
+            Session::flash('error', __('specimens.policy.reject'));
+
+            return;
+        }
+
+        $validated = $this->validate(['rejectReason' => ['required', new InDictionary('specimen_reject_reasons')]]);
+
+        try {
+            $response = EHealth::specimen()->reject(
+                data_get($this->specimen, 'subject.identifier.value'),
+                data_get($this->specimen, 'uuid'),
+                Arr::toSnakeCase(Fhir::specimen()->toRejectFhir($validated))
+            );
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error while rejecting the specimen');
+
+            return;
+        }
+
+        logger()->debug('Job ID to further debug', $response->getData());
+
+        $this->showRejectModal = false;
+        Session::flash('success', __('specimens.messages.reject_request_sent'));
     }
 
-    public function markEnteredInError(): void
+    /**
+     * Human-readable names of the validated fields.
+     *
+     * @return array
+     */
+    public function validationAttributes(): array
     {
-        // TODO: implement actual logic
-        $this->showMarkEnteredInErrorModal = false;
+        return [
+            'invalidateReason' => __('specimens.invalidate_reason'),
+            'rejectReason' => __('specimens.reject_reason')
+        ];
     }
 
     /**
@@ -212,8 +249,6 @@ class SpecimenIndex extends Component
      */
     public function render(): View
     {
-        return view('livewire.specimen.specimen-index')->with([
-            'dictionaries' => $this->dictionaries
-        ]);
+        return view('livewire.specimen.specimen-index');
     }
 }
