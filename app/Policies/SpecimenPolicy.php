@@ -30,6 +30,27 @@ class SpecimenPolicy
     }
 
     /**
+     * Determine whether the user can set the time the specimen was received for processing. The time can be set only once.
+     *
+     * @param  User  $user
+     * @param  array  $specimen
+     * @return Response
+     */
+    public function process(User $user, array $specimen): Response
+    {
+        if (
+            $specimen['status'] !== SpecimenStatus::AVAILABLE->value
+            || !empty($specimen['receivedTime'])
+            || $user->cannot('specimen:process')
+            || legalEntity()->status !== Status::ACTIVE->value
+        ) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Determine whether the user can mark the specimen as unsatisfactory.
      *
      * @param  User  $user

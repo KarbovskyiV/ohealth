@@ -144,6 +144,21 @@ class SpecimenMapper implements FhirMapperContract
     }
 
     /**
+     * Build a FHIR structure out of the time the specimen was received for processing.
+     *
+     * @param  array  $data  Flat specimen process form data
+     * @return array
+     */
+    public function toProcessFhir(array $data): array
+    {
+        return [
+            'receivedTime' => convertToEHealthISO8601(
+                $data['receivedDate'] . ' ' . $data['receivedTime']
+            )
+        ];
+    }
+
+    /**
      * Build a FHIR structure out of the reason the specimen is marked as rejected.
      *
      * @param  array  $data  Flat specimen reject form data

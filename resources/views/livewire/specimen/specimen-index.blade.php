@@ -62,9 +62,9 @@
 
             @if ($specimen)
                 @php
-                    $collectedDateTime = data_get($specimen, 'collection.collectedDateTime');
-                    $collectedPeriodStart = data_get($specimen, 'collection.collectedPeriod.start');
-                    $collectedPeriodEnd = data_get($specimen, 'collection.collectedPeriod.end');
+                    $collectedDateTime = formatDisplayDateTime(convertToLocalTimezone(data_get($specimen, 'collection.collectedDateTime') ?? ''));
+                    $collectedPeriodStart = formatDisplayDateTime(convertToLocalTimezone(data_get($specimen, 'collection.collectedPeriod.start') ?? ''));
+                    $collectedPeriodEnd = formatDisplayDateTime(convertToLocalTimezone(data_get($specimen, 'collection.collectedPeriod.end') ?? ''));
                     $status = SpecimenStatus::from(data_get($specimen, 'status'));
                 @endphp
                 <div class="space-y-4">
@@ -140,38 +140,40 @@
                                                     {{ __('forms.view_details') }}
                                                 </button>
                                             </li>
-                                            <li>
-                                                <button
-                                                    type="button"
-                                                    @click="
-                                                        $wire.set(
-                                                            'receivedForResearchDate',
-                                                            new Date().toLocaleDateString('uk-UA'),
-                                                            false,
-                                                        );
-                                                        $wire.set(
-                                                            'receivedForResearchTime',
-                                                            new Date().toLocaleTimeString('uk-UA', {
-                                                                hour: '2-digit',
-                                                                minute: '2-digit',
-                                                            }),
-                                                            false,
-                                                        );
-                                                        $wire.showReceivedForResearchModal = true;
-                                                        close($refs.button);
-                                                    "
-                                                    class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 whitespace-nowrap text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
-                                                >
-                                                    @icon('checkmark-circle', 'w-5 h-5 shrink-0')
-                                                    {{ __('specimens.received_for_research') }}
-                                                </button>
-                                            </li>
+                                            @can('process', [Specimen::class, $specimen])
+                                                <li>
+                                                    <button
+                                                        type="button"
+                                                        @click="
+                                                            $wire.set(
+                                                                'form.receivedDate',
+                                                                new Date().toLocaleDateString('uk-UA'),
+                                                                false,
+                                                            );
+                                                            $wire.set(
+                                                                'form.receivedTime',
+                                                                new Date().toLocaleTimeString('uk-UA', {
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                }),
+                                                                false,
+                                                            );
+                                                            $wire.showProcessModal = true;
+                                                            close($refs.button);
+                                                        "
+                                                        class="flex w-full cursor-pointer items-center gap-2 px-5 py-2 whitespace-nowrap text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                    >
+                                                        @icon('checkmark-circle', 'w-5 h-5 shrink-0')
+                                                        {{ __('specimens.received_for_research') }}
+                                                    </button>
+                                                </li>
+                                            @endcan
                                             @can('invalidate', [Specimen::class, $specimen])
                                                 <li class="mt-1 border-t border-gray-100 pt-1 dark:border-gray-600">
                                                     <button
                                                         type="button"
                                                         @click="
-                                                            $wire.set('invalidateReason', '', false);
+                                                            $wire.set('form.invalidateReason', '', false);
                                                             $wire.showInvalidateModal = true;
                                                             close($refs.button);
                                                         "
@@ -187,7 +189,7 @@
                                                     <button
                                                         type="button"
                                                         @click="
-                                                            $wire.set('rejectReason', '', false);
+                                                            $wire.set('form.rejectReason', '', false);
                                                             $wire.showRejectModal = true;
                                                             close($refs.button);
                                                         "
@@ -230,7 +232,7 @@
                                             @if ($collectedDateTime)
                                                 {{ $collectedDateTime }}
                                             @else
-                                                {{ $collectedPeriodStart ?? '-' }}
+                                                {{ $collectedPeriodStart ?: '-' }}
                                                 @if ($collectedPeriodEnd)
                                                     -<br
 
@@ -312,7 +314,7 @@
         <x-forms.loading />
     </section>
 
-    @include('livewire.specimen.parts.modals.received-for-research-modal')
+    @include('livewire.specimen.parts.modals.process')
     @include('livewire.specimen.parts.modals.invalidate')
     @include('livewire.specimen.parts.modals.reject')
 </div>

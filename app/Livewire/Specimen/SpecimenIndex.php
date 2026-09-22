@@ -8,16 +8,17 @@ use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
+use App\Livewire\Specimen\Forms\SpecimenActionForm;
 use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
-use App\Rules\InDictionary;
 use App\Services\MedicalEvents\Fhir;
 use App\Traits\FormTrait;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Throwable;
 
@@ -32,6 +33,7 @@ class SpecimenIndex extends Component
      *
      * @var array
      */
+    #[Locked]
     public array $specimen = [];
 
     protected array $dictionaryNames = [
@@ -41,19 +43,13 @@ class SpecimenIndex extends Component
         'specimen_reject_reasons'
     ];
 
-    public bool $showReceivedForResearchModal = false;
+    public bool $showProcessModal = false;
 
     public bool $showInvalidateModal = false;
 
     public bool $showRejectModal = false;
 
-    public ?string $receivedForResearchDate = null;
-
-    public ?string $receivedForResearchTime = null;
-
-    public ?string $invalidateReason = null;
-
-    public ?string $rejectReason = null;
+    public SpecimenActionForm $form;
 
     /**
      * Component mount.
@@ -76,9 +72,7 @@ class SpecimenIndex extends Component
 
         try {
             $response = EHealth::specimen()->getByAccessionIdentifier($this->searchId);
-            $this->specimen = Arr::toCamelCase(
-                $this->formatDatesForDisplay([$response->validate()], 'd.m.Y H:i')[0]
-            );
+            $this->specimen = Arr::toCamelCase($response->validate());
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while searching specimen by accession identifier');
         }
@@ -155,10 +149,40 @@ class SpecimenIndex extends Component
         return Specimen::forPatient($patient)->whereUuid($specimenId)->first();
     }
 
-    public function markReceivedForResearch(): void
+    /**
+     * Send the request to set the time the selected specimen was received for processing.
+     *
+     * @return void
+     */
+    public function process(): void
     {
-        // TODO: implement actual logic
-        $this->showReceivedForResearchModal = false;
+        if (Auth::user()->cannot('process', [Specimen::class, $this->specimen])) {
+            Session::flash('error', __('specimens.policy.process'));
+
+            return;
+        }
+
+        $validated = $this->form->validate($this->form->rulesForProcessing(
+            data_get($this->specimen, 'collection.collectedDateTime')
+            ?? data_get($this->specimen, 'collection.collectedPeriod.end')
+        ));
+
+        try {
+            $response = EHealth::specimen()->process(
+                data_get($this->specimen, 'subject.identifier.value'),
+                data_get($this->specimen, 'uuid'),
+                Arr::toSnakeCase(Fhir::specimen()->toProcessFhir($validated))
+            );
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error while processing the specimen');
+
+            return;
+        }
+
+        logger()->debug('Job ID to further debug', $response->getData());
+
+        $this->showProcessModal = false;
+        Session::flash('success', __('specimens.messages.process_request_sent'));
     }
 
     /**
@@ -174,9 +198,7 @@ class SpecimenIndex extends Component
             return;
         }
 
-        $validated = $this->validate([
-            'invalidateReason' => ['required', new InDictionary('specimen_invalidate_reasons')]
-        ]);
+        $validated = $this->form->validate($this->form->rulesForInvalidating());
 
         try {
             $response = EHealth::specimen()->invalidate(
@@ -209,7 +231,7 @@ class SpecimenIndex extends Component
             return;
         }
 
-        $validated = $this->validate(['rejectReason' => ['required', new InDictionary('specimen_reject_reasons')]]);
+        $validated = $this->form->validate($this->form->rulesForRejecting());
 
         try {
             $response = EHealth::specimen()->reject(
@@ -227,19 +249,6 @@ class SpecimenIndex extends Component
 
         $this->showRejectModal = false;
         Session::flash('success', __('specimens.messages.reject_request_sent'));
-    }
-
-    /**
-     * Human-readable names of the validated fields.
-     *
-     * @return array
-     */
-    public function validationAttributes(): array
-    {
-        return [
-            'invalidateReason' => __('specimens.invalidate_reason'),
-            'rejectReason' => __('specimens.reject_reason')
-        ];
     }
 
     /**

@@ -87,6 +87,22 @@ class Specimen extends PatientApiBase
     }
 
     /**
+     * Set the time the patient specimen was received for processing. Processed asynchronously.
+     *
+     * @param  string  $patientId
+     * @param  string  $specimenId
+     * @param  array  $payload
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/specimen/process-specimen
+     */
+    public function process(string $patientId, string $specimenId, array $payload): PromiseInterface|EHealthResponse
+    {
+        return $this->patch(self::URL . "/$patientId/specimens/$specimenId/actions/process", $payload);
+    }
+
+    /**
      * Mark the patient specimen as rejected. Processed asynchronously.
      *
      * @param  string  $patientId
