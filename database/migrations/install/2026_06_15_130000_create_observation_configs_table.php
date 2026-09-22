@@ -24,7 +24,8 @@ return new class extends Migration
             $table->string('value_type')->nullable()->comment('FHIR value type, e.g. valueQuantity');
             $table->string('binding')->nullable()->comment('answer list id for valueCodeableConcept');
             $table->string('unit')->nullable()->comment('UCUM unit for valueQuantity');
-            $table->string('value_range')->nullable()->comment('manually curated numeric range, e.g. 0-100');
+            $table->string('value_range')->nullable()->comment('numeric range from settings.RESULT_BOUNDARIES, e.g. 0-100');
+            $table->string('ehealth_updated_at')->nullable()->comment('raw updated_at from eHealth, used as the incremental sync watermark');
             $table->timestamps();
 
             $table->unique(['code', 'system']);
