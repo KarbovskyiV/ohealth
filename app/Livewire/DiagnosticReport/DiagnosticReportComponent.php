@@ -11,6 +11,7 @@ use App\Enums\Status;
 use App\Enums\User\Role;
 use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\Person\DiagnosticReportStatus;
+use App\Enums\Specimen\Status as SpecimenStatus;
 use App\Exceptions\Cipher\CipherConnectionException;
 use App\Exceptions\Cipher\CipherException;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -21,6 +22,7 @@ use App\Models\Employee\Employee;
 use App\Models\Equipment;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\ObservationConfigRepository;
@@ -147,7 +149,33 @@ abstract class DiagnosticReportComponent extends Component
      */
     public array $equipmentOptions = [];
 
+    /**
+     * List of equipment options grouped by division.
+     *
+     * @var array
+     */
     public array $equipmentOptionsByDivision = [];
+
+    /**
+     * List of available electronic referrals.
+     *
+     * @var array
+     */
+    public array $availableReferrals = [];
+
+    /**
+     * Indicates whether electronic referrals have already been loaded.
+     *
+     * @var bool
+     */
+    public bool $referralsLoaded = false;
+
+    /**
+     * List of patient's available specimens.
+     *
+     * @var array
+     */
+    public array $patientSpecimens = [];
 
     protected array $dictionaryNames = [
         'eHealth/diagnostic_report_categories',
@@ -170,6 +198,7 @@ abstract class DiagnosticReportComponent extends Component
         'GENDER',
         'eHealth/vaccination_covid_groups',
         'eHealth/custom/observation_codes',
+        'specimen_types',
         'POSITION'
     ];
 
@@ -236,6 +265,7 @@ abstract class DiagnosticReportComponent extends Component
             ->toArray();
 
         $this->setPatientData();
+
         $this->divisions = $legalEntity->divisions()->select(['uuid', 'name'])->get()->toArray();
 
         $this->equipmentOptions = Equipment::query()
@@ -265,6 +295,18 @@ abstract class DiagnosticReportComponent extends Component
                 static fn ($items): array =>
                     $items->values()->toArray()
             )
+            ->toArray();
+
+        $this->patientSpecimens = Specimen::forPatient($this->patient())
+            ->whereNot('status', SpecimenStatus::ENTERED_IN_ERROR)
+            ->with('type.coding')
+            ->get(['id', 'uuid', 'status', 'type_id'])
+            ->map(static fn (Specimen $specimen): array => [
+                'uuid' => $specimen->uuid,
+                'status' => $specimen->status->value,
+                'typeCode' => $specimen->type->coding->first()?->code ?? ''
+            ])
+            ->values()
             ->toArray();
     }
 

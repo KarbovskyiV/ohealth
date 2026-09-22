@@ -51,7 +51,7 @@
         <div>
             <label for="observationDevice" class="label-modal"> {{ __('equipments.label') }} </label>
 
-            <template x-if="! $wire.form.encounter.divisionId">
+            <template x-if="! divisionId">
                 <select x-model="modalObservation.deviceId" id="observationDevice" class="input-modal">
                     <option value="" selected>{{ __('forms.select') }}</option>
                     @foreach ($equipmentOptions as $equipment)
@@ -61,7 +61,7 @@
             </template>
 
             @foreach ($divisions as $division)
-                <template x-if="$wire.form.encounter.divisionId === '{{ $division['uuid'] }}'">
+                <template x-if="divisionId === @js($division['uuid'])">
                     <select x-model="modalObservation.deviceId" id="observationDevice" class="input-modal">
                         <option value="" selected>{{ __('forms.select') }}</option>
                         @foreach ($equipmentOptionsByDivision[$division['uuid']] ?? [] as $equipment)

@@ -30,6 +30,7 @@
         modalObservation: new Observation(),
         newObservation: false,
         item: 0,
+        divisionId: @js($isEncounterContext ? data_get($this->form->encounter, 'divisionId', '') : data_get($this->form->diagnosticReport, 'divisionId', '')),
         valueMap: $wire.entangle('observationValueMap'),
         observationCategoriesDictionary: $wire.dictionaries['eHealth/observation_categories'],
         icfObservationCategoriesDictionary: $wire.dictionaries['eHealth/ICF/observation_categories'],

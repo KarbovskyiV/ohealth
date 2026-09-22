@@ -1,6 +1,7 @@
 @use(App\Enums\JobStatus)
 @use(App\Enums\Person\DiagnosticReportStatus)
 @use(App\Models\MedicalEvents\Sql\DiagnosticReport)
+@use(App\Repositories\MedicalEvents\Repository)
 
 <x-layouts.patient :personId="$personId" :prepersonId="$prepersonId" :patientFullName="$patientFullName">
     <x-slot name="headerActions">
@@ -355,7 +356,7 @@
                                                 {{ __('diagnostic-reports.paper_referral_requisition') }}
                                             </div>
                                             <div class="record-inner-value font-semibold wrap-break-word">
-                                                {{ data_get($diagnosticReport, 'paperReferral.requisition', '—') }}
+                                                {{ Repository::serviceRequest()->procedureReferralLabel($diagnosticReport) }}
                                             </div>
                                         </div>
                                     </div>
@@ -366,7 +367,7 @@
                                                 {{ __('medical-events.performer') }}
                                             </div>
                                             <div class="record-inner-value font-semibold wrap-break-word uppercase">
-                                                {{ data_get($diagnosticReport, 'performer.reference.displayValue' ,'-') }}
+                                                {{ data_get($diagnosticReport, 'performer.0.reference.displayValue', '-') }}
                                             </div>
                                         </div>
                                         <div class="min-w-0">
