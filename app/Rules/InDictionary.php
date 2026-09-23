@@ -69,13 +69,15 @@ class InDictionary implements ValidationRule
                         ->map(static fn (int|string $key) => (string)$key)
                         ->toArray();
                 } else {
-                    self::$dictionaryCache[$name] = array_keys(
-                        dictionary()->basics()->byName($name, false)->asCodeDescription()->toArray()
+                    // Numeric codes become integer array keys, while the validated value arrives as a string
+                    self::$dictionaryCache[$name] = array_map(
+                        'strval',
+                        array_keys(dictionary()->basics()->byName($name, false)->asCodeDescription()->toArray())
                     );
                 }
             }
 
-            if (in_array($value, self::$dictionaryCache[$name], true)) {
+            if (in_array(is_int($value) ? (string) $value : $value, self::$dictionaryCache[$name], true)) {
                 $isValid = true;
                 break;
             }

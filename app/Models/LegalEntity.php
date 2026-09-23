@@ -262,12 +262,15 @@ class LegalEntity extends Model
     }
 
     /**
-     * Scope a query to get an Legal Entity depends on it's UUID
+     * Scope a query to the legal entities that are active both by status and by the activity flag.
+     *
+     * @param  Builder  $query
+     * @return Builder
      */
     #[Scope]
-    public function byUuid(Builder $query, string $legalEntityUUID): void
+    protected function active(Builder $query): Builder
     {
-        $query->where('uuid', $legalEntityUUID);
+        return $query->whereStatus(Status::ACTIVE)->whereIsActive(true);
     }
 
     /**

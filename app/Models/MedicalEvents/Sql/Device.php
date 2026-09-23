@@ -196,6 +196,18 @@ class Device extends Model
     }
 
     /**
+     * Leave out the devices marked as entered in error.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function notEnteredInError(Builder $query): Builder
+    {
+        return $query->whereNot('status', Status::ENTERED_IN_ERROR);
+    }
+
+    /**
      * Limit devices to the types allowed in the patient summary.
      * An empty list of allowed types leaves nothing to show, exactly as the eHealth summary does.
      *

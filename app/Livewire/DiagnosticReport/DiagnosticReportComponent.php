@@ -11,7 +11,6 @@ use App\Enums\Status;
 use App\Enums\User\Role;
 use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\Person\DiagnosticReportStatus;
-use App\Enums\Specimen\Status as SpecimenStatus;
 use App\Exceptions\Cipher\CipherConnectionException;
 use App\Exceptions\Cipher\CipherException;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -298,7 +297,7 @@ abstract class DiagnosticReportComponent extends Component
             ->toArray();
 
         $this->patientSpecimens = Specimen::forPatient($this->patient())
-            ->whereNot('status', SpecimenStatus::ENTERED_IN_ERROR)
+            ->notEnteredInError()
             ->with('type.coding')
             ->get(['id', 'uuid', 'status', 'type_id'])
             ->map(static fn (Specimen $specimen): array => [

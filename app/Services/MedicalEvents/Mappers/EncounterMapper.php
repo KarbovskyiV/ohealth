@@ -179,7 +179,28 @@ class EncounterMapper implements FhirMapperContract
                 ->toArray();
         }
 
-        // todo: hospitalization
+        $hospitalization = $data['hospitalization'] ?? [];
+
+        if (array_filter($hospitalization) !== []) {
+            $result['hospitalization'] = array_filter([
+                'preAdmissionIdentifier' => $hospitalization['preAdmissionIdentifier'] ?? null,
+                'admitSource' => empty($hospitalization['admitSource']) ? null : FhirResource::make()
+                    ->coding('eHealth/encounter_admit_source', $hospitalization['admitSource'])
+                    ->toCodeableConcept(),
+                'reAdmission' => empty($hospitalization['reAdmission']) ? null : FhirResource::make()
+                    ->coding('eHealth/encounter_re_admission', $hospitalization['reAdmission'])
+                    ->toCodeableConcept(),
+                'destination' => empty($hospitalization['destination']) ? null : FhirResource::make()
+                    ->coding('eHealth/resources', 'legal_entity')
+                    ->toIdentifier($hospitalization['destination']),
+                'dischargeDisposition' => empty($hospitalization['dischargeDisposition']) ? null : FhirResource::make()
+                    ->coding('eHealth/encounter_discharge_disposition', $hospitalization['dischargeDisposition'])
+                    ->toCodeableConcept(),
+                'dischargeDepartment' => empty($hospitalization['dischargeDepartment']) ? null : FhirResource::make()
+                    ->coding('eHealth/encounter_discharge_department', $hospitalization['dischargeDepartment'])
+                    ->toCodeableConcept()
+            ]);
+        }
 
         $asserterUuids = collect($fhirConditions)
             ->flatMap(function (array $condition) {
@@ -265,6 +286,14 @@ class EncounterMapper implements FhirMapperContract
                 'serviceRequestDate' => convertToAppDateFormat(data_get($data, 'paper_referral.serviceRequestDate'))
             ],
             'prescriptions' => data_get($data, 'prescriptions', ''),
+            'hospitalization' => [
+                'preAdmissionIdentifier' => data_get($data, 'hospitalization.pre_admission_identifier', ''),
+                'admitSource' => data_get($data, 'hospitalization.admit_source.code', ''),
+                'reAdmission' => data_get($data, 'hospitalization.re_admission.code', ''),
+                'destination' => data_get($data, 'hospitalization.destination.identifier.value', ''),
+                'dischargeDisposition' => data_get($data, 'hospitalization.discharge_disposition.code', ''),
+                'dischargeDepartment' => data_get($data, 'hospitalization.discharge_department.code', '')
+            ],
             'actionReferences' => collect(data_get($data, 'action_references', []))
                 ->map(static fn (array $item) => ['uuid' => data_get($item, 'identifier.value')])
                 ->filter(static fn (array $item) => !empty($item['uuid']))

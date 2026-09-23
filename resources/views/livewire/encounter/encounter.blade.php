@@ -9,6 +9,7 @@
     $mainGroups = [
         ['id' => 'referral', 'label' => __('encounters.incoming_referral'), 'icon' => 'arrow-right', 'view' => 'livewire.encounter.parts.referral'],
         ['id' => 'main-data', 'label' => __('forms.main_information'), 'icon' => 'pie-chart', 'view' => 'livewire.encounter.parts.main-data'],
+        ['id' => 'hospitalization', 'label' => __('encounters.hospitalization.label'), 'icon' => 'medical-instrument-ambulance-bed', 'view' => 'livewire.encounter.parts.hospitalization', 'showWhen' => "\$wire.form.encounter.classCode === 'INPATIENT'"],
         ['id' => 'conditions', 'label' => __('patients.diagnoses'), 'icon' => 'file', 'view' => 'livewire.encounter.parts.conditions'],
         ['id' => 'reasons', 'label' => __('encounters.reasons_for_visit'), 'icon' => 'person', 'view' => 'livewire.encounter.parts.reasons'],
         ['id' => 'actions', 'label' => __('forms.actions'), 'icon' => 'check-box', 'view' => 'livewire.encounter.parts.actions'],
@@ -284,6 +285,7 @@
                         @endif
                         <div
                             id="block-{{ $item['id'] }}"
+                            @isset($item['showWhen']) x-show="{{ $item['showWhen'] }}" x-cloak @endisset
                             class="scroll-mt-16 rounded-xl bg-white dark:border-gray-700 dark:bg-gray-800"
                             :class="activeSections.includes('{{ $item['id'] }}') ? 'summary-section-active' : 'summary-section-inactive'"
                         >
@@ -485,6 +487,7 @@
                                 document.getElementById('block-{{ $item['id'] }}').scrollIntoView({ behavior: 'smooth', block: 'start' });
                             "
                             type="button"
+                            @isset($item['showWhen']) x-show="{{ $item['showWhen'] }}" x-cloak @endisset
                             :class="activeSections.includes('{{ $item['id'] }}') ? 'summary-sidebar-btn-active' : 'summary-sidebar-btn-inactive'"
                             class="summary-sidebar-btn w-full"
                         >
