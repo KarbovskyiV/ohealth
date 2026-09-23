@@ -541,15 +541,20 @@ class EncounterComponent extends Component
         $procedureCategories = array_keys($this->dictionaries['eHealth/procedure_categories'] ?? []);
         $diagnosticReportCategories = array_keys($this->dictionaries['eHealth/diagnostic_report_categories'] ?? []);
 
+        // category is a CodeableConcept relation (category_id), not a string column
         $this->availableReferrals = MedicalEventsRepository::serviceRequest()
-            ->getByPersonIdAndStatus($this->personId, ServiceRequestStatus::PROCESSED->value, ['uuid', 'request_number', 'service_id', 'category'])
+            ->getByPersonIdAndStatus($this->personId, ServiceRequestStatus::PROCESSED->value, ['uuid', 'request_number', 'service_id', 'category_id'])
+            ->loadMissing('category')
             ->map(static function (ServiceRequestRequest $referral) use ($services, $procedureCategories, $diagnosticReportCategories): array {
                 $service = $services->firstWhere('id', $referral->serviceId);
+                $category = strtolower((string) ($referral->category?->text ?? ''));
 
                 return [
                     'id' => $referral->uuid,
                     'requisition' => $referral->requestNumber ?: $referral->uuid,
-                    'category' => $referral->category ? __('care-plan.referral_category.'.$referral->category) : __('encounters.electronic_referral'),
+                    'category' => $category !== ''
+                        ? __('care-plan.referral_category.'.$category)
+                        : __('encounters.electronic_referral'),
                     'service' => $service,
                     'isProcedureAllowed' => $service !== null && in_array($service['category'] ?? null, $procedureCategories, true),
                     'isDiagnosticReportAllowed' => $service !== null && in_array($service['category'] ?? null, $diagnosticReportCategories, true),
@@ -635,6 +640,9 @@ class EncounterComponent extends Component
     {
         $authUser = Auth::user();
         $encounterWriterEmployee = $authUser->getEncounterWriterEmployee();
+
+        // Used by Alpine co-author rows (diagnosis performer); empty name falls back to raw UUID in UI
+        $this->employeeFullName = $encounterWriterEmployee?->fullName ?? '';
 
         $this->deviceDispenseEmployee = [
             'uuid' => $encounterWriterEmployee->uuid,

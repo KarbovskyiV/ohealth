@@ -17,9 +17,11 @@ use App\Services\SignatureService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class PharmacyDispenseTest extends TestCase
@@ -35,6 +37,9 @@ class PharmacyDispenseTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        config(['cipher.api.domain' => 'https://cipher.invalid']);
+        Cache::put('knedp_certificate_authority', [], 60);
 
         $typeId = \Illuminate\Support\Facades\DB::table('legal_entity_types')->where('name', 'PHARMACY')->value('id')
             ?? \Illuminate\Support\Facades\DB::table('legal_entity_types')->insertGetId(['name' => 'PHARMACY']);
@@ -90,6 +95,10 @@ class PharmacyDispenseTest extends TestCase
         ]);
 
         $this->user->employees()->attach($this->employee->id);
+        if (config('permission.teams')) {
+            setPermissionsTeamId($this->pharmacy->id);
+        }
+        $this->grantMedicalEventAbilities($this->user, ['medication_dispense:write']);
     }
 
     public function test_pharmacy_legal_entity_is_detected(): void
@@ -151,6 +160,7 @@ class PharmacyDispenseTest extends TestCase
 
         $mrApi = Mockery::mock(MedicationRequestApi::class);
         $mrApi->shouldReceive('searchByPharmacy')->andReturn($searchResponse);
+        $mrApi->shouldReceive('post')->once()->andThrow(new RuntimeException('Qualify unavailable'));
         $this->app->instance(MedicationRequestApi::class, $mrApi);
 
         $createResponse = Mockery::mock(EHealthResponse::class);
@@ -177,6 +187,7 @@ class PharmacyDispenseTest extends TestCase
             ->set('form.keyContainerUpload', UploadedFile::fake()->create('key.dat', 10))
             ->call('sign')
             ->assertSet('showSignatureModal', false)
-            ->assertDispatched('flashMessage');
+            ->assertSee('Електронний рецепт успішно погашено в аптеці.')
+            ->assertNotDispatched('flashMessage');
     }
 }

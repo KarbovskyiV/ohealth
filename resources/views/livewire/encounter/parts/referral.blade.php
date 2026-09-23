@@ -61,8 +61,8 @@
                                 this.referralNumber = referral.requisition;
                                 this.showReferrals = false;
 
-                                $wire.$set('selectedReferralUuid', referral.id, false);
-                                $wire.$set('form.encounter.referralNumber', referral.requisition, false);
+                                // takeIntoWork / qualify run here — not during KEP signing
+                                $wire.selectElectronicReferral(referral.id);
                             }
                         }"
                         @click.outside="showReferrals = false"
@@ -81,6 +81,7 @@
                                     referralNumber = $el.value.toUpperCase();
                                     $wire.$set('form.encounter.referralNumber', referralNumber, false);
                                     $wire.$set('selectedReferralUuid', null, false);
+                                    $wire.$set('preparedElectronicReferralUuid', null, false);
                                     showReferrals = true;
                                 "
                             />
@@ -96,6 +97,7 @@
                                         referralNumber = '';
                                         $wire.$set('form.encounter.referralNumber', '', false);
                                         $wire.$set('selectedReferralUuid', null, false);
+                                        $wire.$set('preparedElectronicReferralUuid', null, false);
                                         showReferrals = true;
                                     "
                                     class="text-gray-400 hover:text-gray-600"

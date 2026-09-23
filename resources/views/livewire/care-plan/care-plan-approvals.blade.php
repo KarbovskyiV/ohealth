@@ -1,5 +1,6 @@
 <div>
-    <livewire:components.x-message :listen-async="true" :key="time()" />
+    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
+
 
     @if ($isPolling)
         <div wire:poll.2s="checkApprovalJobStatus" class="hidden"></div>
@@ -66,6 +67,14 @@
                                     </button>
                                 @elseif ($approvalStatus?->isAwaitingPatient() && !$isReadOnly)
                                     <div class="flex items-center justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            wire:click="cancelApproval('{{ $approval['uuid'] }}')"
+                                            wire:confirm="{{ __('care-plan.confirm_cancel_approval') }}"
+                                            class="button-secondary px-3 py-1 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
+                                        >
+                                            {{ __('care-plan.revoke_approval') }}
+                                        </button>
                                         <button
                                             type="button"
                                             wire:click="recreateApproval('{{ $approval['uuid'] }}')"
@@ -163,7 +172,14 @@
                             @endif
                         </div>
 
-                        @if (!empty($authMethods))
+                        @if ($skipsPatientOtp)
+                            <div
+                                class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900/30 dark:bg-gray-700/50 dark:text-blue-300"
+                                role="status"
+                            >
+                                {{ __('care-plan.approval_inpatient_no_sms') }}
+                            </div>
+                        @elseif (!empty($authMethods))
                             <div class="form-group group">
                                 <select
                                     class="input-select peer"

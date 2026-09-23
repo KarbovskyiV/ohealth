@@ -65,17 +65,17 @@
                         @endif
                     </div>
                     @if ($encounterEPrescriptionSearchResults !== [])
-                        <div class="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 md:col-span-2">
+                        <div class="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 md:col-span-2 dark:border-gray-600 dark:bg-gray-900/40">
                             @foreach ($encounterEPrescriptionSearchResults as $drug)
                                 <button
                                     type="button"
                                     wire:click="selectEncounterEPrescriptionMedication('{{ $drug['id'] }}')"
-                                    class="w-full rounded-md border border-gray-200 px-3 py-2 text-left text-sm hover:border-blue-300 hover:bg-blue-50"
+                                    class="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-blue-300 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-blue-400 dark:hover:bg-gray-700"
                                 >
-                                    <div class="font-medium text-gray-900">
+                                    <div class="font-medium text-gray-900 dark:text-gray-100">
                                         {{ $drug['name'] ?: 'Лікарський засіб' }}
                                     </div>
-                                    <div class="text-xs text-gray-500">
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
                                         МНН: {{ $drug['innm_name'] ?: '-' }} · Форма: {{ $drug['innm_dosage_form'] ?: '-' }}
                                     </div>
                                 </button>

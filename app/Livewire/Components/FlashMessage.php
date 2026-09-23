@@ -20,18 +20,17 @@ class FlashMessage extends Component
     #[Locked]
     public array $errors = [];
 
+    #[Locked]
+    public int $notificationId = 0;
+
     public function mount(): void
     {
-        if (session()->has('success')) {
-            $this->message = (string) session('success');
-            $this->type = 'success';
+        foreach (['error', 'warning', 'success', 'info'] as $type) {
+            if (session()->has($type)) {
+                $this->flashMessage(['message' => session()->pull($type), 'type' => $type]);
 
-            return;
-        }
-
-        if (session()->has('error')) {
-            $this->message = (string) session('error');
-            $this->type = 'error';
+                return;
+            }
         }
     }
 
@@ -41,6 +40,7 @@ class FlashMessage extends Component
         $this->message = $flash['message'] ?? '';
         $this->type = $flash['type'];
         $this->errors = $flash['errors'] ?? [];
+        $this->notificationId++;
     }
 
     public function render(): View

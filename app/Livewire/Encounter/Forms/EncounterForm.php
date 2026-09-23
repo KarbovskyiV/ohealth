@@ -565,12 +565,22 @@ class EncounterForm extends BaseForm
                     && ($participant['locked'] ?? false) !== true
             );
 
+        $employeeNames = collect($this->component->employees ?? [])
+            ->merge($this->component->diagnosticReportEmployees ?? [])
+            ->filter(static fn (array $employee): bool => !empty($employee['uuid']))
+            ->pluck('name', 'uuid');
+
         $automaticParticipants = $requiredParticipantUuids
             ->map(
-                static fn (string $uuid): array => [
-                    'uuid' => $uuid,
-                    'locked' => true,
-                ]
+                static function (string $uuid) use ($employeeNames): array {
+                    $name = $employeeNames->get($uuid);
+
+                    return array_filter([
+                        'uuid' => $uuid,
+                        'name' => is_string($name) && $name !== '' ? $name : null,
+                        'locked' => true,
+                    ], static fn (mixed $value): bool => $value !== null);
+                }
             );
 
         $participants = $manualParticipants

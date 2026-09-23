@@ -9,6 +9,7 @@ use App\Models\LegalEntity;
 use App\Services\MedicalEvents\MedicationDispenseLifecycleService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -99,7 +100,7 @@ class MedicationRequestIndex extends Component
                 'medicationQty' => 'кількість',
             ]);
         } catch (ValidationException $exception) {
-            $this->flashOutcome('error', $exception->validator->errors()->first());
+            Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
 
             return;
@@ -122,7 +123,7 @@ class MedicationRequestIndex extends Component
                 'medicationQty' => 'required|numeric|min:0.01',
             ]);
         } catch (ValidationException $exception) {
-            $this->flashOutcome('error', $exception->validator->errors()->first());
+            Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
 
             return;
@@ -131,7 +132,7 @@ class MedicationRequestIndex extends Component
         $this->searchResults = $service->searchByRequestNumber($this->requestNumber);
         $request = $this->selectedRequest();
         if ($request === null) {
-            $this->flashOutcome('error', 'Електронний рецепт не знайдено. Повторіть пошук.');
+            Session::flash('error', 'Електронний рецепт не знайдено. Повторіть пошук.');
             $this->showSignatureModal = false;
 
             return;
@@ -171,15 +172,15 @@ class MedicationRequestIndex extends Component
             $this->form['password'] = '';
             $this->form['keyContainerUpload'] = null;
             $this->form['keyContainerFileName'] = '';
-            $this->flashOutcome('success', 'Електронний рецепт успішно погашено в аптеці.');
+            Session::flash('success', 'Електронний рецепт успішно погашено в аптеці.');
             $this->search($service);
         } catch (EHealthValidationException $exception) {
             $exception->report();
-            $this->flashOutcome('error', $exception->getTranslatedMessage());
+            Session::flash('error', $exception->getTranslatedMessage());
             $this->showSignatureModal = false;
         } catch (Throwable $exception) {
             Log::error('Pharmacy eRx dispense failed: '.$exception->getMessage());
-            $this->flashOutcome('error', 'Не вдалося погасити рецепт: '.$exception->getMessage());
+            Session::flash('error', 'Не вдалося погасити рецепт: '.$exception->getMessage());
             $this->showSignatureModal = false;
         }
     }
@@ -212,12 +213,6 @@ class MedicationRequestIndex extends Component
         }
 
         return null;
-    }
-
-    protected function flashOutcome(string $type, string $message): void
-    {
-        session()->flash($type, $message);
-        $this->dispatch('flashMessage', ['message' => $message, 'type' => $type]);
     }
 
     public function render()

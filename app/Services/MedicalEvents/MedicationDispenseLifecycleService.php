@@ -7,6 +7,7 @@ namespace App\Services\MedicalEvents;
 use App\Classes\eHealth\EHealth;
 use App\Models\Employee\Employee;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 
 class MedicationDispenseLifecycleService
 {

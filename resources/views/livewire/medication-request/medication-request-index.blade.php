@@ -1,5 +1,5 @@
 <div>
-    <livewire:components.x-message :listen-async="true" :key="'pharmacy-erx-flash'" />
+    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
     <x-forms.loading />
 
     <x-header-navigation class="items-start">

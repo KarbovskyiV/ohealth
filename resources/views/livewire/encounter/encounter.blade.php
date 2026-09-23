@@ -40,7 +40,7 @@
     };
 @endphp
 
-<x-layouts.patient
+<x-layouts.patient :showLegacyMessages="false"
     :personId="$personId"
     :patientFullName="$patientFullName"
     :hideNavigation="true"
@@ -50,6 +50,8 @@
         ['label' => $patientName]
     ]"
 >
+    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
+
     <x-slot name="headerActions">
         <div class="flex w-full justify-start lg:w-75">
             @if ($canCancelRecords)
@@ -517,6 +519,5 @@
         @include('livewire.encounter.parts.encounter-referral-drawer')
     @endif
 
-    <livewire:components.x-message :listen-async="true" :key="time()" />
     <x-forms.loading />
 </x-layouts.patient>

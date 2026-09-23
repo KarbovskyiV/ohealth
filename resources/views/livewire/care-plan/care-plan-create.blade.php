@@ -1,4 +1,4 @@
-<x-layouts.patient
+<x-layouts.patient :showLegacyMessages="false"
     :personId="$personId"
     :uuid="$uuid"
     :patientFullName="$patientFullName"
@@ -8,6 +8,8 @@
         ['label' => $patientFullName ?? __('care-plan.patient') ?? 'Пацієнт']
     ]"
 >
+    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
+
     <x-slot name="headerActions"></x-slot>
 
     <div class="shift-content mt-6 pl-4">

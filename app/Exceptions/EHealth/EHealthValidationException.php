@@ -6,6 +6,7 @@ namespace App\Exceptions\EHealth;
 
 use App\Core\Arr;
 use App\Enums\CarePlanStatus;
+use App\Enums\EHealth\ErrorType;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 
@@ -67,16 +68,25 @@ class EHealthValidationException extends EHealthException
      */
     public function getFormattedMessage(): string
     {
-        $type = $this->details['error']['type'] ?? null;
+        $type = ErrorType::fromPayload($this->details['error']['type'] ?? null);
         $errorMessage = $this->details['error']['message'] ?? null;
 
         $translated = match (true) {
-            $type === 'validation_failed' => '',
+            $type === ErrorType::VALIDATION_FAILED => '',
             is_string($errorMessage) => $this->translateTopLevelMessage($errorMessage),
             default => $this->getMessage()
         };
 
-        $message = 'Помилка від ЕСОЗ:' . ($translated !== '' ? ' ' . $translated : '');
+        // Prefer a Ukrainian platform message over raw English internals from eHealth.
+        if (
+            $type === ErrorType::INTERNAL_ERROR
+            && is_string($errorMessage)
+            && ($translated === '' || $translated === $errorMessage)
+        ) {
+            $translated = __('errors.ehealth.messages.internal_error');
+        }
+
+        $message = __('Помилка від ЕСОЗ:') . ($translated !== '' ? ' ' . $translated : '');
 
         if (isset($this->details['error']['invalid']) && is_array($this->details['error']['invalid'])) {
             $invalids = $this->details['error']['invalid'];
@@ -87,16 +97,16 @@ class EHealthValidationException extends EHealthException
                     $description = $item['rules'][0]['description'] ?? 'no description';
 
                     if (str_contains($entry, 'product_reference.identifier.value') && str_contains($description, 'Value is not allowed by prescribable_device_codes dictionary configuration')) {
-                        return 'Код медичного виробу: Вибраний код не дозволений поточною конфігурацією словника для призначень в ЕСОЗ';
+                        return __('Код медичного виробу: Вибраний код не дозволений поточною конфігурацією словника для призначень в ЕСОЗ');
                     }
                     if (str_contains($entry, 'program.identifier.value') && str_contains($description, 'No appropriate participants found for this medical program')) {
-                        return 'Медична програма: Не знайдено відповідних учасників (закладів або підрозділів) для обраної медичної програми';
+                        return __('Медична програма: Не знайдено відповідних учасників (закладів або підрозділів) для обраної медичної програми');
                     }
                     if (str_contains($description, 'At least one of action references, diagnostic reports or procedures should reference the same service')) {
                         return __('errors.ehealth.messages.referral_service_mismatch');
                     }
                     if (str_contains($description, 'Category mismatch') || (str_contains($entry, 'code.identifier.value') && str_contains($description, 'Category mismatch'))) {
-                        return 'Категорія послуги: обрана послуга не відповідає вказаній категорії в ЕСОЗ. Будь ласка, оберіть правильну категорію в полі «Категорія» (наприклад, Діагностична процедура / Процедура / Лабораторна діагностика тощо)';
+                        return __('Категорія послуги: обрана послуга не відповідає вказаній категорії в ЕСОЗ. Будь ласка, оберіть правильну категорію в полі «Категорія» (наприклад, Діагностична процедура / Процедура / Лабораторна діагностика тощо)');
                     }
 
                     return "$entry: $description";
@@ -155,14 +165,14 @@ class EHealthValidationException extends EHealthException
             'requester.identifier.value' => __('care-plan.ehealth_fields.requester'),
             'authored_on' => __('care-plan.ehealth_fields.authored_on'),
             '$.authored_on' => __('care-plan.ehealth_fields.authored_on'),
-            'medical_programs.[0]' => 'Медична програма',
-            'medical_programs' => 'Медична програма',
-            'detail.product_reference.identifier.value' => 'Код медичного виробу',
-            'product_reference.identifier.value' => 'Код медичного виробу',
-            'detail.program.identifier.value' => 'Медична програма',
-            'program.identifier.value' => 'Медична програма',
-            'device_definition' => 'Медичний виріб',
-            'prescribable_device_codes' => 'Дозволені медичні вироби для призначення',
+            'medical_programs.[0]' => __('Медична програма'),
+            'medical_programs' => __('Медична програма'),
+            'detail.product_reference.identifier.value' => __('Код медичного виробу'),
+            'product_reference.identifier.value' => __('Код медичного виробу'),
+            'detail.program.identifier.value' => __('Медична програма'),
+            'program.identifier.value' => __('Медична програма'),
+            'device_definition' => __('Медичний виріб'),
+            'prescribable_device_codes' => __('Дозволені медичні вироби для призначення'),
         ];
 
         $invalidErrors = Arr::get($this->details, 'error.invalid') ?? Arr::get($this->details, 'invalid') ?? [];
@@ -229,15 +239,15 @@ class EHealthValidationException extends EHealthException
             } elseif (str_contains($message, 'Medical program is not allowed for this action')) {
                 $translatedMessage = __('errors.ehealth.messages.medical_program_not_allowed');
             } elseif (str_contains($message, 'Value is not allowed by prescribable_device_codes dictionary configuration')) {
-                $translatedMessage = 'Вибраний код медичного виробу не дозволений поточною конфігурацією словника для призначень в ЕСОЗ';
+                $translatedMessage = __('Вибраний код медичного виробу не дозволений поточною конфігурацією словника для призначень в ЕСОЗ');
             } elseif (str_contains($message, 'No appropriate participants found for this medical program')) {
-                $translatedMessage = 'Не знайдено відповідних учасників (закладів або підрозділів) для обраної медичної програми';
+                $translatedMessage = __('Не знайдено відповідних учасників (закладів або підрозділів) для обраної медичної програми');
             } elseif (str_contains($message, 'Code field of daily_amount object should be equal to denumerator_unit of one of medication\'s innms')) {
-                $translatedMessage = 'Код одиниці добової дози (daily_amount) повинен збігатися з denumerator_unit одного з INNM обраного лікарського засобу';
+                $translatedMessage = __('Код одиниці добової дози (daily_amount) повинен збігатися з denumerator_unit одного з INNM обраного лікарського засобу');
             } elseif (str_contains($message, 'Activity can be completed only if it has in_progress status')) {
-                $translatedMessage = 'Призначення може бути виконане тільки якщо воно має статус "В процесі" (in_progress)';
+                $translatedMessage = __('Призначення може бути виконане тільки якщо воно має статус "В процесі" (in_progress)');
             } elseif (str_contains($message, 'Category mismatch')) {
-                $translatedMessage = 'Категорія послуги не відповідає обраному коду в довіднику ЕСОЗ. Будь ласка, оберіть правильну категорію в полі «Категорія» (наприклад, Діагностична процедура / Процедура / Лабораторна діагностика тощо)';
+                $translatedMessage = __('Категорія послуги не відповідає обраному коду в довіднику ЕСОЗ. Будь ласка, оберіть правильну категорію в полі «Категорія» (наприклад, Діагностична процедура / Процедура / Лабораторна діагностика тощо)');
             } elseif (!empty($message)) {
                 $translatedMessage = $message;
             }
@@ -267,8 +277,12 @@ class EHealthValidationException extends EHealthException
 
         if (empty($errorList)) {
             $mainMessage = Arr::get($this->details, 'error.message') ?? Arr::get($this->details, 'message') ?? '';
+            $errorType = ErrorType::fromPayload(Arr::get($this->details, 'error.type'));
             if (!empty($mainMessage)) {
                 $errorList = $this->translateTopLevelMessage((string) $mainMessage);
+                if ($errorType === ErrorType::INTERNAL_ERROR && $errorList === $mainMessage) {
+                    $errorList = __('errors.ehealth.messages.internal_error');
+                }
             }
         }
 
@@ -285,14 +299,31 @@ class EHealthValidationException extends EHealthException
             && str_contains($message, 'cancelled');
     }
 
-    private function translateTopLevelMessage(string $message): string
+    protected function translateTopLevelMessage(string $message): string
     {
-        if ($message === 'Care plan has unfinished activities') {
-            return __('errors.ehealth.messages.care_plan_has_unfinished_activities');
+        $exactMessages = [
+            'Care plan has unfinished activities' => 'care_plan_has_unfinished_activities',
+        ];
+        if (isset($exactMessages[$message])) {
+            return __('errors.ehealth.messages.'.$exactMessages[$message]);
         }
 
-        if (str_contains($message, 'At least one of action references, diagnostic reports or procedures should reference the same service')) {
-            return __('errors.ehealth.messages.referral_service_mismatch');
+        $partialMessages = [
+            'At least one of action references, diagnostic reports or procedures should reference the same service' => 'referral_service_mismatch',
+            'Failed to save signed content' => 'failed_to_save_signed_content',
+        ];
+        foreach ($partialMessages as $fragment => $key) {
+            if (str_contains($message, $fragment)) {
+                return __('errors.ehealth.messages.'.$key);
+            }
+        }
+
+        // Elixir ETS crash while the async job stores the signed package (preprod/platform).
+        if (
+            str_contains($message, 'ETS table with insufficient access rights')
+            || (str_contains($message, 'ArgumentError') && str_contains($message, 'ETS'))
+        ) {
+            return __('errors.ehealth.messages.ets_insufficient_access');
         }
 
         if (preg_match('/^Care plan in status (\S+) cannot be cancelled$/i', $message, $matches) === 1) {

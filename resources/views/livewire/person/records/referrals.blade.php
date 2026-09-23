@@ -1,7 +1,9 @@
-<x-layouts.patient :personId="$personId" :patientFullName="$patientFullName">
+<x-layouts.patient :showLegacyMessages="false" :personId="$personId" :patientFullName="$patientFullName">
     @assets
         <script src="{{ asset('js/print-sandboxed.js') }}"></script>
     @endassets
+    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
+
     <x-slot name="headerActions">
         <button
             wire:click.prevent="applyFilters"
@@ -9,14 +11,14 @@
             class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
         >
             @icon('search-outline', 'w-4 h-4')
-            Пошук
+            {{ __('Пошук') }}
         </button>
         <button
             wire:click.prevent="resetFilters"
             type="button"
             class="button-primary-outline px-5 py-2 text-sm whitespace-nowrap"
         >
-            Скинути фільтри
+            {{ __('Скинути фільтри') }}
         </button>
     </x-slot>
 
@@ -24,40 +26,40 @@
         <div class="mt-6 w-full">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
                 @icon('search-outline', 'w-4.5 h-4.5')
-                <p>Реєстр електронних направлень пацієнта</p>
+                <p>{{ __('Реєстр електронних направлень пацієнта') }}</p>
             </div>
 
             <div class="form-row-3 mb-6">
                 <div class="form-group group">
-                    <label class="label" for="filterStatus">Статус</label>
+                    <label class="label" for="filterStatus">{{ __('Статус') }}</label>
                     <select id="filterStatus" wire:model="filterStatus" class="input-select peer w-full">
-                        <option value="">Усі</option>
-                        <option value="draft">Чернетка</option>
-                        <option value="new">Новий (заявка)</option>
-                        <option value="active">Активний</option>
-                        <option value="in_progress">В роботі</option>
-                        <option value="completed">Виконаний</option>
-                        <option value="recalled">Відкликаний</option>
-                        <option value="entered-in-error">Внесено помилково</option>
+                        <option value="">{{ __('Усі') }}</option>
+                        <option value="draft">{{ __('Чернетка') }}</option>
+                        <option value="new">{{ __('Новий (заявка)') }}</option>
+                        <option value="active">{{ __('Активний') }}</option>
+                        <option value="in_progress">{{ __('В роботі') }}</option>
+                        <option value="completed">{{ __('Виконаний') }}</option>
+                        <option value="recalled">{{ __('Відкликаний') }}</option>
+                        <option value="entered-in-error">{{ __('Внесено помилково') }}</option>
                     </select>
                 </div>
                 <div class="form-group group">
-                    <label class="label" for="filterStartedAtFrom">Початок з</label>
+                    <label class="label" for="filterStartedAtFrom">{{ __('Початок з') }}</label>
                     <input id="filterStartedAtFrom" type="date" class="input peer" wire:model="filterStartedAtFrom" />
                 </div>
                 <div class="form-group group">
-                    <label class="label" for="filterStartedAtTo">Початок по</label>
+                    <label class="label" for="filterStartedAtTo">{{ __('Початок по') }}</label>
                     <input id="filterStartedAtTo" type="date" class="input peer" wire:model="filterStartedAtTo" />
                 </div>
             </div>
 
             <div class="form-row-3 mb-8">
                 <div class="form-group group">
-                    <label class="label" for="filterEndedAtFrom">Кінець з</label>
+                    <label class="label" for="filterEndedAtFrom">{{ __('Кінець з') }}</label>
                     <input id="filterEndedAtFrom" type="date" class="input peer" wire:model="filterEndedAtFrom" />
                 </div>
                 <div class="form-group group">
-                    <label class="label" for="filterEndedAtTo">Кінець по</label>
+                    <label class="label" for="filterEndedAtTo">{{ __('Кінець по') }}</label>
                     <input id="filterEndedAtTo" type="date" class="input peer" wire:model="filterEndedAtTo" />
                 </div>
             </div>
@@ -66,13 +68,14 @@
                 <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-900/40">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium">Номер</th>
-                            <th class="px-4 py-3 text-left font-medium">Статус</th>
-                            <th class="px-4 py-3 text-left font-medium">Послуга / виріб</th>
-                            <th class="px-4 py-3 text-left font-medium">Кількість</th>
-                            <th class="px-4 py-3 text-left font-medium">Період</th>
-                            <th class="px-4 py-3 text-left font-medium">Основа</th>
-                            <th class="px-4 py-3 text-left font-medium">Дії</th>
+                            <th class="px-4 py-3 text-left font-medium">{{ __('Номер') }}</th>
+                            <th class="px-4 py-3 text-left font-medium">UUID</th>
+                            <th class="px-4 py-3 text-left font-medium">{{ __('Статус') }}</th>
+                            <th class="px-4 py-3 text-left font-medium">{{ __('Послуга / виріб') }}</th>
+                            <th class="px-4 py-3 text-left font-medium">{{ __('Кількість') }}</th>
+                            <th class="px-4 py-3 text-left font-medium">{{ __('Період') }}</th>
+                            <th class="px-4 py-3 text-left font-medium">{{ __('Основа') }}</th>
+                            <th class="px-4 py-3 text-left font-medium">{{ __('Дії') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -80,11 +83,14 @@
                             <tr wire:key="sr-{{ $referral['kind'] }}-{{ $referral['id'] ?? $referral['uuid'] }}">
                                 <td class="px-4 py-3">
                                     <div class="font-semibold text-gray-900 dark:text-white">
-                                        {{ $referral['requestNumber'] ?? '—' }}
+                                        {{ filled($referral['requestNumber'] ?? null) ? $referral['requestNumber'] : '—' }}
                                     </div>
                                     <div class="mt-0.5 text-xs text-gray-400">
                                         {{ $referral['categoryLabel'] ?? '' }}
                                     </div>
+                                </td>
+                                <td class="px-4 py-3 font-mono text-xs break-all text-gray-600 dark:text-gray-300">
+                                    {{ $referral['uuid'] ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3">
                                     <span class="badge {{ $referral['statusBadge'] ?? 'badge-dark' }}">
@@ -129,7 +135,7 @@
                                             class="text-xs text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                                             wire:click="toggleDetails('{{ $referral['uuid'] }}')"
                                         >
-                                            {{ $expandedUuid === $referral['uuid'] ? 'Сховати' : 'Деталі' }}
+                                            {{ $expandedUuid === $referral['uuid'] ? __('Сховати') : __('Деталі') }}
                                         </button>
 
                                         @if (!empty($referral['canSign']))
@@ -138,21 +144,21 @@
                                                 class="text-xs text-green-600 hover:text-green-700 dark:text-green-400"
                                                 wire:click="openSign('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
                                             >
-                                                Підписати
+                                                {{ __('Підписати') }}
                                             </button>
                                             @if (!empty($referral['encounterId']) && $personId)
                                                 <a
                                                     href="{{ route('encounter.edit', [legalEntity(), 'person' => $personId, 'encounterId' => $referral['encounterId']]) }}"
                                                     class="text-link text-xs"
                                                 >
-                                                    Редагувати
+                                                    {{ __('Редагувати') }}
                                                 </a>
                                             @elseif (!empty($referral['carePlanId']))
                                                 <a
                                                     href="{{ route('care-plans.show', [legalEntity(), $referral['carePlanId']]) }}"
                                                     class="text-link text-xs"
                                                 >
-                                                    Редагувати
+                                                    {{ __('Редагувати') }}
                                                 </a>
                                             @endif
                                         @endif
@@ -164,7 +170,7 @@
                                                     class="text-xs text-amber-600 hover:text-amber-500 dark:text-amber-400"
                                                     wire:click="recallReferral('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
                                                 >
-                                                    Відкликати
+                                                    {{ __('Відкликати') }}
                                                 </button>
                                             @endif
                                             @if (!empty($referral['canCancel']))
@@ -173,7 +179,7 @@
                                                     class="text-xs text-red-600 hover:text-red-500 dark:text-red-400"
                                                     wire:click="cancelReferral('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
                                                 >
-                                                    Внесено помилково
+                                                    {{ __('Внесено помилково') }}
                                                 </button>
                                             @endif
                                             <button
@@ -188,7 +194,7 @@
                                                     });
                                                 "
                                             >
-                                                Пам'ятка
+                                                {{ __('Пам\'ятка') }}
                                             </button>
                                             <button
                                                 type="button"
@@ -203,14 +209,14 @@
                             </tr>
                             @if ($expandedUuid === $referral['uuid'])
                                 <tr wire:key="sr-details-{{ $referral['uuid'] }}">
-                                    <td colspan="7" class="bg-gray-50 px-4 py-3 text-sm dark:bg-gray-900/30">
+                                    <td colspan="8" class="bg-gray-50 px-4 py-3 text-sm dark:bg-gray-900/30">
                                         <div class="grid gap-3 sm:grid-cols-3">
                                             <div>
-                                                <div class="text-[10px] text-gray-400 uppercase">Пріоритет</div>
+                                                <div class="text-[10px] text-gray-400 uppercase">{{ __('Пріоритет') }}</div>
                                                 <div class="font-medium">{{ $referral['priorityLabel'] ?? '—' }}</div>
                                             </div>
                                             <div>
-                                                <div class="text-[10px] text-gray-400 uppercase">Програма</div>
+                                                <div class="text-[10px] text-gray-400 uppercase">{{ __('Програма') }}</div>
                                                 <div class="font-medium">{{ $referral['programName'] ?? '—' }}</div>
                                             </div>
                                             <div>
@@ -218,12 +224,12 @@
                                                 <div class="font-medium break-all">{{ $referral['uuid'] }}</div>
                                             </div>
                                             <div class="sm:col-span-3">
-                                                <div class="text-[10px] text-gray-400 uppercase">Примітка</div>
+                                                <div class="text-[10px] text-gray-400 uppercase">{{ __('Примітка') }}</div>
                                                 <div>{{ $referral['note'] !== '' ? $referral['note'] : '—' }}</div>
                                             </div>
                                             <div class="sm:col-span-3">
                                                 <div class="text-[10px] text-gray-400 uppercase">
-                                                    Інструкція пацієнту
+                                                    {{ __('Інструкція пацієнту') }}
                                                 </div>
                                                 <div>
                                                     {{ $referral['patientInstruction'] !== '' ? $referral['patientInstruction'] : '—' }}
@@ -235,8 +241,8 @@
                             @endif
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-8 text-center text-gray-500">
-                                    Направлень за обраними фільтрами не знайдено.
+                                <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                                    {{ __('Направлень за обраними фільтрами не знайдено.') }}
                                 </td>
                             </tr>
                         @endforelse

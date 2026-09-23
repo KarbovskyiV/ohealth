@@ -9,11 +9,12 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\CarePlan;
+use App\Models\LegalEntity;
 use App\Repositories\CarePlanRepository;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
-use App\Models\LegalEntity;
 use Livewire\WithFileUploads;
 
 class CarePlanUpdate extends CarePlanCreate
@@ -106,7 +107,7 @@ class CarePlanUpdate extends CarePlanCreate
     public function save(CarePlanRepository $repository): void
     {
         if (Auth::user()?->cannot('update', $this->carePlan)) {
-            session()->flash('error', __('care-plan.no_permission_update'));
+            Session::flash('error', __('care-plan.no_permission_update'));
 
             return;
         }
@@ -156,9 +157,9 @@ class CarePlanUpdate extends CarePlanCreate
         if (isset($this->carePlan) && $this->carePlan->exists) {
             if ($this->carePlan->status === 'draft' || $this->carePlan->status === 'new') {
                 $this->carePlan->delete();
-                session()->flash('success', 'Чернетку плану лікування успішно видалено.');
+                session()->flash('success', __('Чернетку плану лікування успішно видалено.'));
             } else {
-                session()->flash('error', 'Можна видаляти лише чернетки планів лікування.');
+                session()->flash('error', __('Можна видаляти лише чернетки планів лікування.'));
             }
         }
 
@@ -178,7 +179,7 @@ class CarePlanUpdate extends CarePlanCreate
     public function sign(CarePlanRepository $repository): void
     {
         if (Auth::user()?->cannot('update', $this->carePlan)) {
-            session()->flash('error', __('care-plan.no_permission_update'));
+            Session::flash('error', __('care-plan.no_permission_update'));
 
             return;
         }
@@ -273,7 +274,7 @@ class CarePlanUpdate extends CarePlanCreate
 
         } catch (EHealthConnectionException $exception) {
             Log::error('CarePlan: connection error: ' . $exception->getMessage());
-            session()->flash('error', __('care-plan.connection_error'));
+            Session::flash('error', __('care-plan.connection_error'));
             $this->showSignatureModal = false;
         } catch (EHealthValidationException|EHealthResponseException $exception) {
             if (method_exists($exception, 'report')) {
@@ -283,7 +284,7 @@ class CarePlanUpdate extends CarePlanCreate
             $msg = $exception instanceof EHealthValidationException
                 ? $exception->getFormattedMessage()
                 : 'Помилка від ЕСОЗ: ' . $exception->getMessage();
-            session()->flash('error', $msg);
+            Session::flash('error', $msg);
             $this->showSignatureModal = false;
         } catch (\Throwable $exception) {
             Log::error('CarePlan: unexpected error: ' . $exception->getMessage(), [
@@ -291,7 +292,7 @@ class CarePlanUpdate extends CarePlanCreate
                 'line' => $exception->getLine(),
                 'trace' => $exception->getTraceAsString(),
             ]);
-            session()->flash('error', __('care-plan.unexpected_error'));
+            Session::flash('error', __('care-plan.unexpected_error'));
             $this->showSignatureModal = false;
         }
     }

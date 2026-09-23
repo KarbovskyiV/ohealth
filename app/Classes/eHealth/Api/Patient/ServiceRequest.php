@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Classes\eHealth\Api\Patient;
 
+use App\Classes\eHealth\Api\ServiceRequest as ServiceRequestExecutorApi;
 use App\Classes\eHealth\EHealthResponse;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
@@ -11,6 +12,7 @@ use App\Exceptions\EHealth\EHealthValidationException;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class ServiceRequest extends PatientApiBase
 {
@@ -98,6 +100,36 @@ class ServiceRequest extends PatientApiBase
         return $this->post(self::URL . "/{$patientId}/service_requests/{$id}/actions/resend", []);
     }
 
+    /**
+     * Executor actions live on the facility-scoped Service Request API.
+     * EHealth::serviceRequest() is bound to this Patient client for create/search,
+     * so these methods delegate to Api\ServiceRequest for use / complete / qualify.
+     */
+    public function qualify(string $id, array $payload = []): PromiseInterface|EHealthResponse
+    {
+        return $this->executorApi()->qualify($id, $payload);
+    }
+
+    public function process(string $id, array $payload = []): PromiseInterface|EHealthResponse
+    {
+        return $this->executorApi()->process($id, $payload);
+    }
+
+    public function complete(string $id, array $payload = []): PromiseInterface|EHealthResponse
+    {
+        return $this->executorApi()->complete($id, $payload);
+    }
+
+    public function cancelUsage(string $id, string $patientId, array $payload = []): PromiseInterface|EHealthResponse
+    {
+        return $this->executorApi()->cancelUsage($id, $patientId, $payload);
+    }
+
+    private function executorApi(): ServiceRequestExecutorApi
+    {
+        return app(ServiceRequestExecutorApi::class);
+    }
+
     protected function validateDetails(EHealthResponse $response): array
     {
         $data = $this->replaceEHealthPropNames($response->getData());
@@ -113,7 +145,7 @@ class ServiceRequest extends PatientApiBase
             Log::channel('e_health_errors')->error(
                 'ServiceRequest details validation failed: ' . implode(', ', $validator->errors()->all())
             );
-            throw new \Illuminate\Validation\ValidationException($validator);
+            throw new ValidationException($validator);
         }
 
         return $data;
@@ -145,7 +177,7 @@ class ServiceRequest extends PatientApiBase
             Log::channel('e_health_errors')->error(
                 'ServiceRequest many validation failed: ' . implode(', ', $validator->errors()->all())
             );
-            throw new \Illuminate\Validation\ValidationException($validator);
+            throw new ValidationException($validator);
         }
 
         return $response->getData();

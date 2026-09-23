@@ -3,6 +3,7 @@
     'prepersonId' => null,
     'patientFullName',
     'hideNavigation' => false,
+    'showLegacyMessages' => true,
     'title' => null,
     'breadcrumbs' => [],
     'activeTab' => null
@@ -244,5 +245,7 @@
     </x-header-navigation>
 
     {{ $slot }}
-    <livewire:components.x-message :key="time()" />
+    @if ($showLegacyMessages)
+        <livewire:components.x-message :key="time()" />
+    @endif
 </section>

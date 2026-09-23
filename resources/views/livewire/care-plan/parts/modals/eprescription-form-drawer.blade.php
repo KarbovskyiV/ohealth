@@ -102,8 +102,9 @@
                         </div>
                     </div>
 
-                    <div class="dark:bg-gray-750 rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600 dark:border-gray-600 dark:text-gray-400">
-                        <h4 class="mb-2 font-semibold text-gray-800 dark:text-gray-200">
+                    {{-- Use a real dark surface (gray-700) so body text stays readable in dark theme --}}
+                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                        <h4 class="mb-2 font-semibold text-gray-800 dark:text-gray-100">
                             Рецептурний лікарський засіб - деталі програми
                         </h4>
                         <ul class="list-inside list-disc space-y-1">

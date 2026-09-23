@@ -90,17 +90,25 @@
     </div>
 </div>
 
+@if ($consumeMessages)
+    @php(session()->forget(['error', 'success', 'status', 'info', 'warning']))
+@endif
+
 <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('message', (showAlertMessage = false) => ({
+    (() => {
+        const registerMessage = () => Alpine.data('message', (showAlertMessage = false) => ({
             showAlertMessage,
             showDynamicMessage: false,
             dynamicText: '',
             dynamicType: 'success',
+            alertTimeout: null,
             init() {
                 if (this.showAlertMessage) {
-                    setTimeout(() => this.showAlertMessage = false, 30000);
+                    this.alertTimeout = setTimeout(() => this.showAlertMessage = false, 30000);
                 }
+            },
+            destroy() {
+                clearTimeout(this.alertTimeout);
             },
             setupListeners() {
                 let handler = (data) => {
@@ -149,6 +157,11 @@
                     window._flashToastTimeout = setTimeout(() => this.showDynamicMessage = false, 30000);
                 }
             }
-        }))
-    });
+        }));
+        if (window.Alpine) {
+            registerMessage();
+        } else {
+            document.addEventListener('alpine:init', registerMessage, { once: true });
+        }
+    })();
 </script>

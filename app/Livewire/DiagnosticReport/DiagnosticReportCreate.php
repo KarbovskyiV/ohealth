@@ -47,16 +47,18 @@ class DiagnosticReportCreate extends DiagnosticReportComponent
             ->getByPersonIdAndStatus(
                 $this->personId,
                 ServiceRequestStatus::PROCESSED->value,
-                ['uuid', 'request_number', 'service_id', 'category']
+                ['uuid', 'request_number', 'service_id', 'category_id']
             )
+            ->loadMissing('category')
             ->map(static function (ServiceRequestRequest $referral) use ($services, $diagnosticReportCategories): array {
                 $service = $services->firstWhere('id', $referral->serviceId);
+                $category = strtolower((string) ($referral->category?->text ?? ''));
 
                 return [
                     'id' => $referral->uuid,
                     'requisition' => $referral->requestNumber ?: $referral->uuid,
-                    'category' => $referral->category
-                        ? __('care-plan.referral_category.'.$referral->category)
+                    'category' => $category !== ''
+                        ? __('care-plan.referral_category.'.$category)
                         : __('encounters.electronic_referral'),
                     'service' => $service,
                     'isDiagnosticReportAllowed' => $service !== null
