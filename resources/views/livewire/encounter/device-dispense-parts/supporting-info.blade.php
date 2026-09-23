@@ -188,8 +188,12 @@
                             <form>
                                 <div class="mb-4 flex items-start gap-4">
                                     <div class="form-group group min-w-0 flex-1">
+                                        <label for="deviceDispenseSupportingInfoType" class="sr-only">
+                                            {{ __('device-dispenses.supporting_info') }}
+                                        </label>
                                         <select
                                             x-model="selectedSupportingInfoType"
+                                            id="deviceDispenseSupportingInfoType"
                                             @change="
                                                 $wire.supportingInfoResults = [];
                                                 selectedSupportingInfoIds = [];
@@ -201,7 +205,9 @@
                                             </option>
                                             <option value="condition">{{ __('conditions.plural') }}</option>
                                             <option value="observation">{{ __('observations.plural') }}</option>
-                                            <option value="diagnosticReport">{{ __('diagnostic-reports.plural') }}</option>
+                                            <option value="diagnosticReport">
+                                                {{ __('diagnostic-reports.plural') }}
+                                            </option>
                                             <option value="procedure">{{ __('procedures.plural') }}</option>
                                             <option value="encounter">{{ __('encounters.plural') }}</option>
                                             <option value="episodes">{{ __('episodes.plural') }}</option>
@@ -209,33 +215,34 @@
                                     </div>
 
                                     <div class="form-group group min-w-0 flex-1">
+                                        <label for="deviceDispenseSupportingInfoEpisode" class="sr-only">
+                                            {{ __('device-dispenses.select_episode_filter') }}
+                                        </label>
                                         <select
                                             x-model="selectedSupportingInfoEpisodeId"
+                                            id="deviceDispenseSupportingInfoEpisode"
                                             @change="
                                                 $wire.supportingInfoResults = [];
                                                 selectedSupportingInfoIds = [];
                                             "
                                             class="input-modal peer"
                                         >
-                                            <option value="">
-                                                {{ __('device-dispenses.select_episode_filter') }}
-                                            </option>
+                                            <option value="">{{ __('device-dispenses.select_episode_filter') }}</option>
 
                                             <template x-for="episode in episodes" :key="episode.uuid">
-                                                <option
-                                                    :value="episode.uuid"
-                                                    x-text="episodeLabel(episode)"
-                                                ></option>
+                                                <option :value="episode.uuid" x-text="episodeLabel(episode)"></option>
                                             </template>
                                         </select>
                                     </div>
 
                                     <div class="shrink-0">
                                         <button
-                                            @click.prevent="$wire.searchSupportingInfo(
-                                                selectedSupportingInfoType,
-                                                selectedSupportingInfoEpisodeId || null
-                                            )"
+                                            @click.prevent="
+                                                $wire.searchSupportingInfo(
+                                                    selectedSupportingInfoType,
+                                                    selectedSupportingInfoEpisodeId || null,
+                                                )
+                                            "
                                             class="button-primary flex items-center gap-2 whitespace-nowrap"
                                             :disabled="! selectedSupportingInfoType"
                                         >
@@ -248,7 +255,7 @@
                                         <x-forms.loading />
                                     </div>
                                 </div>
-                                
+
                                 <template x-if="$wire.supportingInfoResults.length > 0">
                                     <div class="table-container">
                                         <div class="overflow-visible">

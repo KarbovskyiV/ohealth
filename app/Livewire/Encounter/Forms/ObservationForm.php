@@ -11,6 +11,7 @@ use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
 use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -28,9 +29,32 @@ class ObservationForm extends Form
      */
     public function validationAttributes(): array
     {
-        return collect(__('observations.attributes'))
+        $names = __('observations.attributes');
+        // A field nested deeper than one record keeps the name it carries for every index
+        $attributes = collect($names)
             ->mapWithKeys(static fn (string $name, string $field): array => ["observations.*.$field" => $name])
             ->all();
+
+        // Each name carries the observation number, so an error points to the card it belongs to
+        foreach ($this->observations as $index => $observation) {
+            $number = __('observations.position', ['position' => $index + 1]);
+
+            foreach ($names as $field => $name) {
+                if (!str_contains($field, '.*.')) {
+                    $attributes["observations.$index.$field"] = "$name, $number";
+
+                    continue;
+                }
+
+                [$nestedProperty, $nestedField] = explode('.*.', $field, 2);
+
+                foreach (array_keys($observation[$nestedProperty] ?? []) as $nestedIndex) {
+                    $attributes["observations.$index.$nestedProperty.$nestedIndex.$nestedField"] = "$name, $number";
+                }
+            }
+        }
+
+        return $attributes;
     }
 
     protected function rules(): array
@@ -71,13 +95,16 @@ class ObservationForm extends Form
                 'date',
                 'before_or_equal:now'
             ]),
-            'observations.*.effectiveTime' => Rule::forEach(fn (mixed $value, string $attribute) => [
-                Rule::requiredIf(
-                    ($this->observations[(int)explode('.', $attribute)[1]]['effectiveType'] ?? '') === 'date_time'
-                ),
-                'nullable',
-                'date_format:H:i'
-            ]),
+            'observations.*.effectiveTime' => Rule::forEach(function (mixed $value, string $attribute): array {
+                $observation = $this->observations[(int)explode('.', $attribute)[1]];
+
+                return [
+                    Rule::requiredIf(($observation['effectiveType'] ?? '') === 'date_time'),
+                    'nullable',
+                    'date_format:H:i',
+                    $this->notAfterEncounterEnd($observation['effectiveDate'] ?? '')
+                ];
+            }),
             // Both bounds live in one range picker, the way the encounter and care plan filters keep them
             'observations.*.effectivePeriodRange' => Rule::forEach(fn (mixed $value, string $attribute) => [
                 Rule::requiredIf(
@@ -90,36 +117,59 @@ class ObservationForm extends Form
             'observations.*.effectivePeriodStartTime' => Rule::forEach(function (mixed $value, string $attribute) {
                 $observation = $this->observations[(int)explode('.', $attribute)[1]];
                 $bounds = array_map('trim', explode('—', $observation['effectivePeriodRange'] ?? ''));
+                $encounter = $this->component->form->encounter ?? [];
 
                 return [
                     Rule::requiredIf(($observation['effectiveType'] ?? '') === 'period'),
                     'nullable',
                     'date_format:H:i',
-                    new PastDateTime($bounds[0] ?? '')
+                    new PastDateTime($bounds[0] ?? ''),
+                    new AfterOrEqualDateTime(
+                        $bounds[0] ?? '',
+                        $encounter['periodDate'] ?? '',
+                        $encounter['periodStart'] ?? '',
+                        'encounter_period_start'
+                    ),
+                    $this->notAfterEncounterEnd($bounds[0] ?? '')
                 ];
             }),
             'observations.*.effectivePeriodEndTime' => Rule::forEach(function (mixed $value, string $attribute) {
                 $observation = $this->observations[(int)explode('.', $attribute)[1]];
                 $bounds = array_map('trim', explode('—', $observation['effectivePeriodRange'] ?? ''));
+                // A period within one day leaves the picker with a single date
+                $endDate = empty($bounds[1]) ? ($bounds[0] ?? '') : $bounds[1];
 
                 return [
-                    Rule::requiredIf(!empty($bounds[1])),
+                    Rule::requiredIf(($observation['effectiveType'] ?? '') === 'period'),
                     'nullable',
                     'date_format:H:i',
-                    new PastDateTime($bounds[1] ?? ''),
+                    new PastDateTime($endDate),
                     new AfterOrEqualDateTime(
-                        $bounds[1] ?? '',
+                        $endDate,
                         $bounds[0] ?? '',
                         $observation['effectivePeriodStartTime'] ?? ''
-                    )
+                    ),
+                    $this->notAfterEncounterEnd($endDate)
                 ];
             }),
             'observations.*.issuedDate' => ['required_with:observations', 'date', 'before_or_equal:today'],
-            'observations.*.issuedTime' => Rule::forEach(fn (mixed $value, string $attribute) => [
-                'required_with:observations',
-                'date_format:H:i',
-                new PastDateTime($this->observations[(int)explode('.', $attribute)[1]]['issuedDate'] ?? '')
-            ]),
+            'observations.*.issuedTime' => Rule::forEach(function (mixed $value, string $attribute): array {
+                $issuedDate = $this->observations[(int)explode('.', $attribute)[1]]['issuedDate'] ?? '';
+                $encounter = $this->component->form->encounter ?? [];
+
+                return [
+                    'required_with:observations',
+                    'date_format:H:i',
+                    new PastDateTime($issuedDate),
+                    new AfterOrEqualDateTime(
+                        $issuedDate,
+                        $encounter['periodDate'] ?? '',
+                        $encounter['periodStart'] ?? '',
+                        'encounter_period_start'
+                    ),
+                    $this->notAfterEncounterEnd($issuedDate)
+                ];
+            }),
             'observations.*.primarySource' => [
                 'required_with:observations',
                 'boolean',
@@ -223,6 +273,34 @@ class ObservationForm extends Form
             'observations.*.valueSampledDataUpperLimit' => ['nullable', 'numeric'],
             'observations.*.valueSampledDataDimensions' => ['nullable', 'numeric']
         ];
+    }
+
+    /**
+     * Fail when the date and time are later than the end of the encounter.
+     *
+     * @param  string  $date  Date portion of the validated value, e.g. 23.09.2026
+     * @return Closure
+     */
+    private function notAfterEncounterEnd(string $date): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($date): void {
+            $encounter = $this->component->form->encounter ?? [];
+
+            if (empty($date) || empty($value) || empty($encounter['periodDate']) || empty($encounter['periodEnd'])) {
+                return;
+            }
+
+            $format = config('app.date_format') . ' H:i';
+            $dateTime = CarbonImmutable::createFromFormat($format, $date . ' ' . $value);
+            $periodEnd = CarbonImmutable::createFromFormat(
+                $format,
+                $encounter['periodDate'] . ' ' . $encounter['periodEnd']
+            );
+
+            if ($dateTime->greaterThan($periodEnd)) {
+                $fail(__('validation.before_or_equal', ['date' => __('validation.attributes.encounter_period_end')]));
+            }
+        };
     }
 
     /**

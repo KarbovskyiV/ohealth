@@ -92,6 +92,9 @@ return [
         'performer_not_participant' => 'Виконавець процедури має бути учасником взаємодії.'
     ],
 
+    // Number of the record every :attribute of a validation message carries
+    'position' => 'процедура №:position',
+
     // Field names for :attribute in validation messages
     'attributes' => [
         'status' => 'статус процедури',

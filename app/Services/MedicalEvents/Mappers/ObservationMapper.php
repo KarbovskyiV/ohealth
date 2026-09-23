@@ -55,19 +55,17 @@ class ObservationMapper implements FhirMapperContract
         $periodBounds = array_map('trim', explode('—', $data['effectivePeriodRange'] ?? ''));
 
         if ($effectiveType === 'period' && !empty($periodBounds[0])) {
-            $effectivePeriod = [
+            // A period within one day leaves the picker with a single date
+            $endDate = empty($periodBounds[1]) ? $periodBounds[0] : $periodBounds[1];
+
+            $result['effectivePeriod'] = [
                 'start' => convertToEHealthISO8601(
                     $periodBounds[0] . ' ' . $data['effectivePeriodStartTime']
+                ),
+                'end' => convertToEHealthISO8601(
+                    $endDate . ' ' . $data['effectivePeriodEndTime']
                 )
             ];
-
-            if (!empty($periodBounds[1]) && !empty($data['effectivePeriodEndTime'])) {
-                $effectivePeriod['end'] = convertToEHealthISO8601(
-                    $periodBounds[1] . ' ' . $data['effectivePeriodEndTime']
-                );
-            }
-
-            $result['effectivePeriod'] = $effectivePeriod;
         } elseif ($effectiveType === 'date_time' && !empty($data['effectiveDate']) && !empty($data['effectiveTime'])) {
             $result['effectiveDateTime'] = convertToEHealthISO8601(
                 $data['effectiveDate'] . ' ' . $data['effectiveTime']

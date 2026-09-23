@@ -256,6 +256,7 @@
                     id="observationEffectivePeriodEndTime"
                     class="input-modal pl-10!"
                     autocomplete="off"
+                    :required="modalObservation.effectiveType === 'period'"
                 />
             </div>
         </div>

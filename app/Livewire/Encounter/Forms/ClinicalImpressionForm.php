@@ -21,9 +21,32 @@ class ClinicalImpressionForm extends Form
      */
     public function validationAttributes(): array
     {
-        return collect(__('clinical-impressions.attributes'))
+        $names = __('clinical-impressions.attributes');
+        // A field nested deeper than one record keeps the name it carries for every index
+        $attributes = collect($names)
             ->mapWithKeys(static fn (string $name, string $field): array => ["clinicalImpressions.*.$field" => $name])
             ->all();
+
+        // Each name carries the clinical impression number, so an error points to the card it belongs to
+        foreach ($this->clinicalImpressions as $index => $clinicalImpression) {
+            $number = __('clinical-impressions.position', ['position' => $index + 1]);
+
+            foreach ($names as $field => $name) {
+                if (!str_contains($field, '.*.')) {
+                    $attributes["clinicalImpressions.$index.$field"] = "$name, $number";
+
+                    continue;
+                }
+
+                [$nestedProperty, $nestedField] = explode('.*.', $field, 2);
+
+                foreach (array_keys($clinicalImpression[$nestedProperty] ?? []) as $nestedIndex) {
+                    $attributes["clinicalImpressions.$index.$nestedProperty.$nestedIndex.$nestedField"] = "$name, $number";
+                }
+            }
+        }
+
+        return $attributes;
     }
 
     protected function rules(): array

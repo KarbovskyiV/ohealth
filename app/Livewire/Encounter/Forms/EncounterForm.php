@@ -25,6 +25,7 @@ class EncounterForm extends BaseForm
         'reasons' => [],
         'actions' => [],
         'referralType' => '',
+        'hospitalization' => [],
         'actionReferences' => [],
         'participant' => [],
         'supportingInfo' => []
@@ -136,6 +137,7 @@ class EncounterForm extends BaseForm
             ],
             'encounter.hospitalization.destination' => [
                 'exclude_unless:encounter.classCode,INPATIENT',
+                'required_if:encounter.hospitalization.dischargeDisposition,transfer_general',
                 'nullable',
                 'uuid',
                 static function (string $attribute, mixed $value, Closure $fail): void {
@@ -256,6 +258,7 @@ class EncounterForm extends BaseForm
             'encounter.divisionId.required' => __('validation.custom.encounter.divisionId.required_if'),
             'encounter.divisionId.prohibited' => __('validation.custom.encounter.divisionId.prohibited'),
             'encounter.hospitalization.admitSource.required_if' => __('validation.custom.encounter.hospitalization.admit_source_required_if'),
+            'encounter.hospitalization.destination.required_if' => __('validation.custom.encounter.hospitalization.destination_required_if'),
             'encounter.hospitalization.dischargeDisposition.required_if' => __('validation.custom.encounter.hospitalization.discharge_disposition_required_if'),
             'encounter.hospitalization.dischargeDepartment.required_if' => __('validation.custom.encounter.hospitalization.discharge_department_required_if'),
             'encounter.actions.required_if' => __('validation.custom.encounter.actions.required_if'),

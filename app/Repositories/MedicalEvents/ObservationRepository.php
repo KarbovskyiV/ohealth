@@ -227,7 +227,7 @@ class ObservationRepository extends BaseRepository
     {
         return collect(
             $this->model->whereIn('uuid', $uuids)
-                ->with('code.coding')
+                ->with(['code.coding', 'effectivePeriod'])
                 ->get()
                 ->toArray()
         )
@@ -259,6 +259,7 @@ class ObservationRepository extends BaseRepository
             'method.coding',
             'value.valueQuantity',
             'value.valueCodeableConcept.coding',
+            'effectivePeriod',
             'reactionOn.type.coding',
             'device.type.coding',
             'components.code.coding',

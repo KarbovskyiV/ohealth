@@ -31,9 +31,32 @@ class ProcedureForm extends Form
      */
     public function validationAttributes(): array
     {
-        return collect(__('procedures.attributes'))
+        $names = __('procedures.attributes');
+        // A field nested deeper than one record keeps the name it carries for every index
+        $attributes = collect($names)
             ->mapWithKeys(static fn (string $name, string $field): array => ["procedures.*.$field" => $name])
             ->all();
+
+        // Each name carries the procedure number, so an error points to the card it belongs to
+        foreach ($this->procedures as $index => $procedure) {
+            $number = __('procedures.position', ['position' => $index + 1]);
+
+            foreach ($names as $field => $name) {
+                if (!str_contains($field, '.*.')) {
+                    $attributes["procedures.$index.$field"] = "$name, $number";
+
+                    continue;
+                }
+
+                [$nestedProperty, $nestedField] = explode('.*.', $field, 2);
+
+                foreach (array_keys($procedure[$nestedProperty] ?? []) as $nestedIndex) {
+                    $attributes["procedures.$index.$nestedProperty.$nestedIndex.$nestedField"] = "$name, $number";
+                }
+            }
+        }
+
+        return $attributes;
     }
 
     protected function rules(): array

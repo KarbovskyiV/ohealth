@@ -109,9 +109,35 @@ class EncounterCreate extends EncounterComponent
 
         $this->initializeComponent();
 
+        if (request()->query('type') === 'discharge') {
+            $this->presetDischarge();
+        }
+
         $this->setDefaultDate();
 
         $this->loadAvailableReferrals();
+    }
+
+    /**
+     * Fill in the interaction class and type a patient discharge is always submitted with,
+     * and bind the interaction to the episode the patient was hospitalized within.
+     *
+     * @return void
+     */
+    protected function presetDischarge(): void
+    {
+        if (!isset($this->dictionaries['eHealth/encounter_classes']['INPATIENT'])) {
+            return;
+        }
+
+        $this->form->encounter['classCode'] = 'INPATIENT';
+        $this->adjustEncounterTypes();
+
+        if (isset($this->dictionaries['eHealth/encounter_types']['discharge'])) {
+            $this->form->encounter['typeCode'] = 'discharge';
+        }
+
+        $this->episodeType = 'existing';
     }
 
     /**

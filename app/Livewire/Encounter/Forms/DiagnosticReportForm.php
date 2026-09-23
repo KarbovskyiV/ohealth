@@ -31,9 +31,32 @@ class DiagnosticReportForm extends Form
      */
     public function validationAttributes(): array
     {
-        return collect(__('diagnostic-reports.attributes'))
+        $names = __('diagnostic-reports.attributes');
+        // A field nested deeper than one record keeps the name it carries for every index
+        $attributes = collect($names)
             ->mapWithKeys(static fn (string $name, string $field): array => ["diagnosticReports.*.$field" => $name])
             ->all();
+
+        // Each name carries the diagnostic report number, so an error points to the card it belongs to
+        foreach ($this->diagnosticReports as $index => $diagnosticReport) {
+            $number = __('diagnostic-reports.position', ['position' => $index + 1]);
+
+            foreach ($names as $field => $name) {
+                if (!str_contains($field, '.*.')) {
+                    $attributes["diagnosticReports.$index.$field"] = "$name, $number";
+
+                    continue;
+                }
+
+                [$nestedProperty, $nestedField] = explode('.*.', $field, 2);
+
+                foreach (array_keys($diagnosticReport[$nestedProperty] ?? []) as $nestedIndex) {
+                    $attributes["diagnosticReports.$index.$nestedProperty.$nestedIndex.$nestedField"] = "$name, $number";
+                }
+            }
+        }
+
+        return $attributes;
     }
 
     protected function rules(): array
