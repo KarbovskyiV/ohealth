@@ -28,9 +28,32 @@ class ConditionForm extends Form
      */
     public function validationAttributes(): array
     {
-        return collect(__('conditions.attributes'))
+        $names = __('conditions.attributes');
+        // A field nested deeper than one record keeps the name it carries for every index
+        $attributes = collect($names)
             ->mapWithKeys(static fn (string $name, string $field): array => ["conditions.*.$field" => $name])
             ->all();
+
+        // Each name carries the diagnosis number, so an error points to the card it belongs to
+        foreach ($this->conditions as $index => $condition) {
+            $number = __('conditions.position', ['position' => $index + 1]);
+
+            foreach ($names as $field => $name) {
+                if (!str_contains($field, '.*.')) {
+                    $attributes["conditions.$index.$field"] = "$name, $number";
+
+                    continue;
+                }
+
+                [$nestedProperty, $nestedField] = explode('.*.', $field, 2);
+
+                foreach (array_keys($condition[$nestedProperty] ?? []) as $nestedIndex) {
+                    $attributes["conditions.$index.$nestedProperty.$nestedIndex.$nestedField"] = "$name, $number";
+                }
+            }
+        }
+
+        return $attributes;
     }
 
     protected function rules(): array

@@ -44,12 +44,17 @@ class SpecimenForm extends Form
                 'uuid',
                 function (string $attribute, mixed $value, Closure $fail): void {
                     if ($value === ($this->specimens[(int) explode('.', $attribute)[1]]['uuid'] ?? '')) {
-                        $fail(__('specimens.validation.parent.not_found'));
+                        $fail(__('specimens.validation.parent.not_found', $this->positionReplacements($attribute)));
 
                         return;
                     }
 
-                    $this->validateReference($value, $fail, 'specimens.validation.parent');
+                    $this->validateReference(
+                        $value,
+                        $fail,
+                        'specimens.validation.parent',
+                        $this->positionReplacements($attribute)
+                    );
                 }
             ],
             'specimens.*.collectorType' => ['required_with:specimens', Rule::in(['current', 'other', 'patient'])],
@@ -62,14 +67,20 @@ class SpecimenForm extends Form
                     function (string $attribute, mixed $value, Closure $fail) use ($collectorType): void {
                         if ($collectorType === 'patient') {
                             if ($value !== $this->component->patientUuid) {
-                                $fail(__('specimens.validation.collector_not_current_patient'));
+                                $fail(__(
+                                    'specimens.validation.collector_not_current_patient',
+                                    $this->positionReplacements($attribute)
+                                ));
                             }
 
                             return;
                         }
 
                         if (!collect($this->component->employees)->contains('uuid', $value)) {
-                            $fail(__('specimens.validation.collector_not_found'));
+                            $fail(__(
+                                'specimens.validation.collector_not_found',
+                                $this->positionReplacements($attribute)
+                            ));
                         }
                     }
                 ];
@@ -163,7 +174,10 @@ class SpecimenForm extends Form
                         ->sum(static fn (array $container): float => (float) ($container['specimenQuantityValue'] ?? 0));
 
                     if ($containersQuantity > (float) $value) {
-                        $fail(__('specimens.validation.containers_quantity_exceeds_collected'));
+                        $fail(__(
+                            'specimens.validation.containers_quantity_exceeds_collected',
+                            $this->positionReplacements($attribute)
+                        ));
                     }
                 }
             ],
@@ -181,7 +195,7 @@ class SpecimenForm extends Form
                 'uuid',
                 function (string $attribute, mixed $value, Closure $fail): void {
                     if (!collect($this->component->procedureForm->procedures)->contains('uuid', $value)) {
-                        $fail(__('specimens.validation.procedure_not_found'));
+                        $fail(__('specimens.validation.procedure_not_found', $this->positionReplacements($attribute)));
                     }
                 }
             ],
@@ -195,7 +209,10 @@ class SpecimenForm extends Form
                         ->count();
 
                     if ($sameIdentifierCount > 1) {
-                        $fail(__('specimens.validation.container_identifier_not_unique'));
+                        $fail(__(
+                            'specimens.validation.container_identifier_not_unique',
+                            $this->positionReplacements($attribute)
+                        ));
                     }
                 }
             ],
@@ -225,7 +242,10 @@ class SpecimenForm extends Form
                     }
 
                     if ($value !== ($specimen['quantityCode'] ?? '')) {
-                        $fail(__('specimens.validation.container_quantity_code_mismatch'));
+                        $fail(__(
+                            'specimens.validation.container_quantity_code_mismatch',
+                            $this->positionReplacements($attribute)
+                        ));
                     }
                 }
             ],
@@ -240,61 +260,37 @@ class SpecimenForm extends Form
      */
     public function validationAttributes(): array
     {
-        $unit = ' (' . __('specimens.unit') . ')';
-        $specimenFields = [
-            'typeCode' => __('specimens.specimen_type'),
-            'conditionCode' => __('specimens.specimen_condition'),
-            'receivedDate' => __('specimens.date_time_received'),
-            'receivedTime' => __('specimens.date_time_received'),
-            'note' => __('specimens.note'),
-            'collectorType' => __('specimens.collector'),
-            'collectorId' => __('specimens.collector'),
-            'collectedType' => __('specimens.when_done'),
-            'collectedDate' => __('specimens.date_time'),
-            'collectedTime' => __('specimens.date_time'),
-            'collectedPeriodRange' => __('specimens.period'),
-            'collectedPeriodStartTime' => __('specimens.period_start'),
-            'collectedPeriodEndTime' => __('specimens.period_end'),
-            'durationValue' => __('specimens.collection_duration'),
-            'durationCode' => __('specimens.collection_duration') . $unit,
-            'quantityValue' => __('specimens.material_amount'),
-            'quantityCode' => __('specimens.material_amount') . $unit,
-            'methodCode' => __('specimens.collection_method'),
-            'bodySiteCode' => __('specimens.body_site'),
-            'fastingStatusCode' => __('specimens.fasting_status'),
-            'procedureId' => __('specimens.procedure_during_collection'),
-            'containers' => __('specimens.containers')
-        ];
-        $containerFields = [
-            'identifier' => __('specimens.identifier'),
-            'description' => __('specimens.container_description'),
-            'typeCode' => __('specimens.container_type'),
-            'capacityValue' => __('specimens.container_volume'),
-            'capacityCode' => __('specimens.container_volume') . $unit,
-            'specimenQuantityValue' => __('specimens.biomaterial_amount_in_container'),
-            'specimenQuantityCode' => __('specimens.biomaterial_amount_in_container') . $unit,
-            'additiveCode' => __('specimens.additive')
-        ];
+        $names = __('specimens.attributes');
+        $containerPrefix = 'containers.*.';
+        // A field nested deeper than one record keeps the name it carries for every index
+        $attributes = collect($names)
+            ->mapWithKeys(static fn (string $name, string $field): array => ["specimens.*.$field" => $name])
+            ->all();
 
-        // Each name carries the specimen number, so an error points to the specimen card it belongs to
-        $attributes = [];
+        // Each name carries the specimen number, so an error points to the card it belongs to
+        foreach ($this->specimens as $index => $specimen) {
+            $number = __('specimens.position', ['position' => $index + 1]);
 
-        foreach ($this->specimens as $specimenIndex => $specimen) {
-            $specimenNumber = __('specimens.specimen_position', ['position' => $specimenIndex + 1]);
+            foreach ($names as $field => $name) {
+                if ($field === 'parentIds.*') {
+                    foreach (array_keys($specimen['parentIds'] ?? []) as $parentIndex) {
+                        $attributes["specimens.$index.parentIds.$parentIndex"] = "$name, $number";
+                    }
 
-            foreach ($specimenFields as $field => $name) {
-                $attributes["specimens.$specimenIndex.$field"] = "$name, $specimenNumber";
-            }
+                    continue;
+                }
 
-            foreach (array_keys($specimen['parentIds'] ?? []) as $parentIndex) {
-                $attributes["specimens.$specimenIndex.parentIds.$parentIndex"] = __('specimens.parent_specimen') . ", $specimenNumber";
-            }
+                if (!str_starts_with($field, $containerPrefix)) {
+                    $attributes["specimens.$index.$field"] = "$name, $number";
 
-            foreach (array_keys($specimen['containers'] ?? []) as $containerIndex) {
-                $containerNumber = __('specimens.container_position', ['position' => $containerIndex + 1]);
+                    continue;
+                }
 
-                foreach ($containerFields as $field => $name) {
-                    $attributes["specimens.$specimenIndex.containers.$containerIndex.$field"] = "$name, $specimenNumber, $containerNumber";
+                $containerField = str_replace($containerPrefix, '', $field);
+
+                foreach (array_keys($specimen['containers'] ?? []) as $containerIndex) {
+                    $containerNumber = __('specimens.container_position', ['position' => $containerIndex + 1]);
+                    $attributes["specimens.$index.containers.$containerIndex.$containerField"] = "$name, $number, $containerNumber";
                 }
             }
         }
@@ -368,18 +364,38 @@ class SpecimenForm extends Form
     }
 
     /**
+     * Number the specimen, and the container when the attribute belongs to one, for a validation message.
+     *
+     * @param  string  $attribute  Validated attribute, e.g. specimens.1.containers.0.identifier
+     * @return array
+     */
+    private function positionReplacements(string $attribute): array
+    {
+        $parts = explode('.', $attribute);
+        $replacements = ['position' => (int) $parts[1] + 1];
+
+        if (($parts[2] ?? '') === 'containers') {
+            $replacements['second-position'] = (int) $parts[3] + 1;
+        }
+
+        return $replacements;
+    }
+
+    /**
      * Ensure that a referenced specimen is either added in the current package
      * or already belongs to the patient and is still available.
      *
      * @param  string  $specimenId
      * @param  Closure  $fail
      * @param  string  $messagesKey  Translation group holding the not_found and not_available messages
+     * @param  array  $replace  Replacements the messages of the group carry
      * @return void
      */
     public function validateReference(
         string $specimenId,
         Closure $fail,
-        string $messagesKey = 'specimens.validation'
+        string $messagesKey = 'specimens.validation',
+        array $replace = []
     ): void {
         if (collect($this->specimens)->contains('uuid', $specimenId)) {
             return;
@@ -388,13 +404,13 @@ class SpecimenForm extends Form
         $patientSpecimen = collect($this->component->patientSpecimens)->firstWhere('uuid', $specimenId);
 
         if ($patientSpecimen === null) {
-            $fail(__("$messagesKey.not_found"));
+            $fail(__("$messagesKey.not_found", $replace));
 
             return;
         }
 
         if ($patientSpecimen['status'] !== Status::AVAILABLE->value) {
-            $fail(__("$messagesKey.not_available"));
+            $fail(__("$messagesKey.not_available", $replace));
         }
     }
 }

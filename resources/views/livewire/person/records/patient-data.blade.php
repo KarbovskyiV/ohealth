@@ -1,3 +1,8 @@
+@use('App\Models\DeclarationRequest')
+@use('App\Models\MedicalEvents\Sql\DiagnosticReport')
+@use('App\Models\MedicalEvents\Sql\Encounter')
+@use('App\Models\MedicalEvents\Sql\Episode')
+@use('App\Models\MedicalEvents\Sql\Procedure')
 @use('App\Models\Person\Person')
 @use('App\Models\Relations\ConfidantPerson')
 @use('App\Models\Relations\AuthenticationMethod', 'AuthenticationMethodModel')
@@ -21,7 +26,7 @@
             <div x-data="{ open: false }" class="relative">
                 <button
                     @click="open = ! open"
-                    @click.outside="open = false;"
+                    @click.outside="open = false"
                     class="button-primary-outline flex items-center gap-2 px-4 py-2 text-sm shadow-sm"
                     style="margin: 0 !important"
                 >
@@ -41,26 +46,51 @@
                     class="dropdown-menu right-0 flex max-h-87.5 w-max max-w-100 min-w-65 flex-col"
                 >
                     <div class="custom-scrollbar overflow-y-auto">
-                        <a href="#" class="dropdown-item">
-                            @icon('file-text', 'w-4 h-4 text-gray-500 shrink-0')
-                            {{ __('patients.sign_declaration') }}
-                        </a>
-                        <a href="#" class="dropdown-item">
-                            @icon('activity', 'w-4 h-4 text-gray-500 shrink-0')
-                            {{ __('diagnostic-reports.create') }}
-                        </a>
-                        <a href="#" class="dropdown-item">
-                            @icon('settings', 'w-4 h-4 text-gray-500 shrink-0')
-                            {{ __('procedures.create') }}
-                        </a>
-                        <a href="#" class="dropdown-item">
-                            @icon('book', 'w-4 h-4 text-gray-500 shrink-0')
-                            {{ __('episodes.create') }}
-                        </a>
-                        <a href="#" class="dropdown-item">
-                            @icon('hospital-bed', 'w-4 h-4 text-gray-500 shrink-0')
-                            {{ __('patients.discharge_patient') }}
-                        </a>
+                        @can('create', DeclarationRequest::class)
+                            <a
+                                href="{{ route('declaration.create', [legalEntity(), 'person' => $personId]) }}"
+                                class="dropdown-item"
+                            >
+                                @icon('file-text', 'w-4 h-4 text-gray-500 shrink-0')
+                                {{ __('patients.sign_declaration') }}
+                            </a>
+                        @endcan
+                        @can('create', DiagnosticReport::class)
+                            <a
+                                href="{{ route('diagnostic-report.create', [legalEntity(), 'person' => $personId]) }}"
+                                class="dropdown-item"
+                            >
+                                @icon('activity', 'w-4 h-4 text-gray-500 shrink-0')
+                                {{ __('diagnostic-reports.create') }}
+                            </a>
+                        @endcan
+                        @can('create', Procedure::class)
+                            <a
+                                href="{{ route('procedure.create', [legalEntity(), 'person' => $personId]) }}"
+                                class="dropdown-item"
+                            >
+                                @icon('settings', 'w-4 h-4 text-gray-500 shrink-0')
+                                {{ __('procedures.create') }}
+                            </a>
+                        @endcan
+                        @can('create', Episode::class)
+                            <a
+                                href="{{ route('persons.episodes.create', [legalEntity(), 'person' => $personId]) }}"
+                                class="dropdown-item"
+                            >
+                                @icon('book', 'w-4 h-4 text-gray-500 shrink-0')
+                                {{ __('episodes.create') }}
+                            </a>
+                        @endcan
+                        @can('create', Encounter::class)
+                            <a
+                                href="{{ route('encounter.create', [legalEntity(), 'person' => $personId, 'type' => 'discharge']) }}"
+                                class="dropdown-item"
+                            >
+                                @icon('hospital-bed', 'w-4 h-4 text-gray-500 shrink-0')
+                                {{ __('patients.discharge_patient') }}
+                            </a>
+                        @endcan
                         <a href="#" class="dropdown-item">
                             @icon('cancel', 'w-4 h-4 text-gray-500 shrink-0')
                             {{ __('patients.hospitalization_refusal') }}

@@ -49,6 +49,7 @@ return [
     'effective_period_start' => 'Час початку',
     'effective_period_end' => 'Час завершення',
     'comment' => 'Коментар',
+    'position' => 'спостереження №:position',
     'specimen_id' => 'ID зразка',
     'reaction_on' => 'Реакція на вакцинацію',
     'reaction_on_add' => 'Додати вакцинацію',

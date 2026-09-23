@@ -42,6 +42,9 @@ return [
         'last_must_be_attached' => 'Попередній звʼязок цього медичного виробу має бути у статусі «Прикріплений»'
     ],
 
+    // Number of the record every :attribute of a validation message carries
+    'position' => "зв'язок №:position",
+
     // Field names for :attribute in validation messages
     'attributes' => [
         'deviceId' => 'Медичний виріб',

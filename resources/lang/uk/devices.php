@@ -94,6 +94,9 @@ return [
         'definition_type_mismatch' => 'Тип медичного виробу не збігається з типом обраного виробу з довідника'
     ],
 
+    // Number of the record every :attribute of a validation message carries
+    'position' => 'медичний виріб №:position',
+
     // Field names for :attribute in validation messages
     'attributes' => [
         'status' => 'статус медичного виробу',

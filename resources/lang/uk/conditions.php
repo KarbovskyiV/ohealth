@@ -93,6 +93,9 @@ return [
         'asserter_employee_not_participant' => 'Працівник, вказаний як встановлювач діагнозу, має бути учасником взаємодії.'
     ],
 
+    // Number of the record every :attribute of a validation message carries
+    'position' => 'діагноз №:position',
+
     // Field names for :attribute in validation messages
     'attributes' => [
         'primarySource' => 'первинне джерело діагнозу',

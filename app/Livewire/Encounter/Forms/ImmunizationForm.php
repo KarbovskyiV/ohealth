@@ -23,9 +23,32 @@ class ImmunizationForm extends Form
      */
     public function validationAttributes(): array
     {
-        return collect(__('immunizations.attributes'))
+        $names = __('immunizations.attributes');
+        // A field nested deeper than one record keeps the name it carries for every index
+        $attributes = collect($names)
             ->mapWithKeys(static fn (string $name, string $field): array => ["immunizations.*.$field" => $name])
             ->all();
+
+        // Each name carries the immunization number, so an error points to the card it belongs to
+        foreach ($this->immunizations as $index => $immunization) {
+            $number = __('immunizations.position', ['position' => $index + 1]);
+
+            foreach ($names as $field => $name) {
+                if (!str_contains($field, '.*.')) {
+                    $attributes["immunizations.$index.$field"] = "$name, $number";
+
+                    continue;
+                }
+
+                [$nestedProperty, $nestedField] = explode('.*.', $field, 2);
+
+                foreach (array_keys($immunization[$nestedProperty] ?? []) as $nestedIndex) {
+                    $attributes["immunizations.$index.$nestedProperty.$nestedIndex.$nestedField"] = "$name, $number";
+                }
+            }
+        }
+
+        return $attributes;
     }
 
     protected function rules(): array

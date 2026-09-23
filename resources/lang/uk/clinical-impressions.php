@@ -48,6 +48,9 @@ return [
         'sync_background_dispatch_error' => 'Помилка запуску фонової синхронізації клінічних оцінок'
     ],
 
+    // Number of the record every :attribute of a validation message carries
+    'position' => 'клінічна оцінка №:position',
+
     // Field names for :attribute in validation messages
     'attributes' => [
         'codeCode' => 'код клінічної оцінки',

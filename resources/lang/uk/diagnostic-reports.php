@@ -94,6 +94,9 @@ return [
         'performer_not_participant' => 'Виконавець діагностичного звіту має бути учасником взаємодії.'
     ],
 
+    // Number of the record every :attribute of a validation message carries
+    'position' => 'діагностичний звіт №:position',
+
     // Field names for :attribute in validation messages
     'attributes' => [
         'categoryCode' => 'категорія діагностичного звіту',

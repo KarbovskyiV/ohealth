@@ -79,6 +79,9 @@ return [
         'not_given_by_patient' => 'Зі слів пацієнта можна вносити лише проведену вакцинацію'
     ],
 
+    // Number of the record every :attribute of a validation message carries
+    'position' => 'вакцинація №:position',
+
     // Field names for :attribute in validation messages
     'attributes' => [
         'primarySource' => 'джерело інформації вакцинації',

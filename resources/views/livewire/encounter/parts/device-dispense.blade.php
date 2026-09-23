@@ -127,8 +127,13 @@
             <div class="record-inner-card">
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
-                        <label for="deviceDispenseRecord" class="sr-only">{{ __('forms.select') }}</label>
-                        <input type="checkbox" id="deviceDispenseRecord" class="default-checkbox h-5 w-5" disabled />
+                        <label :for="`deviceDispenseRecord${index}`" class="sr-only">{{ __('forms.select') }}</label>
+                        <input
+                            type="checkbox"
+                            :id="`deviceDispenseRecord${index}`"
+                            class="default-checkbox h-5 w-5"
+                            disabled
+                        />
                     </div>
 
                     <div class="record-inner-column flex-1">

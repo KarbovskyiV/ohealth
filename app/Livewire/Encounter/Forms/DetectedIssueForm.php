@@ -151,17 +151,32 @@ class DetectedIssueForm extends Form
      */
     public function validationAttributes(): array
     {
-        return [
-            'detectedIssues.*.subjectId' => __('detected-issues.device'),
-            'detectedIssues.*.status' => __('detected-issues.status'),
-            'detectedIssues.*.identifiedDate' => __('detected-issues.identified_at'),
-            'detectedIssues.*.identifiedTime' => __('detected-issues.identified_at'),
-            'detectedIssues.*.code' => __('detected-issues.type'),
-            'detectedIssues.*.detail' => __('detected-issues.detail'),
-            'detectedIssues.*.implicatedId' => __('detected-issues.implicated_device'),
-            'detectedIssues.*.basedOnId' => __('detected-issues.based_on'),
-            'detectedIssues.*.reportOriginCode' => __('medical-events.source_link')
-        ];
+        $names = __('detected-issues.attributes');
+        // A field nested deeper than one record keeps the name it carries for every index
+        $attributes = collect($names)
+            ->mapWithKeys(static fn (string $name, string $field): array => ["detectedIssues.*.$field" => $name])
+            ->all();
+
+        // Each name carries the detected issue number, so an error points to the card it belongs to
+        foreach ($this->detectedIssues as $index => $detectedIssue) {
+            $number = __('detected-issues.position', ['position' => $index + 1]);
+
+            foreach ($names as $field => $name) {
+                if (!str_contains($field, '.*.')) {
+                    $attributes["detectedIssues.$index.$field"] = "$name, $number";
+
+                    continue;
+                }
+
+                [$nestedProperty, $nestedField] = explode('.*.', $field, 2);
+
+                foreach (array_keys($detectedIssue[$nestedProperty] ?? []) as $nestedIndex) {
+                    $attributes["detectedIssues.$index.$nestedProperty.$nestedIndex.$nestedField"] = "$name, $number";
+                }
+            }
+        }
+
+        return $attributes;
     }
 
     /**

@@ -32,6 +32,22 @@ return [
         'create' => 'У вас немає дозволу на створення виявленої проблеми медичного виробу.'
     ],
 
+    // Number of the record every :attribute of a validation message carries
+    'position' => 'виявлена проблема №:position',
+
+    // Field names for :attribute in validation messages
+    'attributes' => [
+        'subjectId' => 'Медичний виріб',
+        'status' => 'Статус запису',
+        'identifiedDate' => 'Дата та час виявлення',
+        'identifiedTime' => 'Дата та час виявлення',
+        'code' => 'Тип виявленої проблеми',
+        'detail' => 'Опис проблеми',
+        'implicatedId' => 'Медичний виріб, який спричинив проблему',
+        'basedOnId' => 'Попередня виявлена проблема',
+        'reportOriginCode' => 'Посилання на джерело'
+    ],
+
     'validation' => [
         'device_not_found' => 'Обраний медичний виріб не знайдено у пацієнта або поточній взаємодії.',
         'based_on_not_found' => 'Попередню виявлену проблему не знайдено.',

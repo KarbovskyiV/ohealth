@@ -71,7 +71,11 @@
                     <option value="{{ $key }}">{{ $destination }}</option>
                 @endforeach
             </select>
-            <label for="hospitalizationDestination" class="label">
+            <label
+                for="hospitalizationDestination"
+                class="label"
+                :class="$wire.form.encounter.hospitalization.dischargeDisposition === 'transfer_general' && 'required'"
+            >
                 {{ __('encounters.hospitalization.destination') }}
             </label>
             @error('form.encounter.hospitalization.destination')
