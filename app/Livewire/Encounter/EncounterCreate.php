@@ -337,8 +337,8 @@ class EncounterCreate extends EncounterComponent
         $now = CarbonImmutable::now();
 
         $this->form->encounter['periodDate'] = $now->format(config('app.date_format'));
-        $this->form->encounter['periodStart'] = $now->format('H:i');
-        $this->form->encounter['periodEnd'] = $now->addMinutes(15)->format('H:i');
+        $this->form->encounter['periodStart'] = $now->subMinutes(15)->max($now->startOfDay())->format('H:i');
+        $this->form->encounter['periodEnd'] = $now->format('H:i');
     }
 
     /**
