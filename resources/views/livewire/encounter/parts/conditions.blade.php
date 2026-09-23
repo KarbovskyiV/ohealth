@@ -7,15 +7,73 @@
         conditions: $wire.entangle('conditionForm.conditions'),
         diagnoses: $wire.entangle('form.encounter.diagnoses'),
         encounter: $wire.entangle('form.encounter'),
+        episodeName: $wire.entangle('form.episode.name'),
         showPrimaryWarning: false,
         showPrimaryChangeWarning: false,
         showDuplicateCodeWarning: false,
+        conditionMode: 'create',
 
-        saveConditionLabel() {
-            if (this.showPrimaryChangeWarning) {
-                return '{{ __('forms.confirm') }}';
+        saveCondition(bypassWarning = false) {
+            if (this.modalDiagnosis.roleCode === 'primary') {
+                const matchingPrimaryCount = this.diagnoses.filter((diagnose, index) => {
+                    if (this.newCondition === false && index === this.item) return false;
+                    return diagnose.roleCode === 'primary';
+                }).length;
+
+                if (matchingPrimaryCount >= 1) {
+                    this.showPrimaryWarning = true;
+                    return;
+                }
+
+                const episodePrimaryCode = $wire.episodePrimaryDiagnosisCode;
+
+                if (
+                    episodePrimaryCode &&
+                    this.modalCondition.codeCode !== episodePrimaryCode &&
+                    !bypassWarning
+                ) {
+                    this.showPrimaryChangeWarning = true;
+                    return;
+                }
             }
 
+            const exclusiveRoleCodes = ['primary', 'comorbidity', 'complication'];
+
+            const isCodeUsedInAnotherRole =
+                exclusiveRoleCodes.includes(this.modalDiagnosis.roleCode) &&
+                this.conditions.some(
+                    (condition, index) =>
+                        ! (this.newCondition === false && index === this.item) &&
+                        condition.codeSystem === this.modalCondition.codeSystem &&
+                        condition.codeCode === this.modalCondition.codeCode &&
+                        exclusiveRoleCodes.includes(this.diagnoses[index]?.roleCode) &&
+                        this.diagnoses[index].roleCode !== this.modalDiagnosis.roleCode,
+                );
+
+            if (isCodeUsedInAnotherRole) {
+                this.showDuplicateCodeWarning = true;
+                return;
+            }
+
+            const condition = JSON.parse(JSON.stringify(this.modalCondition));
+            const diagnosis = JSON.parse(JSON.stringify(this.modalDiagnosis));
+
+            if (this.newCondition) {
+                this.conditions.push(condition);
+                this.diagnoses.push(diagnosis);
+            } else {
+                this.conditions[this.item] = condition;
+                this.diagnoses[this.item] = diagnosis;
+            }
+
+            this.showPrimaryWarning = false;
+            this.showDuplicateCodeWarning = false;
+            this.showPrimaryChangeWarning = false;
+            this.openConditionDrawer = false;
+            this.syncDiagnosisParticipants();
+        },
+
+        saveConditionLabel() {
             return this.newCondition ? '{{ __('conditions.add_diagnose') }}' : '{{ __('forms.save') }}';
         },
 
@@ -23,6 +81,7 @@
         modalDiagnosis: new Diagnosis(),
         newCondition: false,
         openConditionDrawer: false,
+        openConditionSearchDrawer: false,
         item: 0,
         conditionCodesDictionary: $wire.dictionaries['eHealth/ICPC2/condition_codes'],
         diagnosisRolesDictionary: $wire.dictionaries['eHealth/diagnosis_roles'],
@@ -399,8 +458,43 @@
             {{-- Content --}}
             <form class="space-y-6">
                 <fieldset @disabled($isReadonly) @class(['pointer-events-none' => $isReadonly])>
-                    <div class="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2">
-                        <div>
+                    <div class="mb-6 flex flex-wrap items-center gap-6" x-show="newCondition">
+                        <div class="flex items-center gap-2">
+                            <input
+                                type="radio"
+                                id="modeCreateCondition"
+                                name="conditionMode"
+                                value="create"
+                                x-model="conditionMode"
+                                class="default-radio cursor-pointer text-blue-600 focus:ring-blue-500"
+                            />
+                            <label
+                                for="modeCreateCondition"
+                                class="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-300"
+                            >
+                                {{ __('conditions.create_new_condition') }}
+                            </label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input
+                                type="radio"
+                                id="modeSelectCondition"
+                                name="conditionMode"
+                                value="select"
+                                x-model="conditionMode"
+                                class="default-radio cursor-pointer text-blue-600 focus:ring-blue-500"
+                            />
+                            <label
+                                for="modeSelectCondition"
+                                class="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-300"
+                            >
+                                {{ __('conditions.select_previously_registered_condition') }}
+                            </label>
+                        </div>
+                    </div>
+                    <div x-show="conditionMode === 'create'" class="space-y-6">
+                        <div class="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2">
+                            <div>
                             <label
                                 for="codingSystem"
                                 class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
@@ -893,7 +987,10 @@
                             </div>
                         </div>
                     </div>
+                    </div>
                 </fieldset>
+
+                <div x-show="conditionMode === 'create'" class="space-y-6">
 
                 <div class="mt-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
                     <div class="flex flex-wrap items-center gap-6">
@@ -1006,6 +1103,90 @@
                         ></textarea>
                     </div>
                 </div>
+                    </div>
+
+                    <div x-show="conditionMode === 'select'" x-cloak class="space-y-6">
+                        <fieldset @disabled($isReadonly) @class(['pointer-events-none' => $isReadonly])>
+                        <fieldset class="rounded-lg border border-gray-200 p-6 dark:border-gray-700">
+                            <legend class="text-sm font-bold text-gray-900 dark:text-white px-2">Пошук раніше зареєстрованого стану</legend>
+
+                            <div class="mt-2 flex flex-col gap-4">
+                                <div class="index-table-wrapper">
+                                    <table class="index-table">
+                                        <thead class="index-table-thead">
+                                            <tr>
+                                                <th scope="col" class="index-table-th">ДАТА</th>
+                                                <th scope="col" class="index-table-th">КОД ТА НАЗВА</th>
+                                                <th scope="col" class="index-table-th">ЕПІЗОД</th>
+                                                <th scope="col" class="index-table-th text-center">ДІЯ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="index-table-tr">
+                                                <td class="index-table-td-primary">08.05.2025</td>
+                                                <td class="index-table-td">A98 Підтримання здоров'я / Профілактика</td>
+                                                <td class="index-table-td">Назва епізоду</td>
+                                                <td class="index-table-td-actions">
+                                                    <button type="button" class="text-gray-500 hover:text-red-600">
+                                                        @icon('trash', 'w-5 h-5')
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div>
+                                    <button @click.prevent="openConditionSearchDrawer = true" type="button" class="flex items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                        <span>+ Знайти стан</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <div class="mt-6 grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2">
+                            <div>
+                                <label for="diagnoseCodeSelect" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                                    {{ __('conditions.role') }}<span class="text-red-600"> *</span>
+                                </label>
+                                <div class="relative">
+                                    <select
+                                        x-model="modalDiagnosis.roleCode"
+                                        id="diagnoseCodeSelect"
+                                        class="input-select w-full appearance-none bg-none"
+                                        type="text"
+                                    >
+                                        <option value="" selected>{{ __('forms.select') }}</option>
+                                        @foreach ($this->dictionaries['eHealth/diagnosis_roles'] as $key => $diagnosisRole)
+                                            <option value="{{ $key }}">{{ $diagnosisRole }}</option>
+                                        @endforeach
+                                    </select>
+                                    @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="rankSelect" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                                    {{ __('conditions.rank') }}
+                                </label>
+                                <div class="relative">
+                                    <select
+                                        x-model.number="modalDiagnosis.rank"
+                                        id="rankSelect"
+                                        class="input-select w-full appearance-none bg-none"
+                                        type="text"
+                                    >
+                                        <option selected>{{ __('forms.select') }}</option>
+                                        @for ($i = 1; $i <= 10; $i++)
+                                            <option value="{{ $i }}">{{ $i }}</option>
+                                        @endfor
+                                    </select>
+                                    @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
+                                </div>
+                            </div>
+                        </div>
+                        </fieldset>
+                    </div>
 
                 <p class="mt-6 text-sm text-gray-400 dark:text-gray-500">{{ __('forms.form_required_note') }}</p>
 
@@ -1019,73 +1200,14 @@
                             openEvidenceDrawer = false;
                             openConditionDrawer = false;
                         "
-                        class="button-minor"
+                        class="button-primary-outline-red"
                     >
-                        <span>{{ $isReadonly ? __('forms.close') : __('forms.cancel') }}</span>
+                        <span>{{ $isReadonly ? __('forms.close') : __('forms.delete') }}</span>
                     </button>
 
                     @unless ($isReadonly)
                         <button
-                            @click.prevent="
-                                if (modalDiagnosis.roleCode === 'primary') {
-                                    const matchingPrimaryCount = diagnoses.filter((diagnose, index) => {
-                                        if (newCondition === false && index === item) return false;
-                                        return diagnose.roleCode === 'primary';
-                                    }).length;
-
-                                    if (matchingPrimaryCount >= 1) {
-                                        showPrimaryWarning = true;
-                                        return;
-                                    }
-
-                                    const episodePrimaryCode = $wire.episodePrimaryDiagnosisCode;
-
-                                    if (
-                                        episodePrimaryCode &&
-                                        modalCondition.codeCode !== episodePrimaryCode &&
-                                        ! showPrimaryChangeWarning
-                                    ) {
-                                        showPrimaryChangeWarning = true;
-                                        return;
-                                    }
-                                }
-
-                                const exclusiveRoleCodes = ['primary', 'comorbidity', 'complication'];
-
-                                const isCodeUsedInAnotherRole =
-                                    exclusiveRoleCodes.includes(modalDiagnosis.roleCode) &&
-                                    conditions.some(
-                                        (condition, index) =>
-                                            ! (newCondition === false && index === item) &&
-                                            condition.codeSystem === modalCondition.codeSystem &&
-                                            condition.codeCode === modalCondition.codeCode &&
-                                            exclusiveRoleCodes.includes(diagnoses[index]?.roleCode) &&
-                                            diagnoses[index].roleCode !== modalDiagnosis.roleCode,
-                                    );
-
-                                if (isCodeUsedInAnotherRole) {
-                                    showDuplicateCodeWarning = true;
-                                    return;
-                                }
-
-                                const condition = JSON.parse(JSON.stringify(modalCondition));
-                                const diagnosis = JSON.parse(JSON.stringify(modalDiagnosis));
-
-                                if (newCondition) {
-                                    conditions.push(condition);
-                                    diagnoses.push(diagnosis);
-                                } else {
-                                    conditions[item] = condition;
-                                    diagnoses[item] = diagnosis;
-                                }
-
-                                showPrimaryWarning = false;
-                                showDuplicateCodeWarning = false;
-                                showPrimaryChangeWarning = false;
-                                openEvidenceDrawer = false;
-                                openConditionDrawer = false;
-                                syncDiagnosisParticipants();
-                            "
+                            @click.prevent="saveCondition()"
                             class="cursor-pointer rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
                             :disabled="! (
                                 modalCondition.clinicalStatus.trim() &&
@@ -1121,22 +1243,163 @@
         </x-dialog-drawer>
     </div>
 
-    {{-- Evidence Search Drawer (Restored Essence) --}}
+    <div
+        x-cloak
+        x-show="showPrimaryChangeWarning"
+        class="fixed inset-0 z-[60] overflow-y-auto px-4 py-6 sm:px-0"
+        style="display: none;"
+    >
+        <div class="fixed inset-0 flex items-center justify-center">
+            <div
+                x-show="showPrimaryChangeWarning"
+                class="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/80 transition-opacity"
+                x-on:click="showPrimaryChangeWarning = false"
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+            ></div>
+
+            <div
+                x-show="showPrimaryChangeWarning"
+                x-on:click.stop
+                class="relative z-10 w-full sm:max-w-2xl bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-auto transform transition-all"
+                x-trap.inert.noscroll="showPrimaryChangeWarning"
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            >
+                <div class="px-8 py-8">
+                    <p class="font-bold text-gray-900 dark:text-gray-100 mb-6 text-lg">
+                        {!! __('conditions.new_primary_diagnose') !!}
+                    </p>
+
+                    <div class="mb-2">
+                        <label for="modalEpisodeName" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                            {{ __('encounters.episode_name') }}
+                        </label>
+                        <div class="form-group group">
+                            <input
+                                type="text"
+                                id="modalEpisodeName"
+                                x-model="episodeName"
+                                class="input peer w-full"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-8 pb-8 flex justify-start space-x-4">
+                    <button type="button" class="button-minor" @click="showPrimaryChangeWarning = false">
+                        {{ __('forms.cancel') }}
+                    </button>
+                    <button type="button" class="button-primary" @click="saveCondition(true)">
+                        {{ __('forms.save') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Condition Search Drawer --}}
     <x-dialog-drawer
-        x-model="openEvidenceDrawer"
+        x-model="openConditionSearchDrawer"
         maxWidth="3/5"
-        backdropClickThrough="true"
+        overlayWidth="100%"
         stopClickPropagation="true"
         wire:ignore
     >
-        <x-slot name="title">{{ __('conditions.evidence_details') }}</x-slot>
+        <x-slot name="title">{{ __('encounters.search_medical_records') }}</x-slot>
 
         <div class="mt-2 mb-4 flex items-center gap-1.5 pl-1 font-bold text-gray-900 dark:text-gray-100">
             @icon('search-outline', 'w-5 h-5 text-gray-800 dark:text-gray-200')
-            <span class="text-base">{{ __('conditions.evidence_search') }}</span>
+            <span class="text-base">{{ __('forms.search') }}</span>
         </div>
 
-        {{-- Filters (Type & Episode Select from mock) --}}
+        <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div class="form-group group">
+                <input type="text" id="conditionSearchCode" class="input peer w-full" placeholder=" ">
+                <label for="conditionSearchCode" class="label">{{ __('conditions.code') }}</label>
+            </div>
+
+            <div class="form-group group">
+                <select id="conditionSearchEpisode" class="input-select peer w-full">
+                    <option value="" selected>Підтримання здоров'я/профілактика (діючий) від 8.05.2025</option>
+                </select>
+                <label for="conditionSearchEpisode" class="label">{{ __('episodes.label') }}</label>
+            </div>
+
+            <div class="form-group group">
+                <div class="datepicker-wrapper">
+                    <input
+                        type="text"
+                        name="conditionSearchDate"
+                        id="conditionSearchDate"
+                        class="daterangepicker-uk with-leading-icon input peer w-full"
+                        placeholder=" "
+                        autocomplete="off"
+                    />
+                    <label for="conditionSearchDate" class="wrapped-label">
+                        {{ __('conditions.condition_start_date') }}
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="relative mt-8">
+            <div class="index-table-wrapper">
+                <table class="index-table">
+                    <thead class="index-table-thead">
+                        <tr>
+                            <th scope="col" class="index-table-th">ДАТА</th>
+                            <th scope="col" class="index-table-th">КОД ТА НАЗВА</th>
+                            <th scope="col" class="index-table-th">ЕПІЗОД</th>
+                            <th scope="col" class="index-table-th text-center">ДІЯ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="index-table-tr">
+                            <td class="index-table-td-primary">08.05.2025</td>
+                            <td class="index-table-td">A98 Підтримання здоров'я / Профілактика</td>
+                            <td class="index-table-td">Назва епізоду</td>
+                            <td class="index-table-td-actions">
+                                <button type="button" class="text-gray-500 hover:text-blue-600">
+                                    @icon('plus-circle', 'w-6 h-6')
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-start space-x-2">
+            <button type="button" @click="openConditionSearchDrawer = false" class="button-minor">
+                {{ __('forms.cancel') }}
+            </button>
+        </div>
+    </x-dialog-drawer>
+
+    <x-dialog-drawer
+        x-model="openEvidenceDrawer"
+        maxWidth="3/5"
+        overlayWidth="100%"
+        zIndex="45"
+        stopClickPropagation="true"
+        wire:ignore
+    >
+        <x-slot name="title">{{ __('encounters.search_medical_records') }}</x-slot>
+
+        <div class="mt-2 mb-4 flex items-center gap-1.5 pl-1 font-bold text-gray-900 dark:text-gray-100">
+            @icon('search-outline', 'w-5 h-5 text-gray-800 dark:text-gray-200')
+            <span class="text-base">{{ __('forms.search') }}</span>
+        </div>
+
         <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
             <div class="form-group group">
                 <select x-model="evidenceSelectedType" id="evidenceDrawerSelectedType" class="input-select peer w-full">
@@ -1146,6 +1409,18 @@
                 </select>
                 <label for="evidenceDrawerSelectedType" class="label">
                     {{ mb_ucfirst(__('medical-events.medical_records_type')) }}
+                </label>
+            </div>
+
+            <div class="form-group group">
+                <select x-model="evidenceSelectedEpisodeId" id="evidenceDrawerSelectedEpisode" class="input-select peer w-full">
+                    <option value="" selected>{{ __('forms.select') }}</option>
+                    <template x-for="ep in encounter.episodes" :key="ep.id">
+                        <option :value="ep.id" x-text="`${ep.name} від ${ep.date}`"></option>
+                    </template>
+                </select>
+                <label for="evidenceDrawerSelectedEpisode" class="label">
+                    {{ __('episodes.label') }}
                 </label>
             </div>
         </div>
