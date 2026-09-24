@@ -173,6 +173,7 @@
 
             this.status = '';
             this.basedOnIdentifier = '';
+            this.referralNumber = '';
             this.usedReferences = [];
             this.categoryCode = '';
             this.codeValue = '';

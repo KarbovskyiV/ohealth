@@ -11,6 +11,7 @@ use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\ClinicalImpression\Status as ClinicalImpressionStatus;
 use App\Enums\Person\ImmunizationStatus;
 use App\Enums\Person\ServiceRequestStatus;
+use App\Enums\Person\ObservationStatus;
 use App\Enums\Status;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
@@ -45,17 +46,21 @@ use App\Services\MedicalEvents\Fhir;
 use App\Services\Dictionary\Mappers\ImmunizationDictionaryMapper;
 use App\Services\MedData\MedData;
 use App\Traits\FormTrait;
+use App\Traits\SearchesElectronicReferrals;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Carbon\CarbonImmutable;
 use Throwable;
 
 class EncounterComponent extends Component
 {
     use FormTrait;
+    use SearchesElectronicReferrals;
     use WithFileUploads;
 
     public Form $form;
@@ -569,7 +574,7 @@ class EncounterComponent extends Component
 
         // category is a CodeableConcept relation (category_id), not a string column
         $this->availableReferrals = MedicalEventsRepository::serviceRequest()
-            ->getByPersonIdAndStatus($this->personId, ServiceRequestStatus::PROCESSED->value, ['uuid', 'request_number', 'service_id', 'category_id'])
+            ->getByPersonIdAndStatus($this->personId, ServiceRequestStatus::ACTIVE->value, ['uuid', 'request_number', 'service_id', 'category_id'])
             ->loadMissing('category')
             ->map(static function (ServiceRequestRequest $referral) use ($services, $procedureCategories, $diagnosticReportCategories): array {
                 $service = $services->firstWhere('id', $referral->serviceId);
@@ -662,7 +667,7 @@ class EncounterComponent extends Component
      *
      * @return void
      */
-    protected function initializeComponent(): void
+    protected function initializeComponent(bool $loadEpisodes = true): void
     {
         $encounterWriterEmployee = $this->encounterWriterEmployee;
 
@@ -676,7 +681,6 @@ class EncounterComponent extends Component
         ];
 
         $this->form->encounter['performerId'] = $encounterWriterEmployee->uuid;
-        $this->employeeFullName = $encounterWriterEmployee->fullName;
 
         $participantEmployeeTypes = config('ehealth.encounter_package_allowed_encounter_participant_employee_types');
         $diagnosticReportEmployeeTypes = config('ehealth.encounter_package_allowed_diagnostic_report_performer_employee_types', []);
@@ -793,7 +797,11 @@ class EncounterComponent extends Component
             $this->form->encounter['divisionId'] = $this->divisions[0]['uuid'];
         }
 
-        $this->getEpisodes();
+        if ($loadEpisodes) {
+            $this->getEpisodes();
+        } else {
+            $this->getSelectedEpisode();
+        }
     }
 
     /**
@@ -1002,6 +1010,51 @@ class EncounterComponent extends Component
             ->toArray();
     }
 
+    protected function storePackageElectronicReferralsIfMissing(): void
+    {
+        $referrals = [];
+
+        $procedureEmployee = Auth::user()->getProcedureWriterEmployee();
+
+        foreach ($this->procedureForm->procedures as $procedure) {
+            $uuid = data_get($procedure, 'basedOnIdentifier');
+
+            if (data_get($procedure, 'referralType') !== 'electronic' || blank($uuid)) {
+                continue;
+            }
+
+            $referral = $this->getSearchedElectronicReferral($uuid);
+
+            if ($referral !== null) {
+                $referrals[] = [
+                    'referral' => $referral,
+                    'employee' => $procedureEmployee,
+                ];
+            }
+        }
+
+        $diagnosticReportEmployee = Auth::user()->getDiagnosticReportWriterEmployee();
+
+        foreach ($this->diagnosticReportForm->diagnosticReports as $diagnosticReport) {
+            $uuid = data_get($diagnosticReport, 'basedOnIdentifier');
+
+            if (data_get($diagnosticReport, 'referralType') !== 'electronic' || blank($uuid)) {
+                continue;
+            }
+
+            $referral = $this->getSearchedElectronicReferral($uuid);
+
+            if ($referral !== null) {
+                $referrals[] = [
+                    'referral' => $referral,
+                    'employee' => $diagnosticReportEmployee,
+                ];
+            }
+        }
+
+        $this->storeElectronicReferralsIfMissing($referrals);
+    }
+
     protected function setPatientData(): void
     {
         $patient = $this->patient();
@@ -1090,20 +1143,24 @@ class EncounterComponent extends Component
             $this->episodes = Arr::toCamelCase($this->episodes);
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when getting episodes');
+
+            return;
         }
     }
 
-    /**
-     * Prepare vaccine options for searching by vaccine code, name and target disease.
-     *
-     * @return void
-     */
-    private function loadVaccineOptions(): void
+    protected function getSelectedEpisode(): void
     {
-        $this->vaccineOptions = app(ImmunizationDictionaryMapper::class)->map(
-            $this->dictionaries['eHealth/vaccine_codes'] ?? [],
-            $this->dictionaries['eHealth/vaccination_target_diseases'] ?? []
-        );
+        $episodeId = data_get($this->form->episode, 'id');
+
+        if (blank($episodeId)) {
+            return;
+        }
+
+        $episode = MedicalEventsRepository::episode()->getByUuid($this->patient(), $episodeId);
+
+        if ($episode !== null) {
+            $this->episodes = [$episode];
+        }
     }
 
     /**
@@ -1140,6 +1197,19 @@ class EncounterComponent extends Component
             ])
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Prepare vaccine options for searching by vaccine code, name and target disease.
+     *
+     * @return void
+     */
+    private function loadVaccineOptions(): void
+    {
+        $this->vaccineOptions = app(ImmunizationDictionaryMapper::class)->map(
+            $this->dictionaries['eHealth/vaccine_codes'] ?? [],
+            $this->dictionaries['eHealth/vaccination_target_diseases'] ?? []
+        );
     }
 
     /**
