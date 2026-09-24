@@ -3,6 +3,8 @@
 <div
     class="p-4 sm:p-8"
     id="conditions-section"
+    @condition-evidence-selected.window="addEvidence($event.detail.record)"
+    @registered-condition-selected.window="selectRegisteredCondition($event.detail.record)"
     x-data="{
         conditions: $wire.entangle('conditionForm.conditions'),
         diagnoses: $wire.entangle('form.encounter.diagnoses'),
@@ -21,8 +23,11 @@
             return {
                 uuid: this.registeredCondition?.id,
                 isRegistered: true,
+                fromEpisode: this.registeredCondition?.fromEpisode === true,
                 codeCode: this.registeredCondition?.codeCode,
                 codeSystem: this.registeredCondition?.codeSystem,
+                clinicalStatus: this.registeredCondition?.clinicalStatus,
+                verificationStatus: this.registeredCondition?.verificationStatus,
                 onsetDate: this.registeredCondition?.onsetDate,
                 episodeName: this.registeredCondition?.episodeName,
             };
@@ -77,7 +82,8 @@
 
             if (condition.isRegistered && condition.codeSystem === 'eHealth/ICD10_AM/condition_codes') {
                 this.icd10Descriptions[condition.codeCode] =
-                    $wire.dictionaries['eHealth/ICD10_AM/condition_codes'][condition.codeCode];
+                    $wire.dictionaries['eHealth/ICD10_AM/condition_codes'][condition.codeCode] ||
+                    this.registeredCondition?.description;
             }
 
             if (this.newCondition) {
@@ -104,58 +110,25 @@
         newCondition: false,
         openConditionDrawer: false,
         openConditionSearchDrawer: false,
-        registeredConditionsLoading: false,
-        registeredConditionsSearched: false,
-        registeredConditionsResults: [],
         registeredCondition: null,
-        onsetDateRange: '',
 
         registeredConditionLabel(record) {
             const name =
                 $wire.dictionaries['eHealth/ICD10_AM/condition_codes'][record.codeCode] ||
                 $wire.dictionaries['eHealth/ICPC2/condition_codes'][record.codeCode] ||
+                record.description ||
                 '';
 
             return `${record.codeCode} ${name}`;
         },
 
+        isRegisteredConditionSelected(recordId) {
+            return this.registeredCondition?.id === recordId;
+        },
+
         selectRegisteredCondition(record) {
             this.registeredCondition = JSON.parse(JSON.stringify(record));
             this.openConditionSearchDrawer = false;
-        },
-
-        fetchRegisteredConditions() {
-            this.registeredConditionsLoading = true;
-            $wire
-                .searchRegisteredConditions()
-                .then(() => {
-                    this.registeredConditionsResults = JSON.parse(JSON.stringify($wire.registeredConditions || []));
-                    this.registeredConditionsSearched = true;
-                })
-                .finally(() => {
-                    this.registeredConditionsLoading = false;
-                });
-        },
-
-        resetRegisteredConditionFilters() {
-            $wire.set('filterCode', '', false);
-            $wire.set('filterEpisodeId', '', false);
-            $wire.set('filterOnsetDateFrom', '', false);
-            $wire.set('filterOnsetDateTo', '', false);
-            this.onsetDateRange = '';
-            document.getElementById('conditionSearchDate')?._flatpickr?.clear();
-        },
-
-        setOnsetDateRange(value) {
-            const parts = value.split(' — ');
-
-            if (parts.length === 2) {
-                $wire.set('filterOnsetDateFrom', parts[0], false);
-                $wire.set('filterOnsetDateTo', parts[1], false);
-            } else if (! value) {
-                $wire.set('filterOnsetDateFrom', '', false);
-                $wire.set('filterOnsetDateTo', '', false);
-            }
         },
 
         item: 0,
@@ -173,34 +146,11 @@
         },
 
         openEvidenceDrawer: false,
-        evidenceSelectedType: '',
-        evidenceSelectedEpisodeId: '',
-        evidenceIsLoading: false,
-        evidenceSearchResults: [],
 
-        fetchEvidenceRecords() {
-            if (! this.evidenceSelectedType) {
-                this.evidenceSearchResults = [];
-                return;
-            }
-            this.evidenceIsLoading = true;
-            $wire
-                .searchConditionsOrObservations(this.evidenceSelectedType)
-                .then(() => {
-                    this.evidenceSearchResults = JSON.parse(JSON.stringify($wire.evidenceDetails || []));
-                })
-                .finally(() => {
-                    this.evidenceIsLoading = false;
-                });
+        isEvidenceAdded(recordId) {
+            return (this.modalCondition?.evidenceDetails ?? []).some((detail) => detail.id === recordId);
         },
-        filteredEvidenceRecords() {
-            return this.evidenceSearchResults.filter((rec) => {
-                if (this.evidenceSelectedEpisodeId && rec.episodeId) {
-                    return rec.episodeId === this.evidenceSelectedEpisodeId;
-                }
-                return true;
-            });
-        },
+
         addEvidence(record) {
             if (this.modalCondition) {
                 if (! this.modalCondition.evidenceDetails) {
@@ -214,7 +164,8 @@
                             id: record.id,
                             ehealthInsertedAt: record.ehealthInsertedAt,
                             codeCode: record.codeCode,
-                            type: this.evidenceSelectedType,
+                            type: record.type,
+                            description: record.description,
                         },
                     ];
                 }
@@ -291,16 +242,6 @@
         },
 
         init() {
-            this.$watch('evidenceSelectedType', () => this.fetchEvidenceRecords());
-            this.$watch('openEvidenceDrawer', (val) => {
-                if (val) {
-                    this.evidenceSelectedType = '';
-                    this.evidenceSelectedEpisodeId = '';
-                    this.evidenceSearchResults = [];
-                    this.fetchEvidenceRecords();
-                }
-            });
-
             const icd10Codes = this.conditions
                 .filter(
                     (condition) => condition.codeSystem === 'eHealth/ICD10_AM/condition_codes' && condition.codeCode,
@@ -606,7 +547,7 @@
                                                     ?.length ?? 1) > 0
                                             "
                                         >
-                                            ICPC-2
+                                            {{ __('conditions.icpc-2') }}
                                         </option>
                                         <option
                                             value="eHealth/ICD10_AM/condition_codes"
@@ -615,7 +556,7 @@
                                                     ?.length ?? 1) > 0
                                             "
                                         >
-                                            ICD-10 AM
+                                            {{ __('conditions.icd-10') }}
                                         </option>
                                     </select>
                                     @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
@@ -1314,21 +1255,19 @@
                 <p class="mt-6 text-sm text-gray-400 dark:text-gray-500">{{ __('forms.form_required_note') }}</p>
 
                 <div class="mt-8 flex items-center justify-start gap-4">
-                    @if ($isReadonly)
-                        <button
-                            type="button"
-                            @click="
-                                showPrimaryWarning = false;
-                                showDuplicateCodeWarning = false;
-                                showPrimaryChangeWarning = false;
-                                openEvidenceDrawer = false;
-                                openConditionDrawer = false;
-                            "
-                            class="button-minor cursor-pointer"
-                        >
-                            {{ __('forms.close') }}
-                        </button>
-                    @endif
+                    <button
+                        type="button"
+                        @click="
+                            showPrimaryWarning = false;
+                            showDuplicateCodeWarning = false;
+                            showPrimaryChangeWarning = false;
+                            openEvidenceDrawer = false;
+                            openConditionDrawer = false;
+                        "
+                        class="button-minor cursor-pointer"
+                    >
+                        {{ __('forms.close') }}
+                    </button>
 
                     @unless ($isReadonly)
                         <button
@@ -1441,125 +1380,15 @@
     >
         <x-slot name="title">{{ __('encounters.search_medical_records') }}</x-slot>
 
-        <div class="mt-2 mb-4 flex items-center gap-1.5 pl-1 font-bold text-gray-900 dark:text-gray-100">
-            @icon('search-outline', 'w-5 h-5 text-gray-800 dark:text-gray-200')
-            <span class="text-base">{{ __('forms.search') }}</span>
-        </div>
-
-        <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div class="form-group group">
-                <input
-                    type="text"
-                    id="conditionSearchCode"
-                    wire:model="filterCode"
-                    class="input peer w-full"
-                    placeholder=" "
-                />
-                <label for="conditionSearchCode" class="label">{{ __('conditions.code') }}</label>
-            </div>
-
-            <div class="form-group group">
-                <select id="conditionSearchEpisode" wire:model="filterEpisodeId" class="input-select peer w-full">
-                    <option value="" selected>{{ __('forms.select') }}</option>
-                    @foreach ($this->episodes as $episode)
-                        <option value="{{ data_get($episode, 'uuid') }}">
-                            {{ data_get($episode, 'name') }} ({{ mb_strtolower(__('episodes.status.active')) }}) від {{ convertToAppDateFormat(data_get($episode, 'period.start')) }}
-                        </option>
-                    @endforeach
-                </select>
-                <label for="conditionSearchEpisode" class="label">{{ __('episodes.label') }}</label>
-            </div>
-
-            <div class="form-group group">
-                <div class="datepicker-wrapper">
-                    <input
-                        type="text"
-                        name="conditionSearchDate"
-                        id="conditionSearchDate"
-                        x-model="onsetDateRange"
-                        @change="setOnsetDateRange($event.target.value)"
-                        class="daterangepicker-uk with-leading-icon input peer w-full"
-                        placeholder=" "
-                        autocomplete="off"
-                    />
-                    <label for="conditionSearchDate" class="wrapped-label">
-                        {{ __('conditions.condition_start_date') }}
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="flex flex-wrap gap-2">
-            <button
-                type="button"
-                @click="fetchRegisteredConditions()"
-                :disabled="registeredConditionsLoading"
-                class="button-primary flex cursor-pointer items-center gap-2 px-5 py-2.5 text-sm shadow-sm"
-            >
-                @icon('search', 'w-4 h-4')
-                <span>{{ __('forms.search') }}</span>
-            </button>
-            <button
-                type="button"
-                @click="resetRegisteredConditionFilters()"
-                class="button-primary-outline-red cursor-pointer px-5 py-2.5 text-sm"
-            >
-                {{ __('forms.reset_all_filters') }}
-            </button>
-        </div>
-
-        <div class="relative mt-8">
-            <div
-                x-show="registeredConditionsLoading"
-                class="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-gray-800/70"
-                x-cloak
-            >
-                <x-forms.loading />
-            </div>
-
-            <div class="index-table-wrapper">
-                <table class="index-table">
-                    <thead class="index-table-thead">
-                        <tr>
-                            <th scope="col" class="index-table-th">{{ __('forms.date') }}</th>
-                            <th scope="col" class="index-table-th">{{ __('medical-events.code_and_name') }}</th>
-                            <th scope="col" class="index-table-th">{{ __('episodes.label') }}</th>
-                            <th scope="col" class="index-table-th text-center">{{ __('forms.action') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="record in registeredConditionsResults" :key="record.id">
-                            <tr class="index-table-tr">
-                                <td class="index-table-td-primary" x-text="record.onsetDate"></td>
-                                <td class="index-table-td" x-text="registeredConditionLabel(record)"></td>
-                                <td class="index-table-td" x-text="record.episodeName"></td>
-                                <td class="index-table-td-actions">
-                                    <button
-                                        type="button"
-                                        @click="selectRegisteredCondition(record)"
-                                        class="cursor-pointer text-gray-500 hover:text-blue-600"
-                                    >
-                                        @icon('plus-circle', 'w-6 h-6')
-                                    </button>
-                                </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
-            </div>
-
-            <div
-                x-show="
-                    registeredConditionsSearched &&
-                    ! registeredConditionsLoading &&
-                    registeredConditionsResults.length === 0
-                "
-                class="py-8 text-center text-gray-500 dark:text-gray-400"
-                x-cloak
-            >
-                {{ __('forms.nothing_found') }}
-            </div>
-        </div>
+        <livewire:encounter.medical-record-search
+            :patient-uuid="$patientUuid"
+            selection-event="registered-condition-selected"
+            is-added-check="isRegisteredConditionSelected"
+            :episodes="$episodes"
+            fixed-record-type="condition"
+            :with-condition-filters="true"
+            :key="'registered-condition-search'"
+        />
 
         <div class="mt-6 flex justify-start space-x-2">
             <button type="button" @click="openConditionSearchDrawer = false" class="button-minor">
@@ -1578,108 +1407,13 @@
     >
         <x-slot name="title">{{ __('encounters.search_medical_records') }}</x-slot>
 
-        <div class="mt-2 mb-4 flex items-center gap-1.5 pl-1 font-bold text-gray-900 dark:text-gray-100">
-            @icon('search-outline', 'w-5 h-5 text-gray-800 dark:text-gray-200')
-            <span class="text-base">{{ __('forms.search') }}</span>
-        </div>
-
-        <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div class="form-group group">
-                <select x-model="evidenceSelectedType" id="evidenceDrawerSelectedType" class="input-select peer w-full">
-                    <option value="" selected>{{ __('forms.select') }}</option>
-                    <option value="condition">{{ __('conditions.condition_or_diagnosis') }}</option>
-                    <option value="observation">{{ __('conditions.evidence_observations') }}</option>
-                </select>
-                <label for="evidenceDrawerSelectedType" class="label">
-                    {{ mb_ucfirst(__('medical-events.medical_records_type')) }}
-                </label>
-            </div>
-
-            <div class="form-group group">
-                <select
-                    x-model="evidenceSelectedEpisodeId"
-                    id="evidenceDrawerSelectedEpisode"
-                    class="input-select peer w-full"
-                >
-                    <option value="" selected>{{ __('forms.select') }}</option>
-                    <template x-for="ep in encounter.episodes" :key="ep.id">
-                        <option :value="ep.id" x-text="`${ep.name} від ${ep.date}`"></option>
-                    </template>
-                </select>
-                <label for="evidenceDrawerSelectedEpisode" class="label"> {{ __('episodes.label') }} </label>
-            </div>
-        </div>
-
-        <div class="relative">
-            <div
-                x-show="evidenceIsLoading"
-                class="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-gray-800/70"
-                x-cloak
-            >
-                <x-forms.loading />
-            </div>
-
-            <table class="table-input w-inherit">
-                <thead class="thead-input">
-                    <tr>
-                        <th scope="col" class="th-input">{{ __('forms.date') }}</th>
-                        <th scope="col" class="th-input">{{ __('forms.type') }}</th>
-                        <th scope="col" class="th-input">{{ __('medical-events.code_and_name') }}</th>
-                        <th scope="col" class="th-input text-center">{{ __('forms.action') }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <template x-for="record in filteredEvidenceRecords()" :key="record.id">
-                        <tr class="border-b border-gray-200 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800/40">
-                            <td
-                                class="td-input text-[14px] text-gray-900 dark:text-gray-300"
-                                x-text="record.ehealthInsertedAt || ''"
-                            ></td>
-                            <td
-                                class="td-input text-[14px] text-gray-900 dark:text-gray-300"
-                                x-text="evidenceSelectedType === 'condition' ? '{{ __('conditions.condition_or_diagnosis') }}' : '{{ __('conditions.evidence_observations') }}'"
-                            ></td>
-                            <td
-                                class="td-input text-[14px] text-gray-900 dark:text-white"
-                                x-text="
-                                    `${record.codeCode} - ${
-                                        $wire.dictionaries['eHealth/LOINC/observation_codes'][record.codeCode] ||
-                                        $wire.dictionaries['eHealth/ICF/classifiers'][record.codeCode] ||
-                                        $wire.dictionaries['eHealth/ICD10_AM/condition_codes'][record.codeCode] ||
-                                        $wire.dictionaries['eHealth/ICPC2/condition_codes'][record.codeCode]
-                                    }`
-                                "
-                            ></td>
-                            <td class="td-input text-center">
-                                <template x-if="! modalCondition.evidenceDetails.some((d) => d.id === record.id)">
-                                    <button
-                                        type="button"
-                                        @click="addEvidence(record)"
-                                        class="inline-flex cursor-pointer items-center justify-center text-sm font-medium text-gray-900 transition-colors hover:text-blue-600 dark:text-white dark:hover:text-blue-400"
-                                    >
-                                        @icon('plus', 'w-5 h-5')
-                                    </button>
-                                </template>
-                                <template x-if="modalCondition.evidenceDetails.some((d) => d.id === record.id)">
-                                    <span class="inline-flex items-center text-sm font-medium text-green-600 dark:text-green-400">
-                                        @icon('check-circle', 'w-5 h-5')
-                                        {{ __('medical-events.added') }}
-                                    </span>
-                                </template>
-                            </td>
-                        </tr>
-                    </template>
-                </tbody>
-            </table>
-
-            <div
-                x-show="! evidenceIsLoading && filteredEvidenceRecords().length === 0"
-                class="py-8 text-center text-gray-500 dark:text-gray-400"
-                x-cloak
-            >
-                {{ __('forms.nothing_found') }}
-            </div>
-        </div>
+        <livewire:encounter.medical-record-search
+            :patient-uuid="$patientUuid"
+            selection-event="condition-evidence-selected"
+            is-added-check="isEvidenceAdded"
+            :episodes="$episodes"
+            :key="'condition-evidence-search'"
+        />
 
         <div class="mt-6 flex justify-between space-x-2">
             <button type="button" @click="openEvidenceDrawer = false" class="button-minor">
@@ -1696,8 +1430,9 @@
     class Condition {
         constructor(obj = null, encounter = null) {
             const now = new Date();
-            const [yyyy, mm, dd] = now.toISOString().split('T')[0].split('-');
-            const formattedDate = `${dd}.${mm}.${yyyy}`;
+            const dd = String(now.getDate()).padStart(2, '0');
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const formattedDate = `${dd}.${mm}.${now.getFullYear()}`;
             const formattedTime = now.toLocaleTimeString('uk-UA', {
                 hour: '2-digit',
                 minute: '2-digit',

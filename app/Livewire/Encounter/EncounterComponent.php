@@ -7,17 +7,13 @@ namespace App\Livewire\Encounter;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\Episode\Status as EpisodeStatus;
-use App\Enums\MedicalEvents\RecordType;
 use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\ClinicalImpression\Status as ClinicalImpressionStatus;
 use App\Enums\Person\ImmunizationStatus;
-use App\Enums\Person\ObservationStatus;
 use App\Enums\Person\ServiceRequestStatus;
 use App\Enums\Status;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
-use App\Exceptions\EHealth\EHealthResponseException;
-use App\Exceptions\EHealth\EHealthValidationException;
 use App\Livewire\Encounter\Forms\ClinicalImpressionForm;
 use App\Livewire\Encounter\Forms\DetectedIssueForm;
 use App\Livewire\Encounter\Forms\DeviceAssociationForm;
@@ -44,7 +40,6 @@ use App\Models\Preperson;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\EpisodeCurrentDiagnosis;
 use App\Repositories\Repository;
-use App\Rules\InDictionary;
 use App\Repositories\MedicalEvents\Repository as MedicalEventsRepository;
 use App\Services\MedicalEvents\Fhir;
 use App\Services\Dictionary\Mappers\ImmunizationDictionaryMapper;
@@ -56,6 +51,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Throwable;
 
 class EncounterComponent extends Component
 {
@@ -107,6 +103,22 @@ class EncounterComponent extends Component
     public ?int $prepersonId = null;
 
     /**
+     * Whether the interaction is a patient discharge, which fixes its class and type.
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $isDischarge = false;
+
+    /**
+     * Whether the interaction is a hospitalization refusal, which fixes its class and type and opens a new episode.
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $isHospitalizationRefusal = false;
+
+    /**
      * Request-scoped memoized patient model.
      *
      * @var Person|Preperson|null
@@ -149,18 +161,19 @@ class EncounterComponent extends Component
     public array $clinicalImpressions = [];
 
     /**
-     * List of found encounters, procedures, or diagnostic reports for clinical impression supporting info.
-     *
-     * @var array
-     */
-    public array $supportingInfoResults = [];
-
-    /**
      * Episode type, new or existing.
      *
      * @var string
      */
     public string $episodeType = 'new';
+
+    /**
+     * Interaction types allowed for each available interaction class, used to filter the type list on the client.
+     *
+     * @var array
+     */
+    #[Locked]
+    public array $encounterClassTypes = [];
 
     /**
      * Full name of employee.
@@ -290,70 +303,7 @@ class EncounterComponent extends Component
      *
      * @var array
      */
-    public array $evidenceDetails = [];
-
-    /**
-     * List of founded conditions and observations.
-     *
-     * @var array
-     */
     public array $conditionsAndObservations = [];
-
-    /**
-     * Previously registered conditions of the patient found by the filters below.
-     *
-     * @var array
-     */
-    public array $registeredConditions = [];
-
-    /**
-     * Condition code to search previously registered conditions by.
-     *
-     * @var string
-     */
-    public string $filterCode = '';
-
-    /**
-     * Episode UUID to search previously registered conditions by.
-     *
-     * @var string
-     */
-    public string $filterEpisodeId = '';
-
-    /**
-     * Start of the onset date range to search previously registered conditions by.
-     *
-     * @var string
-     */
-    public string $filterOnsetDateFrom = '';
-
-    /**
-     * End of the onset date range to search previously registered conditions by.
-     *
-     * @var string
-     */
-    public string $filterOnsetDateTo = '';
-
-    /**
-     * List of founded conditions or observations for clinical impression findings.
-     *
-     * @var array
-     */
-    public array $findingResults = [];
-
-    /**
-     * List of founded conditions or observations for procedure reason references.
-     *
-     * @var array
-     */
-    public array $reasonReferenceResults = [];
-
-    /**
-     * List of founded problems for current episode.
-     *
-     * @var array
-     */
-    public array $problems = [];
 
     /**
      * List of equipment options for combobox.
@@ -915,113 +865,6 @@ class EncounterComponent extends Component
     }
 
     /**
-     * Search for conditions or observations by type.
-     * Used for: evidence details (condition modal), reason references (procedure modal).
-     *
-     * @param  string  $type  'condition' or 'observation'
-     * @return void
-     */
-    public function searchConditionsOrObservations(string $type): void
-    {
-        try {
-            $this->evidenceDetails = $this->fetchConditionsOrObservations($type);
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error while getting evidence details');
-        }
-    }
-
-    /**
-     * Search conditions or observations to use as clinical impression findings.
-     *
-     * @param  string  $type  'condition' or 'observation'
-     * @return void
-     */
-    public function searchFindings(string $type): void
-    {
-        try {
-            $this->findingResults = $this->fetchConditionsOrObservations($type);
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error while getting findings');
-        }
-    }
-
-    /**
-     * Search conditions or observations to use as procedure reason references.
-     *
-     * @param  string  $type  'condition' or 'observation'
-     * @return void
-     */
-    public function searchReasonReferences(string $type): void
-    {
-        try {
-            $this->reasonReferenceResults = $this->fetchConditionsOrObservations($type);
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error while getting reason references');
-        }
-    }
-
-    /**
-     * Search previously registered conditions of the patient by code, episode and onset date.
-     * The episode is resolved through the encounter the condition was registered in.
-     *
-     * @return void
-     */
-    public function searchRegisteredConditions(): void
-    {
-        $this->validate([
-            'filterCode' => [
-                'nullable',
-                'string',
-                new InDictionary(['eHealth/ICPC2/condition_codes', 'eHealth/ICD10_AM/condition_codes'])
-            ],
-            'filterEpisodeId' => ['nullable', 'uuid'],
-            'filterOnsetDateFrom' => ['nullable', 'date_format:' . config('app.date_format')],
-            'filterOnsetDateTo' => ['nullable', 'date_format:' . config('app.date_format')]
-        ]);
-
-        try {
-            $conditions = EHealth::condition()->getBySearchParams(
-                $this->patientUuid,
-                array_filter([
-                    'code' => $this->filterCode ?: null,
-                    'episode_id' => $this->filterEpisodeId ?: null,
-                    'onset_date_from' => $this->filterOnsetDateFrom ?: null,
-                    'onset_date_to' => $this->filterOnsetDateTo ?: null,
-                    'managing_organization_id' => legalEntity()->uuid
-                ])
-            )->validate();
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error while searching for registered conditions');
-
-            return;
-        }
-
-        $episodeIdsByEncounter = Encounter::forPatient($this->patient())
-            ->whereIn('uuid', collect($conditions)->pluck('context.identifier.value')->filter()->unique())
-            ->with('episode')
-            ->get(['uuid', 'episode_id'])
-            ->pluck('episode.value', 'uuid');
-
-        $episodeNames = collect($this->episodes)->pluck('name', 'uuid');
-
-        $this->registeredConditions = collect($conditions)
-            ->map(static fn (array $condition): array => [
-                'id' => data_get($condition, 'uuid'),
-                'onsetDate' => convertToAppDateFormat(data_get($condition, 'onset_date')),
-                'codeCode' => data_get($condition, 'code.coding.0.code'),
-                'codeSystem' => data_get($condition, 'code.coding.0.system'),
-                'episodeName' => $episodeNames->get(
-                    $episodeIdsByEncounter->get(data_get($condition, 'context.identifier.value')),
-                    ''
-                )
-            ])
-            ->values()
-            ->all();
-
-        $this->loadIcd10Descriptions($this->registeredConditions);
-    }
-
-    /**
      * Load patient immunizations that may be referenced from observation.reaction_on.
      *
      * @param  string|null  $episodeId  Episode UUID to narrow the immunizations to its encounters
@@ -1060,81 +903,6 @@ class EncounterComponent extends Component
     }
 
     /**
-     * Fetch the patient's conditions or observations, depending on the requested record type.
-     *
-     * @param  string  $type  'condition' or 'observation'
-     * @return array
-     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
-     */
-    private function fetchConditionsOrObservations(string $type): array
-    {
-        return match (RecordType::tryFrom($type)) {
-            RecordType::CONDITION => $this->fetchConditions(),
-            RecordType::OBSERVATION => $this->fetchObservations(),
-            default => []
-        };
-    }
-
-    /**
-     * Fetch the patient's conditions managed by the current legal entity.
-     *
-     * @return array
-     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
-     */
-    private function fetchConditions(): array
-    {
-        $conditions = EHealth::condition()
-            ->getBySearchParams($this->patientUuid, ['managing_organization_id' => legalEntity()->uuid])
-            ->validate();
-
-        $results = $this->toMedicalRecords($conditions, RecordType::CONDITION);
-
-        $this->loadIcd10Descriptions($results);
-
-        return $results;
-    }
-
-    /**
-     * Fetch the patient's observations managed by the current legal entity, except those entered in error.
-     *
-     * @return array
-     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
-     */
-    private function fetchObservations(): array
-    {
-        $observations = collect(
-            EHealth::observation()
-                ->getBySearchParams($this->patientUuid, ['managing_organization_id' => legalEntity()->uuid])
-                ->validate()
-        )
-            ->reject(static fn (array $observation): bool => data_get($observation, 'status') === ObservationStatus::ENTERED_IN_ERROR->value)
-            ->all();
-
-        return $this->toMedicalRecords($observations, RecordType::OBSERVATION);
-    }
-
-    /**
-     * Shape conditions or observations for the search results.
-     *
-     * @param  array  $records
-     * @param  RecordType  $type
-     * @return array
-     */
-    private function toMedicalRecords(array $records, RecordType $type): array
-    {
-        return collect($records)
-            ->map(static fn (array $record): array => [
-                'id' => data_get($record, 'uuid'),
-                'ehealthInsertedAt' => convertToAppDateFormat(data_get($record, 'ehealth_inserted_at')),
-                'codeCode' => data_get($record, 'code.coding.0.code'),
-                'codeSystem' => data_get($record, 'code.coding.0.system'),
-                'type' => $type->value
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
      * Search for clinical impressions in episodes.
      *
      * @return void
@@ -1163,177 +931,33 @@ class EncounterComponent extends Component
     }
 
     /**
-     * Search for complication details in conditions for selected episode.
+     * Store locally the previously registered conditions the diagnoses reference and the patient's records lack,
+     * since a draft is reopened from the local records only.
      *
+     * @param  array  $conditions  Validated conditions of the package
      * @return void
+     * @throws EHealthConnectionException|EHealthException|Throwable
      */
-    public function searchProblems(): void
+    protected function syncRegisteredConditions(array $conditions): void
     {
-        if (!empty($this->problems)) {
+        $registeredIds = collect($conditions)
+            ->filter(static fn (array $condition): bool => ($condition['isRegistered'] ?? false) === true)
+            ->pluck('uuid');
+
+        if ($registeredIds->isEmpty() || $this->patientUuid === null) {
             return;
         }
 
-        try {
-            $this->problems = $this->fetchConditions();
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error while searching for problems');
+        $storedIds = collect(MedicalEventsRepository::condition()->getByUuids($registeredIds->all()))->pluck('uuid');
+
+        $missingConditions = $registeredIds->diff($storedIds)
+            ->map(fn (string $conditionId): array => EHealth::condition()->getById($this->patientUuid, $conditionId)->validate())
+            ->values()
+            ->all();
+
+        if ($missingConditions !== []) {
+            MedicalEventsRepository::condition()->sync($this->patient(), $missingConditions);
         }
-    }
-
-    /**
-     * @param  string  $type  One of: episodes, encounter, procedure, diagnosticReport, condition, observation.
-     * @param  string|null  $episodeId
-     * @return void
-     */
-    public function searchSupportingInfo(string $type, ?string $episodeId = null): void
-    {
-        $recordType = RecordType::tryFrom($type);
-
-        // Diagnostic reports name the episode filter after the encounter context they were registered in
-        $params = array_filter([
-            'managing_organization_id' => legalEntity()->uuid,
-            $recordType === RecordType::DIAGNOSTIC_REPORT ? 'context_episode_id' : 'episode_id' => $episodeId
-        ]);
-
-        try {
-            $this->supportingInfoResults = match ($recordType) {
-                RecordType::EPISODE => $this->supportingEpisodes($episodeId),
-                RecordType::ENCOUNTER => $this->supportingEncounters($params),
-                RecordType::PROCEDURE => $this->supportingProcedures($params),
-                RecordType::DIAGNOSTIC_REPORT => $this->supportingDiagnosticReports($params),
-                RecordType::CONDITION => $this->supportingConditions($params),
-                RecordType::OBSERVATION => $this->supportingObservations($params),
-                null => []
-            };
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle("Error while searching for $type in Encounter Component");
-        }
-    }
-
-    /**
-     * Active episodes of the patient offered as supporting info, narrowed to the given episode.
-     *
-     * @param  string|null  $episodeId
-     * @return array
-     */
-    private function supportingEpisodes(?string $episodeId): array
-    {
-        return collect($this->episodes)
-            ->when($episodeId, static fn (Collection $episodes): Collection => $episodes->where('uuid', $episodeId))
-            ->map(static fn (array $episode): array => [
-                'uuid' => data_get($episode, 'uuid'),
-                'ehealthInsertedAt' => convertToAppDateFormat(data_get($episode, 'ehealthInsertedAt')),
-                'code' => data_get($episode, 'name'),
-                'type' => 'episode'
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Encounters of the patient offered as supporting info, named by their primary diagnosis.
-     *
-     * @param  array  $params
-     * @return array
-     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
-     */
-    private function supportingEncounters(array $params): array
-    {
-        return collect(EHealth::encounter()->getBySearchParams($this->patientUuid, $params)->validate())
-            ->map(static function (array $encounter): array {
-                $primaryDiagnosis = collect(data_get($encounter, 'diagnoses', []))
-                    ->first(static fn (array $diagnosis): bool => data_get($diagnosis, 'role.coding.0.code') === 'primary');
-
-                return [
-                    'uuid' => data_get($encounter, 'uuid'),
-                    'ehealthInsertedAt' => convertToAppDateFormat(data_get($encounter, 'ehealth_inserted_at')),
-                    'code' => data_get($primaryDiagnosis, 'code.coding.0.code'),
-                    'type' => 'encounter'
-                ];
-            })
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Procedures of the patient offered as supporting info.
-     *
-     * @param  array  $params
-     * @return array
-     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
-     */
-    private function supportingProcedures(array $params): array
-    {
-        return collect(EHealth::procedure()->getBySearchParams($this->patientUuid, $params)->validate())
-            ->map(static fn (array $procedure): array => [
-                'uuid' => data_get($procedure, 'uuid'),
-                'ehealthInsertedAt' => convertToAppDateFormat(data_get($procedure, 'ehealth_inserted_at')),
-                'code' => data_get($procedure, 'code.identifier.value'),
-                'type' => 'procedure'
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Diagnostic reports of the patient offered as supporting info.
-     *
-     * @param  array  $params
-     * @return array
-     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
-     */
-    private function supportingDiagnosticReports(array $params): array
-    {
-        return collect(EHealth::diagnosticReport()->getBySearchParams($this->patientUuid, $params)->validate())
-            ->map(static fn (array $report): array => [
-                'uuid' => data_get($report, 'uuid'),
-                'ehealthInsertedAt' => convertToAppDateFormat(data_get($report, 'ehealth_inserted_at')),
-                'code' => data_get($report, 'code.identifier.value'),
-                'type' => 'diagnostic_report'
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Conditions of the patient offered as supporting info.
-     *
-     * @param  array  $params
-     * @return array
-     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
-     */
-    private function supportingConditions(array $params): array
-    {
-        return collect(EHealth::condition()->getBySearchParams($this->patientUuid, $params)->validate())
-            ->map(static fn (array $condition): array => [
-                'uuid' => data_get($condition, 'uuid'),
-                'ehealthInsertedAt' => convertToAppDateFormat(data_get($condition, 'ehealth_inserted_at')),
-                'code' => data_get($condition, 'code.coding.0.code'),
-                'type' => 'condition'
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Observations of the patient offered as supporting info, except those entered in error.
-     *
-     * @param  array  $params
-     * @return array
-     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
-     */
-    private function supportingObservations(array $params): array
-    {
-        return collect(EHealth::observation()->getBySearchParams($this->patientUuid, $params)->validate())
-            ->reject(static fn (array $observation): bool => data_get($observation, 'status') === ObservationStatus::ENTERED_IN_ERROR->value)
-            ->map(static fn (array $observation): array => [
-                'uuid' => data_get($observation, 'uuid'),
-                'ehealthInsertedAt' => convertToAppDateFormat(data_get($observation, 'ehealth_inserted_at')),
-                'code' => data_get($observation, 'code.coding.0.code'),
-                'type' => 'observation'
-            ])
-            ->values()
-            ->all();
     }
 
     /**
@@ -1423,19 +1047,25 @@ class EncounterComponent extends Component
     }
 
     /**
-     * Show encounter types based on encounter class.
+     * Keep the encounter types of all available classes; the list is narrowed to the selected class on the client.
      *
      * @return void
      */
     protected function adjustEncounterTypes(): void
     {
-        $selectedClass = $this->form->encounter['classCode'] ?: key($this->dictionaries['eHealth/encounter_classes']);
-        $keys = config("ehealth.encounter_class_encounter_types.$selectedClass", []);
+        $this->encounterClassTypes = collect($this->dictionaries['eHealth/encounter_classes'])
+            ->keys()
+            ->mapWithKeys(static fn (string $classCode): array => [
+                $classCode => config("ehealth.encounter_class_encounter_types.$classCode", [])
+            ])
+            ->toArray();
 
-        $this->adjustDictionary('eHealth/encounter_types', $keys);
+        $this->adjustDictionary('eHealth/encounter_types', array_merge(...array_values($this->encounterClassTypes)));
 
-        if (count($this->dictionaries['eHealth/encounter_types']) === 1) {
-            $this->form->encounter['typeCode'] = array_key_first($this->dictionaries['eHealth/encounter_types']);
+        $selectedClassTypes = $this->encounterClassTypes[$this->form->encounter['classCode'] ?? ''] ?? [];
+
+        if (count($selectedClassTypes) === 1) {
+            $this->form->encounter['typeCode'] = $selectedClassTypes[0];
         }
     }
 

@@ -1,17 +1,36 @@
 <div
     class="p-4 sm:p-8"
     id="patient-data-section"
-    @if ($this->prepersonId)
+    @if ($this->prepersonId && !$this->isDischarge && !$this->isHospitalizationRefusal)
         x-init="$wire.set('form.encounter.typeCode', 'patient_identity')"
     @endif
 >
-    <div class="form-row-2">
+    <div
+        class="form-row-2"
+        x-data="{
+            allowedTypes(classCode = $wire.form.encounter.classCode) {
+                return $wire.encounterClassTypes[classCode] ?? [];
+            },
+
+            syncTypeWithClass(classCode) {
+                const types = this.allowedTypes(classCode);
+
+                if (types.length === 1) {
+                    $wire.set('form.encounter.typeCode', types[0], false);
+                } else if (! types.includes($wire.form.encounter.typeCode)) {
+                    $wire.set('form.encounter.typeCode', '', false);
+                }
+            },
+        }"
+    >
         <div class="form-group group">
             <select
                 wire:model="form.encounter.classCode"
+                @change="syncTypeWithClass($event.target.value)"
                 id="interactionClass"
                 class="input-select peer @error('form.encounter.classCode') input-error @enderror"
                 required
+                @disabled($this->isDischarge || $this->isHospitalizationRefusal)
             >
                 <option value="" selected>{{ __('forms.select') }}</option>
                 @foreach ($this->dictionaries['eHealth/encounter_classes'] as $key => $encounterClass)
@@ -31,10 +50,17 @@
                 id="interactionType"
                 class="input-select peer @error('form.encounter.typeCode') input-error @enderror"
                 required
+                @disabled($this->isDischarge || $this->isHospitalizationRefusal)
             >
                 <option value="" selected>{{ __('forms.select') }}</option>
                 @foreach ($this->dictionaries['eHealth/encounter_types'] as $key => $encounterType)
-                    <option value="{{ $key }}">{{ $encounterType }}</option>
+                    <option
+                        value="{{ $key }}"
+                        x-show="allowedTypes().includes('{{ $key }}')"
+                        :disabled="! allowedTypes().includes('{{ $key }}')"
+                    >
+                        {{ $encounterType }}
+                    </option>
                 @endforeach
             </select>
             <label for="interactionType" class="label required"> {{ __('encounters.interaction_type') }} </label>
@@ -131,6 +157,7 @@
                     name="episode"
                     class="default-radio"
                     :checked="episodeType === 'existing'"
+                    @disabled($this->isHospitalizationRefusal)
                 />
                 <label for="existingEpisode" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
                     {{ __('encounters.episode_existing') }}

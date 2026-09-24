@@ -73,14 +73,18 @@ class EncounterForm extends BaseForm
                 'string',
                 new InDictionary('eHealth/encounter_classes'),
                 $this->classAllowedForEpisodeType(),
-                $this->classAllowedForLegalEntity()
+                $this->classAllowedForLegalEntity(),
+                Rule::when($this->component->isDischarge, [Rule::in(['INPATIENT'])]),
+                Rule::when($this->component->isHospitalizationRefusal, [Rule::in(['AMB'])])
             ],
             'encounter.typeCode' => [
                 'required',
                 'string',
                 new InDictionary('eHealth/encounter_types'),
                 $this->typeAllowedForClass(),
-                $this->patientIdentityObservationCodes()
+                $this->patientIdentityObservationCodes(),
+                Rule::when($this->component->isDischarge, [Rule::in(['discharge'])]),
+                Rule::when($this->component->isHospitalizationRefusal, [Rule::in(['service_delivery_location'])])
             ],
             'encounter.performerId' => ['required', 'uuid', $this->performerAllowed()],
             'encounter.priorityCode' => [
@@ -229,7 +233,11 @@ class EncounterForm extends BaseForm
                 'nullable',
                 'uuid',
                 'required_without_all:episode.typeCode,episode.name',
-                Rule::prohibitedIf(!empty($this->episode['typeCode']) || !empty($this->episode['name']))
+                Rule::prohibitedIf(
+                    !empty($this->episode['typeCode'])
+                    || !empty($this->episode['name'])
+                    || $this->component->isHospitalizationRefusal
+                )
             ],
             'episode.typeCode' => [
                 'nullable',
