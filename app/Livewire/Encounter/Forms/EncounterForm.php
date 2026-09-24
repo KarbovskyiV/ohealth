@@ -11,6 +11,7 @@ use App\Rules\InDictionary;
 use App\Rules\OnlyOnePrimaryDiagnosis;
 use App\Rules\PastDateTime;
 use App\Models\Employee\Employee;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -78,9 +79,10 @@ class EncounterForm extends BaseForm
                 'required',
                 'string',
                 new InDictionary('eHealth/encounter_types'),
-                $this->typeAllowedForClassAndRole(),
+                $this->typeAllowedForClass(),
                 $this->patientIdentityObservationCodes()
             ],
+            'encounter.performerId' => ['required', 'uuid', $this->performerAllowed()],
             'encounter.priorityCode' => [
                 Rule::requiredIf(($this->encounter['classCode'] ?? '') === 'INPATIENT'),
                 'string',
@@ -367,11 +369,11 @@ class EncounterForm extends BaseForm
     }
 
     /**
-     * The encounter type has to be allowed both for the encounter class and for the user's role.
+     * The encounter type has to be allowed for the encounter class.
      *
      * @return Closure
      */
-    private function typeAllowedForClassAndRole(): Closure
+    private function typeAllowedForClass(): Closure
     {
         return function (string $attribute, mixed $value, Closure $fail): void {
             $classCode = $this->encounter['classCode'] ?? null;
@@ -384,16 +386,85 @@ class EncounterForm extends BaseForm
 
             if (!in_array($value, $classTypes, true)) {
                 $fail(__('validation.custom.encounter.typeCode.class_forbidden', ['value' => $value]));
+            }
+        };
+    }
+
+    /**
+     * The performer has to be an active employee of this legal entity whose type allows the encounter class and type.
+     * An encounter ending today, or one carrying records registered from primary source, is performed by the auth user.
+     *
+     * @return Closure
+     */
+    private function performerAllowed(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $performer = Employee::whereUuid($value)
+                ->first([
+                    'uuid',
+                    'party_id',
+                    'legal_entity_id',
+                    'status',
+                    'is_active',
+                    'employee_type'
+                ]);
+
+            if ($performer === null) {
+                $fail(__('validation.custom.encounter.performer_not_found'));
 
                 return;
             }
 
-            $roleEncounterTypes = Auth::user()->allowedRoles
-                ->flatMap(static fn (string $role): array => config("ehealth.performer_employee_encounter_types.$role", []))
-                ->unique();
+            if ($performer->status !== Status::APPROVED || !$performer->isActive) {
+                $fail(__('validation.custom.encounter.performer_not_active'));
 
-            if (!$roleEncounterTypes->contains($value)) {
-                $fail(__('validation.custom.encounter.typeCode.employee_forbidden', ['value' => $value]));
+                return;
+            }
+
+            if ($performer->legalEntityId !== legalEntity()->id) {
+                $fail(__('validation.custom.encounter.performer_wrong_legal_entity'));
+
+                return;
+            }
+
+            $classCode = $this->encounter['classCode'] ?? '';
+            $allowedClasses = config("ehealth.performer_employee_encounter_classes.$performer->employeeType", []);
+
+            if ($classCode !== '' && !in_array($classCode, $allowedClasses, true)) {
+                $fail(__('validation.custom.encounter.performer_class_forbidden', ['type' => $performer->employeeType]));
+
+                return;
+            }
+
+            $typeCode = $this->encounter['typeCode'] ?? '';
+            $allowedTypes = config("ehealth.performer_employee_encounter_types.$performer->employeeType", []);
+
+            if ($typeCode !== '' && !in_array($typeCode, $allowedTypes, true)) {
+                $fail(__('validation.custom.encounter.performer_type_forbidden', ['type' => $performer->employeeType]));
+
+                return;
+            }
+
+            $periodDate = $this->encounter['periodDate'] ?? '';
+
+            if (empty($periodDate)) {
+                return;
+            }
+
+            $hasPrimarySource = collect([
+                $this->component->conditionForm->conditions,
+                $this->component->immunizationForm->immunizations,
+                $this->component->diagnosticReportForm->diagnosticReports,
+                $this->component->observationForm->observations,
+                $this->component->procedureForm->procedures
+            ])
+                ->flatten(1)
+                ->contains(static fn (array $record): bool => ($record['primarySource'] ?? false) === true);
+
+            $isToday = CarbonImmutable::createFromFormat(config('app.date_format'), $periodDate)->isToday();
+
+            if (($isToday || $hasPrimarySource) && $performer->partyId !== Auth::user()->partyId) {
+                $fail(__('validation.custom.encounter.performer_not_current_user'));
             }
         };
     }
@@ -601,6 +672,7 @@ class EncounterForm extends BaseForm
 
         $requiredParticipantUuids = $procedurePerformerUuids
             ->merge($diagnosticReportPerformerUuids)
+            ->push($this->encounter['performerId'] ?? null)
             ->when(
                 $encounterWriterEmployeeUuid !== null,
                 static fn ($participants) => $participants->push($encounterWriterEmployeeUuid)

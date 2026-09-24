@@ -356,16 +356,6 @@ class EncounterCreate extends EncounterComponent
         // Remove display_value from incoming_referral before sending to eHealth (schema rejects it)
         unset($formattedData['encounter']['incoming_referral']['display_value']);
 
-        try {
-            $this->validateEncounterPerformer($formattedData);
-        } catch (ValidationException $exception) {
-            Session::flash('error', $exception->validator->errors()->first());
-
-            $this->setErrorBag($exception->validator->getMessageBag());
-
-            return;
-        }
-
         if ($this->episodeType === 'new') {
             $this->createEpisode($formattedData['episode']);
             unset($formattedData['episode']);

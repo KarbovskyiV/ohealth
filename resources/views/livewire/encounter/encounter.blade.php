@@ -467,7 +467,7 @@
                             <button
                                 type="submit"
                                 @click="
-                                    $wire.set('actionType', null);
+                                    $wire.set('actionType', null, false);
                                     $wire.showSignatureModal = true;
                                 "
                                 class="button-primary"

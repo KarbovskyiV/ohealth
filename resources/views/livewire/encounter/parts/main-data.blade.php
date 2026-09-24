@@ -45,6 +45,67 @@
         </div>
     </div>
 
+    <div
+        class="form-row-2 mt-8"
+        x-data="{
+            isPerformerAllowed(index) {
+                const classCode = $wire.form.encounter.classCode;
+                const typeCode = $wire.form.encounter.typeCode;
+                const employee = $wire.performerEmployees[index];
+
+                return (
+                    (! classCode || employee.encounterClasses.includes(classCode)) &&
+                    (! typeCode || employee.encounterTypes.includes(typeCode))
+                );
+            },
+
+            syncPerformerParticipant() {
+                const performer = $wire.performerEmployees.find(
+                    (employee) => employee.uuid === $wire.form.encounter.performerId,
+                );
+
+                syncLocalEncounterParticipants('performer', performer ? [performer] : []);
+            },
+        }"
+        x-init="syncPerformerParticipant()"
+        x-effect="
+            const selectedIndex = $wire.performerEmployees.findIndex(
+                (employee) => employee.uuid === $wire.form.encounter.performerId,
+            );
+
+            if (selectedIndex !== -1 && ! isPerformerAllowed(selectedIndex)) {
+                $wire.set('form.encounter.performerId', '', false);
+                syncPerformerParticipant();
+            }
+        "
+    >
+        <div class="form-group group">
+            <select
+                wire:model="form.encounter.performerId"
+                @change="syncPerformerParticipant()"
+                id="encounterPerformer"
+                class="input-select peer @error('form.encounter.performerId') input-error @enderror"
+                required
+            >
+                <option value="" selected>{{ __('forms.select') }}</option>
+                @foreach ($performerEmployees as $employee)
+                    <option
+                        value="{{ $employee['uuid'] }}"
+                        :hidden="! isPerformerAllowed({{ $loop->index }})"
+                        :disabled="! isPerformerAllowed({{ $loop->index }})"
+                    >
+                        {{ $employee['name'] }} ({{ $this->dictionaries['POSITION'][$employee['position']] ?? $employee['position'] }})
+                    </option>
+                @endforeach
+            </select>
+            <label for="encounterPerformer" class="label required"> {{ __('medical-events.performer') }} </label>
+
+            @error('form.encounter.performerId')
+                <p class="text-error">{{ $message }}</p>
+            @enderror
+        </div>
+    </div>
+
     {{-- Select episode type --}}
     <div
         x-data="{
