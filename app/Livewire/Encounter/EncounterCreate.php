@@ -8,6 +8,8 @@ use App\Classes\Cipher\Api\CipherRequest;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\Episode\Status;
+use App\Enums\Person\EncounterStatus;
+use App\Enums\Person\ServiceRequestStatus;
 use App\Exceptions\Cipher\CipherConnectionException;
 use App\Exceptions\Cipher\CipherException;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -16,22 +18,25 @@ use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\Person\Person;
 use App\Models\Preperson;
-use App\Enums\Person\EncounterStatus;
 use App\Repositories\MedicalEvents\Repository;
 use App\Services\MedicalEvents\EncounterPackageBuilder;
+use App\Services\MedicalEvents\ReferralRequestLifecycleService;
 use App\Traits\EnsuresEntityExists;
+use App\Traits\SubmitsEHealthEncounter;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Throwable;
 
 class EncounterCreate extends EncounterComponent
 {
     use EnsuresEntityExists;
-    use \App\Traits\SubmitsEHealthEncounter;
+    use SubmitsEHealthEncounter;
 
     private EncounterPackageBuilder $packageBuilder;
 
@@ -40,6 +45,12 @@ class EncounterCreate extends EncounterComponent
     public bool $showReferralRedeemModal = false;
     public string $referralToRedeemUuid = '';
     public string $createdEncounterUuidForRedeem = '';
+
+    /**
+     * UUID of the electronic referral already taken into work at selection time.
+     * Keeps qualify/process off the KEP signing path.
+     */
+    public ?string $preparedElectronicReferralUuid = null;
 
     private function resolveReferralUuid(string $referralNumber): ?string
     {
@@ -58,6 +69,80 @@ class EncounterCreate extends EncounterComponent
         $referral = collect($this->availableReferrals)->firstWhere('requisition', $referralNumber);
 
         return data_get($referral, 'id');
+    }
+
+    /**
+     * Called when the doctor picks an electronic referral from the dropdown.
+     * Runs eHealth use/qualify here so signing the encounter stays on Cipher only.
+     */
+    public function selectElectronicReferral(string $referralUuid, ReferralRequestLifecycleService $lifecycle): void
+    {
+        $referralUuid = trim($referralUuid);
+        if ($referralUuid === '' || !Str::isUuid($referralUuid)) {
+            return;
+        }
+
+        $referral = collect($this->availableReferrals)->firstWhere('id', $referralUuid);
+        if ($referral === null) {
+            Session::flash('error', __('encounters.messages.referral_not_found'));
+
+            return;
+        }
+
+        $this->selectedReferralUuid = $referralUuid;
+        $this->form->encounter['referralType'] = 'electronic';
+        $this->form->encounter['referralNumber'] = (string) ($referral['requisition'] ?? $referralUuid);
+
+        try {
+            $this->ensureReferralTakenIntoWork($lifecycle, $referralUuid);
+            $this->preparedElectronicReferralUuid = $referralUuid;
+        } catch (Throwable $exception) {
+            $this->preparedElectronicReferralUuid = null;
+            Session::flash(
+                'error',
+                __('Не вдалося взяти направлення в роботу: ').$exception->getMessage()
+            );
+        }
+    }
+
+    /**
+     * Take an active electronic referral into work (eHealth use / qualify).
+     * Idempotent when local status is already in_progress.
+     */
+    private function ensureReferralTakenIntoWork(ReferralRequestLifecycleService $service, string $referralUuid): void
+    {
+        $local = Repository::serviceRequest()->findByUuid($referralUuid);
+        $status = strtolower((string) ($local?->status ?? ''));
+
+        if ($status === ServiceRequestStatus::IN_PROGRESS->value) {
+            return;
+        }
+
+        $needsTakeIntoWork = $local === null
+            || $status === ''
+            || $status === ServiceRequestStatus::ACTIVE->value
+            || $status === 'active';
+
+        if (!$needsTakeIntoWork) {
+            return;
+        }
+
+        $employee = Auth::user()?->employees()
+            ->where('legal_entity_id', legalEntity()->id)
+            ->first();
+
+        if ($employee === null) {
+            throw new RuntimeException(__('Не знайдено співробітника для взяття направлення в роботу.'));
+        }
+
+        $service->takeIntoWork(
+            $referralUuid,
+            $employee,
+            $this->patientUuid ?: null,
+            array_filter([
+                'program_id' => $local?->programId,
+            ])
+        );
     }
 
     private function resolveAllReferrals(array &$validated): void
@@ -159,7 +244,7 @@ class EncounterCreate extends EncounterComponent
             $validated = $this->validate();
             try {
                 $this->resolveAllReferrals($validated);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->dispatch('scroll-to-error');
 
                 return;
@@ -224,7 +309,7 @@ class EncounterCreate extends EncounterComponent
             $validatedData = $this->validate();
             try {
                 $this->resolveAllReferrals($validatedData);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->dispatch('scroll-to-error');
 
                 return;
@@ -321,7 +406,7 @@ class EncounterCreate extends EncounterComponent
                 $this->patient()
             );
 
-            Session::flash('success', 'Взаємодію успішно створено та надіслано до ЕСОЗ.');
+            Session::flash('success', __('Взаємодію успішно створено та надіслано до ЕСОЗ.'));
             $this->showSignatureModal = false;
 
             if (($this->form->encounter['referralType'] ?? '') === 'electronic' && !empty($this->form->encounter['referralNumber'])) {
@@ -339,11 +424,11 @@ class EncounterCreate extends EncounterComponent
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while submitting encounter');
             $this->showSignatureModal = false;
-        } catch (\RuntimeException $exception) {
+        } catch (RuntimeException $exception) {
             logger()->error('Encounter submission runtime error: ' . $exception->getMessage());
             Session::flash('error', $exception->getMessage());
             $this->showSignatureModal = false;
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             logger()->error('Encounter submission unexpected error: ' . $exception->getMessage(), [
                 'trace' => $exception->getTraceAsString(),
             ]);
@@ -462,7 +547,7 @@ class EncounterCreate extends EncounterComponent
     public function closeRedeemModal(): void
     {
         $this->showReferralRedeemModal = false;
-        $encounter = \App\Models\MedicalEvents\Sql\Encounter::where('uuid', $this->createdEncounterUuidForRedeem)->first();
+        $encounter = Encounter::where('uuid', $this->createdEncounterUuidForRedeem)->first();
         if ($encounter) {
             $this->redirectAfterCreate($encounter->id);
         } else {
@@ -470,21 +555,27 @@ class EncounterCreate extends EncounterComponent
         }
     }
 
-    public function redeemReferral(\App\Services\MedicalEvents\ReferralRequestLifecycleService $service): void
+    public function redeemReferral(ReferralRequestLifecycleService $service): void
     {
         try {
             if ($this->referralToRedeemUuid && $this->createdEncounterUuidForRedeem) {
+                // use/qualify already ran on referral selection; redeem only completes.
+                // Safety net: if the doctor typed a number without picking from the list, take into work once here.
+                if ($this->preparedElectronicReferralUuid !== $this->referralToRedeemUuid) {
+                    $this->ensureReferralTakenIntoWork($service, $this->referralToRedeemUuid);
+                }
+
                 $service->completeReferral($this->referralToRedeemUuid, $this->createdEncounterUuidForRedeem);
-                Session::flash('success', 'Направлення успішно погашено!');
+                Session::flash('success', __('Направлення успішно погашено!'));
             }
-        } catch (\Exception $e) {
-            Session::flash('error', 'Не вдалося погасити направлення: ' . $e->getMessage());
+        } catch (Exception $e) {
+            Session::flash('error', __('Не вдалося погасити направлення: ') . $e->getMessage());
         }
 
         $this->showReferralRedeemModal = false;
 
         // Find local encounter ID by UUID to redirect properly
-        $encounter = \App\Models\MedicalEvents\Sql\Encounter::where('uuid', $this->createdEncounterUuidForRedeem)->first();
+        $encounter = Encounter::where('uuid', $this->createdEncounterUuidForRedeem)->first();
         if ($encounter) {
             $this->redirectAfterCreate($encounter->id);
         } else {

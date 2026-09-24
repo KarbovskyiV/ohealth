@@ -1,7 +1,7 @@
 @use('App\Livewire\CarePlan\CarePlanIndex')
 
 <div>
-    <livewire:components.x-message :listen-async="true" :key="time()" />
+    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
     <x-header-navigation class="items-start" x-data="{ showFilter: false }">
         <x-slot name="title">{{ __('care-plan.care_plans') }}</x-slot>
 

@@ -827,5 +827,12 @@ return [
         'selectedProgram' => 'медична програма',
         'selectedDiagnoseGroup' => 'група діагнозів',
         'selectedForbiddenGroup' => 'обмежувальна група',
+
+        // Care plan activity form (nested so validation + __() resolve the same keys)
+        'activityForm' => [
+            'daily_amount' => 'Кількість за 1 раз',
+            'quantity' => 'Кількість',
+            'goal' => 'Очікуваний результат',
+        ],
     ]
 ];

@@ -1,5 +1,5 @@
 <div>
-    <livewire:components.x-message :listen-async="true" :key="time()" />
+    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
 
     <form wire:submit.prevent="createDraft">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

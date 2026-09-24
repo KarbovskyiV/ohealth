@@ -5,7 +5,7 @@
              x-show="open"
              x-cloak
              x-transition.opacity
-             wire:key="{{ time() }}"
+             wire:key="flash-{{ $notificationId }}"
              x-init="setTimeout(() => { open = false }, 30000)"
         >
             <div class="relative flex-grow">
@@ -20,6 +20,17 @@
                     @if($type === 'success')
                         <div role="alert"
                              class="p-4 pr-10 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400 border border-green-200 dark:border-green-900"
+                        >
+                            <span class="font-medium whitespace-pre-line">{{ $message }}</span>
+                        </div>
+                    @endif
+                    @if($type === 'info' || $type === 'warning')
+                        <div role="alert"
+                             @class([
+                                 'p-4 pr-10 text-sm rounded-lg border',
+                                 'text-blue-800 bg-blue-50 border-blue-200 dark:bg-gray-800 dark:text-blue-300' => $type === 'info',
+                                 'text-yellow-800 bg-yellow-50 border-yellow-200 dark:bg-gray-800 dark:text-yellow-300' => $type === 'warning',
+                             ])
                         >
                             <span class="font-medium whitespace-pre-line">{{ $message }}</span>
                         </div>

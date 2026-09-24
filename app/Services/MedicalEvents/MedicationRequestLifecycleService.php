@@ -5,19 +5,30 @@ declare(strict_types=1);
 namespace App\Services\MedicalEvents;
 
 use App\Classes\eHealth\Api\MedicationRequest;
+use App\Classes\eHealth\EHealth;
+use App\Classes\eHealth\EHealthResponse;
 use App\Contracts\EHealthRequestLifecycleContract;
-use App\Exceptions\EHealth\EHealthResponseException;
 use App\Enums\Person\EncounterStatus;
 use App\Enums\Person\MedicationRequestStatus;
+use App\Exceptions\EHealth\EHealthResponseException;
 use App\Models\CarePlan;
 use App\Models\CarePlanActivity;
+use App\Models\Division;
+use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Medications\MedicationRequestRequest;
+use App\Models\Person\Person;
 use App\Repositories\MedicalEvents\MedicationRequestRepository;
 use App\Services\MedicalEvents\Concerns\ResolvesEmployeeContext;
+use App\Services\MedicalEvents\Mappers\MedicationRequestMapper;
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
 
 class MedicationRequestLifecycleService extends EHealthRequestLifecycleService implements EHealthRequestLifecycleContract
 {
@@ -54,7 +65,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
     private function requireLocalKep(array $formData): void
     {
         if (trim((string) ($formData['password'] ?? '')) === '' || trim((string) ($formData['knedp'] ?? '')) === '') {
-            throw new \InvalidArgumentException(__('care-plan.kep_signature_required'));
+            throw new InvalidArgumentException(__('care-plan.kep_signature_required'));
         }
 
         $this->resolveSignerTaxId($formData);
@@ -71,22 +82,22 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
     {
         $signatureText = trim((string) ($formData['signature_text'] ?? ''));
         if ($signatureText === '') {
-            throw new \InvalidArgumentException(__('care-plan.eprescription_signature_required'));
+            throw new InvalidArgumentException(__('care-plan.eprescription_signature_required'));
         }
 
         $maxDosePerAdministration = (float) ($formData['max_dose_per_administration'] ?? 0);
         $maxDosePerPeriod = (float) ($formData['max_dose_per_period'] ?? 0);
         if ($maxDosePerAdministration <= 0 || $maxDosePerPeriod <= 0) {
-            throw new \InvalidArgumentException(__('care-plan.eprescription_dose_required'));
+            throw new InvalidArgumentException(__('care-plan.eprescription_dose_required'));
         }
 
         if ($activity !== null) {
             app(ActivityRemainingQuantityGuard::class)->assertCanIssue(
                 (int) $activity->id,
                 (float) ($formData['medication_qty'] ?? 1),
-                function (int $activityId): float {
+                function (int $activityId) use ($activity): float {
                     return (float) MedicationRequestRequest::query()
-                        ->where('based_on_id', $activityId)
+                        ->whereHas('basedOn', fn ($q) => $q->where('value', $activity->uuid))
                         ->whereNotIn('status', ActivityRemainingQuantityGuard::occupyingStatusesExcluded())
                         ->sum('medication_qty');
                 }
@@ -121,9 +132,8 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             'medication_program_id' => $formData['program_id'] ?? null,
             'intent' => 'order',
             'category' => $formData['category'] ?? 'community',
-            'based_on_id' => $activity ? $activity->id : null,
-            'context_id' => $activeEncounter->id,
             'based_on_uuid' => $activity ? $activity->uuid : null,
+            'context_uuid' => $activeEncounter->uuid,
             'container_dosage' => $formData['container_dosage'] ?? null,
             'note' => $formData['note'] ?? null,
             'dosage_instructions' => [
@@ -151,7 +161,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             'episode_uuid' => $carePlan->episodeUuid() ?? $activeEncounter->episode?->value,
             'employee_uuid' => $employeeContext['employee_uuid'] ?? null,
             'legal_entity_uuid' => $employeeContext['legal_entity_uuid'] ?? null,
-            'division_uuid' => $employeeContext['division_id'] ? \App\Models\Division::find($employeeContext['division_id'])?->uuid : null,
+            'division_uuid' => $employeeContext['division_id'] ? Division::find($employeeContext['division_id'])?->uuid : null,
         ];
 
         return $this->submitDraft($dbData, $uuids, $carePlan->uuid, (int) $carePlan->personId);
@@ -180,9 +190,8 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             'medication_program_id' => $formData['program_id'] ?? null,
             'intent' => 'order',
             'category' => $formData['category'] ?? 'community',
-            'based_on_id' => null,
-            'context_id' => $encounter->id,
             'based_on_uuid' => null,
+            'context_uuid' => $encounter->uuid,
             'container_dosage' => $formData['container_dosage'] ?? null,
             'note' => $formData['note'] ?? null,
             'dosage_instructions' => [
@@ -204,7 +213,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             'inform_with' => $formData['inform_with'] ?? null,
         ];
 
-        $personUuid = \App\Models\Person\Person::find($encounter->person_id)?->uuid;
+        $personUuid = Person::find($encounter->person_id)?->uuid;
         $episodeUuid = $encounter->episode?->value ?? null;
 
         $uuids = [
@@ -213,7 +222,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             'episode_uuid' => $episodeUuid,
             'employee_uuid' => $employeeContext['employee_uuid'] ?? null,
             'legal_entity_uuid' => $employeeContext['legal_entity_uuid'] ?? null,
-            'division_uuid' => $employeeContext['division_id'] ? \App\Models\Division::find($employeeContext['division_id'])?->uuid : null,
+            'division_uuid' => $employeeContext['division_id'] ? Division::find($employeeContext['division_id'])?->uuid : null,
         ];
 
         return $this->submitDraft($dbData, $uuids, null, (int) $encounter->person_id);
@@ -229,7 +238,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
      */
     private function submitDraft(array $dbData, array $uuids, ?string $carePlanUuid, int $personId): string
     {
-        $mapper = new \App\Services\MedicalEvents\Mappers\MedicationRequestMapper();
+        $mapper = new MedicationRequestMapper();
 
         if (!empty($dbData['medication_program_id'])) {
             $this->runPrequalify(
@@ -293,18 +302,22 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
     ): array {
         $this->requireLocalKep($formData);
 
-        if ($requestRecord->basedOnId) {
-            app(ActivityRemainingQuantityGuard::class)->assertCanIssue(
-                (int) $requestRecord->basedOnId,
-                (float) ($requestRecord->medicationQty ?? 0),
-                function (int $activityId) use ($requestRecord): float {
-                    return (float) MedicationRequestRequest::query()
-                        ->where('based_on_id', $activityId)
-                        ->where('uuid', '!=', $requestRecord->uuid)
-                        ->whereNotIn('status', ActivityRemainingQuantityGuard::occupyingStatusesExcluded())
-                        ->sum('medication_qty');
-                }
-            );
+        $activityUuid = $requestRecord->basedOn?->value;
+        if ($activityUuid) {
+            $activityForQty = CarePlanActivity::query()->where('uuid', $activityUuid)->first();
+            if ($activityForQty !== null) {
+                app(ActivityRemainingQuantityGuard::class)->assertCanIssue(
+                    (int) $activityForQty->id,
+                    (float) ($requestRecord->medicationQty ?? 0),
+                    function (int $activityId) use ($requestRecord, $activityUuid): float {
+                        return (float) MedicationRequestRequest::query()
+                            ->whereHas('basedOn', fn ($q) => $q->where('value', $activityUuid))
+                            ->where('uuid', '!=', $requestRecord->uuid)
+                            ->whereNotIn('status', ActivityRemainingQuantityGuard::occupyingStatusesExcluded())
+                            ->sum('medication_qty');
+                    }
+                );
+            }
         }
 
         $signedContent = signatureService()->signData(
@@ -389,7 +402,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
         $signedContent = null;
 
         if ($statusReason === '') {
-            throw new \InvalidArgumentException('Для відхилення активного рецепта потрібен код причини (reject_reason_code).');
+            throw new InvalidArgumentException('Для відхилення активного рецепта потрібен код причини (reject_reason_code).');
         }
 
         $signerTaxId = $this->resolveSignerTaxId($formData);
@@ -461,7 +474,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             }
         } catch (EHealthResponseException $exception) {
             if (in_array($exception->getCode(), [401, 403], true)) {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     __('care-plan.eprescription_reject_wrong_legal_entity'),
                     $exception->getCode(),
                     $exception
@@ -469,11 +482,11 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             }
 
             Log::warning('Could not fetch Medication Request by id for reject signing: '.$exception->getMessage());
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::warning('Could not fetch Medication Request by id for reject signing: '.$exception->getMessage());
         }
 
-        throw new \RuntimeException(__('care-plan.eprescription_reject_fetch_failed'));
+        throw new RuntimeException(__('care-plan.eprescription_reject_fetch_failed'));
     }
 
     /**
@@ -524,11 +537,11 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
 
         $personUuid = $contextModel instanceof CarePlan
             ? ($contextModel->person->uuid ?? null)
-            : (\App\Models\Person\Person::find($contextModel->person_id)?->uuid ?? null);
+            : (Person::find($contextModel->person_id)?->uuid ?? null);
 
         try {
             if ($personUuid) {
-                $response = \App\Classes\eHealth\Api\MedicationRequest::getRequestsBySearchParams((string) $personUuid, ['id' => $requestRecord->uuid]);
+                $response = MedicationRequest::getRequestsBySearchParams((string) $personUuid, ['id' => $requestRecord->uuid]);
                 $fetchedData = $response['data'][0] ?? ($response[0] ?? null);
                 if (!empty($fetchedData) && is_array($fetchedData) && ($fetchedData['id'] ?? null) === $requestRecord->uuid) {
                     $requestRecord->update(['ehealth_payload' => $fetchedData]);
@@ -536,15 +549,17 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
                     return $fetchedData;
                 }
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('Could not fetch MedicationRequestRequest from eHealth for signing fallback: ' . $e->getMessage());
         }
 
-        $employee = \App\Models\Employee\Employee::find($requestRecord->employeeId);
-        $division = \App\Models\Division::find($requestRecord->divisionId);
-        $encounter = Encounter::find($requestRecord->contextId);
-        $activity = $requestRecord->basedOnId
-            ? CarePlanActivity::find($requestRecord->basedOnId)
+        $employee = Employee::find($requestRecord->employeeId);
+        $division = Division::find($requestRecord->divisionId);
+        $encounter = $requestRecord->context?->value
+            ? Encounter::query()->where('uuid', $requestRecord->context->value)->first()
+            : null;
+        $activity = $requestRecord->basedOn?->value
+            ? CarePlanActivity::query()->where('uuid', $requestRecord->basedOn->value)->first()
             : null;
 
         $carePlanUuid = $contextModel instanceof CarePlan
@@ -587,15 +602,15 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
         }
 
         $startedAt = !empty($requestRecord->startedAt)
-            ? \Carbon\Carbon::parse($requestRecord->startedAt)->format('Y-m-d')
+            ? Carbon::parse($requestRecord->startedAt)->format('Y-m-d')
             : null;
 
         $endedAt = !empty($requestRecord->endedAt)
-            ? \Carbon\Carbon::parse($requestRecord->endedAt)->format('Y-m-d')
+            ? Carbon::parse($requestRecord->endedAt)->format('Y-m-d')
             : null;
 
         $createdAt = !empty($requestRecord->createdAt)
-            ? \Carbon\Carbon::parse($requestRecord->createdAt)->format('Y-m-d')
+            ? Carbon::parse($requestRecord->createdAt)->format('Y-m-d')
             : now()->format('Y-m-d');
 
         $data = [
@@ -605,8 +620,8 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             'medication_id' => $requestRecord->medicationId,
             'medication_qty' => (float) $requestRecord->medicationQty,
             'medication_program_id' => $requestRecord->medicationProgramId,
-            'intent' => $requestRecord->intent ?? 'order',
-            'category' => $requestRecord->category ?? 'community',
+            'intent' => $requestRecord->intent?->code ?? 'order',
+            'category' => $requestRecord->category?->text ?? 'community',
             'based_on_uuid' => $activity?->uuid,
             'container_dosage' => $requestRecord->containerDosage,
             'note' => $requestRecord->note,
@@ -614,7 +629,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             'dosage_instructions' => $dosageInstructions,
         ];
 
-        $mapper = new \App\Services\MedicalEvents\Mappers\MedicationRequestMapper();
+        $mapper = new MedicationRequestMapper();
         $signedContent = $mapper->toCreateSignedContent($data, $uuids, $carePlanUuid);
 
         return $signedContent;
@@ -627,11 +642,11 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
      * @param  string  $prescriptionId
      * @return \App\Classes\eHealth\EHealthResponse
      */
-    public function resendSms(string $personId, string $prescriptionId): \App\Classes\eHealth\EHealthResponse
+    public function resendSms(string $personId, string $prescriptionId): EHealthResponse
     {
         $activeId = $this->resolveActiveEhealthId($personId, $prescriptionId);
 
-        return \App\Classes\eHealth\EHealth::medicationRequest()->resendSms($personId, $activeId);
+        return EHealth::medicationRequest()->resendSms($personId, $activeId);
     }
 
     /**
@@ -645,7 +660,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
     {
         try {
             $activeId = $this->resolveActiveEhealthId($personId, $prescriptionId);
-            $response = \App\Classes\eHealth\EHealth::person()->getMedicationRequestPrintoutForm($personId, $activeId);
+            $response = EHealth::person()->getMedicationRequestPrintoutForm($personId, $activeId);
             $data = $response->getData();
 
             if (is_array($data) && isset($data['printout_form'])) {
@@ -662,7 +677,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             }
 
             return $data;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('Failed to fetch printout from eHealth: ' . $e->getMessage());
 
             return null;
@@ -682,7 +697,7 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
         ?array $ehealthData = null,
         ?string $fallbackDoctorName = null
     ): string {
-        $record = app(\App\Repositories\MedicalEvents\MedicationRequestRepository::class)->findByUuid($prescriptionId);
+        $record = app(MedicationRequestRepository::class)->findByUuid($prescriptionId);
         if ($record && empty($record->dosageInstructions)) {
             $record->loadMissing('dosageInstructions');
         }
@@ -712,22 +727,22 @@ class MedicationRequestLifecycleService extends EHealthRequestLifecycleService i
             $patientName = 'Пацієнт';
         }
 
-        $patientBirthDate = $carePlan->person?->birth_date ? \Carbon\Carbon::parse($carePlan->person->birth_date)->format('d.m.Y') : ($ehealthData['person']['birth_date'] ?? ($record?->ehealth_payload['person']['birth_date'] ?? '—'));
+        $patientBirthDate = $carePlan->person?->birth_date ? Carbon::parse($carePlan->person->birth_date)->format('d.m.Y') : ($ehealthData['person']['birth_date'] ?? ($record?->ehealth_payload['person']['birth_date'] ?? '—'));
         if ($patientBirthDate !== '—' && !str_contains((string) $patientBirthDate, '.')) {
             try {
-                $patientBirthDate = \Carbon\Carbon::parse((string) $patientBirthDate)->format('d.m.Y');
-            } catch (\Exception $e) {
+                $patientBirthDate = Carbon::parse((string) $patientBirthDate)->format('d.m.Y');
+            } catch (Exception $e) {
                 // keep original
             }
         }
 
-        $startDate = $record?->started_at ? \Carbon\Carbon::parse($record->startedAt)->format('d.m.Y') : ($ehealthData['created_at'] ?? now()->format('d.m.Y'));
-        $endDate = $record?->ended_at ? \Carbon\Carbon::parse($record->endedAt)->format('d.m.Y') : ($ehealthData['ended_at'] ?? '—');
+        $startDate = $record?->started_at ? Carbon::parse($record->startedAt)->format('d.m.Y') : ($ehealthData['created_at'] ?? now()->format('d.m.Y'));
+        $endDate = $record?->ended_at ? Carbon::parse($record->endedAt)->format('d.m.Y') : ($ehealthData['ended_at'] ?? '—');
 
         $author = null;
         if ($record && !empty($record->employeeId)) {
             $field = is_numeric($record->employeeId) ? 'id' : 'uuid';
-            $author = \App\Models\Employee\Employee::where($field, $record->employeeId)->first();
+            $author = Employee::where($field, $record->employeeId)->first();
         }
 
         $doctorName = $author?->party?->full_name ?? ($author?->full_name ?? ($ehealthData['employee']['name'] ?? ($record?->ehealth_payload['employee']['name'] ?? ($fallbackDoctorName ?: '—'))));
@@ -835,7 +850,7 @@ HTML;
      */
     public function block(string $personId, string $prescriptionId, array $payload = []): array
     {
-        return \App\Classes\eHealth\Api\MedicationRequest::block($personId, $prescriptionId, $payload);
+        return MedicationRequest::block($personId, $prescriptionId, $payload);
     }
 
     /**
@@ -848,7 +863,7 @@ HTML;
      */
     public function unblock(string $personId, string $prescriptionId, array $payload = []): array
     {
-        return \App\Classes\eHealth\Api\MedicationRequest::unblock($personId, $prescriptionId, $payload);
+        return MedicationRequest::unblock($personId, $prescriptionId, $payload);
     }
 
     /**
@@ -862,7 +877,7 @@ HTML;
     {
         $activeId = $this->resolveActiveEhealthId($personId, $prescriptionId);
 
-        return \App\Classes\eHealth\Api\MedicationRequest::getDetails($personId, $activeId);
+        return MedicationRequest::getDetails($personId, $activeId);
     }
 
     /**
@@ -874,7 +889,7 @@ HTML;
      */
     public function getByCarePlan(string $carePlanId, array $query = []): array
     {
-        return \App\Classes\eHealth\Api\MedicationRequest::getByCarePlan($carePlanId, $query);
+        return MedicationRequest::getByCarePlan($carePlanId, $query);
     }
 
     /**
@@ -886,14 +901,14 @@ HTML;
      */
     public function resolveActiveEhealthId(string $personUuid, string $localId): string
     {
-        $requestRecord = \App\Models\MedicalEvents\Sql\Medications\MedicationRequestRequest::where('uuid', $localId)->first();
+        $requestRecord = MedicationRequestRequest::where('uuid', $localId)->first();
 
         if ($requestRecord && !empty($requestRecord->ehealthPayload['active_id'])) {
             return (string) $requestRecord->ehealthPayload['active_id'];
         }
 
         if (empty($personUuid) && $requestRecord) {
-            $personUuid = (string) ($requestRecord->personId ? \App\Models\Person\Person::where('id', $requestRecord->personId)->value('uuid') : '');
+            $personUuid = (string) ($requestRecord->personId ? Person::where('id', $requestRecord->personId)->value('uuid') : '');
         }
 
         if (empty($personUuid)) {
@@ -908,7 +923,7 @@ HTML;
             $queries[] = [];
 
             foreach ($queries as $query) {
-                $activeResponse = \App\Classes\eHealth\Api\MedicationRequest::getBySearchParams($personUuid, $query);
+                $activeResponse = MedicationRequest::getBySearchParams($personUuid, $query);
                 $activeItems = isset($activeResponse['data']) && is_array($activeResponse['data'])
                     ? $activeResponse['data']
                     : (is_array($activeResponse) ? $activeResponse : []);
@@ -933,7 +948,7 @@ HTML;
                     }
                 }
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('Failed to resolve active eHealth ID for prescription: ' . $e->getMessage());
         }
 
@@ -973,16 +988,16 @@ HTML;
         $eligible = $this->findEligibleEncountersForEPrescription($personId, $employeeUuid);
 
         if ($eligible->isEmpty()) {
-            throw new \RuntimeException(__('care-plan.eprescription_encounter_none'));
+            throw new RuntimeException(__('care-plan.eprescription_encounter_none'));
         }
 
         if ($selectedEncounterId === null || $selectedEncounterId <= 0) {
-            throw new \InvalidArgumentException(__('care-plan.eprescription_encounter_required'));
+            throw new InvalidArgumentException(__('care-plan.eprescription_encounter_required'));
         }
 
         $selected = $eligible->firstWhere('id', $selectedEncounterId);
         if (!$selected instanceof Encounter) {
-            throw new \InvalidArgumentException(__('care-plan.eprescription_encounter_invalid'));
+            throw new InvalidArgumentException(__('care-plan.eprescription_encounter_invalid'));
         }
 
         return $selected;

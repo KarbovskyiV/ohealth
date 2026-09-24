@@ -12,18 +12,19 @@ trait ResolvesEncounterStandaloneContext
     protected function resolveEncounterModelForStandalone(): ?Encounter
     {
         if (!isset($this->encounterId)) {
-            Session::flash('error', 'Взаємодію не знайдено.');
+            Session::flash('error', __('Взаємодію не знайдено.'));
 
             return null;
         }
 
         $encounter = Encounter::query()->with('episode')->find($this->encounterId);
         if ($encounter === null) {
-            Session::flash('error', 'Взаємодію не знайдено.');
+            Session::flash('error', __('Взаємодію не знайдено.'));
 
             return null;
         }
 
         return $encounter;
     }
+
 }

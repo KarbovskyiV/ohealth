@@ -9,15 +9,20 @@ use App\Enums\MedicalProgram\Type as MedicalProgramType;
 use App\Enums\Person\EncounterStatus;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\MedicalEvents\Sql\Encounter;
+use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use App\Models\Person\Person;
 use App\Services\Dictionary\ServiceSearch;
 use App\Services\MedicalEvents\InformWith;
 use App\Services\MedicalEvents\Mappers\ServiceRequestMapper;
+use App\Services\MedicalEvents\MedicalRequestOwnership;
 use App\Services\MedicalEvents\ReferralRequestLifecycleService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Locked;
+use RuntimeException;
+use Throwable;
 
 trait ManagesEncounterReferrals
 {
@@ -61,7 +66,7 @@ trait ManagesEncounterReferrals
             : EncounterStatus::tryFrom((string) $encounter->status);
 
         if ($status !== EncounterStatus::FINISHED) {
-            Session::flash('error', 'Виписати направлення можна лише для завершеної взаємодії.');
+            Session::flash('error', __('Виписати направлення можна лише для завершеної взаємодії.'));
 
             return;
         }
@@ -77,7 +82,7 @@ trait ManagesEncounterReferrals
             'quantity' => 1,
             'started_at' => $start->format('d.m.Y'),
             'ended_at' => $start->copy()->addMonths(3)->format('d.m.Y'),
-            'program_id' => '',
+            'program_id' => $this->resolveDefaultEncounterReferralProgramId(),
             'note' => '',
             'patient_instruction' => '',
             'inform_with' => InformWith::formValue($this->encounterReferralAuthMethods[0] ?? []),
@@ -117,10 +122,10 @@ trait ManagesEncounterReferrals
                 static fn (array $params): array => EHealth::service()->getMany($params)->getData()
             );
             $this->encounterReferralWarningMessage = '';
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::error('EncounterEdit: service search failed for standalone referral: '.$exception->getMessage());
             $this->encounterReferralServiceResults = [];
-            $this->encounterReferralWarningMessage = 'Не вдалося виконати пошук послуг. Спробуйте ще раз.';
+            $this->encounterReferralWarningMessage = __('Не вдалося виконати пошук послуг. Спробуйте ще раз.');
             Session::flash('error', $this->encounterReferralWarningMessage);
         }
     }
@@ -131,7 +136,7 @@ trait ManagesEncounterReferrals
             ->first(static fn (array $service): bool => (string) ($service['id'] ?? '') === $serviceId);
 
         if (!is_array($selected)) {
-            $this->encounterReferralWarningMessage = 'Не вдалося обрати послугу. Спробуйте пошукати ще раз.';
+            $this->encounterReferralWarningMessage = __('Не вдалося обрати послугу. Спробуйте пошукати ще раз.');
             Session::flash('error', $this->encounterReferralWarningMessage);
 
             return;
@@ -143,6 +148,11 @@ trait ManagesEncounterReferrals
         if ($category !== null) {
             $this->encounterReferralForm['category'] = $category;
         }
+
+        // Hide the result list after pick — same UX as standalone eRx (readable in dark mode)
+        $this->encounterReferralServiceSearch = '';
+        $this->encounterReferralServiceResults = [];
+        $this->encounterReferralHasSearched = false;
         $this->encounterReferralWarningMessage = '';
     }
 
@@ -158,12 +168,12 @@ trait ManagesEncounterReferrals
             'encounterReferralForm.started_at' => 'required|date_format:d.m.Y',
             'encounterReferralForm.ended_at' => 'required|date_format:d.m.Y|after_or_equal:encounterReferralForm.started_at',
         ], [], [
-            'encounterReferralForm.service_id' => 'код послуги',
-            'encounterReferralForm.category' => 'категорія',
-            'encounterReferralForm.quantity' => 'кількість',
-            'encounterReferralForm.priority' => 'пріоритет',
-            'encounterReferralForm.started_at' => 'дата початку',
-            'encounterReferralForm.ended_at' => 'дата закінчення',
+            'encounterReferralForm.service_id' => __('код послуги'),
+            'encounterReferralForm.category' => __('категорія'),
+            'encounterReferralForm.quantity' => __('кількість'),
+            'encounterReferralForm.priority' => __('пріоритет'),
+            'encounterReferralForm.started_at' => __('дата початку'),
+            'encounterReferralForm.ended_at' => __('дата закінчення'),
         ]);
 
         $encounter = $this->resolveEncounterModelForStandalone();
@@ -190,15 +200,15 @@ trait ManagesEncounterReferrals
 
             $this->showEncounterReferralDrawer = false;
             $this->actionType = 'sign_referral';
-            Session::flash('success', 'Заявку на електронне направлення створено. Підпишіть КЕП.');
+            Session::flash('success', __('Заявку на електронне направлення створено. Підпишіть КЕП.'));
             $this->showSignatureModal = true;
         } catch (EHealthValidationException $exception) {
             $exception->report();
             $this->encounterReferralWarningMessage = $exception->getFormattedMessage();
             Session::flash('error', $this->encounterReferralWarningMessage);
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::error('EncounterEdit: failed to create encounter referral: '.$exception->getMessage());
-            $this->encounterReferralWarningMessage = 'Не вдалося створити направлення: '.$exception->getMessage();
+            $this->encounterReferralWarningMessage = __('Не вдалося створити направлення: ').$exception->getMessage();
             Session::flash('error', $this->encounterReferralWarningMessage);
         }
     }
@@ -206,7 +216,7 @@ trait ManagesEncounterReferrals
     public function signEncounterReferral(): void
     {
         if (empty($this->encounterReferralRequestIdToSign)) {
-            Session::flash('error', 'Не вибрано направлення для підписання');
+            Session::flash('error', __('Не вибрано направлення для підписання'));
             $this->showSignatureModal = false;
             $this->actionType = null;
 
@@ -221,17 +231,17 @@ trait ManagesEncounterReferrals
             return;
         }
 
-        $requestRecord = app(\App\Services\MedicalEvents\MedicalRequestOwnership::class)
-            ->serviceForEncounter(
-                (string) $this->encounterReferralRequestIdToSign,
-                $encounter
-            );
-
         try {
+            $requestRecord = app(MedicalRequestOwnership::class)
+                ->serviceForEncounter(
+                    (string) $this->encounterReferralRequestIdToSign,
+                    $encounter
+                );
+
             $validated = $this->form->validate($this->form->signingRules());
             $person = Person::find($encounter->person_id);
             if ($person === null || empty($person->uuid)) {
-                throw new \RuntimeException('Пацієнта не знайдено');
+                throw new RuntimeException(__('Пацієнта не знайдено'));
             }
 
             $lifecycle = app(ReferralRequestLifecycleService::class);
@@ -274,10 +284,10 @@ trait ManagesEncounterReferrals
                     $remote = $lifecycle->fetchRemoteReferral($person->uuid, $dbData['uuid'], 'service_request');
                     $dbData['request_number'] = $remote['requisition'] ?? $remote['request_number'] ?? $dbData['request_number'];
                     if (!empty($dbData['request_number'])) {
-                        \App\Models\MedicalEvents\Sql\ServiceRequestRequest::where('uuid', $dbData['uuid'])
+                        ServiceRequestRequest::where('uuid', $dbData['uuid'])
                             ->update(['request_number' => $dbData['request_number']]);
                     }
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     Log::warning('EncounterEdit: failed to fetch remote referral for number: '.$e->getMessage());
                 }
             }
@@ -288,15 +298,19 @@ trait ManagesEncounterReferrals
             $this->form->resetSigningFields();
 
             $referralIdentifier = $dbData['request_number'] ?? $dbData['uuid'];
-            Session::flash('success', 'Електронне направлення успішно створено без плану лікування. Номер направлення: '.$referralIdentifier);
+            Session::flash('success', __('Електронне направлення успішно створено без плану лікування. Номер направлення: :number', ['number' => $referralIdentifier]));
+        } catch (ModelNotFoundException) {
+            Session::flash('error', __('care-plan.document_context_unavailable'));
+            $this->showSignatureModal = false;
+            $this->actionType = null;
         } catch (EHealthValidationException $exception) {
             $exception->report();
             Session::flash('error', $exception->getFormattedMessage());
             $this->showSignatureModal = false;
             $this->actionType = null;
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::error('EncounterEdit: failed to sign encounter referral: '.$exception->getMessage());
-            Session::flash('error', 'Не вдалося підписати направлення: '.$exception->getMessage());
+            Session::flash('error', __('Не вдалося підписати направлення: ').$exception->getMessage());
             $this->showSignatureModal = false;
             $this->actionType = null;
         }
@@ -328,7 +342,7 @@ trait ManagesEncounterReferrals
                     'raw' => $uuid !== '' ? "{$uuid}|{$type}|{$phone}" : '',
                 ];
             })->filter(static fn (array $m): bool => $m['uuid'] !== '')->values()->all();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::warning('EncounterEdit: failed to load auth methods for referral: '.$exception->getMessage());
         }
     }
@@ -346,9 +360,27 @@ trait ManagesEncounterReferrals
                 ->filter(static fn (array $program): bool => $program['id'] !== '' && $program['name'] !== '')
                 ->values()
                 ->all();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::warning('EncounterEdit: failed to load service programs for standalone referral: '.$exception->getMessage());
             $this->encounterReferralPrograms = [];
         }
+    }
+
+    /**
+     * Prefer PMG (state guarantees) when present; otherwise first loaded SERVICE program.
+     */
+    protected function resolveDefaultEncounterReferralProgramId(): string
+    {
+        foreach ($this->encounterReferralPrograms as $program) {
+            $name = mb_strtolower((string) ($program['name'] ?? ''));
+            if (
+                str_contains($name, 'державних фінансових гарантій')
+                || str_contains($name, 'пмг')
+            ) {
+                return (string) ($program['id'] ?? '');
+            }
+        }
+
+        return (string) ($this->encounterReferralPrograms[0]['id'] ?? '');
     }
 }

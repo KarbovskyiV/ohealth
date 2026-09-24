@@ -353,9 +353,17 @@
             <div class="form-row-3">
                 <div class="form-group group">
                     <label for="med_expected_result" class="label"> {{ __('care-plan.expected_result') }} </label>
-                    <select id="med_expected_result" name="med_expected_result" class="input-select peer w-full">
-                        <option selected value="">{{ __('care-plan.select_service') }}</option>
+                    <select id="med_expected_result" class="input-select peer w-full" wire:model="activityForm.goal">
+                        <option value="">{{ __('care-plan.select_result') }}</option>
+                        @foreach ($this->dictionaries['care_plan_activity_goals'] ?? [] as $code => $label)
+                            <option value="{{ $code }}">{{ $label }}</option>
+                        @endforeach
                     </select>
+                    @if (empty($this->dictionaries['care_plan_activity_goals']))
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            {{ __('care-plan.expected_result_dictionary_empty') }}
+                        </p>
+                    @endif
                 </div>
             </div>
 
@@ -376,7 +384,11 @@
                 {{ __('forms.cancel') }}
             </button>
 
-            <button type="submit" class="button-primary">{{ __('forms.save') }}</button>
+            <button type="submit" class="button-primary-outline">{{ __('forms.save') }}</button>
+
+            <button type="button" class="button-primary" wire:click="saveActivityAndSign">
+                {{ __('forms.save_and_sign') }}
+            </button>
         </div>
     </form>
 </div>

@@ -1,4 +1,5 @@
 <section class="section-form">
+    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
     <x-header-navigation class="breadcrumb-form">
         <x-slot name="title">
             {{ __('care-plan.prescriptions') }} — {{ __('care-plan.care_plan') }} №{{ $carePlan->requisition ?? $carePlan->id }}
@@ -129,5 +130,4 @@
         @include('livewire.care-plan.parts.modals.referral-form-drawer')
     </div>
 
-    <livewire:components.x-message :listen-async="true" :key="time()" />
 </section>

@@ -125,6 +125,8 @@ class DiagnosticReportEdit extends DiagnosticReportComponent
             return;
         }
 
+        $referral->loadMissing('category');
+        $category = strtolower((string) ($referral->category?->text ?? ''));
         $services = collect($this->dictionaries['custom/services'] ?? []);
         $diagnosticReportCategories = array_keys(
             $this->dictionaries['eHealth/diagnostic_report_categories'] ?? []
@@ -135,8 +137,8 @@ class DiagnosticReportEdit extends DiagnosticReportComponent
             [
                 'id' => $referral->uuid,
                 'requisition' => $referral->requestNumber ?: $referral->uuid,
-                'category' => $referral->category
-                    ? __('care-plan.referral_category.'.$referral->category)
+                'category' => $category !== ''
+                    ? __('care-plan.referral_category.'.$category)
                     : __('encounters.electronic_referral'),
                 'service' => $service,
                 'isDiagnosticReportAllowed' => $service !== null
