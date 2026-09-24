@@ -30,6 +30,26 @@ class DivisionPolicy
     }
 
     /**
+     * User allowed to view the Division's details
+     * @param  Division  $division
+     *
+     * @return Response The response indicating whether the action is authorized or denied
+     */
+    public function view(User $user, Division $division): Response
+    {
+        // Should belong to the same legal entity
+        if ($division->legalEntityId !== (int) legalEntity()->id) {
+            return Response::denyWithStatus(404);
+        }
+
+        if ($user->cannot('division:read') && $user->cannot('division:details')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * User allowed to synchronize the division(s)
      */
     public function sync(User $user): Response
@@ -71,6 +91,11 @@ class DivisionPolicy
             return Response::deny();
         }
 
+        // Should belong to the same legal entity
+        if ($division->legalEntityId !== (int) legalEntity()->id) {
+            return Response::denyWithStatus(404);
+        }
+
         return Response::allow();
     }
 
@@ -89,7 +114,7 @@ class DivisionPolicy
         }
 
         // Should belong to the same legal entity
-        if ($division->legal_entity_id !== (int) $legalEntity->id) {
+        if ($division->legalEntityId !== (int) $legalEntity->id) {
             return Response::denyWithStatus(404);
         }
 
@@ -108,9 +133,10 @@ class DivisionPolicy
     /**
      * Determine whether the user can activate the division.
      *
-     * @param  \App\Models\User  $user
-     * @param  \App\Models\Division  $division
-     * @return bool
+     * @param  User  $user
+     * @param  Division  $division
+     *
+     * @return Response The response indicating whether the action is authorized or denied
      */
     public function activate(User $user, Division $division): Response
     {
@@ -127,19 +153,30 @@ class DivisionPolicy
             return Response::deny();
         }
 
+        // Should belong to the same legal entity
+        if ($division->legalEntityId !== (int) legalEntity()->id) {
+            return Response::denyWithStatus(404);
+        }
+
         return Response::allow();
     }
 
     /**
      * Determine whether the user can deactivate the division.
      *
-     * @param  \App\Models\User  $user  The user attempting the action
-     * @param  \App\Models\Division  $division  The division to be deactivated
-     * @return bool True if user can deactivate the division, false otherwise
+     * @param  User  $user  The user attempting the action
+     * @param  Division  $division  The division to be deactivated
+     *
+     * @return Response The response indicating whether the action is authorized or denied
      */
     public function deactivate(User $user, Division $division): Response
     {
         if ($user->cannot('division:deactivate')) {
+            return Response::denyWithStatus(404);
+        }
+
+        // Should belong to the same legal entity
+        if ($division->legalEntityId !== (int) legalEntity()->id) {
             return Response::denyWithStatus(404);
         }
 
@@ -169,6 +206,7 @@ class DivisionPolicy
      * Get services associated with a division.
      *
      * @param  Division  $division  The division to get services for
+     *
      * @return Builder Query builder for division services
      */
     protected function getDivisionServices(Division $division): Builder
@@ -190,7 +228,8 @@ class DivisionPolicy
     /**
      * Checks if the division has any active service.
      *
-     * @param  \App\Models\Division  $division  The division to check
+     * @param  Division  $division  The division to check
+     *
      * @return bool Returns true if the division has at least one active service, false otherwise
      */
     protected function hasAnyActiveService(Division $division): bool
