@@ -130,7 +130,7 @@
         </table>
 
         <div>
-            {{-- Button to trigger the modal --}}
+            {{-- Button to trigger the drawer --}}
             <button
                 @click.prevent="
                     openModal = true;
@@ -142,91 +142,69 @@
                 {{ __('forms.add') }}
             </button>
 
-            {{-- Modal --}}
-            <template x-teleport="body">
-                {{-- This moves the modal at the end of the body tag --}}
-                <div
-                    x-show="openModal"
-                    style="display: none"
-                    @keydown.escape.prevent.stop="openModal = false"
-                    role="dialog"
-                    aria-modal="true"
-                    x-id="['modal-title']"
-                    :aria-labelledby="$id('modal-title')"
-                    {{-- This associates the modal with unique ID --}}
-                    class="modal"
-                >
-                    {{-- Overlay --}}
-                    <div x-show="openModal" x-transition.opacity class="fixed inset-0 bg-black/25"></div>
+            <x-dialog-drawer
+                x-model="openModal"
+                maxWidth="3/5"
+                overlayWidth="100%"
+                zIndex="45"
+                stopClickPropagation="true"
+                wire:ignore
+            >
+                <x-slot name="title">{{ __('conditions.new_evidence_condition') }}</x-slot>
 
-                    {{-- Panel --}}
-                    <div
-                        x-show="openModal"
-                        x-transition
-                        @click="openModal = false"
-                        class="relative flex min-h-screen items-center justify-center p-4"
-                    >
-                        <div
-                            @click.stop
-                            x-trap.noscroll.inert="openModal"
-                            class="modal-content h-fit w-full lg:max-w-4xl"
-                        >
-                            {{-- Title --}}
-                            <h3 class="modal-header" :id="$id('modal-title')">{{ __('forms.add') }}</h3>
-
-                            {{-- Content --}}
-                            <form>
-                                <div class="form-row-modal">
-                                    <div>
-                                        <label for="evidenceCode" class="label-modal">
-                                            {{ __('medical-events.icpc2_status_code') }}<span class="text-red-600">
-                                                *</span>
-                                        </label>
-                                        <x-select2
-                                            modelPath="modalEvidenceCode.code"
-                                            dictionaryName="eHealth/ICPC2/condition_codes"
-                                            id="evidenceCode"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div class="mt-6 flex justify-between space-x-2">
-                                    <button
-                                        type="button"
-                                        @click.prevent
-                                        @click="openModal = false"
-                                        class="button-minor"
-                                    >
-                                        {{ __('forms.cancel') }}
-                                    </button>
-
-                                    <button
-                                        @click.prevent="
-                                            if (newEvidenceCode !== false) {
-                                                modalCondition.evidenceCodes.push({
-                                                    code: modalEvidenceCode.code,
-                                                    system: modalEvidenceCode.system,
-                                                });
-                                            } else {
-                                                modalCondition.evidenceCodes[item] = {
-                                                    code: modalEvidenceCode.code,
-                                                    system: modalEvidenceCode.system,
-                                                };
-                                            }
-
-                                            openModal = false;
-                                        "
-                                        class="button-primary"
-                                        :disabled="! modalEvidenceCode.code.trim()"
-                                    >
-                                        {{ __('forms.save') }}
-                                    </button>
-                                </div>
-                            </form>
+                <form class="space-y-6 mt-4">
+                    <div class="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2 mb-6">
+                        <div>
+                            <label for="evidenceCode" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                                {{ __('medical-events.icpc2_status_code') }}<span class="text-red-600"> *</span>
+                            </label>
+                            <div class="relative">
+                                <x-select2
+                                    modelPath="modalEvidenceCode.code"
+                                    dictionaryName="eHealth/ICPC2/condition_codes"
+                                    id="evidenceCode"
+                                    class="input w-full"
+                                />
+                                @icon('chevron-down', 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none')
+                            </div>
                         </div>
                     </div>
-                </div>
-            </template>
+
+                    <div class="mt-6 flex space-x-2">
+                        <button
+                            type="button"
+                            @click.prevent
+                            @click="openModal = false"
+                            class="button-minor"
+                        >
+                            {{ __('forms.cancel') }}
+                        </button>
+
+                        <button
+                            @click.prevent="
+                                if (newEvidenceCode !== false) {
+                                    modalCondition.evidenceCodes.push({
+                                        code: modalEvidenceCode.code,
+                                        system: modalEvidenceCode.system,
+                                    });
+                                } else {
+                                    modalCondition.evidenceCodes[item] = {
+                                        code: modalEvidenceCode.code,
+                                        system: modalEvidenceCode.system,
+                                    };
+                                }
+
+                                openModal = false;
+                                showPrimaryChangeWarning = true;
+                            "
+                            class="button-primary"
+                            :disabled="! modalEvidenceCode.code.trim()"
+                        >
+                            {{ __('forms.add') }}
+                        </button>
+                    </div>
+                </form>
+            </x-dialog-drawer>
         </div>
     </fieldset>
 </div>
