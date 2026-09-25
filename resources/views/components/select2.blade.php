@@ -11,6 +11,8 @@
            type="search"
            placeholder="{{ __('forms.type_to_search') }}"
            x-model="search"
+           @focus="showOptions"
+           @click="showOptions"
            @input.debounce.150ms="showOptions"
            id="{{ $attributes['id'] ?? '' }}"
            autocomplete="off"
@@ -34,11 +36,7 @@
                 ></a>
             </template>
 
-            <div x-show="!search && !isLoading" class="px-2 py-1 text-gray-500">
-                {{ __('forms.type_to_search') }}
-            </div>
-
-            <div x-show="filteredOptions.length === 0 && search.length > 0 && !isLoading"
+            <div x-show="filteredOptions.length === 0 && search.length >= 3 && !isLoading"
                  class="px-2 py-1 text-gray-500">
                 {{ __('forms.nothing_found') }}
             </div>
@@ -49,7 +47,7 @@
 
             {{-- Show the 'Show more' button if there are more options --}}
             <div x-show="canLoadMore()" class="px-2 py-1 text-center">
-                <button @click="loadMore" class="text-blue-500 hover:text-blue-700 text-sm">
+                <button type="button" @click.prevent="loadMore" class="text-blue-500 hover:text-blue-700 text-sm">
                     {{ __('general.show_more') }} (<span x-text="remainingCount()"></span> {{ __('general.remain') }})
                 </button>
             </div>
@@ -75,6 +73,13 @@
 
             highlightCache: new Map(),
             lastSearchTerm: '',
+
+            getDisplayText(option) {
+                if (dictionaryKey === 'SPECIALITY_TYPE') {
+                    return option.label;
+                }
+                return `[${option.code ?? option.value}] – ${option.label}`;
+            },
 
             init() {
                 this.watchSelected();
@@ -142,7 +147,7 @@
 
                             const selectedOption = this.optionsMap.get(this.selected);
                             if (selectedOption) {
-                                this.search = `[${selectedOption.code ?? selectedOption.value}] – ${selectedOption.label}`;
+                                this.search = this.getDisplayText(selectedOption);
                             } else if (this.selected) {
                                 this.selected = '';
                                 this.search = '';
@@ -191,7 +196,7 @@
                             const selectedOption = this.optionsMap.get(this.selected);
 
                             if (selectedOption) {
-                                this.search = `[${selectedOption.code ?? selectedOption.value}] - ${selectedOption.label}`;
+                                this.search = this.getDisplayText(selectedOption);
                             } else if (this.selected) {
                                 this.selected = '';
                                 this.search = '';
@@ -224,16 +229,14 @@
                     if (this.selected && !this.search) {
                         const opt = this.optionsMap.get(this.selected);
                         if (opt) {
-                            this.search = `[${opt.code ?? opt.value}] – ${opt.label}`;
+                            this.search = this.getDisplayText(opt);
                         }
                     }
 
                     this.initialized = true;
 
-                    // Restore display if search was set before init completed
-                    if (this.search) {
-                        this.filterOptions();
-                    }
+                    // Initialize filtered options
+                    this.filterOptions();
                 } finally {
                     this.isLoading = false;
                 }
@@ -274,10 +277,9 @@
                 this.currentPage = 0;
                 this.clearHighlightCache();
 
-                if (!searchTerm) {
-                    this.filteredOptions = [];
+                if (!searchTerm || searchTerm.length < 3) {
+                    this.filteredOptions = this.options;
                     this.updatePaginatedOptions();
-                    this.optionsVisible = false;
                     return;
                 }
 
@@ -314,11 +316,7 @@
             },
 
             showOptions() {
-                if (this.search.trim() === '') {
-                    this.optionsVisible = false;
-                } else {
-                    this.optionsVisible = true;
-                }
+                this.optionsVisible = true;
             },
 
             hideOptions() {
@@ -328,12 +326,12 @@
 
             selectOption(option) {
                 this.selected = option.value;
-                this.search = `[${option.code ?? option.value}] – ${option.label}`;
+                this.search = this.getDisplayText(option);
                 this.hideOptions();
             },
 
             highlightedText(option) {
-                const text = `[${option.code ?? option.value}] – ${option.label}`;
+                const text = this.getDisplayText(option);
                 const searchTerm = this.search.toLowerCase().trim();
 
                 if (!searchTerm) return text;
@@ -376,7 +374,7 @@
                     const opt = this.optionsMap.get(value);
 
                     if (opt) {
-                        this.search = `[${opt.code ?? opt.value}] – ${opt.label}`;
+                        this.search = this.getDisplayText(opt);
                     }
                 });
             }
