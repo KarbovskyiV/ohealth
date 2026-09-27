@@ -23,6 +23,8 @@ class Kernel extends ConsoleKernel
         $schedule->job(new UpdateICD10TableJob())->weekly();
         $schedule->job(new ConfigurationMetadataSync())->twiceDaily()->withoutOverlapping();
         $schedule->job(new VaccineLotSync())->hourly()->withoutOverlapping();
+        // Prune old queue batches older than a week
+        $schedule->command('queue:prune-batches --hours=168')->daily();
     }
 
     /**
