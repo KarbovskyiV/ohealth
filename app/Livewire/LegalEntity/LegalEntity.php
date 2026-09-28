@@ -287,8 +287,6 @@ abstract class LegalEntity extends Component
 
         Log::info('Legal Entity Success SOURCE DATA', $data);
 
-        $this->legalEntityForm->validate($this->legalEntityForm->signingRules());
-
         try {
             $base64Data = new CipherRequest()->signData(
                 $data,
@@ -298,7 +296,7 @@ abstract class LegalEntity extends Component
                 $data['owner']['tax_id'],
                 $data['edrpou']
             )->getBase64Data();
-        } catch (CipherException|CipherConnectionException $exception) {
+        } catch (Throwable $exception) {
             $this->dispatchErrorMessage($exception->getMessage());
 
             throw new Exception();
@@ -306,11 +304,17 @@ abstract class LegalEntity extends Component
             $this->legalEntityForm->resetSigningFields();
         }
 
-        // Prepare data for API request
-        $response = LegalEntitiesRequestApi::_createOrUpdate([
-            'signed_legal_entity_request' => $base64Data,
-            'signed_content_encoding' => 'base64',
-        ]);
+        try {
+            // Prepare data for API request
+            $response = LegalEntitiesRequestApi::_createOrUpdate([
+                'signed_legal_entity_request' => $base64Data,
+                'signed_content_encoding' => 'base64',
+            ]);
+        } catch (Throwable $exception) {
+            $this->dispatchErrorMessage($exception->getMessage());
+
+            throw new Exception();
+        }
 
         // Handle errors from API request
         if (isset($response['errors']) && is_array($response['errors'])) {

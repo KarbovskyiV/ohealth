@@ -373,7 +373,7 @@ class LegalEntitiesForms extends BaseForm
 
     public function rulesForSignificancy()
     {
-        $this->component->validate($this->component->getRules());
+        $this->validate($this->signingRules());
     }
 
     /**
