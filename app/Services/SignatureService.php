@@ -7,6 +7,8 @@ namespace App\Services;
 use App\Classes\Cipher\Api\CipherApi;
 use App\Classes\Cipher\Api\CipherRequest;
 use App\Classes\Cipher\Exceptions\ApiException;
+use App\Exceptions\Cipher\CipherConnectionException;
+use App\Exceptions\Cipher\CipherException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -157,18 +159,19 @@ class SignatureService
      */
     public function getCertificateAuthorities(): array
     {
-        return Cache::remember('knedp_certificate_authority', now()->addDays(7), function () {
-            try {
-                return new CipherRequest()->getCertificateAuthority()->response['ca'];
-            } catch (ApiException $e) {
-                Log::error("Error fetching certificate authorities from Cipher API: " . $e->getMessage(), ['errors' => $e->getErrors()]);
+        // A failed fetch is not cached, so the next request asks Cipher again instead of keeping an empty list
+        try {
+            return Cache::remember(
+                'knedp_certificate_authority',
+                now()->addDays(7),
+                static fn (): array => new CipherRequest()->getCertificateAuthority()->response['ca']
+            );
+        } catch (CipherException|CipherConnectionException $exception) {
+            Log::channel('cipher_errors')->error('Error fetching certificate authorities from Cipher', [
+                'message' => $exception->getMessage()
+            ]);
 
-                return [];
-            } catch (\Exception $e) {
-                Log::error("General error fetching certificate authorities: " . $e->getMessage(), ['exception' => $e]);
-
-                return [];
-            }
-        });
+            return [];
+        }
     }
 }
