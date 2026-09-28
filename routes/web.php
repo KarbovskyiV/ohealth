@@ -165,7 +165,7 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
             Route::prefix('division')->middleware(['permission:division:read|division:details'])->group(function () {
                 Route::get('/', DivisionIndex::class)->name('division.index')->can('viewAny', Division::class);
                 Route::get('/create', DivisionCreate::class)->name('division.create')->can('create', Division::class);
-                Route::get('/{division}', DivisionView::class)->name('division.view')->can('viewAny', Division::class);
+                Route::get('/{division}', DivisionView::class)->name('division.view')->can('view', 'division');
                 Route::get('/{division}/edit', DivisionEdit::class)->name('division.edit')->can('update', 'division');
 
                 Route::prefix('{division}/healthcare-service')->name('healthcare-service.')->group(static function () {
