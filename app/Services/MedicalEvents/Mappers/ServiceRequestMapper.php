@@ -370,11 +370,10 @@ class ServiceRequestMapper implements FhirMapperContract
         return [
             'uuid' => data_get($data, 'uuid') ?? data_get($data, 'id'),
             'status' => data_get($data, 'status'),
-            'request_number' => data_get($data, 'requestNumber') ?? data_get($data, 'request_number'),
+            'request_number' => data_get($data, 'requisition') ?? data_get($data, 'requestNumber') ?? data_get($data, 'request_number'),
             'started_at' => data_get($data, 'occurrencePeriod.start') ?? data_get($data, 'started_at'),
             'ended_at' => data_get($data, 'occurrencePeriod.end') ?? data_get($data, 'ended_at'),
-            'service_id' => data_get($data, 'code.identifier.value')
-                ?? data_get($data, 'code.coding.0.code'),
+            'service_id' => data_get($data, 'code.identifier.value') ?? data_get($data, 'code.coding.0.code') ?? data_get($data, 'service.id'),
             'quantity' => data_get($data, 'quantity.value') ?? data_get($data, 'quantityInteger'),
             'program_id' => data_get($data, 'program.identifier.value'),
             'intent' => data_get($data, 'intent'),

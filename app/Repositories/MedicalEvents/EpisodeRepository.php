@@ -222,6 +222,17 @@ class EpisodeRepository extends BaseRepository
             ->toArray();
     }
 
+    public function getByUuid(Person|Preperson $patient, string $uuid): ?array
+    {
+        [$ownerColumn, $ownerId] = $this->resolveOwner($patient);
+
+        return $this->model
+            ->where($ownerColumn, $ownerId)
+            ->where('uuid', $uuid)
+            ->first()
+            ?->toArray();
+    }
+
     /**
      * Sync episodes from eHealth API to database.
      *

@@ -6,9 +6,11 @@ namespace App\Repositories\MedicalEvents;
 
 use App\Enums\Person\ServiceRequestStatus;
 use App\Models\CarePlanActivity;
+use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use App\Repositories\MedicalEvents\Concerns\ResolvesRequestFhirRefs;
+use App\Services\MedicalEvents\Mappers\ServiceRequestMapper;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Lang;
@@ -259,6 +261,69 @@ class ServiceRequestRequestRepository extends BaseRepository
     public function findByUuid(string $uuid): ?ServiceRequestRequest
     {
         return $this->model->newQuery()->where('uuid', $uuid)->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $referral
+     */
+    public function storeExternalIfMissing(array $referral, Employee $employee, int $personId): void
+    {
+        $data = new ServiceRequestMapper()->fromFhir($referral);
+        $uuid = $data['uuid'] ?? null;
+
+        if (blank($uuid) || $this->findByUuid($uuid) !== null) {
+            return;
+        }
+
+        $this->store([
+            ...$data,
+            'employee_id' => $employee->id,
+            'division_id' => $employee->divisionId,
+            'status' => ServiceRequestStatus::ACTIVE->value,
+            'intent' => 'order',
+        ], $personId);
+    }
+
+    public function storeExternalManyIfMissing(array $referrals, int $personId): void
+    {
+        if ($referrals === []) {
+            return;
+        }
+
+        $mappedReferrals = collect($referrals)
+            ->map(function (array $item): array {
+                $data = new ServiceRequestMapper()->fromFhir($item['referral']);
+
+                return [
+                    'data' => $data,
+                    'employee' => $item['employee'],
+                ];
+            })
+            ->filter(fn (array $item): bool => filled($item['data']['uuid'] ?? null))
+            ->unique(fn (array $item): string => $item['data']['uuid'])
+            ->values();
+
+        $existingUuids = $this->model
+            ->whereIn('uuid', $mappedReferrals->pluck('data.uuid')->all())
+            ->pluck('uuid')
+            ->all();
+
+        foreach ($mappedReferrals as $item) {
+            $data = $item['data'];
+            $employee = $item['employee'];
+
+            if (in_array($data['uuid'], $existingUuids, true)) {
+                continue;
+            }
+
+            $this->store([
+                ...$data,
+                'employee_id' => $employee->id,
+                'division_id' => $employee->divisionId,
+                'status' => ServiceRequestStatus::ACTIVE->value,
+                'intent' => 'order',
+            ], $personId);
+        }
     }
 
     public function sumIssuedQuantityByActivity(string $activityUuid): float
