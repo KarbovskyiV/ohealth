@@ -25,7 +25,9 @@ use App\Events\LegalEntityCreate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use App\Classes\Cipher\Traits\Cipher;
+use App\Classes\Cipher\Api\CipherRequest;
+use App\Exceptions\Cipher\CipherException;
+use App\Exceptions\Cipher\CipherConnectionException;
 use Illuminate\Support\Facades\Cache;
 use App\Repositories\PhoneRepository;
 use Illuminate\Http\RedirectResponse;
@@ -45,7 +47,6 @@ use App\Livewire\LegalEntity\Forms\LegalEntitiesRequestApi;
 abstract class LegalEntity extends Component
 {
     use FormTrait;
-    use Cipher;
     use WithFileUploads;
     use AddressSearch;
 
@@ -154,8 +155,6 @@ abstract class LegalEntity extends Component
 
         $this->setLegalEntityTypes();
 
-        $this->setCertificateAuthority();
-
         $this->getOwnerFields();
     }
 
@@ -170,7 +169,7 @@ abstract class LegalEntity extends Component
         $fields = [
             'POSITION' => config('ehealth.employee_type.OWNER.position'),
             // TODO: remove some of the documents not mentioned by docs
-            'DOCUMENT_TYPE' => array_filter(config('ehealth.employee_identity_document_types'), fn($docType) => !\in_array($docType, $excludeFromDocuments))
+            'DOCUMENT_TYPE' => array_filter(config('ehealth.employee_identity_document_types'), fn ($docType) => !\in_array($docType, $excludeFromDocuments))
         ];
 
         // Get dictionaries
@@ -241,16 +240,6 @@ abstract class LegalEntity extends Component
     }
 
     /**
-     * Get list of the Authority Centers of the Key's Certification
-     *
-     * @return array|null
-     */
-    private function setCertificateAuthority(): array|null
-    {
-        return $this->getCertificateAuthority = $this->getCertificateAuthority();
-    }
-
-    /**
      * Livewire lifecycle hook triggered when the beneficiary field is updated.
      *
      * @param  mixed  $value  The new value of the beneficiary field
@@ -290,21 +279,31 @@ abstract class LegalEntity extends Component
         // Prepare security data
         $this->legalEntityForm->security = $this->prepareSecurityData();
 
-        // Convert form data to an array
-        $data = $this->prepareDataForRequest($this->legalEntityForm->toArray());
-
-        $taxId = $data['owner']['tax_id'];
+        // Convert form data to an array, leaving out the signing credentials
+        $data = $this->prepareDataForRequest(Arr::except(
+            $this->legalEntityForm->toArray(),
+            ['knedp', 'keyContainerUpload', 'keyContainerFileName', 'password']
+        ));
 
         Log::info('Legal Entity Success SOURCE DATA', $data);
 
-        // Sending encrypted data
-        $base64Data = $this->sendEncryptedData($data, $taxId, $data['edrpou']);
+        $this->legalEntityForm->validate($this->legalEntityForm->signingRules());
 
-        // Handle errors from encrypted data
-        if (isset($base64Data['errors'])) {
-            $this->dispatchErrorMessage($base64Data['errors']);
+        try {
+            $base64Data = new CipherRequest()->signData(
+                $data,
+                $this->legalEntityForm->knedp,
+                $this->legalEntityForm->keyContainerUpload,
+                $this->legalEntityForm->password,
+                $data['owner']['tax_id'],
+                $data['edrpou']
+            )->getBase64Data();
+        } catch (CipherException|CipherConnectionException $exception) {
+            $this->dispatchErrorMessage($exception->getMessage());
 
             throw new Exception();
+        } finally {
+            $this->legalEntityForm->resetSigningFields();
         }
 
         // Prepare data for API request
@@ -586,7 +585,7 @@ abstract class LegalEntity extends Component
         // If no_tax_id=true its means that taxID should store related document's number
         if (Arr::boolean($data, 'owner.no_tax_id')) {
             $passportNumber = collect(Arr::get($data, 'owner.documents', []))
-                ->first(fn(array $doc) => \in_array($doc['type'], ['PASSPORT', 'NATIONAL_ID']))['number'];
+                ->first(fn (array $doc) => \in_array($doc['type'], ['PASSPORT', 'NATIONAL_ID']))['number'];
 
             Arr::set($data, 'owner.tax_id', $passportNumber);
         }
@@ -1120,8 +1119,7 @@ abstract class LegalEntity extends Component
     /**
      * Handle success response from API request.
      *
-     * @param array $response The response from the API request
-     *
+     * @param  array  $response  The response from the API request
      * @return RedirectResponse|Redirector|null
      */
     protected function handleSuccessResponse(array $response, array $requestData = []): RedirectResponse|Redirector|null
@@ -1160,9 +1158,9 @@ abstract class LegalEntity extends Component
                 Log::info("LegalEntity: New OWNER has been successfully registered!");
 
                 return app(Logout::class)(message: __('forms.le_create_successfully'));
-            } else {
-                Log::info("LegalEntity: New OWNER has been successfully replaced (on the eHEalth's side)!");
             }
+            Log::info("LegalEntity: New OWNER has been successfully replaced (on the eHEalth's side)!");
+
         } catch (Exception $err) {
             Log::error(__('Сталася помилка під час обробки запиту'), ['error' => $err->getMessage()]);
 
