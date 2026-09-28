@@ -82,6 +82,9 @@ class SpecimenRepository extends BaseRepository
                 $statusReason = isset($data['status_reason'])
                     ? $this->syncCodeableConcept($existing, $data['status_reason'], 'statusReason')
                     : null;
+                $context = isset($data['context'])
+                    ? $this->syncIdentifier($existing, $data['context'], 'context')
+                    : null;
 
                 $specimenData = [
                     $ownerColumn => $ownerId,
@@ -96,7 +99,7 @@ class SpecimenRepository extends BaseRepository
                         'managingOrganization'
                     )->id,
                     'registered_by_id' => $this->syncIdentifier($existing, $data['registered_by'], 'registeredBy')->id,
-                    'context_id' => $this->syncIdentifier($existing, $data['context'], 'context')->id,
+                    'context_id' => $context?->id,
                     'received_time' => $data['received_time'] ?? null,
                     'status_reason_id' => $statusReason?->id,
                     'explanatory_letter' => $data['explanatory_letter'] ?? null,

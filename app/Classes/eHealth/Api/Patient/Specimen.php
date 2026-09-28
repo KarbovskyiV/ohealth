@@ -87,6 +87,21 @@ class Specimen extends PatientApiBase
     }
 
     /**
+     * Create a specimen of the patient outside the encounter package with signed content. Processed asynchronously.
+     *
+     * @param  string  $patientId
+     * @param  array  $payload
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/specimen/create-specimen
+     */
+    public function create(string $patientId, array $payload): PromiseInterface|EHealthResponse
+    {
+        return $this->post(self::URL . "/$patientId/specimens", $payload);
+    }
+
+    /**
      * Set the time the patient specimen was received for processing. Processed asynchronously.
      *
      * @param  string  $patientId
@@ -258,7 +273,7 @@ class Specimen extends PatientApiBase
             ValidationRuleBuilder::identifierRules('subject', true),
             ValidationRuleBuilder::identifierRules('managing_organization', true),
             ValidationRuleBuilder::identifierRules('registered_by', true),
-            ValidationRuleBuilder::identifierRules('context', true),
+            ValidationRuleBuilder::identifierRules('context'),
             ValidationRuleBuilder::identifierCollectionRules('parent'),
             ValidationRuleBuilder::identifierCollectionRules('request'),
 

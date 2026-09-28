@@ -88,6 +88,7 @@ class PatientSpecimenView extends BasePatientComponent
     protected function specimen(): Specimen
     {
         return $this->specimenModel ??= Specimen::forPatient($this->patient())
+            ->notDraft()
             ->withAllRelations()
             ->whereId($this->specimenId)
             ->firstOrFail();

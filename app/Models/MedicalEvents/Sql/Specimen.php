@@ -232,6 +232,18 @@ class Specimen extends Model
     }
 
     /**
+     * Leave out the specimens stored locally as drafts and not sent yet.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function notDraft(Builder $query): Builder
+    {
+        return $query->whereNot('status', Status::DRAFT);
+    }
+
+    /**
      * Scope specimens to the given encounter.
      *
      * @param  Builder  $query

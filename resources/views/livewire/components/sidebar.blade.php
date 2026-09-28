@@ -3,6 +3,8 @@
     use App\Models\Employee\{Employee,EmployeeRequest};
     use App\Models\Person\{Person,PersonRequest};
     use App\Models\Connection\Connection;
+    use App\Models\Preperson;
+    use App\Models\Relations\PersonVerificationDetail;
 @endphp
 
 <aside
@@ -40,7 +42,7 @@
 
                     <ul
                         id="dropdown-legal-entity"
-                        @if(!request()->routeIs('legal-entity.*')) x-cloak @endif
+                        @if (!request()->routeIs('legal-entity.*')) x-cloak @endif
                         class="space-y-2 py-2"
                         x-show="open"
                         x-transition:enter="transition ease-out duration-100"
@@ -53,7 +55,10 @@
                         @if (legalEntity())
                             @can('access', legalEntity())
                                 <li>
-                                    <a href="{{ route('legal-entity.details', [legalEntity()]) }}" class="submenu-item {{ request()->routeIs('legal-entity.details.*') ? 'submenu-item-active' : '' }}">
+                                    <a
+                                        href="{{ route('legal-entity.details', [legalEntity()]) }}"
+                                        class="submenu-item {{ request()->routeIs('legal-entity.details.*') ? 'submenu-item-active' : '' }}"
+                                    >
                                         @icon('details')
                                         <span>{{ __('forms.details') }}</span>
                                     </a>
@@ -99,8 +104,9 @@
             @if (legalEntity() && Auth::user()->cannot('limitedAction', LegalEntity::class))
                 @can('viewAny', Connection::class)
                     <li>
-                        <a href="{{ route('connection.index', [legalEntity()]) }}"
-                        class="menu-item-simple {{ request()->routeIs('legal-entity-connection.*') ? 'menu-item-active' : '' }}"
+                        <a
+                            href="{{ route('connection.index', [legalEntity()]) }}"
+                            class="menu-item-simple {{ request()->routeIs('legal-entity-connection.*') ? 'menu-item-active' : '' }}"
                         >
                             @icon('connection-two-way')
                             <span>{{ __('Зв\'язки МІС та СГуСОЗ') }}</span>
@@ -110,7 +116,10 @@
 
                 @can('viewAny', Division::class)
                     <li>
-                        <a href="{{ route('division.index', [legalEntity()]) }}" class="menu-item-simple {{ request()->routeIs('division.*') ? 'menu-item-active' : '' }}">
+                        <a
+                            href="{{ route('division.index', [legalEntity()]) }}"
+                            class="menu-item-simple {{ request()->routeIs('division.*') ? 'menu-item-active' : '' }}"
+                        >
                             @icon('divisions')
                             <span>{{ __('forms.divisions') }}</span>
                         </a>
@@ -119,7 +128,10 @@
 
                 @can('viewAny', HealthcareService::class)
                     <li>
-                        <a href="{{ route('healthcare-service.index', [legalEntity()]) }}" class="menu-item-simple {{ request()->routeIs('healthcare-service.*') ? 'menu-item-active' : '' }}">
+                        <a
+                            href="{{ route('healthcare-service.index', [legalEntity()]) }}"
+                            class="menu-item-simple {{ request()->routeIs('healthcare-service.*') ? 'menu-item-active' : '' }}"
+                        >
                             @icon('settings')
                             <span>{{ __('forms.services') }}</span>
                         </a>
@@ -157,7 +169,7 @@
 
                         <ul
                             id="dropdown-employees"
-                            @if(!request()->routeIs('employee.*', 'employee-request.*', 'employee-role.*', 'party.verification.*')) x-cloak @endif
+                            @if (!request()->routeIs('employee.*', 'employee-request.*', 'employee-role.*', 'party.verification.*')) x-cloak @endif
                             class="space-y-2 py-2"
                             x-show="open"
                             x-transition:enter="transition ease-out duration-100"
@@ -168,7 +180,10 @@
                             x-transition:leave-end="transform opacity-0 scale-95"
                         >
                             <li>
-                                <a href="{{ route('employee.index', [legalEntity()]) }}" class="submenu-item {{ request()->routeIs('employee.*') ? 'submenu-item-active' : '' }}">
+                                <a
+                                    href="{{ route('employee.index', [legalEntity()]) }}"
+                                    class="submenu-item {{ request()->routeIs('employee.*') ? 'submenu-item-active' : '' }}"
+                                >
                                     @icon('positions')
                                     <span>{{ __('forms.positions') }}</span>
                                 </a>
@@ -188,7 +203,10 @@
                             @endcan
 
                             <li>
-                                <a href="{{ route('employee-role.index', [legalEntity()]) }}" class="submenu-item {{ request()->routeIs('employee-role.*') ? 'submenu-item-active' : '' }}">
+                                <a
+                                    href="{{ route('employee-role.index', [legalEntity()]) }}"
+                                    class="submenu-item {{ request()->routeIs('employee-role.*') ? 'submenu-item-active' : '' }}"
+                                >
                                     @icon('users-roles')
                                     <span class="ml-3">{{ __('employee-roles.label') }}</span>
                                 </a>
@@ -238,7 +256,7 @@
 
                         <ul
                             id="dropdown-contracts"
-                            @if(!request()->routeIs('contract*')) x-cloak @endif
+                            @if (!request()->routeIs('contract*')) x-cloak @endif
                             class="space-y-2 py-2"
                             x-show="open"
                             x-transition:enter="transition ease-out duration-100"
@@ -249,14 +267,20 @@
                             x-transition:leave-end="transform opacity-0 scale-95"
                         >
                             <li>
-                                <a href="{{ route('contract-request.index', [legalEntity()]) }}" class="submenu-item {{ request()->routeIs('contract-request.*') ? 'submenu-item-active' : '' }}">
+                                <a
+                                    href="{{ route('contract-request.index', [legalEntity()]) }}"
+                                    class="submenu-item {{ request()->routeIs('contract-request.*') ? 'submenu-item-active' : '' }}"
+                                >
                                     @icon('hugeicons-contracts')
                                     <span>{{ __('contracts.contract_requests') }}</span>
                                 </a>
                             </li>
 
                             <li>
-                                <a href="{{ route('contract.index', [legalEntity()]) }}" class="submenu-item {{ request()->routeIs('contract.*') ? 'submenu-item-active' : '' }}">
+                                <a
+                                    href="{{ route('contract.index', [legalEntity()]) }}"
+                                    class="submenu-item {{ request()->routeIs('contract.*') ? 'submenu-item-active' : '' }}"
+                                >
                                     @icon('document-catch-up')
                                     <span>{{ __('contracts.contracts_list') }}</span>
                                 </a>
@@ -267,7 +291,10 @@
 
                 @can('viewAny', License::class)
                     <li>
-                        <a href="{{ route('license.index', [legalEntity()]) }}" class="menu-item-simple {{ request()->routeIs('license.*') ? 'menu-item-active' : '' }}">
+                        <a
+                            href="{{ route('license.index', [legalEntity()]) }}"
+                            class="menu-item-simple {{ request()->routeIs('license.*') ? 'menu-item-active' : '' }}"
+                        >
                             @icon('licenses')
                             <span>{{ __('forms.licenses') }}</span>
                         </a>
@@ -276,7 +303,10 @@
 
                 @if (Auth::user()->can('viewAny', Declaration::class) || Auth::user()->can('viewAny', DeclarationRequest::class))
                     <li>
-                        <a href="{{ route('declaration.index', [legalEntity()]) }}" class="menu-item-simple {{ request()->routeIs('declaration.*') ? 'menu-item-active' : '' }}">
+                        <a
+                            href="{{ route('declaration.index', [legalEntity()]) }}"
+                            class="menu-item-simple {{ request()->routeIs('declaration.*') ? 'menu-item-active' : '' }}"
+                        >
                             @icon('declaration')
                             <span>{{ __('forms.declarations') }}</span>
                         </a>
@@ -295,53 +325,61 @@
                     </li>
                 @endif
 
-                <li x-data="{ open: {{ request()->routeIs('persons.verifications.*') ? 'true' : 'false' }} }" class="space-y-2">
-                    <button
-                        @click="open = ! open"
-                        type="button"
-                        class="menu-item"
-                        aria-controls="dropdown-my-patients"
-                        :aria-expanded="open"
+                @can('viewAny', PersonVerificationDetail::class)
+                    <li
+                        x-data="{ open: {{ request()->routeIs('persons.verifications.*') ? 'true' : 'false' }} }"
+                        class="space-y-2"
                     >
-                        @icon('fluent-patient')
-                        <span>{{ __('patients.my_patients') }}</span>
-
-                        <svg
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                            xmlns="http://www.w3.org/2000/svg"
-                            :class="{ 'rotate-180': open, 'rotate-0': ! open }"
+                        <button
+                            @click="open = ! open"
+                            type="button"
+                            class="menu-item"
+                            aria-controls="dropdown-my-patients"
+                            :aria-expanded="open"
                         >
-                            <path
-                                fill-rule="evenodd"
-                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                clip-rule="evenodd"
-                            ></path>
-                        </svg>
-                    </button>
+                            @icon('fluent-patient')
+                            <span>{{ __('patients.my_patients') }}</span>
 
-                    <ul
-                        id="dropdown-my-patients"
-                        @if(!request()->routeIs('persons.verifications.*')) x-cloak @endif
-                        class="space-y-2 py-2"
-                        x-show="open"
-                        x-transition:enter="transition ease-out duration-100"
-                        x-transition:enter-start="transform opacity-0 scale-95"
-                        x-transition:enter-end="transform opacity-100 scale-100"
-                        x-transition:leave="transition ease-in duration-75"
-                        x-transition:leave-start="transform opacity-100 scale-100"
-                        x-transition:leave-end="transform opacity-0 scale-95"
-                    >
-                        <li>
-                            <a href="{{ route('persons.verifications', [legalEntity()]) }}" class="submenu-item {{ request()->routeIs('persons.verifications.*') ? 'submenu-item-active' : '' }}">
-                                @icon('verifications')
-                                <span>{{ __('forms.verifications') }}</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
+                            <svg
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg"
+                                :class="{ 'rotate-180': open, 'rotate-0': ! open }"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clip-rule="evenodd"
+                                ></path>
+                            </svg>
+                        </button>
 
-                @if (Auth::user()->can('viewAny', Preperson::class))
+                        <ul
+                            id="dropdown-my-patients"
+                            @if (!request()->routeIs('persons.verifications.*')) x-cloak @endif
+                            class="space-y-2 py-2"
+                            x-show="open"
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="transform opacity-0 scale-95"
+                            x-transition:enter-end="transform opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="transform opacity-100 scale-100"
+                            x-transition:leave-end="transform opacity-0 scale-95"
+                        >
+                            <li>
+                                <a
+                                    href="{{ route('persons.verifications', [legalEntity()]) }}"
+                                    class="submenu-item {{ request()->routeIs('persons.verifications.*') ? 'submenu-item-active' : '' }}"
+                                >
+                                    @icon('verifications')
+                                    <span>{{ __('forms.verifications') }}</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                @endcan
+
+                @can('viewAny', Preperson::class)
                     <li>
                         <a
                             href="{{ route('prepersons.index', [legalEntity()]) }}"
@@ -351,7 +389,7 @@
                             <span>{{ __('preperson.label') }}</span>
                         </a>
                     </li>
-                @endif
+                @endcan
 
                 <li>
                     <a
@@ -397,7 +435,10 @@
 
                 @can('viewAny', Equipment::class)
                     <li>
-                        <a href="{{ route('equipment.index', [legalEntity()]) }}" class="menu-item-simple {{ request()->routeIs('equipment.*') ? 'menu-item-active' : '' }}">
+                        <a
+                            href="{{ route('equipment.index', [legalEntity()]) }}"
+                            class="menu-item-simple {{ request()->routeIs('equipment.*') ? 'menu-item-active' : '' }}"
+                        >
                             @icon('equipment')
                             <span>{{ __('equipments.label') }}</span>
                         </a>
@@ -431,7 +472,7 @@
 
                     <ul
                         id="dropdown-dictionaries"
-                        @if(!request()->routeIs('dictionaries.*')) x-cloak @endif
+                        @if (!request()->routeIs('dictionaries.*')) x-cloak @endif
                         class="space-y-2 py-2"
                         x-show="open"
                         x-transition:enter="transition ease-out duration-100"

@@ -5,26 +5,6 @@
     <livewire:components.x-message :key="time()" />
     <x-header-navigation class="items-start" x-data="{ showFilter: false }">
         <x-slot name="title">{{ __('specimens.title') }}</x-slot>
-
-        <div class="mt-3 ml-0 flex flex-col gap-2 self-start sm:flex-row sm:flex-wrap">
-            <a
-                href="{{ route('specimens.create', [legalEntity()]) }}"
-                class="button-primary flex items-center gap-2"
-                wire:navigate
-            >
-                @icon('plus', 'w-4 h-4')
-                {{ __('specimens.new_specimen') }}
-            </a>
-
-            <button
-                type="button"
-                wire:click.prevent="$refresh"
-                class="button-sync flex items-center gap-2 whitespace-nowrap"
-            >
-                @icon('refresh', 'w-4 h-4')
-                <span>{{ __('forms.synchronise_with_eHealth') }}</span>
-            </button>
-        </div>
     </x-header-navigation>
 
     <section class="section-form mt-4">

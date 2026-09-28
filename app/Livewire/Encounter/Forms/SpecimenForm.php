@@ -90,7 +90,7 @@ class SpecimenForm extends Form
                 Rule::requiredIf(($this->specimens[(int) explode('.', $attribute)[1]]['collectedType'] ?? '') === 'date_time'),
                 'nullable',
                 'date',
-                'after:' . CarbonImmutable::today()->subDays(config('ehealth.specimen_max_days_passed'))->toDateString(),
+                'after:' . CarbonImmutable::today()->subDays(config('ehealth.specimen_max_days_passed'))->format(config('app.date_format')),
                 'before_or_equal:today'
             ]),
             'specimens.*.collectedTime' => Rule::forEach(fn (mixed $value, string $attribute): array => [
