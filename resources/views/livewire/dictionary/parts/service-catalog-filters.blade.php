@@ -114,10 +114,16 @@
             </label>
         </div>
 
-        <div class="form-group group">
+        <div
+            @class([
+                'form-group group',
+                'pointer-events-none opacity-50' => $requestAllowedOnly,
+            ])
+        >
             <select
                 wire:model="allowedForEn"
                 id="filterAllowedForEn{{ $componentId }}"
+                @disabled($requestAllowedOnly)
                 class="peer input-select w-full"
             >
                 <option value="">{{ __('forms.select') }}</option>

@@ -187,6 +187,8 @@
             serviceSearches: [],
             serviceDropdowns: [],
             serviceFilteredOptions: [],
+            openServiceCatalog: false,
+            selectedServiceIndex: null,
 
             init() {
                 this.serviceOptions = Object.entries($wire.dictionaries['custom/services'] ?? {})
@@ -271,6 +273,21 @@
                 this.serviceDropdowns[index] = false;
             },
 
+            openServiceDictionary(index) {
+                this.selectedServiceIndex = index;
+                this.openServiceCatalog = true;
+            },
+
+            selectServiceFromCatalog(service) {
+                if (this.selectedServiceIndex === null) {
+                    return;
+                }
+
+                this.selectService(this.selectedServiceIndex, service);
+                this.openServiceCatalog = false;
+                this.selectedServiceIndex = null;
+            },
+
             clearService(index) {
                 this.services[index] = { uuid: '' };
                 this.serviceSearches[index] = '';
@@ -318,6 +335,7 @@
                 this.coAuthors = this.coAuthors.filter((_, rowIndex) => rowIndex !== index);
             },
         }"
+        @encounter-service-selected.window="selectServiceFromCatalog($event.detail.service)"
         class="space-y-6"
     >
         <div
@@ -334,53 +352,79 @@
         >
             <template x-for="(service, index) in services" :key="index">
                 <div class="relative pr-10">
-                    <div class="form-group group relative" @click.away="serviceDropdowns[index] = false">
-                        <input
-                            type="text"
-                            class="input peer @error('form.encounter.actionReferences.0') input-error @enderror"
-                            :id="'service_' + index"
-                            x-model="serviceSearches[index]"
-                            @input.debounce.150ms="
-                                services[index] = { uuid: '' };
-                                serviceDropdowns[index] = true;
-                                updateFilteredOptions(index);
-                            "
-                            placeholder=" "
-                            autocomplete="off"
-                        />
-                        <label :for="'service_' + index" class="label">{{ __('encounters.services') }}</label>
+                    <div class="flex items-center gap-6">
+                        <div class="form-group group relative flex-1" @click.away="serviceDropdowns[index] = false">
+                            <input
+                                type="text"
+                                class="input peer @error('form.encounter.actionReferences.0') input-error @enderror"
+                                :id="'service_' + index"
+                                x-model="serviceSearches[index]"
+                                @input.debounce.150ms="
+                                    services[index] = { uuid: '' };
+                                    serviceDropdowns[index] = true;
+                                    updateFilteredOptions(index);
+                                "
+                                placeholder=" "
+                                autocomplete="off"
+                            />
+                            <label :for="'service_' + index" class="label">{{ __('encounters.services') }}</label>
 
-                        <div
-                            x-show="serviceDropdowns[index]"
-                            x-cloak
-                            class="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
-                        >
-                            <template x-if="! serviceSearches[index]">
-                                <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                    {{ __('forms.type_to_search') }}
-                                </div>
-                            </template>
-
-                            <template x-if="serviceSearches[index] && (serviceFilteredOptions[index] || []).length === 0">
-                                <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                    {{ __('forms.nothing_found') }}
-                                </div>
-                            </template>
-
-                            <template
-                                x-for="serviceOption in (serviceFilteredOptions[index] || [])"
-                                :key="serviceOption.id"
+                            <div
+                                x-show="serviceDropdowns[index]"
+                                x-cloak
+                                class="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
                             >
-                                <button
-                                    type="button"
-                                    class="block w-full cursor-pointer px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
-                                    @click="selectService(index, serviceOption)"
+                                <template x-if="! serviceSearches[index]">
+                                    <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                        {{ __('forms.type_to_search') }}
+                                    </div>
+                                </template>
+
+                                <template x-if="serviceSearches[index] && (serviceFilteredOptions[index] || []).length === 0">
+                                    <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                        {{ __('forms.nothing_found') }}
+                                    </div>
+                                </template>
+
+                                <template
+                                    x-for="serviceOption in (serviceFilteredOptions[index] || [])"
+                                    :key="serviceOption.id"
                                 >
-                                    <span x-text="serviceLabel(serviceOption)"></span>
-                                </button>
-                            </template>
+                                    <button
+                                        type="button"
+                                        class="block w-full cursor-pointer px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                                        @click="selectService(index, serviceOption)"
+                                    >
+                                        <span x-text="serviceLabel(serviceOption)"></span>
+                                    </button>
+                                </template>
+                            </div>
                         </div>
+
+                        <button
+                            type="button"
+                            @click.prevent="openServiceDictionary(index)"
+                            class="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                            <svg
+                                class="h-5 w-5 shrink-0"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M8 4.667C8 3.96 7.719 3.281 7.219 2.781 6.719 2.281 6.041 2 5.333 2H1.333V12H6c.53 0 1.039.21 1.414.586.375.375.586.884.586 1.414M8 4.667V14m0-9.333c0-.707.281-1.386.781-1.886.5-.5 1.179-.781 1.886-.781h4V12h-4.667c-.53 0-1.039.21-1.414.586-.375.375-.586.884-.586 1.414"
+                                    stroke="currentColor"
+                                    stroke-width="1.2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
+                            </svg>
+
+                            <span>{{ __('dictionaries.service_catalog.choose_from_catalog') }}</span>
+                        </button>
                     </div>
+
                     <button
                         type="button"
                         x-show="index > 0"
@@ -405,6 +449,30 @@
                 <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
+
+        @unless ($isReadonly)
+            <x-dialog-drawer
+                x-model="openServiceCatalog"
+                onCloseClick="openServiceCatalog = false"
+                maxWidth="4/5"
+                overlayWidth="100%"
+                zIndex="50"
+            >
+                <livewire:dictionary.service-catalog
+                    :legal-entity="legalEntity()"
+                    :selection-mode="true"
+                    selection-event="encounter-service-selected"
+                    :allowed-categories="$this->form->encounter['classCode'] === 'AMB' ? ['counselling'] : []"
+                    :key="'encounter-service-catalog'"
+                />
+
+                <div class="mt-8">
+                    <button type="button" @click="openServiceCatalog = false" class="button-minor">
+                        {{ __('forms.cancel') }}
+                    </button>
+                </div>
+            </x-dialog-drawer>
+        @endunless
 
         <div class="space-y-3">
             <template x-for="(coAuthor, index) in coAuthors" :key="`${coAuthor.uuid || 'manual'}-${index}`">

@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use RuntimeException;
 use Throwable;
 
@@ -154,6 +155,25 @@ trait ManagesEncounterReferrals
         $this->encounterReferralServiceResults = [];
         $this->encounterReferralHasSearched = false;
         $this->encounterReferralWarningMessage = '';
+    }
+
+    #[On('encounter-referral-service-selected')]
+    public function selectEncounterReferralServiceFromCatalog(array $service): void
+    {
+        $this->encounterReferralForm['service_id'] = $service['id'];
+        $this->encounterReferralSelectedService = $service;
+
+        $category = ServiceSearch::requestCategory($service);
+        if ($category !== null) {
+            $this->encounterReferralForm['category'] = $category;
+        }
+
+        $this->encounterReferralServiceSearch = '';
+        $this->encounterReferralServiceResults = [];
+        $this->encounterReferralHasSearched = false;
+        $this->encounterReferralWarningMessage = '';
+        
+        $this->dispatch('encounter-referral-service-catalog-close');
     }
 
     public function validateEncounterReferral(): void
