@@ -14,6 +14,7 @@ enum Status: string
     case UNSATISFACTORY = 'unsatisfactory';
     case UNAVAILABLE = 'unavailable';
     case ENTERED_IN_ERROR = 'entered_in_error';
+    case DRAFT = 'draft';
 
     /**
      * Get the translated status label.
@@ -35,7 +36,8 @@ enum Status: string
         return match ($this) {
             self::AVAILABLE => 'badge-green',
             self::UNSATISFACTORY => 'badge-yellow',
-            self::UNAVAILABLE, self::ENTERED_IN_ERROR => 'badge-red'
+            self::UNAVAILABLE, self::ENTERED_IN_ERROR => 'badge-red',
+            self::DRAFT => 'badge-dark'
         };
     }
 }

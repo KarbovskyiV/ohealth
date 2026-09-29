@@ -129,6 +129,7 @@ class PatientSpecimens extends BasePatientComponent
         $this->encounters = Repository::encounter()->getByPersonId($this->patient());
 
         $this->parentSpecimens = Specimen::forPatient($this->patient())
+            ->notDraft()
             ->with('type.coding')
             ->get(['id', 'uuid', 'accession_identifier', 'type_id'])
             ->map(fn (Specimen $specimen): array => [
@@ -369,7 +370,7 @@ class PatientSpecimens extends BasePatientComponent
     protected function filterValidationRules(): array
     {
         return [
-            'filterStatus' => ['nullable', Rule::in(Status::values())],
+            'filterStatus' => ['nullable', Rule::enum(Status::class)->except(Status::DRAFT)],
             'filterType' => ['nullable', 'string', new InDictionary('specimen_types')],
             'filterCollectedRange' => ['nullable', 'string'],
             'filterRegisteredBy' => ['nullable', 'uuid'],

@@ -30,6 +30,21 @@ class SpecimenPolicy
     }
 
     /**
+     * Determine whether the user can create a specimen outside the encounter package.
+     *
+     * @param  User  $user
+     * @return Response
+     */
+    public function create(User $user): Response
+    {
+        if ($user->cannot('specimen:write') || legalEntity()->status !== Status::ACTIVE->value) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Determine whether the user can set the time the specimen was received for processing. The time can be set only once.
      *
      * @param  User  $user

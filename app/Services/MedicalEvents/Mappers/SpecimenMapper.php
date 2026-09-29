@@ -37,15 +37,19 @@ class SpecimenMapper implements FhirMapperContract
             'registeredBy' => FhirResource::make()
                 ->coding('eHealth/resources', 'employee')
                 ->toIdentifier($uuids['employee']),
-            'context' => FhirResource::make()
-                ->coding('eHealth/resources', 'encounter')
-                ->toIdentifier($uuids['encounter']),
             'collection' => $this->collectionToFhir($data),
             'container' => collect($data['containers'])
                 ->map(fn (array $container): array => $this->containerToFhir($container))
                 ->values()
                 ->toArray()
         ];
+
+        // A specimen created outside the encounter package has no encounter to refer to
+        if (!empty($uuids['encounter'])) {
+            $result['context'] = FhirResource::make()
+                ->coding('eHealth/resources', 'encounter')
+                ->toIdentifier($uuids['encounter']);
+        }
 
         if ($isReferenced) {
             $result['statusReason'] = FhirResource::make()
@@ -63,8 +67,11 @@ class SpecimenMapper implements FhirMapperContract
                 ->toCodeableConcept();
         }
 
-        if (!empty($data['parentIds'])) {
-            $result['parent'] = collect($data['parentIds'])
+        // A parent select left unpicked keeps an empty value
+        $parentIds = array_filter($data['parentIds'] ?? []);
+
+        if (!empty($parentIds)) {
+            $result['parent'] = collect($parentIds)
                 ->map(
                     static fn (string $parentId): array => FhirResource::make()
                         ->coding('eHealth/resources', 'specimen')
@@ -108,6 +115,7 @@ class SpecimenMapper implements FhirMapperContract
                 ->filter()
                 ->values()
                 ->toArray(),
+            'registeredById' => data_get($data, 'registeredBy.identifier.value', ''),
             'collectorType' => $collectorType === 'patient' ? 'patient' : 'other',
             'collectorId' => data_get($data, 'collection.collector.identifier.value', ''),
             'collectedType' => $periodStart ? 'period' : 'date_time',

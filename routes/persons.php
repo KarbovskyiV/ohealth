@@ -48,6 +48,7 @@ use App\Livewire\Procedure\ProcedureIndex;
 use App\Livewire\Procedure\ProcedureCreate;
 use App\Livewire\Procedure\ProcedureEdit;
 use App\Livewire\Specimen\SpecimenCreate;
+use App\Livewire\Specimen\SpecimenEdit;
 use App\Models\CarePlan;
 use App\Models\DeclarationRequest;
 use App\Models\MedicalEvents\Sql\Device;
@@ -97,7 +98,12 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
                     ->can('view', Specimen::class)
                     ->name('specimens');
                 Route::get('/{person}/specimens/create', SpecimenCreate::class)
+                    ->can('create', Specimen::class)
                     ->name('specimens.create');
+                Route::get('/{person}/specimens/{specimenId}/edit', SpecimenEdit::class)
+                    ->can('create', Specimen::class)
+                    ->whereNumber('specimenId')
+                    ->name('specimens.edit');
                 Route::get('/{person}/episodes', EpisodeIndex::class)->can('view', Episode::class)->name('episodes');
                 Route::get('/{person}/episodes/create', EpisodeCreate::class)
                     ->can('create', Episode::class)
@@ -211,7 +217,13 @@ Route::prefix('prepersons')
             ->name('specimens');
         Route::get('/{preperson}/specimens/create', SpecimenCreate::class)
             ->can('view', 'preperson')
+            ->can('create', Specimen::class)
             ->name('specimens.create');
+        Route::get('/{preperson}/specimens/{specimenId}/edit', SpecimenEdit::class)
+            ->can('view', 'preperson')
+            ->can('create', Specimen::class)
+            ->whereNumber('specimenId')
+            ->name('specimens.edit');
         Route::get('/{preperson}/specimens/{specimen}', PatientSpecimenView::class)
             ->can('view', 'preperson')
             ->can('view', Specimen::class)

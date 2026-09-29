@@ -11,7 +11,6 @@ use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\ClinicalImpression\Status as ClinicalImpressionStatus;
 use App\Enums\Person\ImmunizationStatus;
 use App\Enums\Person\ServiceRequestStatus;
-use App\Enums\Person\ObservationStatus;
 use App\Enums\Status;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
@@ -50,11 +49,9 @@ use App\Traits\SearchesElectronicReferrals;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use Carbon\CarbonImmutable;
 use Throwable;
 
 class EncounterComponent extends Component
@@ -776,10 +773,12 @@ class EncounterComponent extends Component
 
         $this->patientSpecimens = Specimen::forPatient($this->patient())
             ->notEnteredInError()
+            ->notDraft()
             ->with('type.coding')
-            ->get(['id', 'uuid', 'status', 'type_id'])
+            ->get(['id', 'uuid', 'accession_identifier', 'status', 'type_id'])
             ->map(static fn (Specimen $specimen): array => [
                 'uuid' => $specimen->uuid,
+                'accessionIdentifier' => $specimen->accessionIdentifier,
                 'status' => $specimen->status->value,
                 'typeCode' => $specimen->type->coding->first()?->code ?? ''
             ])

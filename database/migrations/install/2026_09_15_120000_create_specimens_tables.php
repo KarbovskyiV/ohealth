@@ -28,7 +28,7 @@ return new class extends Migration
             $table->text('note')->nullable();
             $table->foreignId('managing_organization_id')->constrained('identifiers');
             $table->foreignId('registered_by_id')->constrained('identifiers');
-            $table->foreignId('context_id')->constrained('identifiers');
+            $table->foreignId('context_id')->nullable()->constrained('identifiers');
             $table->timestamp('received_time')->nullable();
             $table->foreignId('status_reason_id')->nullable()->constrained('codeable_concepts');
             $table->string('explanatory_letter')->nullable();

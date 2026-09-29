@@ -64,6 +64,54 @@ class="item-add my-5"
 </button>
 ```
 
+### `x-data` objects
+
+Inside a multi-line `x-data` object:
+
+- Keep properties together as one block, without blank lines between them.
+- Put a blank line before the first method and between methods (getters included).
+- No blank line after the last method — close with `}"` right away.
+
+**Correct** — properties grouped, methods separated by blank lines:
+
+```html
+<div
+    x-data="{
+        open: false,
+        clientNotifications: [],
+
+        addNotification(title, message) {
+            this.clientNotifications.unshift({ title, message });
+        },
+
+        removeNotification(id) {
+            this.clientNotifications = this.clientNotifications.filter((notification) => notification.id !== id);
+        },
+
+        get totalCount() {
+            return this.clientNotifications.length;
+        }
+    }"
+>
+```
+
+**Not this** — methods glued together and the body not indented deeper than the attribute:
+
+```html
+<div
+    x-data="{
+    open: false,
+    clientNotifications: [],
+    addNotification(title, message) {
+        this.clientNotifications.unshift({ title, message });
+    },
+    removeNotification(id) {
+        this.clientNotifications = this.clientNotifications.filter((notification) => notification.id !== id);
+    }
+}"
+>
+```
+
 ## Multi-line tag attributes
 
 When an element's attributes are split across multiple lines:

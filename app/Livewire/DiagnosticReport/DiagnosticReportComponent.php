@@ -22,12 +22,10 @@ use App\Models\Equipment;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Specimen;
-use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\ObservationConfigRepository;
 use App\Repositories\Repository;
-use App\Repositories\MedicalEvents\Repository as MedicalEventsRepository;
 use App\Traits\FormTrait;
 use App\Traits\SearchesElectronicReferrals;
 use Illuminate\Support\Facades\Auth;
@@ -295,6 +293,7 @@ abstract class DiagnosticReportComponent extends Component
 
         $this->patientSpecimens = Specimen::forPatient($this->patient())
             ->notEnteredInError()
+            ->notDraft()
             ->with('type.coding')
             ->get(['id', 'uuid', 'status', 'type_id'])
             ->map(static fn (Specimen $specimen): array => [
