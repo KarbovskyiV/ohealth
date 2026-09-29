@@ -341,6 +341,11 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
                 Route::get('/{equipment}', EquipmentView::class)->name('view')->can('view', 'equipment');
             });
 
+            Route::prefix('data-access')->name('data-access.')->group(static function () {
+                Route::get('/', \App\Livewire\Approval\ApprovalIndex::class)->name('index');
+                Route::get('/{approval}', \App\Livewire\Approval\ApprovalView::class)->name('view');
+            });
+
             require __DIR__ . '/dictionaries.php';
 
             Route::get('/declaration', DeclarationIndex::class)

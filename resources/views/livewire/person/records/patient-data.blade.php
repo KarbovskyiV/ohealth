@@ -104,13 +104,53 @@
                 </div>
             </div>
 
-            <button
-                type="button"
-                class="button-primary-outline px-4 py-2 text-sm shadow-sm"
-                style="margin: 0 !important"
-            >
-                {{ __('patients.data_access') }}
-            </button>
+            <div x-data="{ 
+                showDataAccessDrawer: false, 
+                showAllDataDrawer: false, 
+                showDiagnosisGroupsDrawer: false,
+                showDiagnosisCodesDrawer: false,
+                showServiceGroupsDrawer: false,
+                showServiceCodesDrawer: false,
+                showSensitiveDataDrawer: false,
+                showSensitiveCodesDrawer: false,
+                showReferralsDrawer: false,
+                selectedDataType: '',
+                selectedDiagnosisGroup: '',
+                selectedServiceGroup: '',
+                selectedSensitiveGroup: '',
+                selectedReferralOrganization: '',
+                selectedReferral: '',
+                forbiddenGroups: $wire.forbiddenGroups || [],
+                init() {
+                    this.$watch('selectedDataType', value => {
+                        this.showAllDataDrawer = value === 'all';
+                        this.showDiagnosisGroupsDrawer = value === 'diagnosis_groups';
+                        this.showSensitiveDataDrawer = value === 'sensitive';
+                        this.showServiceGroupsDrawer = value === 'service_groups';
+                        this.showReferralsDrawer = value === 'referrals';
+                    });
+                }
+            }">
+                <button
+                    @click="showDataAccessDrawer = true"
+                    type="button"
+                    class="button-primary-outline px-4 py-2 text-sm shadow-sm"
+                    style="margin: 0 !important"
+                >
+                    {{ __('patients.data_access') }}
+                </button>
+
+                @include('livewire.person.parts.drawers.data-access')
+                @include('livewire.person.parts.drawers.data-access-all')
+                @include('livewire.person.parts.drawers.data-access-sensitive')
+                @include('livewire.person.parts.drawers.data-access-sensitive-codes')
+                @include('livewire.person.parts.drawers.data-access-diagnosis-groups')
+                @include('livewire.person.parts.drawers.data-access-diagnosis-codes')
+                @include('livewire.person.parts.drawers.data-access-service-groups')
+                @include('livewire.person.parts.drawers.data-access-service-codes')
+                @include('livewire.person.parts.drawers.data-access-referrals')
+            </div>
+
 
             <button
                 type="button"
