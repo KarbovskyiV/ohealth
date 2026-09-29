@@ -36,6 +36,10 @@ return new class extends Migration
                 ->nullable()
                 ->comment('Reason the detected issue was marked as entered in error');
 
+            $table->foreignId('status_reason_id')
+                ->nullable()
+                ->constrained('codeable_concepts');
+
             $table->foreignId('subject_id')
                 ->constrained('identifiers');
 
@@ -71,6 +75,8 @@ return new class extends Migration
             $table->foreignId('recorder_id')
                 ->constrained('identifiers');
 
+            $table->timestamp('ehealth_inserted_at')->nullable();
+            $table->timestamp('ehealth_updated_at')->nullable();
             $table->timestamps();
         });
     }

@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Casts\EHealthDateCast;
 use App\Enums\Person\Gender;
 use App\Enums\Preperson\Status;
+use App\Models\MedicalEvents\Sql\DetectedIssue;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\Specimen;
@@ -95,6 +96,16 @@ class Preperson extends Model
     public function specimens(): HasMany
     {
         return $this->hasMany(Specimen::class);
+    }
+
+    /**
+     * Detected issues of the medical devices recorded for this preperson.
+     *
+     * @return HasMany
+     */
+    public function detectedIssues(): HasMany
+    {
+        return $this->hasMany(DetectedIssue::class);
     }
 
     /**
