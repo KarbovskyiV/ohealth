@@ -83,6 +83,7 @@ trait HandlesSyncBatch
             'clinical_impression' => 'clinical-impressions',
             'device' => 'devices',
             'specimen' => 'specimens',
+            'detected_issue' => 'detected-issues',
             'encounter' => 'encounters',
             'episode' => 'episodes',
             default => 'patients'

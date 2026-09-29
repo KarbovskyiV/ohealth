@@ -11,6 +11,7 @@
 
 @php
     use App\Models\DeclarationRequest;
+    use App\Models\MedicalEvents\Sql\DetectedIssue;
     use App\Models\MedicalEvents\Sql\Encounter;
     use App\Models\Person\Person;
     use App\Models\Relations\PersonVerificationDetail;
@@ -216,12 +217,14 @@
                             {{ __('device-dispenses.label') }}
                         </a>
 
-                        <a
-                            href="{{ route("$routePrefix.device-issues", [legalEntity(), $routeParamKey => $recordId]) }}"
-                            class="summary-tab {{ request()->routeIs("$routePrefix.device-issues") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                        >
-                            {{ __('detected-issues.label') }}
-                        </a>
+                        @can('viewAny', DetectedIssue::class)
+                            <a
+                                href="{{ route("$routePrefix.device-issues", [legalEntity(), $routeParamKey => $recordId]) }}"
+                                class="summary-tab {{ request()->routeIs("$routePrefix.device-issues") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                            >
+                                {{ __('detected-issues.label') }}
+                            </a>
+                        @endcan
 
                         <a
                             href="{{ route("$routePrefix.prescription-requests", [legalEntity(), $routeParamKey => $recordId]) }}"

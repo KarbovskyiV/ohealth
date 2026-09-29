@@ -34,6 +34,7 @@ use App\Classes\eHealth\Api\Party;
 use App\Classes\eHealth\Api\Patient;
 use App\Classes\eHealth\Api\Patient\ClinicalImpression;
 use App\Classes\eHealth\Api\Patient\Condition;
+use App\Classes\eHealth\Api\Patient\DetectedIssue;
 use App\Classes\eHealth\Api\Patient\Device;
 use App\Classes\eHealth\Api\Patient\DiagnosticReport;
 use App\Classes\eHealth\Api\Patient\Encounter;
@@ -295,6 +296,11 @@ final class EHealth
     public static function device(): Device
     {
         return app(Device::class);
+    }
+
+    public static function detectedIssue(): DetectedIssue
+    {
+        return app(DetectedIssue::class);
     }
 
     public static function specimen(): Specimen

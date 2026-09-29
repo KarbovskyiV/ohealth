@@ -10,6 +10,18 @@ use Illuminate\Auth\Access\Response;
 class DetectedIssuePolicy
 {
     /**
+     * Determine whether the user can search the detected issues.
+     */
+    public function viewAny(User $user): Response
+    {
+        if ($user->cannot('detected_issue:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Determine whether the user can view the detected issue.
      */
     public function view(User $user): Response

@@ -8,6 +8,7 @@ use App\Enums\Person\AuthenticationMethod;
 use App\Models\ConfidantPersonRelationshipRequest;
 use App\Models\Declaration;
 use App\Models\Employee\Employee;
+use App\Models\MedicalEvents\Sql\DetectedIssue;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Episode;
@@ -56,6 +57,11 @@ class Person extends BasePerson
     public function specimens(): HasMany
     {
         return $this->hasMany(Specimen::class);
+    }
+
+    public function detectedIssues(): HasMany
+    {
+        return $this->hasMany(DetectedIssue::class);
     }
 
     public function declarations(): HasMany

@@ -32,7 +32,7 @@ class Device extends PatientApiBase
      * @return PromiseInterface|EHealthResponse
      * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
      *
-     * @see https://medicalevents9156v1.docs.apiary.io/#reference/medical-events/patient-summary/get-devices-by-search-params-(summary)
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/patient-summary/get-devices-by-search-params-(summary)
      */
     public function getSummary(string $patientId, array $query = []): PromiseInterface|EHealthResponse
     {
@@ -68,7 +68,7 @@ class Device extends PatientApiBase
      * @return PromiseInterface|EHealthResponse
      * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
      *
-     * @see https://medicalevents9156v1.docs.apiary.io/#reference/medical-events/device/get-devices-by-search-params
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/device/get-devices-by-search-params
      */
     public function getBySearchParams(string $patientId, array $query = []): PromiseInterface|EHealthResponse
     {
@@ -91,7 +91,7 @@ class Device extends PatientApiBase
      * @return PromiseInterface|EHealthResponse
      * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
      *
-     * @see https://medicalevents9156v1.docs.apiary.io/#reference/medical-events/device/get-device-by-id
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/device/get-device-by-id
      */
     public function getById(string $patientId, string $deviceId): PromiseInterface|EHealthResponse
     {
@@ -108,7 +108,7 @@ class Device extends PatientApiBase
      * @return PromiseInterface|EHealthResponse
      * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
      *
-     * @see https://medicalevents9156v1.docs.apiary.io/#reference/medical-events/patient-summary/get-device-by-id-(summary)
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/patient-summary/get-device-by-id-(summary)
      */
     public function getSummaryById(string $patientId, string $deviceId): PromiseInterface|EHealthResponse
     {

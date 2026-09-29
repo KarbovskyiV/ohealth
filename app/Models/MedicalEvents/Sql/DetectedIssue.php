@@ -11,8 +11,10 @@ use App\Enums\DetectedIssue\Status;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class DetectedIssue extends Model
 {
@@ -24,6 +26,7 @@ class DetectedIssue extends Model
         'preperson_id',
         'status',
         'explanatory_letter',
+        'status_reason_id',
         'subject_id',
         'encounter_id',
         'author_id',
@@ -34,13 +37,16 @@ class DetectedIssue extends Model
         'based_on_id',
         'primary_source',
         'report_origin_id',
-        'recorder_id'
+        'recorder_id',
+        'ehealth_inserted_at',
+        'ehealth_updated_at'
     ];
 
     protected $hidden = [
         'id',
         'person_id',
         'preperson_id',
+        'status_reason_id',
         'subject_id',
         'encounter_id',
         'author_id',
@@ -56,8 +62,52 @@ class DetectedIssue extends Model
     protected $casts = [
         'status' => Status::class,
         'identified_date_time' => EHealthTimestampCast::class,
-        'primary_source' => 'boolean'
+        'primary_source' => 'boolean',
+        'ehealth_inserted_at' => EHealthTimestampCast::class,
+        'ehealth_updated_at' => EHealthTimestampCast::class
     ];
+
+    protected function identifiedDate(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::before((string) $this->identifiedDateTime, ' ')
+        );
+    }
+
+    protected function identifiedTime(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::after((string) $this->identifiedDateTime, ' ')
+        );
+    }
+
+    protected function ehealthInsertedDate(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::before((string) $this->ehealthInsertedAt, ' ')
+        );
+    }
+
+    protected function ehealthInsertedTime(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::after((string) $this->ehealthInsertedAt, ' ')
+        );
+    }
+
+    protected function ehealthUpdatedDate(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::before((string) $this->ehealthUpdatedAt, ' ')
+        );
+    }
+
+    protected function ehealthUpdatedTime(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::after((string) $this->ehealthUpdatedAt, ' ')
+        );
+    }
 
     public function subject(): BelongsTo
     {
@@ -99,6 +149,11 @@ class DetectedIssue extends Model
         return $this->belongsTo(Identifier::class, 'recorder_id');
     }
 
+    public function statusReason(): BelongsTo
+    {
+        return $this->belongsTo(CodeableConcept::class, 'status_reason_id');
+    }
+
     #[Scope]
     protected function withAllRelations(Builder $query): Builder
     {
@@ -110,6 +165,7 @@ class DetectedIssue extends Model
             'implicated.type.coding',
             'basedOn.type.coding',
             'reportOrigin.coding',
+            'statusReason.coding',
             'recorder.type.coding'
         ]);
     }
@@ -138,5 +194,18 @@ class DetectedIssue extends Model
     protected function forEncounter(Builder $query, string $encounterUuid): Builder
     {
         return $query->whereHas('encounter', static fn (Builder $identifier): Builder => $identifier->whereValue($encounterUuid));
+    }
+
+    /**
+     * Order by most recently updated in eHealth first, keeping records without a timestamp last.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function recentlyUpdatedFirst(Builder $query): Builder
+    {
+        return $query->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('ehealth_updated_at');
     }
 }

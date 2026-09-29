@@ -8,6 +8,8 @@ use App\Livewire\Condition\ConditionIndex;
 use App\Livewire\Declaration\DeclarationCreate;
 use App\Livewire\Declaration\DeclarationEdit;
 use App\Livewire\Declaration\DeclarationView;
+use App\Livewire\DetectedIssue\DetectedIssueIndex;
+use App\Livewire\DetectedIssue\DetectedIssueView;
 use App\Livewire\Device\DeviceIndex;
 use App\Livewire\Device\DeviceView;
 use App\Livewire\DiagnosticReport\DiagnosticReportCreate;
@@ -31,7 +33,6 @@ use App\Livewire\Person\Records\DeviceDispenses;
 use App\Livewire\Person\Records\PatientCarePlans;
 use App\Livewire\Person\Records\PatientData;
 use App\Livewire\Person\Records\PatientDeviceAssociations;
-use App\Livewire\Person\Records\PatientDeviceIssues;
 use App\Livewire\Person\Records\PatientMedicationRequests;
 use App\Livewire\Person\Records\PatientMedicationRequestView;
 use App\Livewire\Person\Records\PatientPrescriptionRequests;
@@ -44,13 +45,14 @@ use App\Livewire\Person\Records\PatientVerification;
 use App\Livewire\Preperson\PrepersonData;
 use App\Livewire\Preperson\PrepersonEdit;
 use App\Livewire\Preperson\PrepersonIndex;
-use App\Livewire\Procedure\ProcedureIndex;
 use App\Livewire\Procedure\ProcedureCreate;
 use App\Livewire\Procedure\ProcedureEdit;
+use App\Livewire\Procedure\ProcedureIndex;
 use App\Livewire\Specimen\SpecimenCreate;
 use App\Livewire\Specimen\SpecimenEdit;
 use App\Models\CarePlan;
 use App\Models\DeclarationRequest;
+use App\Models\MedicalEvents\Sql\DetectedIssue;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\MedicalEvents\Sql\Encounter;
@@ -144,7 +146,13 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
                 Route::get('/{person}/device-associations', PatientDeviceAssociations::class)
                     ->name('device-associations');
                 Route::get('/{person}/device-dispenses', DeviceDispenses::class)->name('device-dispenses');
-                Route::get('/{person}/device-issues', PatientDeviceIssues::class)->name('device-issues');
+                Route::get('/{person}/detected-issues', DetectedIssueIndex::class)
+                    ->can('viewAny', DetectedIssue::class)
+                    ->name('device-issues');
+                Route::get('/{person}/detected-issues/{detectedIssue:id}', DetectedIssueView::class)
+                    ->can('view', DetectedIssue::class)
+                    ->whereNumber('detectedIssue')
+                    ->name('device-issues.view');
             });
         });
 
@@ -285,9 +293,15 @@ Route::prefix('prepersons')
         Route::get('/{preperson}/device-dispenses', DeviceDispenses::class)
             ->can('view', 'preperson')
             ->name('device-dispenses');
-        Route::get('/{preperson}/device-issues', PatientDeviceIssues::class)
+        Route::get('/{preperson}/detected-issues', DetectedIssueIndex::class)
             ->can('view', 'preperson')
+            ->can('viewAny', DetectedIssue::class)
             ->name('device-issues');
+        Route::get('/{preperson}/detected-issues/{detectedIssue:id}', DetectedIssueView::class)
+            ->can('view', 'preperson')
+            ->can('view', DetectedIssue::class)
+            ->whereNumber('detectedIssue')
+            ->name('device-issues.view');
 
         Route::get('/{preperson}/encounter/create', EncounterCreate::class)
             ->can('view', 'preperson')

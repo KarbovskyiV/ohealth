@@ -19,7 +19,8 @@ class DetectedIssueRepository extends BaseRepository
     /**
      * @throws Throwable
      */
-    public function store(array $data, Person|Preperson $patient): void {
+    public function store(array $data, Person|Preperson $patient): void
+    {
         [$ownerColumn, $ownerId] = $this->resolveOwner($patient);
 
         DB::transaction(function () use ($data, $ownerColumn, $ownerId) {
@@ -125,7 +126,8 @@ class DetectedIssueRepository extends BaseRepository
     /**
      * @throws Throwable
      */
-    public function sync(Person|Preperson $patient, array $validatedData): void {
+    public function sync(Person|Preperson $patient, array $validatedData): void
+    {
         [$ownerColumn, $ownerId] = $this->resolveOwner($patient);
 
         DB::transaction(function () use ($validatedData, $ownerColumn, $ownerId) {
@@ -145,9 +147,12 @@ class DetectedIssueRepository extends BaseRepository
                 $basedOn = !empty(data_get($data, 'based_on.identifier.value')) ? $this->syncIdentifier($existing, $data['based_on'], 'basedOn') : null;
                 $code = isset($data['code']) ? $this->syncCodeableConcept($existing, $data['code'], 'code') : null;
                 $reportOrigin = isset($data['report_origin']) ? $this->syncCodeableConcept($existing, $data['report_origin'], 'reportOrigin') : null;
+                $statusReason = isset($data['status_reason']) ? $this->syncCodeableConcept($existing, $data['status_reason'], 'statusReason') : null;
                 $issueData = [
                     $ownerColumn => $ownerId,
                     'status' => $data['status'],
+                    'explanatory_letter' => $data['explanatory_letter'] ?? null,
+                    'status_reason_id' => $statusReason?->id,
                     'subject_id' => $subject->id,
                     'encounter_id' => $encounter->id,
                     'author_id' => $author?->id,
@@ -158,7 +163,9 @@ class DetectedIssueRepository extends BaseRepository
                     'based_on_id' => $basedOn?->id,
                     'primary_source' => $data['primary_source'],
                     'report_origin_id' => $reportOrigin?->id,
-                    'recorder_id' => $recorder->id
+                    'recorder_id' => $recorder->id,
+                    'ehealth_inserted_at' => $data['ehealth_inserted_at'] ?? null,
+                    'ehealth_updated_at' => $data['ehealth_updated_at'] ?? null
                 ];
 
                 if ($existing) {

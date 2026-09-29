@@ -443,7 +443,8 @@ class EncounterRepository extends BaseRepository
 
     /**
      * Get encounter data that is related to the patient (person or preperson).
-     * Every record carries a readable `name` built from the action and class codes, so it can label a filter option.
+     * Every record carries a readable `name` built from the start of its period, its class and its first action,
+     * so it can label a filter option.
      *
      * @param  Person|Preperson  $patient
      * @return array
@@ -452,17 +453,24 @@ class EncounterRepository extends BaseRepository
     {
         [$ownerColumn, $ownerId] = $this->resolveOwner($patient);
 
+        $dictionaries = dictionary()->basics()
+            ->getMultipleFormatted(['eHealth/encounter_classes', 'eHealth/ICPC2/actions'])
+            ->toArray();
+
         return $this->model
             ->withRelationships()
             ->where($ownerColumn, $ownerId)
             ->get()
-            ->map(static function (Encounter $encounter): array {
+            ->map(static function (Encounter $encounter) use ($dictionaries): array {
                 $data = $encounter->toArray();
+                $actionCode = data_get($data, 'actions.0.coding.0.code');
+                $actionName = $dictionaries['eHealth/ICPC2/actions'][(string) $actionCode] ?? null;
 
                 $label = collect([
-                    data_get($data, 'actions.0.coding.0.code'),
-                    data_get($data, 'class.code')
-                ])->filter()->implode(' | ');
+                    data_get($data, 'period.start'),
+                    $dictionaries['eHealth/encounter_classes'][(string) data_get($data, 'class.code')] ?? null,
+                    $actionName ? "$actionCode $actionName" : null
+                ])->filter()->implode(' · ');
 
                 $data['name'] = $label ?: $encounter->uuid;
 
