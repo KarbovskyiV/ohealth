@@ -6,6 +6,8 @@
     ></div>
 
     <div
+        x-data="{ openServiceCatalog: false }"
+        @encounter-referral-service-catalog-close.window="openServiceCatalog = false"
         class="fixed top-0 right-0 z-[47] h-screen overflow-y-auto bg-white p-4 pt-20 shadow-2xl dark:bg-gray-800"
         style="width: calc(80% - 60px)"
         tabindex="-1"
@@ -20,7 +22,7 @@
                         <label for="encounterReferralServiceSearch" class="label required">
                             {{ __('encounters.service') }}
                         </label>
-                        <div class="flex gap-2">
+                        <div class="flex items-center gap-4">
                             <input
                                 type="text"
                                 id="encounterReferralServiceSearch"
@@ -29,8 +31,36 @@
                                 wire:model="encounterReferralServiceSearch"
                                 wire:keydown.enter.prevent="searchEncounterReferralServices"
                             />
-                            <button type="button" class="button-primary" wire:click="searchEncounterReferralServices">
+
+                            <button
+                                type="button"
+                                class="button-primary shrink-0"
+                                wire:click="searchEncounterReferralServices"
+                            >
                                 Пошук
+                            </button>
+
+                            <button
+                                type="button"
+                                @click.prevent="openServiceCatalog = true"
+                                class="inline-flex shrink-0 cursor-pointer items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                                <svg
+                                    class="h-5 w-5"
+                                    viewBox="0 0 16 16"
+                                    fill="none"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        d="M8 4.667C8 3.96 7.719 3.281 7.219 2.781 6.719 2.281 6.041 2 5.333 2H1.333V12H6c.53 0 1.039.21 1.414.586.375.375.586.884.586 1.414M8 4.667V14m0-9.333c0-.707.281-1.386.781-1.886.5-.5 1.179-.781 1.886-.781h4V12h-4.667c-.53 0-1.039.21-1.414.586-.375.375-.586.884-.586 1.414"
+                                        stroke="currentColor"
+                                        stroke-width="1.2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+                                </svg>
+
+                                <span>{{ __('dictionaries.service_catalog.choose_from_catalog') }}</span>
                             </button>
                         </div>
                         @error('encounterReferralForm.service_id')
@@ -206,5 +236,30 @@
                 <button type="submit" class="button-primary">Створити та підписати</button>
             </div>
         </form>
+        <x-dialog-drawer
+            x-model="openServiceCatalog"
+            onCloseClick="openServiceCatalog = false"
+            maxWidth="4/5"
+            overlayWidth="100%"
+            zIndex="50"
+        >
+            <livewire:dictionary.service-catalog
+                :legal-entity="legalEntity()"
+                :selection-mode="true"
+                :request-allowed-only="true"
+                selection-event="encounter-referral-service-selected"
+                :key="'encounter-referral-service-catalog'"
+            />
+
+            <div class="mt-8">
+                <button
+                    type="button"
+                    @click="openServiceCatalog = false"
+                    class="button-minor"
+                >
+                    {{ __('forms.cancel') }}
+                </button>
+            </div>
+        </x-dialog-drawer>
     </div>
 @endif

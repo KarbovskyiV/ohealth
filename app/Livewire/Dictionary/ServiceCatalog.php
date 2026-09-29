@@ -27,13 +27,25 @@ class ServiceCatalog extends Component
     public bool $selectionMode = false;
     public string $selectionEvent = 'service-selected';
     public array $allowedCategories = [];
+    public bool $requestAllowedOnly = false;
 
     public array $dictionaryNames = ['SERVICE_CATEGORY'];
 
-    public function mount(LegalEntity $legalEntity, bool $selectionMode = false, string $selectionEvent = 'service-selected', array $allowedCategories = []): void {
+    public function mount(
+        LegalEntity $legalEntity,
+        bool $selectionMode = false,
+        string $selectionEvent = 'service-selected',
+        array $allowedCategories = [],
+        bool $requestAllowedOnly = false
+    ): void {
         $this->selectionMode = $selectionMode;
         $this->selectionEvent = $selectionEvent;
         $this->allowedCategories = $allowedCategories;
+        $this->requestAllowedOnly = $requestAllowedOnly;
+
+        if ($this->requestAllowedOnly) {
+            $this->allowedForEn = '1';
+        }
 
         $this->getDictionary();
     }
@@ -47,6 +59,13 @@ class ServiceCatalog extends Component
         if ($this->allowedCategories !== []) {
             $allServices = $allServices
                 ->map(fn (array $item) => $this->filterItemByAllowedCategories($item))
+                ->filter()
+                ->values();
+        }
+
+        if ($this->requestAllowedOnly) {
+            $allServices = $allServices
+                ->map(fn (array $item) => $this->filterItemByRequestAllowed($item))
                 ->filter()
                 ->values();
         }
@@ -122,8 +141,10 @@ class ServiceCatalog extends Component
             'serviceCategory',
             'serviceActive',
             'serviceGroupActive',
-            'allowedForEn',
         ]);
+
+        $this->allowedForEn = $this->requestAllowedOnly ? '1' : '';
+
         $this->resetPage();
     }
 
@@ -293,6 +314,34 @@ class ServiceCatalog extends Component
         }
 
         return false;
+    }
+
+    private function filterItemByRequestAllowed(array $item): ?array
+    {
+        if (!empty($item['services'])) {
+            $item['services'] = collect($item['services'])
+                ->filter(fn (array $service) => (bool) ($service['request_allowed'] ?? false))
+                ->values()
+                ->all();
+        }
+
+        if (!empty($item['groups'])) {
+            $item['groups'] = collect($item['groups'])
+                ->map(fn (array $group) => $this->filterItemByRequestAllowed($group))
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        if ((bool) ($item['request_allowed'] ?? false)) {
+            return $item;
+        }
+
+        if (!empty($item['services']) || !empty($item['groups'])) {
+            return $item;
+        }
+
+        return null;
     }
 
     /**
