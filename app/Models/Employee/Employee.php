@@ -222,7 +222,8 @@ class Employee extends BaseEmployee
             ->where('employee_type', Role::OWNER)
             ->where('status', Status::APPROVED)
             ->where('is_active', true)
-            ->whereNotNull('user_id');
+            ->whereNotNull('user_id')
+            ->orderBy('inserted_at', 'desc');
     }
 
     /**

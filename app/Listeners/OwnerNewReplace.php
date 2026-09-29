@@ -49,7 +49,7 @@ class OwnerNewReplace
             ->all() ?? [];
 
         // Order-independent equality check
-        $scopesMatch = empty(array_diff($ownerScopes, $event->scopes)) && empty(array_diff($event->scopes, $ownerScopes));
+        $scopesMatch = empty(array_diff($ownerScopes, $event->scopes));
 
         if ($role !== Role::OWNER->value) {
             return;
@@ -74,11 +74,9 @@ class OwnerNewReplace
 
         $newOwner = Arr::first($data);
 
-        $oldOwner = Employee::activeOwners($legalEntityId)->first();
-
-        if ($oldOwner->uuid === $newOwner['uuid']) {
-            return;
-        }
+        $oldOwners = Employee::activeOwners($legalEntityId)
+            ->get()
+            ->reject(fn ($owner) => $owner->uuid === $newOwner['uuid']);
 
         try {
             $newOwnerDetails = EHealth::employee()->getDetails($newOwner['uuid'])->validate();
@@ -108,7 +106,7 @@ class OwnerNewReplace
         data_forget($partyData, 'phones');
         data_forget($partyData, 'documents');
 
-        DB::transaction(function () use ($user, $newOwnerDetails, $event, $timeNow, $partyData, $phonesData, $documentsData, $legalEntityId, $oldOwner) {
+        DB::transaction(function () use ($user, $newOwnerDetails, $event, $timeNow, $partyData, $phonesData, $documentsData, $legalEntityId, $oldOwners) {
             $newEmployee = Employee::updateOrCreate(
                         ['uuid' => $newOwnerDetails['uuid']],
                         array_merge($newOwnerDetails, [
@@ -152,7 +150,7 @@ class OwnerNewReplace
             // If the employee type is OWNER, we need to check if the current owner is different from the one in EHealth.
             if ($newEmployee->employeeType === Role::OWNER->value) {
                 // $oldOwner = null when the Legal Entity just created, so we don't need to change anything in this case.
-                if ($oldOwner?->uuid && $oldOwner->uuid !== $newEmployee->uuid) {
+                foreach($oldOwners as $oldOwner) {
                     $currentOwnerUser = User::find($oldOwner->userId);
 
                     // Just overcautiousness

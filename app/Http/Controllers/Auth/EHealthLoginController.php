@@ -138,15 +138,11 @@ class EHealthLoginController extends Controller
             trim(data_get($validatedEHealthTokenData, 'details.scope'))
         );
 
-        // OAuth may return scopes for a single selected role; merge with permissions
-        // from all roles assigned to the user in this legal entity (team).
-        $loginScopes = $this->resolveLoginScopes($user, $ehealthScopes);
-
-        $user->syncPermissions($loginScopes);
+        $user->syncPermissions($ehealthScopes);
         app(TokenStorage::class)->storeScopesFromUserPermissions($user);
 
         try {
-            EHealthUserLogin::dispatch($user, $legalEntity, $authUserUUID, $loginScopes, $this->isFirstLogin, $loginedGuard);
+            EHealthUserLogin::dispatch($user, $legalEntity, $authUserUUID, $ehealthScopes, $this->isFirstLogin, $loginedGuard);
         } catch (Throwable $exception) {
             $message = $exception->getMessage() ?: '';
 
@@ -163,7 +159,7 @@ class EHealthLoginController extends Controller
 
         if (!$user->party) {
             Session::put('selected_legal_entity_uuid', $legalEntity->uuid);
-            $user->syncPermissions($loginScopes);
+            $user->syncPermissions($ehealthScopes);
             app(TokenStorage::class)->storeScopesFromUserPermissions($user);
 
             return Redirect::route('party.verify');
@@ -172,7 +168,7 @@ class EHealthLoginController extends Controller
         if ($legalEntity) {
             Log::info(__('auth.login.success.user_auth', [], 'en'), ['User ID' => $user->id]);
 
-            $user->syncPermissions($loginScopes);
+            $user->syncPermissions($ehealthScopes);
             app(TokenStorage::class)->storeScopesFromUserPermissions($user);
 
             return Redirect::route('dashboard', [$legalEntity])->with(
@@ -294,28 +290,6 @@ class EHealthLoginController extends Controller
             $request->input('code'),
             $selectedLegalEntityUuidFromSession,
         );
-    }
-
-    /**
-     * Build login scopes from the OAuth token plus permissions of all roles
-     * already assigned to the user in the current legal entity (team).
-     *
-     * OAuth may return only the selected role's scopes; role permissions keep
-     * the session/model_has_permissions set complete across all user roles.
-     *
-     * @param  list<string>  $oauthScopes
-     * @return list<string>
-     */
-    protected function resolveLoginScopes(User $user, array $oauthScopes): array
-    {
-        $user->unsetRelation('roles')->unsetRelation('permissions');
-
-        return collect($oauthScopes)
-            ->merge($user->getPermissionsViaRoles()->pluck('name'))
-            ->filter(static fn ($scope) => is_string($scope) && $scope !== '')
-            ->unique()
-            ->values()
-            ->all();
     }
 
     /**
