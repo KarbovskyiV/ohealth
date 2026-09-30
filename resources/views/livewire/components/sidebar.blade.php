@@ -445,6 +445,13 @@
                     </li>
                 @endcan
 
+                <li>
+                    <a href="{{ route('data-access.index', [legalEntity()]) }}" class="menu-item-simple {{ request()->routeIs('data-access.*') ? 'menu-item-active' : '' }}">
+                        @icon('hugeicons-access')
+                        <span>{{ __('patients.data_access') }}</span>
+                    </a>
+                </li>
+
                 <li x-data="{ open: {{ request()->routeIs('dictionaries.*') ? 'true' : 'false' }} }" class="space-y-2">
                     <button
                         @click="open = ! open"

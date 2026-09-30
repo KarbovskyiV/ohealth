@@ -51,6 +51,8 @@ class PatientData extends BasePatientComponent
 
     public array $phones = [];
 
+    public bool $isSyncing = false;
+
     public bool $canManageConfidantRelationships = true;
 
     public bool $isIncapacitated = false;
@@ -144,10 +146,11 @@ class PatientData extends BasePatientComponent
      *
      * @var bool
      */
-    public bool $isSyncing = false;
+    public array $forbiddenGroups = [];
 
     protected function initializeComponent(): void
     {
+        $this->forbiddenGroups = dictionary()->forbiddenGroups()->toArray();
         $this->getDictionary();
 
         // The patient and its names are already read by the parent, only the rest of the card is missing

@@ -346,4 +346,31 @@ return [
         'confidant_requests_list_update_failed' => 'Помилка при синхронізації запитів на створення законних представників.',
         'sync_auth_methods_and_try_again' => 'Будь ласка, синхронізуйте методи автентифікації та спробуйте знову.'
     ],
+    
+    'data_access_types' => [
+        'all' => 'Всі медичні дані пацієнта',
+        'sensitive' => 'Чутливі медичні дані',
+        'diagnosis_groups' => 'Групи діагнозів',
+        'service_groups' => 'Групи послуг',
+        'medical_documents' => 'Медичні документи',
+        'other_medical_documents' => 'Інші медичні документи',
+        'referrals' => 'Дані направлення'
+    ],
+    'get_data_access' => 'Отримати доступ до даних',
+    'get_access' => 'Отримати доступ',
+    'data_type' => 'Тип даних',
+    'diagnosis_group' => 'Група діагнозів',
+    'list_of_diagnosis_codes' => 'Список кодів діагнозів',
+    'coding' => 'Кодування',
+    'access_level' => 'Рівень доступу',
+    'read' => 'Читання',
+    'service_group' => 'Група послуг',
+    'list_of_services' => 'Список послуг',
+    'organization' => 'Організація',
+    'referral' => 'Направлення',
+    'electronic_referral' => 'Електронне направлення',
+    'status' => 'Статус',
+    'state' => 'Стан',
+    'category' => 'Категорія',
+    'service' => 'Послуга',
 ];
