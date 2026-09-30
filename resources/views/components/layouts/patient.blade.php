@@ -12,6 +12,7 @@
 @php
     use App\Models\DeclarationRequest;
     use App\Models\MedicalEvents\Sql\DetectedIssue;
+    use App\Models\MedicalEvents\Sql\DeviceAssociation;
     use App\Models\MedicalEvents\Sql\Encounter;
     use App\Models\Person\Person;
     use App\Models\Relations\PersonVerificationDetail;
@@ -164,12 +165,14 @@
                             </a>
                         @endif
 
-                        <a
-                            href="{{ route("$routePrefix.device-associations", [legalEntity(), $routeParamKey => $recordId]) }}"
-                            class="summary-tab {{ request()->routeIs("$routePrefix.device-associations") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
-                        >
-                            {{ __('device-associations.label') }}
-                        </a>
+                        @can('viewAny', DeviceAssociation::class)
+                            <a
+                                href="{{ route("$routePrefix.device-associations", [legalEntity(), $routeParamKey => $recordId]) }}"
+                                class="summary-tab {{ request()->routeIs("$routePrefix.device-associations") ? 'summary-tab-active' : 'summary-tab-inactive' }}"
+                            >
+                                {{ __('device-associations.label') }}
+                            </a>
+                        @endcan
 
                         @if ($prepersonId)
                             <a

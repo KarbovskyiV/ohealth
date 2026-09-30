@@ -15,4 +15,18 @@ enum Status: string
     case IMPLANTED = 'implanted';
     case EXPLANTED = 'explanted';
     case ENTERED_IN_ERROR = 'entered_in_error';
+
+    /**
+     * Badge class the status is displayed with.
+     *
+     * @return string
+     */
+    public function color(): string
+    {
+        return match ($this) {
+            self::ATTACHED, self::IMPLANTED => 'badge-green',
+            self::UNATTACHED, self::EXPLANTED => 'badge-dark',
+            self::ENTERED_IN_ERROR => 'badge-red'
+        };
+    }
 }

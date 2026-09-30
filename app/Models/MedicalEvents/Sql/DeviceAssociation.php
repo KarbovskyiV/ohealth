@@ -12,8 +12,10 @@ use App\Models\Preperson;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class DeviceAssociation extends Model
 {
@@ -26,19 +28,25 @@ class DeviceAssociation extends Model
         'device_id',
         'status',
         'explanatory_letter',
+        'status_reason_id',
         'body_site_id',
         'association_date',
         'recorded',
         'primary_source',
         'report_origin_id',
         'context_id',
-        'recorder_id'
+        'recorder_id',
+        'ehealth_inserted_at',
+        'ehealth_updated_at'
     ];
 
     protected $casts = [
         'status' => Status::class,
         'association_date' => EHealthDateCast::class,
-        'recorded' => EHealthTimestampCast::class
+        'recorded' => EHealthTimestampCast::class,
+        'primary_source' => 'boolean',
+        'ehealth_inserted_at' => EHealthTimestampCast::class,
+        'ehealth_updated_at' => EHealthTimestampCast::class
     ];
 
     protected $hidden = [
@@ -46,6 +54,7 @@ class DeviceAssociation extends Model
         'person_id',
         'preperson_id',
         'device_id',
+        'status_reason_id',
         'body_site_id',
         'report_origin_id',
         'context_id',
@@ -53,6 +62,48 @@ class DeviceAssociation extends Model
         'created_at',
         'updated_at'
     ];
+
+    protected function recordedDate(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::before((string) $this->recorded, ' ')
+        );
+    }
+
+    protected function recordedTime(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::after((string) $this->recorded, ' ')
+        );
+    }
+
+    protected function ehealthInsertedDate(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::before((string) $this->ehealthInsertedAt, ' ')
+        );
+    }
+
+    protected function ehealthInsertedTime(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::after((string) $this->ehealthInsertedAt, ' ')
+        );
+    }
+
+    protected function ehealthUpdatedDate(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::before((string) $this->ehealthUpdatedAt, ' ')
+        );
+    }
+
+    protected function ehealthUpdatedTime(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::after((string) $this->ehealthUpdatedAt, ' ')
+        );
+    }
 
     public function preperson(): BelongsTo
     {
@@ -84,6 +135,11 @@ class DeviceAssociation extends Model
         return $this->belongsTo(Identifier::class, 'recorder_id');
     }
 
+    public function statusReason(): BelongsTo
+    {
+        return $this->belongsTo(CodeableConcept::class, 'status_reason_id');
+    }
+
     /**
      * Scope to eager load all device association relationships.
      *
@@ -97,6 +153,7 @@ class DeviceAssociation extends Model
             'device.type.coding',
             'bodySite.coding',
             'reportOrigin.coding',
+            'statusReason.coding',
             'context.type.coding',
             'recorder.type.coding'
         ]);
@@ -143,5 +200,18 @@ class DeviceAssociation extends Model
             'context',
             static fn (Builder $identifier): Builder => $identifier->whereValue($encounterId)
         );
+    }
+
+    /**
+     * Order by most recently updated in eHealth first, keeping records without a timestamp last.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function recentlyUpdatedFirst(Builder $query): Builder
+    {
+        return $query->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('ehealth_updated_at');
     }
 }

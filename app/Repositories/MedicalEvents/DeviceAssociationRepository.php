@@ -101,18 +101,23 @@ class DeviceAssociationRepository extends BaseRepository
                 $reportOrigin = $this->syncCodeableConcept($existing, $data['report_origin'] ?? null, 'reportOrigin');
                 $context = $this->syncIdentifier($existing, $data['context'], 'context');
                 $recorder = $this->syncIdentifier($existing, $data['recorder'], 'recorder');
+                $statusReason = $this->syncCodeableConcept($existing, $data['status_reason'] ?? null, 'statusReason');
 
                 $associationData = [
                     $ownerColumn => $ownerId,
                     'device_id' => $device->id,
                     'status' => $data['status'],
+                    'explanatory_letter' => $data['explanatory_letter'] ?? null,
+                    'status_reason_id' => $statusReason?->id,
                     'body_site_id' => $bodySite?->id,
                     'association_date' => $data['association_date'] ?? null,
                     'recorded' => $data['recorded'],
                     'primary_source' => $data['primary_source'],
                     'report_origin_id' => $reportOrigin?->id,
                     'context_id' => $context->id,
-                    'recorder_id' => $recorder->id
+                    'recorder_id' => $recorder->id,
+                    'ehealth_inserted_at' => $data['ehealth_inserted_at'] ?? null,
+                    'ehealth_updated_at' => $data['ehealth_updated_at'] ?? null
                 ];
 
                 if ($existing) {

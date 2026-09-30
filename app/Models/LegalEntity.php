@@ -63,6 +63,7 @@ class LegalEntity extends Model
     public const string ENTITY_DEVICE = 'device_';
     public const string ENTITY_SPECIMEN = 'specimen_';
     public const string ENTITY_DETECTED_ISSUE = 'detected_issue_';
+    public const string ENTITY_DEVICE_ASSOCIATION = 'device_association_';
     public const string ENTITY_CONNECTION = 'connection_';
     public const string ENTITY_CONNECTION_CLIENT = 'connection_client_';
 
