@@ -24,6 +24,7 @@ use App\Livewire\Episode\EpisodeIndex;
 use App\Livewire\Episode\EpisodeView;
 use App\Livewire\Immunization\ImmunizationIndex;
 use App\Livewire\Observation\ObservationIndex;
+use App\Livewire\Observation\ObservationView;
 use App\Livewire\Person\PatientVerifications;
 use App\Livewire\Person\PersonCreate;
 use App\Livewire\Person\PersonIndex;
@@ -129,6 +130,10 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
                     ->name('prescription-requests.view');
                 Route::get('/{person}/referrals', PatientReferrals::class)->name('referrals');
                 Route::get('/{person}/observations', ObservationIndex::class)->name('observations');
+                Route::get('/{person}/observations/{observationId}', ObservationView::class)
+                    ->whereNumber('observationId')
+                    ->withoutScopedBindings()
+                    ->name('observations.view');
                 Route::get('/{person}/immunizations', ImmunizationIndex::class)->name('immunizations');
                 Route::get('/{person}/conditions', ConditionIndex::class)->name('conditions');
                 Route::get('/{person}/diagnostic-reports', DiagnosticReportIndex::class)->name('diagnostic-reports');
@@ -266,6 +271,11 @@ Route::prefix('prepersons')
         Route::get('/{preperson}/observations', ObservationIndex::class)
             ->can('view', 'preperson')
             ->name('observations');
+        Route::get('/{preperson}/observations/{observationId}', ObservationView::class)
+            ->can('view', 'preperson')
+            ->whereNumber('observationId')
+            ->withoutScopedBindings()
+            ->name('observations.view');
         Route::get('/{preperson}/immunizations', ImmunizationIndex::class)
             ->can('view', 'preperson')
             ->name('immunizations');
