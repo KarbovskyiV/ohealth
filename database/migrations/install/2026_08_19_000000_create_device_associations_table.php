@@ -27,6 +27,7 @@ return new class extends Migration
             $table->string('explanatory_letter')
                 ->nullable()
                 ->comment('Reason the association was marked as entered in error');
+            $table->foreignId('status_reason_id')->nullable()->constrained('codeable_concepts');
             $table->foreignId('body_site_id')->nullable()->constrained('codeable_concepts');
             $table->date('association_date')->nullable();
             $table->timestamp('recorded');
@@ -34,6 +35,8 @@ return new class extends Migration
             $table->foreignId('report_origin_id')->nullable()->constrained('codeable_concepts');
             $table->foreignId('context_id')->constrained('identifiers');
             $table->foreignId('recorder_id')->constrained('identifiers');
+            $table->timestamp('ehealth_inserted_at')->nullable();
+            $table->timestamp('ehealth_updated_at')->nullable();
             $table->timestamps();
         });
     }

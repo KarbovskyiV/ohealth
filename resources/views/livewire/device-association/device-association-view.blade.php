@@ -1,10 +1,10 @@
 @php
-    use App\Models\MedicalEvents\Sql\DetectedIssue;
+    use App\Models\MedicalEvents\Sql\DeviceAssociation;
 
-    $title = $deviceName ?? __('detected-issues.label');
-    $codeCode = $detectedIssue->code?->coding->first()?->code;
-    $reportOriginCode = $detectedIssue->reportOrigin?->coding->first()?->code;
-    $statusReasonCode = $detectedIssue->statusReason?->coding->first()?->code;
+    $title = $deviceName ?? __('device-associations.label');
+    $bodySiteCode = $deviceAssociation->bodySite?->coding->first()?->code;
+    $reportOriginCode = $deviceAssociation->reportOrigin?->coding->first()?->code;
+    $statusReasonCode = $deviceAssociation->statusReason?->coding->first()?->code;
 @endphp
 
 <div>
@@ -13,7 +13,7 @@
             <x-slot name="title">{{ $title }}</x-slot>
 
             <x-slot name="actions">
-                @can('view', DetectedIssue::class)
+                @can('view', DeviceAssociation::class)
                     <button
                         wire:click.prevent="sync"
                         type="button"
@@ -40,7 +40,7 @@
                             value="{{ $deviceName ?? '-' }}"
                             disabled
                         />
-                        <label for="deviceName" class="label">{{ __('detected-issues.device') }}</label>
+                        <label for="deviceName" class="label">{{ __('device-associations.device') }}</label>
                     </div>
                     <div class="form-group group">
                         <input
@@ -48,10 +48,10 @@
                             name="deviceId"
                             id="deviceId"
                             class="input peer"
-                            value="{{ $detectedIssue->subject?->value ?? '-' }}"
+                            value="{{ $deviceAssociation->device?->value ?? '-' }}"
                             disabled
                         />
-                        <label for="deviceId" class="label">{{ __('detected-issues.device_id') }}</label>
+                        <label for="deviceId" class="label">{{ __('device-associations.device_id') }}</label>
                     </div>
                 </div>
 
@@ -62,21 +62,53 @@
                             name="status"
                             id="status"
                             class="input peer"
-                            value="{{ $dictionaries['detected_issue_statuses'][$detectedIssue->status->value] }}"
+                            value="{{ $dictionaries['device_association_statuses'][$deviceAssociation->status->value] }}"
                             disabled
                         />
-                        <label for="status" class="label">{{ __('detected-issues.status') }}</label>
+                        <label for="status" class="label">{{ __('device-associations.association_status') }}</label>
+                    </div>
+                    <div class="form-group group">
+                        <div class="datepicker-wrapper">
+                            <input
+                                type="text"
+                                name="associationDate"
+                                id="associationDate"
+                                class="datepicker-input with-leading-icon input peer"
+                                value="{{ $deviceAssociation->associationDate ?: '-' }}"
+                                placeholder=" "
+                                disabled
+                            />
+                            <label for="associationDate" class="wrapped-label">
+                                {{ __('device-associations.association_date_short') }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group group">
+                        <input
+                            type="text"
+                            name="bodySite"
+                            id="bodySite"
+                            class="input peer"
+                            value="{{ data_get($dictionaries, 'eHealth/body_structures.' . $bodySiteCode) ?? '-' }}"
+                            disabled
+                        />
+                        <label for="bodySite" class="label">{{ __('device-associations.body_site') }}</label>
                     </div>
                     <div class="form-group group">
                         <input
                             type="text"
-                            name="code"
-                            id="code"
+                            name="bodySiteText"
+                            id="bodySiteText"
                             class="input peer"
-                            value="{{ data_get($dictionaries, 'detected_issue_codes.' . $codeCode) ?? '-' }}"
+                            value="{{ $deviceAssociation->bodySite?->text ?: '-' }}"
                             disabled
                         />
-                        <label for="code" class="label">{{ __('detected-issues.type') }}</label>
+                        <label for="bodySiteText" class="label">
+                            {{ __('device-associations.body_site_comment') }}
+                        </label>
                     </div>
                 </div>
 
@@ -85,15 +117,15 @@
                         <div class="datepicker-wrapper">
                             <input
                                 type="text"
-                                name="identifiedDate"
-                                id="identifiedDate"
+                                name="recordedDate"
+                                id="recordedDate"
                                 class="datepicker-input with-leading-icon input peer"
-                                value="{{ $detectedIssue->identifiedDate ?: '-' }}"
+                                value="{{ $deviceAssociation->recordedDate ?: '-' }}"
                                 placeholder=" "
                                 disabled
                             />
-                            <label for="identifiedDate" class="wrapped-label">
-                                {{ __('detected-issues.identified_at') }}
+                            <label for="recordedDate" class="wrapped-label">
+                                {{ __('device-associations.recorded') }}
                             </label>
                         </div>
                     </div>
@@ -102,28 +134,15 @@
                             @icon('mingcute-time-fill', 'svg-input left-2.5')
                             <input
                                 type="text"
-                                name="identifiedTime"
-                                id="identifiedTime"
+                                name="recordedTime"
+                                id="recordedTime"
                                 class="input peer pl-10!"
-                                value="{{ $detectedIssue->identifiedTime ?: '-' }}"
+                                value="{{ $deviceAssociation->recordedTime ?: '-' }}"
                                 placeholder=" "
                                 disabled
                             />
-                            <label for="identifiedTime" class="sr-only">{{ __('forms.time') }}</label>
+                            <label for="recordedTime" class="sr-only">{{ __('forms.time') }}</label>
                         </div>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group group">
-                        <label for="detail" class="label-modal mb-1">{{ __('detected-issues.detail') }}</label>
-                        <textarea
-                            name="detail"
-                            id="detail"
-                            class="textarea"
-                            disabled
-                            rows="3"
-                        >{{ $detectedIssue->detail }}</textarea>
                     </div>
                 </div>
 
@@ -135,10 +154,12 @@
                                 name="statusReason"
                                 id="statusReason"
                                 class="input peer"
-                                value="{{ $dictionaries['detected_issue_status_reasons'][$statusReasonCode] }}"
+                                value="{{ $dictionaries['device_association_status_reasons'][$statusReasonCode] }}"
                                 disabled
                             />
-                            <label for="statusReason" class="label">{{ __('detected-issues.status_reason') }}</label>
+                            <label for="statusReason" class="label">
+                                {{ __('device-associations.status_reason') }}
+                            </label>
                         </div>
                     </div>
                 @endif
@@ -146,7 +167,7 @@
                 <div class="form-row">
                     <div class="form-group group">
                         <label for="explanatoryLetter" class="label-modal mb-1">
-                            {{ __('detected-issues.explanatory_letter') }}
+                            {{ __('device-associations.explanatory_letter') }}
                         </label>
                         <textarea
                             name="explanatoryLetter"
@@ -154,7 +175,7 @@
                             class="textarea"
                             disabled
                             rows="3"
-                        >{{ $detectedIssue->explanatoryLetter }}</textarea>
+                        >{{ $deviceAssociation->explanatoryLetter }}</textarea>
                     </div>
                 </div>
 
@@ -165,7 +186,7 @@
                             name="encounterId"
                             id="encounterId"
                             class="input peer"
-                            value="{{ $detectedIssue->encounter?->value ?? '-' }}"
+                            value="{{ $deviceAssociation->context?->value ?? '-' }}"
                             disabled
                         />
                         <label for="encounterId" class="label">{{ __('patients.encounter_id') }}</label>
@@ -173,13 +194,13 @@
                     <div class="form-group group">
                         <input
                             type="text"
-                            name="detectedIssueId"
-                            id="detectedIssueId"
+                            name="deviceAssociationId"
+                            id="deviceAssociationId"
                             class="input peer"
-                            value="{{ $detectedIssue->uuid }}"
+                            value="{{ $deviceAssociation->uuid }}"
                             disabled
                         />
-                        <label for="detectedIssueId" class="label">{{ __('detected-issues.id') }}</label>
+                        <label for="deviceAssociationId" class="label">{{ __('device-associations.id') }}</label>
                     </div>
                 </div>
             </fieldset>
@@ -191,58 +212,19 @@
                     <div class="form-group group">
                         <input
                             type="text"
-                            name="implicatedDevice"
-                            id="implicatedDevice"
-                            class="input peer"
-                            value="{{ $implicatedDeviceName ?? $detectedIssue->implicated?->value ?? '-' }}"
-                            disabled
-                        />
-                        <label
-                            for="implicatedDevice"
-                            class="label"
-                        >{{ __('detected-issues.implicated_device') }}</label>
-                    </div>
-                    <div class="form-group group">
-                        <input
-                            type="text"
-                            name="basedOn"
-                            id="basedOn"
-                            class="input peer"
-                            value="{{ $detectedIssue->basedOn?->value ?? '-' }}"
-                            disabled
-                        />
-                        <label for="basedOn" class="label">{{ __('detected-issues.based_on') }}</label>
-                    </div>
-                </div>
-
-                <div class="form-row-2">
-                    <div class="form-group group">
-                        <input
-                            type="text"
                             name="recorder"
                             id="recorder"
                             class="input peer"
-                            value="{{ $detectedIssue->recorder?->displayValue ?? $detectedIssue->recorder?->value ?? '-' }}"
+                            value="{{ $deviceAssociation->recorder?->displayValue ?? $deviceAssociation->recorder?->value ?? '-' }}"
                             disabled
                         />
-                        <label for="recorder" class="label">{{ __('detected-issues.recorder') }}</label>
-                    </div>
-                    <div class="form-group group">
-                        <input
-                            type="text"
-                            name="author"
-                            id="author"
-                            class="input peer"
-                            value="{{ $detectedIssue->author?->displayValue ?? $detectedIssue->author?->value ?? '-' }}"
-                            disabled
-                        />
-                        <label for="author" class="label">{{ __('detected-issues.author') }}</label>
+                        <label for="recorder" class="label">{{ __('device-associations.recorder') }}</label>
                     </div>
                 </div>
 
                 <div
                     class="form-row-2 mb-4"
-                    x-data="{ isOtherSource: {{ $detectedIssue->primarySource ? 'false' : 'true' }} }"
+                    x-data="{ isOtherSource: {{ $deviceAssociation->primarySource ? 'false' : 'true' }} }"
                 >
                     <div class="form-group group">
                         <div class="flex items-center gap-4 pt-2">
@@ -285,7 +267,7 @@
                                 name="ehealthInsertedDate"
                                 id="ehealthInsertedDate"
                                 class="datepicker-input with-leading-icon input peer"
-                                value="{{ $detectedIssue->ehealthInsertedDate ?: '-' }}"
+                                value="{{ $deviceAssociation->ehealthInsertedDate ?: '-' }}"
                                 placeholder=" "
                                 disabled
                             />
@@ -302,7 +284,7 @@
                                 name="ehealthInsertedTime"
                                 id="ehealthInsertedTime"
                                 class="input peer pl-10!"
-                                value="{{ $detectedIssue->ehealthInsertedTime ?: '-' }}"
+                                value="{{ $deviceAssociation->ehealthInsertedTime ?: '-' }}"
                                 placeholder=" "
                                 disabled
                             />
@@ -319,7 +301,7 @@
                                 name="ehealthUpdatedDate"
                                 id="ehealthUpdatedDate"
                                 class="datepicker-input with-leading-icon input peer"
-                                value="{{ $detectedIssue->ehealthUpdatedDate ?: '-' }}"
+                                value="{{ $deviceAssociation->ehealthUpdatedDate ?: '-' }}"
                                 placeholder=" "
                                 disabled
                             />
@@ -336,7 +318,7 @@
                                 name="ehealthUpdatedTime"
                                 id="ehealthUpdatedTime"
                                 class="input peer pl-10!"
-                                value="{{ $detectedIssue->ehealthUpdatedTime ?: '-' }}"
+                                value="{{ $deviceAssociation->ehealthUpdatedTime ?: '-' }}"
                                 placeholder=" "
                                 disabled
                             />
@@ -348,7 +330,7 @@
 
             <div class="mt-8">
                 <a
-                    href="{{ $personId ? route('persons.device-issues', [legalEntity(), 'person' => $personId]) : route('prepersons.device-issues', [legalEntity(), 'preperson' => $prepersonId]) }}"
+                    href="{{ $personId ? route('persons.device-associations', [legalEntity(), 'person' => $personId]) : route('prepersons.device-associations', [legalEntity(), 'preperson' => $prepersonId]) }}"
                     class="button-minor px-6 py-2"
                 >{{ __('forms.back') }}</a>
             </div>
