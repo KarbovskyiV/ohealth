@@ -155,7 +155,7 @@ class LegalEntitiesForms extends BaseForm
             'accreditation.issuedDate' => ['nullable', new DateFormat(), 'before_or_equal:today'],
             'accreditation.expiryDate' => ['nullable', new DateFormat(), new ExpiryDate($this->accreditation['issuedDate'] ?? '')],
             'license.type' => 'required|string',
-            'license.issuedBy' => ['required', 'string','min:3',new Cyrillic()],
+            'license.issuedBy' => ['required', 'string'],
             'license.issuedDate' => ['required', new DateFormat(), 'before_or_equal:today'],
             'license.activeFromDate' => ['required', new DateFormat()],
             'license.expiryDate' => ['nullable', new DateFormat(), new ExpiryDate($this->license['activeFromDate'] ?? '')],

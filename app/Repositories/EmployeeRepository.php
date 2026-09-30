@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use App\Enums\Employee\RequestStatus;
 use App\Models\Employee\EmployeeRequest;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 readonly class EmployeeRepository
 {
@@ -94,9 +95,9 @@ readonly class EmployeeRepository
      * Builds a query for parties linked to employees of a legal entity, ordered by latest employee activity.
      *
      * @param  int  $legalEntityId
-     * @return Builder
+     * @return Builder|QueryBuilder
      */
-    public function getPartiesWithLatestActivityQuery(int $legalEntityId): Builder
+    public function getPartiesWithLatestActivityQuery(int $legalEntityId): Builder|QueryBuilder
     {
         $employeesQuery = Employee::selectRaw('party_id, MAX(updated_at) as last_employee_at')
             ->where('legal_entity_id', $legalEntityId)
@@ -124,6 +125,8 @@ readonly class EmployeeRepository
      * 2. If user already has a party, update it.
      * 3. If user does not have a party, but there is a party with the same UUID, update it and establish the relation.
      * 4. If neither of the above, create a new party and establish the relation.
+     * 5. If the model is linked to a different Party than the one that already owns this UUID,
+     *    relink to that Party and update it. Never copy the UUID onto the currently linked row.
      */
     protected function updatePartyByUuid(Employee|EmployeeRequest $model, array $party): void
     {
@@ -149,17 +152,24 @@ readonly class EmployeeRepository
             // Both the model and the party exist, check if they are the same
         } elseif ($partyByUuid && $model->party) {
 
-            // uuid is the same, just update
-            if ($partyByUuid->uuid === $model->party->uuid) {
+            // If both the ID and UUID are the same, just update
+            if ($partyByUuid->id === $model->party->id && $partyByUuid->uuid === $model->party->uuid) {
                 $model->party()->update($party);
             } else {
-                // Different uuid, need to merge the results, prioritizing the eHealth data
-                $model->party()->update($party);
+                // party()->update() is a mass update constrained to the current party_id
+                // at the moment party() is called. Writing this payload there copies the
+                // eHealth UUID onto the draft row and hits parties_uuid_unique.
+                // Relink first, then update the row that already owns the UUID.
+                $previousPartyUuid = $model->party->uuid;
+
+                $model->party()->associate($partyByUuid)->save();
+                $partyByUuid->update($party);
 
                 Log::warning('Potential party merge scenario detected', [
-                    'model_party_uuid' => $model->party->uuid,
+                    'model_party_uuid' => $previousPartyUuid,
                     'ehealth_party_uuid' => $partyByUuid->uuid,
-                    'updated_with_ehealth_data' => true
+                    'updated_with_ehealth_data' => true,
+                    'relinked_to_existing_party' => true,
                 ]);
             }
         }

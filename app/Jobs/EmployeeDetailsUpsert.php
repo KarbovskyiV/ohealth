@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Exceptions\EHealth\EHealthConnectionException;
 use Throwable;
 use App\Core\Arr;
 use Carbon\Carbon;
@@ -23,6 +22,7 @@ use App\Models\Employee\EmployeeRequest;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\Middleware\RateLimited;
+use App\Exceptions\EHealth\EHealthConnectionException;
 
 class EmployeeDetailsUpsert extends EHealthJob
 {
