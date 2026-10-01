@@ -203,7 +203,7 @@ class EmployeeCreate
 
                         // Just overcautiousness
                         if ($currentOwnerUser) {
-                            Repository::legalEntity()->disableOldOwner($currentOwnerUser, $event->legalEntity);
+                            Repository::legalEntity()->disableOldOwner($currOwner, $user->id, $event->legalEntity);
                         } else {
                             Log::error('[EmployeeCreate] User not found for current owner.', [
                                'user_id' => $currOwner->userId,

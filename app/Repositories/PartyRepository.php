@@ -35,6 +35,16 @@ class PartyRepository
 
         $employeesWithUser = $partyEmployees->filter(fn(Employee $employee) => $employee->user_id !== null);
 
+        // Users whose own OWNER employee was explicitly stopped (e.g. by disableOldOwner()
+        // during an owner replacement) must not reacquire OWNER through another employee
+        // in the party, even though role sharing is otherwise symmetric for all party users.
+        $stoppedOwnerUserIds = Employee::where('legal_entity_id', $legalEntity->id)
+            ->where('party_id', $party->id)
+            ->where('employee_type', Role::OWNER->value)
+            ->where('status', Status::STOPPED->value)
+            ->whereNotNull('user_id')
+            ->pluck('user_id');
+
         // Get all users that are linked to the party through employees with user_id or through employee_users pivot
         $partyUsers = User::allRelated($party->id, $legalEntity->id)->get();
 
@@ -59,15 +69,29 @@ class PartyRepository
                 continue;
             }
 
-            $employeesFiltered = $employeesWithUser->filter(fn(Employee $employee) => $employee->isCreatedAtOrAfter($user->insertedAt));
+            // Only pair this user with employees inserted on/after their own registration:
+            // older users pick up newer party employees automatically, but a newly created
+            // user must not retroactively gain access to employees that predate them.
+            // OWNER employees are exempt from this sharing entirely: they must only ever be
+            // paired with the user_id actually attached to that OWNER employee record.
+            $employeesFiltered = $employeesWithUser->filter(fn(Employee $employee) => $employee->employeeType === Role::OWNER->value
+                ? $employee->user_id === $user->id
+                : $employee->isCreatedAtOrAfter($user->insertedAt));
 
             $employeesCandidatesToSync = array_merge($employeesCandidatesToSync, $employeesFiltered->map(fn(Employee $employee) => ['employee_id' => $employee->id, 'user_id' => $user->id])->all());
 
             // Current Roles for the $user
             $oldRoles = $user->loadMissing('roles')->roles->pluck('name')->all();
 
-            // Get all suitable roles based on the employee types of the user's party employees
+            // Get all suitable roles based on the employee types of the user's party employees,
+            // limited the same way (older users inherit newer employees' roles, not vice versa).
+            // Additionally: a user who was previously stopped as OWNER must not inherit OWNER
+            // from someone else's employee record — their own currently-approved OWNER employee
+            // (if any) is never excluded.
             $availRoles = $partyEmployees->filter(fn(Employee $employee) => $employee->isCreatedAtOrAfter($user->insertedAt))
+                ->reject(fn(Employee $employee) => $employee->employeeType === Role::OWNER->value
+                    && $employee->user_id !== $user->id
+                    && $stoppedOwnerUserIds->contains($user->id))
                 ->map(fn(Employee $employee) => $employee->employeeType)
                 ->unique()
                 ->values()
@@ -130,7 +154,11 @@ class PartyRepository
 
         // Perform the actual sync: delete removed relations
         if (!empty($employeesToDelete)) {
-            DB::table('employee_users')->where('employee_id', array_column($employeesToDelete, 'employee_id'))->where('user_id', array_column($employeesToDelete, 'user_id'))->delete();
+            DB::table('employee_users')->where(function ($query) use ($employeesToDelete) {
+                foreach ($employeesToDelete as $pair) {
+                    $query->orWhere(fn ($q) => $q->where('employee_id', $pair['employee_id'])->where('user_id', $pair['user_id']));
+                }
+            })->delete();
         }
 
         // Perform the actual sync: add new relations
