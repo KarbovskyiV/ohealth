@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models\MedicalEvents\Sql;
 
+use App\Abac\Rule2ManagingOrganization;
 use App\Casts\EHealthTimestampCast;
 use App\Enums\Episode\Status;
+use App\Enums\Person\MergedPersonStatus;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use Eloquence\Behaviours\HasCamelCasing;
@@ -157,9 +159,7 @@ class Episode extends Model
     }
 
     /**
-     * Filter out the episodes known to be managed by another legal entity.
-     * The short episode endpoint does not return a managing organization, so those episodes are kept:
-     * without it there is nothing to tell them apart from the ones of the current legal entity.
+     * Filter out the episodes known to be managed by another legal entity, as ABAC rule 2 decides.
      *
      * @param  Builder  $query
      * @return Builder
@@ -167,13 +167,35 @@ class Episode extends Model
     #[Scope]
     protected function forLegalEntity(Builder $query): Builder
     {
+        // Models are not built by the container, so the rule is resolved from it here
+        return app(Rule2ManagingOrganization::class)->apply($query, legalEntity());
+    }
+
+    /**
+     * Episodes of the patient the user may read: with access to all the patient's data (an active declaration or
+     * approval) all of them, including the ones of the persons and prepersons merged into the patient, otherwise only
+     * the patient's own ones of the current legal entity.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  bool  $hasPatientAccess
+     * @return Builder
+     */
+    #[Scope]
+    protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
+    {
+        if (!$hasPatientAccess || $patient instanceof Preperson) {
+            return $query->forPatient($patient)->forLegalEntity();
+        }
+
+        $mergedPersons = $patient->mergedPersons()
+            ->whereStatus(MergedPersonStatus::MERGED)
+            ->get(['merged_person_id', 'merged_preperson_id']);
+
         return $query->where(
-            static fn (Builder $episode): Builder => $episode
-                ->whereNull('managing_organization_id')
-                ->orWhereHas(
-                    'managingOrganization',
-                    static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
-                )
+            static fn (Builder $episode): Builder => $episode->wherePersonId($patient->id)
+                ->orWhereIn('person_id', $mergedPersons->pluck('mergedPersonId')->filter()->all())
+                ->orWhereIn('preperson_id', $mergedPersons->pluck('mergedPrepersonId')->filter()->all())
         );
     }
 

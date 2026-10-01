@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Abac\Rule1Declaration;
+use App\Abac\Rule4Approval;
 use App\Core\EHealthJob;
+use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\Person\Person;
 use App\Models\Preperson;
@@ -42,12 +45,18 @@ class EpisodeFullSync extends EHealthJob
      */
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse
     {
+        $employees = Employee::forUserInLegalEntity($this->user, $this->legalEntity)->get(['id', 'uuid']);
+
+        // Resolved from the container, as the batch creates the job itself and handle() overrides a method without parameters
+        $hasPatientAccess = app(Rule1Declaration::class)->allows($employees, $this->patient(), $this->legalEntity)
+            || app(Rule4Approval::class)->allows($employees, $this->patient());
+
         return EHealth::episode()
             ->withToken($token)
-            ->getBySearchParams($this->patientUuid, [
-                'managing_organization_id' => $this->legalEntity->uuid,
+            ->getBySearchParams($this->patientUuid, array_filter([
+                'managing_organization_id' => $hasPatientAccess ? null : $this->legalEntity->uuid,
                 'page' => $this->page
-            ]);
+            ]));
     }
 
     /**
@@ -63,11 +72,19 @@ class EpisodeFullSync extends EHealthJob
             return;
         }
 
-        $patient = $this->prepersonId !== null
+        Repository::episode()->syncFull($this->patient(), $validatedData);
+    }
+
+    /**
+     * Patient the batch was started for.
+     *
+     * @return Person|Preperson
+     */
+    protected function patient(): Person|Preperson
+    {
+        return $this->prepersonId !== null
             ? Preperson::findOrFail($this->prepersonId)
             : Person::findOrFail($this->personId);
-
-        Repository::episode()->syncFull($patient, $validatedData);
     }
 
     /**

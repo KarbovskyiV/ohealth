@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Episode;
 
+use App\Abac\Rule1Declaration;
+use App\Abac\Rule4Approval;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\Episode\Status;
@@ -15,6 +17,7 @@ use App\Jobs\EpisodeFullSync;
 use App\Livewire\Episode\Forms\EpisodeCancellationForm;
 use App\Livewire\Episode\Forms\EpisodeClosingForm;
 use App\Livewire\Person\Records\BasePatientComponent;
+use App\Models\Employee\Employee;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
@@ -30,6 +33,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
 use Throwable;
 
@@ -70,11 +74,40 @@ class EpisodeIndex extends BasePatientComponent
      */
     public array $icd10Results = [];
 
+    /**
+     * Whether the user has an active declaration or approval on the patient, which opens the episodes of every legal entity.
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $hasPatientAccess = false;
+
+    protected Rule1Declaration $rule1Declaration;
+
+    protected Rule4Approval $rule4Approval;
+
+    /**
+     * Inject the ABAC rules the access to the patient's episodes is decided by.
+     *
+     * @param  Rule1Declaration  $rule1Declaration
+     * @param  Rule4Approval  $rule4Approval
+     * @return void
+     */
+    public function boot(Rule1Declaration $rule1Declaration, Rule4Approval $rule4Approval): void
+    {
+        $this->rule1Declaration = $rule1Declaration;
+        $this->rule4Approval = $rule4Approval;
+    }
+
     protected function initializeComponent(): void
     {
         $this->getDictionary();
 
         $this->syncStatus = legalEntity()->getEntityStatus(LegalEntity::ENTITY_EPISODE) ?? '';
+        $employees = Employee::forUserInLegalEntity(Auth::user(), legalEntity())->get(['id', 'uuid']);
+
+        $this->hasPatientAccess = $this->rule1Declaration->allows($employees, $this->patient(), legalEntity())
+            || $this->rule4Approval->allows($employees, $this->patient());
     }
 
     #[Computed]
@@ -125,7 +158,7 @@ class EpisodeIndex extends BasePatientComponent
         try {
             $response = EHealth::episode()->getBySearchParams(
                 $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
+                $this->hasPatientAccess ? [] : ['managing_organization_id' => legalEntity()->uuid]
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing episodes');
@@ -216,8 +249,7 @@ class EpisodeIndex extends BasePatientComponent
      */
     protected function paginateLocalEpisodes(): LengthAwarePaginator
     {
-        $paginator = Episode::forPatient($this->patient())
-            ->forLegalEntity()
+        $paginator = Episode::readableFor($this->patient(), $this->hasPatientAccess)
             ->with(['period', 'managingOrganization.type.coding', 'careManager.type.coding'])
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));
@@ -247,7 +279,7 @@ class EpisodeIndex extends BasePatientComponent
             'status' => $this->filterStatus ?: null,
             'period_from' => convertToYmd($period[0] ?? ''),
             'period_to' => convertToYmd($period[1] ?? ''),
-            'managing_organization_id' => legalEntity()->uuid,
+            'managing_organization_id' => $this->hasPatientAccess ? null : legalEntity()->uuid,
             'page' => $page,
             'page_size' => $perPage
         ]);
@@ -311,7 +343,7 @@ class EpisodeIndex extends BasePatientComponent
      */
     private function findOrPullEpisode(string $id): ?Episode
     {
-        $episode = Episode::forPatient($this->patient())->forLegalEntity()->whereUuid($id)->first();
+        $episode = Episode::readableFor($this->patient(), $this->hasPatientAccess)->whereUuid($id)->first();
 
         if ($episode !== null) {
             return $episode;
@@ -330,7 +362,7 @@ class EpisodeIndex extends BasePatientComponent
             return null;
         }
 
-        return Episode::forPatient($this->patient())->forLegalEntity()->whereUuid($id)->first();
+        return Episode::readableFor($this->patient(), $this->hasPatientAccess)->whereUuid($id)->first();
     }
 
     /**

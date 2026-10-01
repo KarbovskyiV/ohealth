@@ -4,24 +4,61 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Abac\Rule1Declaration;
+use App\Abac\Rule4Approval;
+use App\Abac\Rule5EpisodeApproval;
 use App\Enums\Episode\Status;
 use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\Episode;
+use App\Models\Person\Person;
+use App\Models\Preperson;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-class EpisodePolicy
+readonly class EpisodePolicy
 {
     /**
-     * Determine whether the user can view the episode.
+     * Inject the ABAC rules the episode access is decided by.
      */
-    public function view(User $user): Response
+    public function __construct(
+        private Rule1Declaration $rule1Declaration,
+        private Rule4Approval $rule4Approval,
+        private Rule5EpisodeApproval $rule5EpisodeApproval
+    ) {
+    }
+
+    /**
+     * Determine whether the user can search the episodes.
+     */
+    public function viewAny(User $user): Response
     {
         if ($user->cannot('episode:read')) {
             return Response::denyWithStatus(404);
         }
 
         return Response::allow();
+    }
+
+    /**
+     * Determine whether the user can view the episode of the patient: one of the episodes the user may read, or
+     * the patient's episode with an approval on it, whichever legal entity manages it.
+     */
+    public function view(User $user, Episode $episode, Person|Preperson $patient): Response
+    {
+        if ($user->cannot('episode:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        $employees = Employee::forUserInLegalEntity($user, legalEntity())->get(['id', 'uuid']);
+
+        $hasPatientAccess = $this->rule1Declaration->allows($employees, $patient, legalEntity())
+            || $this->rule4Approval->allows($employees, $patient);
+
+        $isReadable = Episode::readableFor($patient, $hasPatientAccess)->whereKey($episode->id)->exists()
+            || ($this->rule5EpisodeApproval->allows($employees, $episode, legalEntity())
+                && Episode::forPatient($patient)->whereKey($episode->id)->exists());
+
+        return $isReadable ? Response::allow() : Response::denyWithStatus(404);
     }
 
     /**
