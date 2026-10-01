@@ -8,6 +8,7 @@ use App\Core\Arr;
 use App\Models\Division;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Procedure;
+use App\Models\MedicalEvents\Sql\Device;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
@@ -71,6 +72,33 @@ class ProcedureEdit extends ProcedureComponent
         );
 
         $this->form->procedure = Fhir::procedure()->fromFhir($procedureData, $detailsMap);
+
+        $focalDeviceIds = collect($this->form->procedure['focalDevice'] ?? [])
+            ->pluck('manipulatedId')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if (!empty($this->form->procedure['encounterId']) && $focalDeviceIds->isNotEmpty()) {
+            $focalDevices = Device::forPatient($this->patient())
+                ->whereIn('uuid', $focalDeviceIds)
+                ->with('names')
+                ->get()
+                ->keyBy('uuid');
+
+            $this->form->procedure['focalDevice'] = collect($this->form->procedure['focalDevice'])
+                ->map(static function (array $focalDevice) use ($focalDevices): array {
+                    $device = $focalDevices->get($focalDevice['manipulatedId']);
+
+                    return [
+                        ...$focalDevice,
+                        'name' => $device?->names->first()?->value ?? '',
+                        'serialNumber' => $device?->serialNumber ?? '',
+                        'statusLabel' => $device?->status->label() ?? ''
+                    ];
+                })
+                ->toArray();
+        }
 
         if (!empty($this->form->procedure['basedOnIdentifier'])) {
             $this->form->procedure['isReferralAvailable'] = true;

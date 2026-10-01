@@ -174,6 +174,7 @@
                                 :patient-uuid="$patientUuid"
                                 selection-event="procedure-reason-reference-selected"
                                 is-added-check="isReasonReferenceAdded"
+                                :episodes="$episodes"
                                 :key="'procedure-reason-reference-search'"
                             />
 

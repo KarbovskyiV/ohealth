@@ -93,6 +93,52 @@
         <fieldset @disabled($isReadonly) @class(['pointer-events-none opacity-80' => $isReadonly])>
             @include('livewire.encounter.procedure-parts.main-information', ['context' => 'procedure'])
             @include('livewire.encounter.procedure-parts.additional-information', ['context' => 'procedure'])
+            @if ($isReadonly && !empty(data_get($this->form->procedure, 'encounterId')) && !empty(data_get($this->form->procedure, 'focalDevice')))
+                <fieldset class="fieldset">
+                    <legend class="legend">{{ __('procedures.associated_medical_device') }}</legend>
+
+                    <div class="space-y-4">
+                        @foreach (data_get($this->form->procedure, 'focalDevice', []) as $focalDevice)
+                            <div class="form-row-2">
+                                <div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ __('procedures.medical_device') }}
+                                    </div>
+                                    <div class="mt-1 text-sm text-gray-900 dark:text-white">
+                                        {{ data_get($focalDevice, 'name') ?: '—' }}
+                                    </div>
+
+                                    @if (data_get($focalDevice, 'serialNumber') || data_get($focalDevice, 'statusLabel'))
+                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            @if (data_get($focalDevice, 'serialNumber'))
+                                                SN: {{ data_get($focalDevice, 'serialNumber') }}.
+                                            @endif
+                                            @if (data_get($focalDevice, 'statusLabel'))
+                                                {{ __('forms.status.label') }}: {{ data_get($focalDevice, 'statusLabel') }}
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ __('procedures.medical_device_action') }}
+                                    </div>
+                                    <div class="mt-1 text-sm text-gray-900 dark:text-white">
+                                        {{
+                                            data_get(
+                                                $this->dictionaries,
+                                                'procedure_focal_device_actions.' . data_get($focalDevice, 'actionCode'),
+                                                '—'
+                                            )
+                                        }}
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </fieldset>
+            @endif
             @include('livewire.encounter.procedure-parts.reason-references')
             @include('livewire.encounter.procedure-parts.used-codes')
             @if (!empty(data_get($this->form->procedure, 'encounterId')))

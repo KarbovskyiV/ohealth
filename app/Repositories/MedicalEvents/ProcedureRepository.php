@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\MedicalEvents;
 
 use App\Models\MedicalEvents\Sql\Procedure;
+use App\Models\MedicalEvents\Sql\FocalDevice;
 use App\Models\Employee\Employee;
 use App\Models\Person\Person;
 use App\Models\Preperson;
@@ -221,6 +222,10 @@ class ProcedureRepository extends BaseRepository
                     $procedure->usedReferences()->attach($usedReferenceIds);
                 }
 
+                if (!empty($datum['focalDevice'])) {
+                    $this->storeFocalDevices($procedure, $datum['focalDevice']);
+                }
+
                 $procedureId = $procedure->id;
             }
 
@@ -253,6 +258,8 @@ class ProcedureRepository extends BaseRepository
             'usedCodes.coding',
             'performedPeriod',
             'usedReferences.type.coding',
+            'focalDevices.action.coding',
+            'focalDevices.manipulated.type.coding',
         ])
             ->whereHas('encounter', fn (Builder $query) => $query->where('value', $encounterUuid))
             ->get()
@@ -439,6 +446,11 @@ class ProcedureRepository extends BaseRepository
                     'usedCodes',
                     $this->syncCodeableConcepts($existing, $data['used_codes'] ?? [], 'usedCodes')
                 );
+
+                $this->syncFocalDevices(
+                    $procedure,
+                    $data['focal_device'] ?? []
+                );
             }
         });
     }
@@ -462,5 +474,56 @@ class ProcedureRepository extends BaseRepository
                 ],
             ])
             ->toArray();
+    }
+
+    private function storeFocalDevices(Procedure $procedure, array $focalDevices): void
+    {
+        foreach ($focalDevices as $focalDevice) {
+            $manipulated = Repository::identifier()->store($focalDevice['manipulated']['identifier']['value']);
+            Repository::codeableConcept()->attach($manipulated, $focalDevice['manipulated']);
+            $action = isset($focalDevice['action']) ? Repository::codeableConcept()->store($focalDevice['action']) : null;
+            $procedure->focalDevices()->create([
+                'action_id' => $action?->id,
+                'manipulated_id' => $manipulated->id
+            ]);
+        }
+    }
+
+    private function syncFocalDevices(Procedure $procedure, array $focalDevices): void
+    {
+        $existingFocalDevices = $procedure->relationLoaded('focalDevices') ? $procedure->focalDevices : collect();
+
+        if (empty($focalDevices)) {
+            $existingFocalDevices->each(fn (FocalDevice $focalDevice) => $focalDevice->delete());
+
+            return;
+        }
+
+        foreach ($focalDevices as $index => $focalDevice) {
+            $existingFocalDevice = $existingFocalDevices[$index] ?? null;
+
+            if ($existingFocalDevice) {
+                $manipulated = $this->syncIdentifier(
+                    $existingFocalDevice,
+                    $focalDevice['manipulated'],
+                    'manipulated'
+                );
+
+                $action = isset($focalDevice['action']) ? $this->syncCodeableConcept($existingFocalDevice, $focalDevice['action'], 'action') : null;
+
+                $existingFocalDevice->update([
+                    'action_id' => $action?->id,
+                    'manipulated_id' => $manipulated->id
+                ]);
+
+                continue;
+            }
+
+            $this->storeFocalDevices($procedure, [$focalDevice]);
+        }
+
+        foreach ($existingFocalDevices->slice(count($focalDevices)) as $extra) {
+            $extra->delete();
+        }
     }
 }

@@ -99,6 +99,22 @@ class ValidationRuleBuilder
     }
 
     /**
+     * Generate validation rules for collection of focal devices.
+     * Pattern: field -> * -> [action, manipulated]
+     */
+    public static function focalDeviceCollectionRules(string $field): array
+    {
+        return self::merge(
+            [
+                $field => ['nullable', 'array'],
+                "$field.*" => ['array']
+            ],
+            self::codeableConceptRules("$field.*.action"),
+            self::identifierRules("$field.*.manipulated", true)
+        );
+    }
+
+    /**
      * Generate validation rules for performer/interpreter-type relationship.
      * Pattern: field -> reference -> identifier -> type -> coding
      */
