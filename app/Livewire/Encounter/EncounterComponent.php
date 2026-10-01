@@ -488,6 +488,7 @@ class EncounterComponent extends Component
         'eHealth/diagnostic_report_categories',
         'eHealth/procedure_categories',
         'eHealth/procedure_outcomes',
+        'procedure_focal_device_actions',
         'eHealth/clinical_impression_patient_categories',
         'eHealth/cancellation_reasons',
         'external_system',
@@ -763,10 +764,12 @@ class EncounterComponent extends Component
         $this->patientDevices = Device::forPatient($this->patient())
             ->notEnteredInError()
             ->with('names')
-            ->get(['id', 'uuid'])
+            ->get(['id', 'uuid', 'status', 'serial_number'])
             ->map(static fn (Device $device): array => [
                 'uuid' => $device->uuid,
-                'name' => $device->names->first()?->value ?? $device->uuid
+                'name' => $device->names->first()?->value ?? $device->uuid,
+                'status' => $device->status->value,
+                'serialNumber' => $device->serialNumber
             ])
             ->values()
             ->toArray();

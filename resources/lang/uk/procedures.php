@@ -45,6 +45,11 @@ return [
     'rehabilitation_aids' => 'Допоміжні засоби реабілітації',
     'complications' => 'Ускладнення, що виникли під час процедури',
     'used_reference_id' => 'ID використаного обладнання',
+    'associated_medical_device' => 'Асоційований медичний виріб',
+    'medical_device' => 'Медичний виріб',
+    'medical_devices_not_found' => 'Медичних виробів не знайдено',
+    'medical_device_action' => 'Дія з медичним виробом',
+    'add_associated_medical_device' => 'Додати асоційований медичний виріб',
     'cancel_modal_description' => 'Дія є незворотною. Ви впевнені, що бажаєте позначити процедуру як внесену помилково? Медична документація, яка визначена такою, що внесена помилково, зберігається в електронній системі охорони здоров’я!',
 
     'status' => [
@@ -89,7 +94,8 @@ return [
         'performer_wrong_legal_entity' => 'Працівник :employee не належить вашому закладу.',
         'performer_invalid_status' => 'Невалідний статус працівника.',
         'performer_employee_invalid_type' => 'Тип працівника не дозволений як виконавець процедури.',
-        'performer_not_participant' => 'Виконавець процедури має бути учасником взаємодії.'
+        'performer_not_participant' => 'Виконавець процедури має бути учасником взаємодії.',
+        'focal_device_invalid' => 'Медичний виріб не знайдено серед активних виробів пацієнта.'
     ],
 
     // Number of the record every :attribute of a validation message carries
@@ -113,6 +119,8 @@ return [
         'performedPeriodStartTime' => 'час початку процедури',
         'performedPeriodEndDate' => 'дата завершення процедури',
         'performedPeriodEndTime' => 'час завершення процедури',
+        'focalDevice.*.manipulatedId' => 'асоційований медичний виріб',
+        'focalDevice.*.actionCode' => 'дія з медичним виробом',
         'note' => 'коментар',
         'isReferralAvailable' => 'наявність направлення',
         'referralType' => 'тип направлення',

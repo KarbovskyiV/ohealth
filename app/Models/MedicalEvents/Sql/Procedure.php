@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Procedure extends Model
 {
@@ -211,6 +212,11 @@ class Procedure extends Model
         return $this->belongsToMany(Identifier::class, 'procedure_used_references');
     }
 
+    public function focalDevices(): HasMany
+    {
+        return $this->hasMany(FocalDevice::class);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(CodeableConcept::class, 'category_id');
@@ -299,7 +305,9 @@ class Procedure extends Model
             'complicationDetails.type.coding',
             'usedReferences.type.coding',
             'paperReferral',
-            'usedCodes.coding'
+            'usedCodes.coding',
+            'focalDevices.action.coding',
+            'focalDevices.manipulated.type.coding'
         ]);
     }
 }

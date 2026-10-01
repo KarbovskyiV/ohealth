@@ -123,7 +123,26 @@ class ProcedureMapper implements FhirMapperContract
                 ->toArray();
         }
 
-        // todo: focal_device
+        if ($hasEncounter && $status === ProcedureStatus::COMPLETED && !empty($data['focalDevice'])) {
+            $result['focalDevice'] = collect($data['focalDevice'])
+                ->map(static function (array $focalDevice): array {
+                    $result = [
+                        'manipulated' => FhirResource::make()
+                            ->coding('eHealth/resources', 'device')
+                            ->toIdentifier($focalDevice['manipulatedId'])
+                    ];
+
+                    if (!empty($focalDevice['actionCode'])) {
+                        $result['action'] = FhirResource::make()
+                            ->coding('procedure_focal_device_actions', $focalDevice['actionCode'])
+                            ->toCodeableConcept();
+                    }
+
+                    return $result;
+                })
+                ->values()
+                ->toArray();
+        }
 
         if ($data['primarySource']) {
             $result['performer'] = [
@@ -254,6 +273,13 @@ class ProcedureMapper implements FhirMapperContract
                 ),
                 static fn (array $usedReference) => !empty($usedReference['id'])
             )),
+            'focalDevice' => array_map(
+                static fn (array $focalDevice): array => [
+                    'manipulatedId' => data_get($focalDevice, 'manipulated.identifier.value', ''),
+                    'actionCode' => data_get($focalDevice, 'action.coding.0.code', '')
+                ],
+                data_get($data, 'focalDevices', [])
+            ),
             'complicationDetails' => array_map(
                 static function (array $complicationDetail) use ($detailsMap) {
                     $uuid = data_get($complicationDetail, 'identifier.value');

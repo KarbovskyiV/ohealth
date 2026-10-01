@@ -68,6 +68,14 @@ return new class extends Migration
             $table->foreignId('codeable_concept_id')->constrained('codeable_concepts')->cascadeOnDelete();
             $table->timestamps();
         });
+
+        Schema::create('focal_devices', static function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('procedure_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('action_id')->nullable()->constrained('codeable_concepts')->cascadeOnDelete();
+            $table->foreignId('manipulated_id')->constrained('identifiers')->cascadeOnDelete();
+            $table->timestamps();
+        });
     }
 
     /**
@@ -75,6 +83,8 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('focal_devices');
+        
         Schema::dropIfExists('procedure_used_codes');
 
         Schema::dropIfExists('procedure_used_references');

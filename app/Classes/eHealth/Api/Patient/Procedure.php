@@ -202,7 +202,8 @@ class Procedure extends PatientApiBase
             ValidationRuleBuilder::identifierRules('encounter'),
             ValidationRuleBuilder::identifierRules('origin_episode'),
             ValidationRuleBuilder::identifierCollectionRules('complication_details'),
-            ValidationRuleBuilder::codeableConceptCollectionRules('used_codes')
+            ValidationRuleBuilder::codeableConceptCollectionRules('used_codes'),
+            ValidationRuleBuilder::focalDeviceCollectionRules('focal_device')
         );
     }
 }

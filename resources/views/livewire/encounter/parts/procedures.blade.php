@@ -8,6 +8,8 @@
         cancelledRecords: $wire.cancelledRecords.procedures,
         canCancelRecords: {{ ($canCancelRecords ?? false) ? 'true' : 'false' }},
         conditions: $wire.entangle('conditionForm.conditions'),
+        devices: $wire.entangle('deviceForm.devices'),
+        patientDevices: @js($patientDevices),
         modalProcedure: new Procedure(),
         newProcedure: false,
         openProcedureDrawer: false,
@@ -154,7 +156,47 @@
             }
 
             return false;
-        }
+        },
+
+        addFocalDevice() {
+            this.modalProcedure.focalDevice.push({
+                manipulatedId: '',
+                actionCode: '',
+            });
+        },
+
+        removeFocalDevice(index) {
+            this.modalProcedure.focalDevice.splice(index, 1);
+        },
+
+        allFocalDevices() {
+            const packageDevices = this.devices
+                .filter((device) => device.uuid && device.names?.[0]?.value)
+                .map((device) => ({
+                    uuid: device.uuid,
+                    name: device.names[0].value,
+                    status: device.status,
+                    serialNumber: device.serialNumber || '',
+                }));
+            const packageDeviceIds = packageDevices.map((device) => device.uuid);
+
+            return [
+                ...packageDevices,
+                ...this.patientDevices.filter(
+                    (device) => ! packageDeviceIds.includes(device.uuid),
+                ),
+            ];
+        },
+
+        focalDeviceOptions() {
+            return this.allFocalDevices()
+                .filter((device) => device.status === 'active');
+        },
+
+        focalDeviceById(uuid) {
+            return this.allFocalDevices()
+                .find((device) => device.uuid === uuid);
+        },
       }"
     @procedure-service-selected.window="selectProcedureService($event.detail.service)"
 >
@@ -391,6 +433,7 @@
                 <fieldset @disabled($isReadonly) @class(['pointer-event-none' => $isReadonly])>
                     @include('livewire.encounter.procedure-parts.main-information', ['context' => 'encounter'])
                     @include('livewire.encounter.procedure-parts.additional-information', ['context' => 'encounter'])
+                    @include('livewire.encounter.procedure-parts.focal-devices')
                     @include('livewire.encounter.procedure-parts.reason-references')
                     @include('livewire.encounter.procedure-parts.used-codes')
                     @include('livewire.encounter.procedure-parts.complication-details')
@@ -414,7 +457,8 @@
                                 :disabled="! (
                                     modalProcedure.categoryCode.trim() &&
                                     modalProcedure.codeValue.trim() &&
-                                    (modalProcedure.primarySource !== true || modalProcedure.performerEmployeeId)
+                                    (modalProcedure.primarySource !== true || modalProcedure.performerEmployeeId) &&
+                                    (modalProcedure.status !== 'completed' || modalProcedure.focalDevice.every((focalDevice) => focalDevice.manipulatedId))
                                 ) || procedurePerformedOutsideEncounterPeriod()"
                             >
                                 {{ __('forms.save') }}
@@ -491,6 +535,7 @@
             this.note = '';
             this.reasonReferences = [];
             this.usedCodes = [];
+            this.focalDevice = [];
             this.complicationDetails = [];
             // The procedure is performed within the encounter, so it defaults to the encounter period
             const encounterDate = encounter?.periodDate;

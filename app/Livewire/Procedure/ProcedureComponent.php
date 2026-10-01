@@ -128,6 +128,7 @@ class ProcedureComponent extends Component
         'eHealth/ICF/classifiers',
         'eHealth/ICPC2/condition_codes',
         'eHealth/assistive_products',
+        'procedure_focal_device_actions',
         'POSITION'
     ];
 

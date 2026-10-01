@@ -6,8 +6,10 @@ namespace App\Livewire\Encounter\Forms;
 
 use App\Enums\Equipment\AvailabilityStatus;
 use App\Enums\Equipment\Status as EquipmentStatus;
+use App\Enums\Device\Status as DeviceStatus;
 use App\Enums\Person\ProcedureStatus;
 use App\Enums\Status;
+use App\Models\MedicalEvents\Sql\Device;
 use App\Models\Employee\Employee;
 use App\Models\Equipment;
 use App\Rules\InDictionary;
@@ -350,7 +352,54 @@ class ProcedureForm extends Form
                         $fail(__('equipments.validation.not_belongs_to_division'));
                     }
                 }
-            ]
+            ],
+            'procedures.*.focalDevice' => Rule::forEach(
+                function (mixed $value, string $attribute): array {
+                    $index = (int)explode('.', $attribute)[1];
+                    $isCompleted = ($this->procedures[$index]['status'] ?? null) === ProcedureStatus::COMPLETED->value;
+
+                    return [
+                        Rule::prohibitedIf(!$isCompleted),
+                        'nullable',
+                        'array'
+                    ];
+                }
+            ),
+            'procedures.*.focalDevice.*' => ['array'],
+            'procedures.*.focalDevice.*.manipulatedId' => [
+                'required',
+                'uuid',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $packageDevice = collect($this->component->deviceForm->devices)
+                        ->firstWhere('uuid', $value);
+
+                    if ($packageDevice !== null) {
+                        if (($packageDevice['status'] ?? null) !== DeviceStatus::ACTIVE->value) {
+                            $fail(__('procedures.validation.focal_device_invalid'));
+                        }
+
+                        return;
+                    }
+
+                    $query = Device::whereUuid($value)
+                        ->where('status', DeviceStatus::ACTIVE->value);
+
+                    if ($this->component->prepersonId !== null) {
+                        $query->where('preperson_id', $this->component->prepersonId);
+                    } else {
+                        $query->where('person_id', $this->component->personId);
+                    }
+
+                    if (!$query->exists()) {
+                        $fail(__('procedures.validation.focal_device_invalid'));
+                    }
+                }
+            ],
+            'procedures.*.focalDevice.*.actionCode' => [
+                'nullable',
+                'string',
+                new InDictionary('procedure_focal_device_actions')
+            ],
         ];
     }
 
