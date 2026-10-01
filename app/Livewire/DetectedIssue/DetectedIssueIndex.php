@@ -10,6 +10,7 @@ use App\Enums\JobStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\DetectedIssueSync;
+use App\Livewire\Encounter\Forms\EncounterCancellationForm;
 use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
@@ -18,6 +19,7 @@ use App\Models\MedicalEvents\Sql\Device;
 use App\Repositories\MedicalEvents\Repository;
 use App\Rules\InDictionary;
 use App\Traits\BatchLegalEntityQueries;
+use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
 use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -31,8 +33,11 @@ use Throwable;
 class DetectedIssueIndex extends BasePatientComponent
 {
     use BatchLegalEntityQueries;
+    use HandlesEncounterCancellation;
     use HandlesSyncBatch;
     use WithPagination;
+
+    public EncounterCancellationForm $form;
 
     /**
      * Filter dropdown options the user can pick from to narrow the detected issues search.
@@ -76,6 +81,7 @@ class DetectedIssueIndex extends BasePatientComponent
 
     protected array $dictionaryNames = [
         'POSITION',
+        'eHealth/cancellation_reasons',
         'detected_issue_statuses',
         'detected_issue_codes',
         'eHealth/report_origins'
@@ -429,6 +435,23 @@ class DetectedIssueIndex extends BasePatientComponent
             'filterInsertedAtFrom' => ['nullable', 'date_format:' . config('app.date_format')],
             'filterInsertedAtTo' => ['nullable', 'date_format:' . config('app.date_format')]
         ];
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function encounterCancellationForm(): EncounterCancellationForm
+    {
+        return $this->form;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function afterEncounterCancelled(): void
+    {
+        $this->isSearching = false;
+        $this->resetPage();
     }
 
     public function render(): View

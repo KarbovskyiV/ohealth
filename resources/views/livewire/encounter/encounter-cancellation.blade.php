@@ -18,36 +18,31 @@
 
             <div class="modal-wrapper">
                 <div
-                    class="modal-content mx-auto w-full max-w-6xl bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+                    class="modal-content mx-auto w-full max-w-4xl bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
                     @click.stop
                     x-transition
                     x-trap.noscroll.inert="showCancellationModal"
                 >
-                    <div class="p-8 md:p-12">
-                        <h3 class="max-w-5xl text-2xl leading-tight font-bold text-gray-900 md:text-3xl dark:text-gray-100">
-                            {{ __('medical-events.cancel_modal.title') }}
-                        </h3>
+                    <h3 class="mb-4 text-xl font-bold text-gray-900 dark:text-white">
+                        {{ __('medical-events.cancel_modal.title') }}
+                    </h3>
 
-                        <p class="mt-12 max-w-5xl text-xl leading-relaxed text-gray-700 md:text-2xl dark:text-gray-200">
-                            {{ $description ?? __('encounters.cancel_modal_description') }}
-                        </p>
+                    <p class="mb-6 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                        {{ $description ?? __('encounters.cancel_modal_description') }}
+                    </p>
 
-                        @isset($note)
-                            <p class="mt-6 max-w-5xl text-base leading-relaxed text-amber-700 dark:text-amber-400">
-                                {{ $note }}
-                            </p>
-                        @endisset
+                    @isset($note)
+                        <p class="-mt-2 mb-6 text-sm leading-relaxed text-amber-700 dark:text-amber-400">{{ $note }}</p>
+                    @endisset
 
-                        <div class="mt-12 max-w-5xl">
-                            <label
-                                for="encounterCancellationReason"
-                                class="mb-4 block text-sm font-medium text-gray-700 dark:text-gray-200"
-                            >
+                    <form class="space-y-4">
+                        <div>
+                            <label for="encounterCancellationReason" class="label-modal">
                                 {{ __('medical-events.cancel_modal.reason_label') }} *
                             </label>
 
                             <select
-                                class="w-full border-0 border-b border-gray-300 bg-transparent px-1 py-3 text-lg text-gray-700 focus:border-blue-500 focus:ring-0 dark:border-gray-600 dark:text-gray-100"
+                                class="input-modal"
                                 wire:model="{{ $formPath }}.cancellationReason"
                                 name="encounterCancellationReason"
                                 id="encounterCancellationReason"
@@ -68,15 +63,12 @@
                             </select>
 
                             @error($formPath . '.cancellationReason')
-                                <p class="text-error mt-2">{{ $message }}</p>
+                                <p class="text-error mt-1 text-xs">{{ $message }}</p>
                             @enderror
                         </div>
 
-                        <div class="mt-10 max-w-5xl">
-                            <label
-                                for="encounterExplanatoryLetter"
-                                class="mb-4 block text-base font-semibold text-gray-700 dark:text-gray-200"
-                            >
+                        <div>
+                            <label for="encounterExplanatoryLetter" class="label-modal">
                                 {{ __('medical-events.cancel_modal.explanation_label') }} *
                             </label>
 
@@ -85,21 +77,17 @@
                                 id="encounterExplanatoryLetter"
                                 name="encounterExplanatoryLetter"
                                 maxlength="255"
-                                class="min-h-48 w-full rounded-lg border border-gray-300 bg-white px-5 py-4 text-lg text-gray-700 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-400"
+                                class="input-modal min-h-24 px-4 py-3 text-sm"
                                 placeholder="{{ __('forms.write_comment_here') }}"
                             ></textarea>
 
                             @error($formPath . '.explanatoryLetter')
-                                <p class="text-error mt-2">{{ $message }}</p>
+                                <p class="text-error mt-1 text-xs">{{ $message }}</p>
                             @enderror
                         </div>
 
-                        <div class="mt-16 flex flex-row items-center gap-8 text-gray-900 dark:text-gray-100">
-                            <button
-                                type="button"
-                                wire:click="closeEncounterCancellationModal"
-                                class="button-minor px-8"
-                            >
+                        <div class="flex items-center justify-start gap-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+                            <button type="button" wire:click="closeEncounterCancellationModal" class="button-minor">
                                 {{ __('forms.cancel') }}
                             </button>
 
@@ -109,7 +97,7 @@
                                 wire:loading.attr="disabled"
                                 wire:loading.class="opacity-50 cursor-not-allowed"
                                 wire:target="proceedToSignature"
-                                class="cursor-pointer rounded-lg bg-red-600 px-8 py-3 font-semibold text-white transition-colors hover:bg-red-700"
+                                class="button-danger"
                             >
                                 <span wire:loading.remove wire:target="proceedToSignature">
                                     {{ __('medical-events.cancel_modal.confirm_button') }}
@@ -118,7 +106,7 @@
                                 <span wire:loading wire:target="proceedToSignature"> {{ __('forms.loading') }} </span>
                             </button>
                         </div>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>
