@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Episode;
 
-use App\Abac\Rule1Declaration;
-use App\Abac\Rule4Approval;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\Episode\Status;
@@ -17,9 +15,10 @@ use App\Jobs\EpisodeFullSync;
 use App\Livewire\Episode\Forms\EpisodeCancellationForm;
 use App\Livewire\Episode\Forms\EpisodeClosingForm;
 use App\Livewire\Person\Records\BasePatientComponent;
-use App\Models\Employee\Employee;
+use App\Models\Declaration;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Repositories\MedicalEvents\Repository;
@@ -82,32 +81,14 @@ class EpisodeIndex extends BasePatientComponent
     #[Locked]
     public bool $hasPatientAccess = false;
 
-    protected Rule1Declaration $rule1Declaration;
-
-    protected Rule4Approval $rule4Approval;
-
-    /**
-     * Inject the ABAC rules the access to the patient's episodes is decided by.
-     *
-     * @param  Rule1Declaration  $rule1Declaration
-     * @param  Rule4Approval  $rule4Approval
-     * @return void
-     */
-    public function boot(Rule1Declaration $rule1Declaration, Rule4Approval $rule4Approval): void
-    {
-        $this->rule1Declaration = $rule1Declaration;
-        $this->rule4Approval = $rule4Approval;
-    }
-
     protected function initializeComponent(): void
     {
         $this->getDictionary();
 
         $this->syncStatus = legalEntity()->getEntityStatus(LegalEntity::ENTITY_EPISODE) ?? '';
-        $employees = Employee::forUserInLegalEntity(Auth::user(), legalEntity())->get(['id', 'uuid']);
 
-        $this->hasPatientAccess = $this->rule1Declaration->allows($employees, $this->patient(), legalEntity())
-            || $this->rule4Approval->allows($employees, $this->patient());
+        $this->hasPatientAccess = Declaration::grantingAccessTo($this->patient(), Auth::user(), legalEntity())->exists()
+            || Approval::grantingAccessTo($this->patient(), Auth::user(), legalEntity())->exists();
     }
 
     #[Computed]

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models\MedicalEvents\Sql;
 
-use App\Abac\Rule2ManagingOrganization;
 use App\Casts\EHealthTimestampCast;
 use App\Enums\Episode\Status;
 use App\Enums\Person\MergedPersonStatus;
@@ -159,7 +158,8 @@ class Episode extends Model
     }
 
     /**
-     * Filter out the episodes known to be managed by another legal entity, as ABAC rule 2 decides.
+     * Filter out the episodes known to be managed by another legal entity. An episode without a managing organization
+     * came from a short (summary) response that does not return one, so it is kept: there is nothing to tell it apart.
      *
      * @param  Builder  $query
      * @return Builder
@@ -167,8 +167,14 @@ class Episode extends Model
     #[Scope]
     protected function forLegalEntity(Builder $query): Builder
     {
-        // Models are not built by the container, so the rule is resolved from it here
-        return app(Rule2ManagingOrganization::class)->apply($query, legalEntity());
+        return $query->where(
+            static fn (Builder $episode): Builder => $episode
+                ->whereNull('managing_organization_id')
+                ->orWhereHas(
+                    'managingOrganization',
+                    static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
+                )
+        );
     }
 
     /**

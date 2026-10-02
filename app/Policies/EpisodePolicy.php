@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Abac\Rule1Declaration;
-use App\Abac\Rule4Approval;
-use App\Abac\Rule5EpisodeApproval;
 use App\Enums\Episode\Status;
+use App\Models\Declaration;
 use App\Models\Employee\Employee;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\Person\Person;
 use App\Models\Preperson;
@@ -17,16 +16,6 @@ use Illuminate\Auth\Access\Response;
 
 readonly class EpisodePolicy
 {
-    /**
-     * Inject the ABAC rules the episode access is decided by.
-     */
-    public function __construct(
-        private Rule1Declaration $rule1Declaration,
-        private Rule4Approval $rule4Approval,
-        private Rule5EpisodeApproval $rule5EpisodeApproval
-    ) {
-    }
-
     /**
      * Determine whether the user can search the episodes.
      */
@@ -49,13 +38,11 @@ readonly class EpisodePolicy
             return Response::denyWithStatus(404);
         }
 
-        $employees = Employee::forUserInLegalEntity($user, legalEntity())->get(['id', 'uuid']);
-
-        $hasPatientAccess = $this->rule1Declaration->allows($employees, $patient, legalEntity())
-            || $this->rule4Approval->allows($employees, $patient);
+        $hasPatientAccess = Declaration::grantingAccessTo($patient, $user, legalEntity())->exists()
+            || Approval::grantingAccessTo($patient, $user, legalEntity())->exists();
 
         $isReadable = Episode::readableFor($patient, $hasPatientAccess)->whereKey($episode->id)->exists()
-            || ($this->rule5EpisodeApproval->allows($employees, $episode, legalEntity())
+            || (Approval::grantingResourceAccessTo($episode, $user, legalEntity())->exists()
                 && Episode::forPatient($patient)->whereKey($episode->id)->exists());
 
         return $isReadable ? Response::allow() : Response::denyWithStatus(404);

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Person\Records;
 
-use App\Abac\Rule1Declaration;
 use App\Classes\eHealth\EHealth;
 use App\Enums\JobStatus;
 use App\Enums\Person\MergedPersonStatus;
@@ -20,7 +19,7 @@ use App\Jobs\ObservationSync;
 use App\Jobs\ConditionSync;
 use App\Jobs\DiagnosticReportSync;
 use App\Jobs\DeviceSync;
-use App\Models\Employee\Employee;
+use App\Models\Declaration;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\ClinicalImpression;
@@ -135,8 +134,6 @@ class PatientSummary extends BasePatientComponent
      */
     public array $syncStatuses = [];
 
-    protected Rule1Declaration $rule1Declaration;
-
     protected array $dictionaryNames = [
         'eHealth/encounter_classes',
         'eHealth/encounter_types',
@@ -166,17 +163,6 @@ class PatientSummary extends BasePatientComponent
         'device_properties',
         'device_status_reasons',
     ];
-
-    /**
-     * Inject the ABAC rule the access to the episodes of every legal entity is decided by.
-     *
-     * @param  Rule1Declaration  $rule1Declaration
-     * @return void
-     */
-    public function boot(Rule1Declaration $rule1Declaration): void
-    {
-        $this->rule1Declaration = $rule1Declaration;
-    }
 
     protected function getSyncStatus(string $entityType): ?string
     {
@@ -324,11 +310,7 @@ class PatientSummary extends BasePatientComponent
             Episode::with(['period', 'managingOrganization.type.coding', 'careManager.type.coding'])
                 ->readableFor(
                     $this->patient(),
-                    $this->rule1Declaration->allows(
-                        Employee::forUserInLegalEntity(Auth::user(), legalEntity())->get(['id', 'uuid']),
-                        $this->patient(),
-                        legalEntity()
-                    )
+                    Declaration::grantingAccessTo($this->patient(), Auth::user(), legalEntity())->exists()
                 ),
             'episodes',
             visible: ['id']
