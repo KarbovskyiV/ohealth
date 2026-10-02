@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\MedicalEvents;
 
+use App\Enums\DeviceDispense\Status as DeviceDispenseStatus;
 use App\Repositories\MedicalEvents\Repository;
+use Carbon\CarbonImmutable;
 use RuntimeException;
 
 class EncounterPackageLoader
@@ -218,8 +220,60 @@ class EncounterPackageLoader
         );
 
         return collect($deviceDispenses)
-            ->map(static fn (array $deviceDispense) => Fhir::deviceDispense()->fromFhir($deviceDispense, $detailsMap))
+            ->map(fn (array $deviceDispense): array => $this->mapDeviceDispenseFromFhir($deviceDispense, $detailsMap))
             ->toArray();
+    }
+
+    /**
+     * Flat form shape for one stored device dispense. Only the package loader reads this resource back.
+     *
+     * @param  array  $data  FHIR device dispense as stored locally
+     * @param  array  $detailsMap  Supporting-info details keyed by UUID
+     * @return array
+     */
+    private function mapDeviceDispenseFromFhir(array $data, array $detailsMap): array
+    {
+        $detail = data_get($data, 'details.0', []);
+        $whenHandedOver = data_get($data, 'whenHandedOver');
+
+        $supportingInfo = collect(data_get($data, 'supportingInfo', []))
+            ->map(function (array $item) use ($detailsMap): array {
+                $uuid = data_get($item, 'identifier.value');
+                $type = data_get($item, 'identifier.type.coding.0.code');
+                $details = $detailsMap[$uuid] ?? [];
+
+                return [
+                    'uuid' => $uuid,
+                    'type' => $type,
+                    'ehealthInsertedAt' => $details['ehealthInsertedAt'] ?? null,
+                    'code' => $details['codeCode'] ?? null
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        return [
+            'uuid' => data_get($data, 'uuid'),
+            'basedOnId' => data_get($data, 'basedOn.identifier.value', ''),
+            'partOfId' => data_get($data, 'partOf.identifier.value', ''),
+            'performerId' => data_get($data, 'performer.identifier.value', ''),
+            'locationId' => data_get($data, 'location.identifier.value', ''),
+            'whenHandedOverDate' => convertToAppDateFormat($whenHandedOver),
+            'whenHandedOverTime' => $whenHandedOver ? CarbonImmutable::parse($whenHandedOver)->format('H:i') : '',
+            'quantity' => (int) data_get($detail, 'quantity.value', 1),
+            'quantityCode' => data_get($detail, 'quantity.code', 'piece'),
+            'deviceSelectionType' => data_get($detail, 'device.identifier.value') ? 'model' : 'type',
+            'deviceCode' => data_get($detail, 'deviceCode.coding.0.code', ''),
+            'deviceDefinitionId' => data_get($detail, 'device.identifier.value', ''),
+            'note' => data_get($data, 'note', ''),
+            'supportingInfo' => $supportingInfo,
+            'status' => data_get($data, 'status', DeviceDispenseStatus::COMPLETED->value),
+            'originEpisodeId' => data_get($data, 'originEpisodeId', ''),
+            'contextEpisodeId' => data_get($data, 'contextEpisodeId', ''),
+            'legalEntityName' => data_get($data, 'performerLegalEntity.displayValue', ''),
+            'performerName' => data_get($data, 'performer.displayValue', ''),
+            'createdDate' => convertToAppDateFormat(data_get($data, 'ehealthInsertedAt'))
+        ];
     }
 
     /**

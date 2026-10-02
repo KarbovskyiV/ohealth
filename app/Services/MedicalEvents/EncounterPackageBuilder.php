@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\MedicalEvents;
 
+use App\Enums\DeviceDispense\Status as DeviceDispenseStatus;
 use App\Enums\Episode\Status;
 use App\Enums\Person\ConditionClinicalStatus;
 use App\Enums\Person\DiagnosticReportStatus;
@@ -142,7 +143,7 @@ class EncounterPackageBuilder
             ->toArray();
 
         $fhirDeviceDispenses = collect($data['deviceDispenses'] ?? [])
-            ->map(fn (array $deviceDispense) => Fhir::deviceDispense()->toFhir($deviceDispense, $uuids))
+            ->map(fn (array $deviceDispense): array => $this->mapDeviceDispenseToFhir($deviceDispense, $uuids))
             ->values()
             ->toArray();
 
@@ -181,5 +182,79 @@ class EncounterPackageBuilder
             'specimens' => $fhirSpecimens,
             'clinicalImpressions' => $fhirClinicalImpressions
         ];
+    }
+
+    /**
+     * Device dispense is mapped here because only the encounter package build calls it.
+     *
+     * @param  array  $data  Flat device dispense form data
+     * @param  array  $uuids  Shared package UUIDs; encounter id is taken from here
+     * @return array
+     */
+    private function mapDeviceDispenseToFhir(array $data, array $uuids): array
+    {
+        $details = [
+            'quantity' => [
+                'value' => (int) $data['quantity'],
+                'system' => 'device_unit',
+                'code' => $data['quantityCode'] ?? 'piece'
+            ]
+        ];
+
+        if ($data['deviceSelectionType'] === 'model') {
+            $details['device'] = FhirResource::make()
+                ->coding('eHealth/resources', 'device_definition')
+                ->toIdentifier($data['deviceDefinitionId']);
+        } else {
+            $details['deviceCode'] = FhirResource::make()
+                ->coding('device_definition_classification_type', $data['deviceCode'])
+                ->toCodeableConcept();
+        }
+
+        $result = [
+            'id' => $data['uuid'] ?? Str::uuid()->toString(),
+            'status' => $data['status'] ?? DeviceDispenseStatus::COMPLETED->value,
+            'primarySource' => true,
+            'performer' => FhirResource::make()
+                ->coding('eHealth/resources', 'employee')
+                ->toIdentifier($data['performerId']),
+            'location' => FhirResource::make()
+                ->coding('eHealth/resources', 'division')
+                ->toIdentifier($data['locationId']),
+            'whenHandedOver' => convertToEHealthISO8601($data['whenHandedOverDate'] . ' ' . $data['whenHandedOverTime']),
+            'details' => [$details],
+            'encounter' => FhirResource::make()
+                ->coding('eHealth/resources', 'encounter')
+                ->toIdentifier($uuids['encounter'])
+        ];
+
+        if (!empty($data['basedOnId'])) {
+            $result['basedOn'] = FhirResource::make()
+                ->coding('eHealth/resources', 'device_request')
+                ->toIdentifier($data['basedOnId']);
+        }
+
+        if (!empty($data['partOfId'])) {
+            $result['partOf'] = FhirResource::make()
+                ->coding('eHealth/resources', 'procedure')
+                ->toIdentifier($data['partOfId']);
+        }
+
+        if (!empty($data['supportingInfo'])) {
+            $result['supportingInfo'] = collect($data['supportingInfo'])
+                ->map(
+                    fn (array $info) => FhirResource::make()
+                        ->coding('eHealth/resources', $info['type'])
+                        ->toIdentifier($info['uuid'])
+                )
+                ->values()
+                ->toArray();
+        }
+
+        if (!empty($data['note'])) {
+            $result['note'] = $data['note'];
+        }
+
+        return $result;
     }
 }
