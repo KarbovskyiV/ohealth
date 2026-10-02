@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Abac\Rule1Declaration;
-use App\Abac\Rule4Approval;
 use App\Core\EHealthJob;
-use App\Models\Employee\Employee;
+use App\Models\Declaration;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Classes\eHealth\EHealth;
@@ -45,11 +44,8 @@ class EpisodeFullSync extends EHealthJob
      */
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse
     {
-        $employees = Employee::forUserInLegalEntity($this->user, $this->legalEntity)->get(['id', 'uuid']);
-
-        // Resolved from the container, as the batch creates the job itself and handle() overrides a method without parameters
-        $hasPatientAccess = app(Rule1Declaration::class)->allows($employees, $this->patient(), $this->legalEntity)
-            || app(Rule4Approval::class)->allows($employees, $this->patient());
+        $hasPatientAccess = Declaration::accessGrantedTo($this->user, $this->patient(), $this->legalEntity)->exists()
+            || Approval::accessGrantedTo($this->user, $this->patient(), $this->legalEntity)->exists();
 
         return EHealth::episode()
             ->withToken($token)

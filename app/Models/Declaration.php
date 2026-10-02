@@ -67,6 +67,31 @@ class Declaration extends Model
         return $query->whereIn('employee_id', $employeeIds);
     }
 
+    /**
+     * Active declarations of the patient with one of the user's employees in the legal entity, which open all
+     * the patient's data. A preperson never has a declaration.
+     *
+     * ABAC rule 1.
+     *
+     * @param  Builder  $query
+     * @param  User  $user
+     * @param  Person|Preperson  $patient
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function accessGrantedTo(Builder $query, User $user, Person|Preperson $patient, LegalEntity $legalEntity): Builder
+    {
+        if ($patient instanceof Preperson) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->active()
+            ->wherePersonId($patient->id)
+            ->filterByLegalEntityId($legalEntity->id)
+            ->whereIn('employee_id', Employee::forUserInLegalEntity($user, $legalEntity)->select('id'));
+    }
+
     public function declarationRequest(): BelongsTo
     {
         return $this->belongsTo(DeclarationRequest::class);
