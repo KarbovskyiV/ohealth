@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Livewire\Encounter;
 
+use App\Enums\Person\DeviceRequestStatus;
 use App\Livewire\Encounter\Forms\DeviceDispenseForm;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -20,13 +21,13 @@ class DeviceDispenseBasedOnFilterTest extends TestCase
         $requests = [
             [
                 'uuid' => '11111111-1111-1111-1111-111111111111',
-                'status' => 'active',
+                'status' => DeviceRequestStatus::ACTIVE->value,
                 'intent' => 'order',
                 'programId' => '22222222-2222-2222-2222-222222222222',
             ],
             [
                 'uuid' => '33333333-3333-3333-3333-333333333333',
-                'status' => 'active',
+                'status' => DeviceRequestStatus::ACTIVE->value,
                 'intent' => 'order',
                 'programId' => null,
             ],
@@ -38,7 +39,7 @@ class DeviceDispenseBasedOnFilterTest extends TestCase
             ],
             [
                 'uuid' => '55555555-5555-5555-5555-555555555555',
-                'status' => 'active',
+                'status' => DeviceRequestStatus::ACTIVE->value,
                 'intent' => 'plan',
                 'programId' => null,
             ],
@@ -47,7 +48,7 @@ class DeviceDispenseBasedOnFilterTest extends TestCase
         $eligible = collect($requests)
             ->filter(
                 static fn (array $deviceRequest): bool =>
-                    strtolower((string) ($deviceRequest['status'] ?? '')) === 'active'
+                    strtolower((string) ($deviceRequest['status'] ?? '')) === DeviceRequestStatus::ACTIVE->value
                     && ($deviceRequest['intent'] ?? null) === 'order'
                     && empty($deviceRequest['programId'])
             )

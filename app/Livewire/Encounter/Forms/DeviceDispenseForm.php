@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Encounter\Forms;
 
 use App\Enums\DeviceDispense\Status;
+use App\Enums\Person\DeviceRequestStatus;
 use App\Rules\InDictionary;
 use Closure;
 use Illuminate\Validation\Rule;
@@ -32,7 +33,7 @@ class DeviceDispenseForm extends Form
                     // Encounter Package: "Device request with program can not be referenced".
                     if (
                         !$deviceRequest
-                        || strtolower((string) ($deviceRequest['status'] ?? '')) !== 'active'
+                        || strtolower((string) ($deviceRequest['status'] ?? '')) !== DeviceRequestStatus::ACTIVE->value
                         || ($deviceRequest['intent'] ?? null) !== 'order'
                         || !empty($deviceRequest['programId'])
                     ) {
