@@ -134,39 +134,44 @@ class LegalEntityRepository
      *
      * @return void
      */
-    public function disableOldOwner(User $oldOwner, ?LegalEntity $legalEntity = null): void
+    public function disableOldOwner(Employee $oldOwner, int $newUserId, ?LegalEntity $legalEntity = null): void
     {
         $legalEntity ??= legalEntity();
 
         setPermissionsTeamId($legalEntity->id);
 
-        $partyUsers = User::where('party_id', $oldOwner->party_id)->get();
-        $partyUsers->loadMissing(['roles', 'permissions', 'party']);
+        // Get users from the same party who are associated ONLY with the current legal entity.
+        $partyUsers = User::with(['roles', 'employees'])
+            ->where('party_id', $oldOwner->party_id)
+            ->whereDoesntHave('employees', function ($query) use ($legalEntity) {
+                $query->where('legal_entity_id', '!=', $legalEntity->id);
+            })
+            ->get();
 
         $partyUserIds = $partyUsers->pluck('id');
 
-        Auth::shouldUse('web');
+        // If there are no other party users besides the new user, there's nothing to disable.
+        if ($partyUserIds->isEmpty()) {
+            return;
+        }
 
-        // Remove the OWNER's roles for all party users via web guard
-        $partyUsers->each->removeRole([Role::OWNER, Role::REORGANIZATION_OWNER]);
+        // Disable the old owner if they are not the new user.
+        // This important in case when the same user is both the old owner and the new user.
+        if ($oldOwner->userId != $newUserId) {
+            Auth::shouldUse('web');
 
-        Auth::shouldUse('ehealth');
+            // Remove the OWNER's roles for all party users via web guard
+            $partyUsers->each->removeRole([Role::OWNER, Role::REORGANIZATION_OWNER]);
 
-        // Remove the OWNER's roles for all party users via 'ehealth' guard
-        $partyUsers->each->removeRole([Role::OWNER, Role::REORGANIZATION_OWNER]);
+            Auth::shouldUse('ehealth');
 
-        Employee::where('legal_entity_id', $legalEntity->id)
-            ->whereIn('employee_type', [Role::OWNER->value, Role::REORGANIZATION_OWNER->value])
-            ->where('party_id', $oldOwner->party_id)
-            ->each(fn ($employee) => $employee->users()->detach($partyUserIds));
+            // Remove the OWNER's roles for all party users via 'ehealth' guard
+            $partyUsers->each->removeRole([Role::OWNER, Role::REORGANIZATION_OWNER]);
+        }
 
-        // Set the employee status to STOPPED for the OWNER's employee record in the employees table
-        // Because the OWNER's employee record is no longer associated with a user
-        Employee::where('legal_entity_id', $legalEntity->id)
-            ->whereIn('employee_type', [Role::OWNER->value, Role::REORGANIZATION_OWNER->value])
-            ->where('party_id', $oldOwner->party_id)
-            ->where('user_id', $oldOwner->id)
-            ->update(['status' => Status::STOPPED->value]);
+        $oldOwner->users()->detach($partyUserIds);
+
+        $oldOwner->update(['status' => Status::STOPPED->value]);
 
         Log::info(__('** OWNER CHANGED **', [], 'en'), ['old_owner_id' => $oldOwner->id, 'legal_entity_id' => $legalEntity->id]);
     }

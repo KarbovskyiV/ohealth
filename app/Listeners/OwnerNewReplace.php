@@ -155,7 +155,7 @@ class OwnerNewReplace
 
                     // Just overcautiousness
                     if ($currentOwnerUser) {
-                        Repository::legalEntity()->disableOldOwner($currentOwnerUser, $event->legalEntity);
+                        Repository::legalEntity()->disableOldOwner($oldOwner, $user->id, $event->legalEntity);
                     } else {
                             Log::error('[OwnerNewReplace] User not found for current owner.', [
                             'user_id' => $oldOwner->userId,
