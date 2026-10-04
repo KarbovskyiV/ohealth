@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Dto\Division;
 
 use App\Classes\eHealth\Api\Responses\Collections\DivisionCreate;
-use App\Classes\eHealth\Api\Responses\Collections\PhoneCreate;
 use App\Contracts\Dto\Model as ModelContract;
 use App\Dto\Address\Model as AddressData;
 use App\Dto\Phone\Model as PhoneData;
 use App\Models\Division;
 use App\Enums\Status;
 use App\Livewire\Division\Forms\DivisionForm;
-use Illuminate\Support\Collection;
+use App\Dto\FormCollection;
 use Illuminate\Support\Arr;
 use Symfony\Component\ObjectMapper\Attribute\Map;
 use Symfony\Component\ObjectMapper\Condition\SourceClass;
@@ -90,7 +89,7 @@ class Model implements ModelContract
 
     /** @var list<PhoneData> */
     #[Map(source: '[phones]', if: new SourceClass(DivisionCreate::class), transform: new MapCollection(targetClass: PhoneData::class))]
-    #[Map(source: 'division[phones]', if: new SourceClass(DivisionForm::class), transform: [[self::class, 'wrapFormPhones'], new MapCollection(targetClass: PhoneData::class)])]
+    #[Map(source: 'division[phones]', if: new SourceClass(DivisionForm::class), transform: [[self::class, 'wrapFormItems'], new MapCollection(targetClass: PhoneData::class)])]
     public array $phones = [];
 
     #[Map(if: false)]
@@ -115,20 +114,11 @@ class Model implements ModelContract
 
     /**
      * @param  array<string|int, array<string, mixed>>|null  $items
-     * @return list<Collection<string, mixed>>
+     * @return list<FormCollection>
      */
     public static function wrapFormItems(?array $items): array
     {
-        return collect($items)->map(fn (array $item): Collection => new Collection($item))->values()->all();
-    }
-
-    /**
-     * @param  array<string|int, array<string, mixed>>|null  $phones
-     * @return list<PhoneCreate>
-     */
-    public static function wrapFormPhones(?array $phones): array
-    {
-        return collect($phones)->map(fn (array $phone): PhoneCreate => new PhoneCreate($phone))->values()->all();
+        return collect($items)->map(fn (array $item): FormCollection => new FormCollection($item))->values()->all();
     }
 
     public function toModel(?Division $division = null): Division

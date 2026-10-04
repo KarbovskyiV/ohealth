@@ -7,7 +7,7 @@ namespace Tests\Feature\Division;
 use App\Dto\Address\Model as AddressData;
 use App\Dto\Phone\Model as PhoneData;
 use App\Dto\Division\Model as DivisionData;
-use App\Classes\eHealth\Api\Responses\Collections\PhoneCreate;
+use App\Dto\FormCollection;
 use App\Enums\Status;
 use App\Models\Division;
 use Illuminate\Support\Str;
@@ -17,20 +17,18 @@ class DivisionFormToModelMappingTest extends TestCase
 {
     use DivisionMappingFixtures;
 
-    public function test_form_phones_use_phone_create_sources_without_mutating_input(): void
+    public function test_wraps_nested_form_items_in_dedicated_form_collections(): void
     {
-        $phones = [5 => ['type' => 'MOBILE', 'number' => '+380501234567']];
+        $items = ['residence' => ['type' => 'RESIDENCE', 'settlementId' => 'settlement-uuid']];
 
-        $sources = DivisionData::wrapFormPhones($phones);
-        $data = $this->mapForm($this->formComponent(['phones' => $phones])->divisionForm);
+        $sources = DivisionData::wrapFormItems($items);
 
         $this->assertSame([0], array_keys($sources));
-        $this->assertInstanceOf(PhoneCreate::class, $sources[0]);
-        $this->assertSame($phones[5], $sources[0]->all());
-        $this->assertSame([5], array_keys($phones));
-        $this->assertSame('+380501234567', $data->phones[0]->number);
-        $this->assertSame([], DivisionData::wrapFormPhones(null));
-        $this->assertSame([], DivisionData::wrapFormPhones([]));
+        $this->assertInstanceOf(FormCollection::class, $sources[0]);
+        $this->assertSame($items['residence'], $sources[0]->all());
+        $this->assertSame(['residence'], array_keys($items));
+        $this->assertSame([], DivisionData::wrapFormItems(null));
+        $this->assertSame([], DivisionData::wrapFormItems([]));
     }
 
     public function test_maps_form_directly_to_division_and_nested_model_dtos(): void

@@ -9,10 +9,10 @@ use App\Models\Relations\Address as AddressModel;
 use App\Classes\eHealth\Api\Responses\Collections\AddressCreate;
 use Symfony\Component\ObjectMapper\Attribute\Map;
 use Symfony\Component\ObjectMapper\Condition\SourceClass;
-use Illuminate\Support\Collection;
+use App\Dto\FormCollection;
 
 #[Map(source: AddressCreate::class)]
-#[Map(source: Collection::class)]
+#[Map(source: FormCollection::class)]
 class Model implements ModelContract
 {
     #[Map(source: '[type]')]
@@ -31,15 +31,15 @@ class Model implements ModelContract
     public ?string $settlement = null;
 
     #[Map(source: '[settlement_id]', if: new SourceClass(AddressCreate::class))]
-    #[Map(source: '[settlementId]', if: [self::class, 'isFormAddress'])]
+    #[Map(source: '[settlementId]', if: new SourceClass(FormCollection::class))]
     public ?string $settlementId = null;
 
     #[Map(source: '[settlement_type]', if: new SourceClass(AddressCreate::class))]
-    #[Map(source: '[settlementType]', if: [self::class, 'isFormAddress'])]
+    #[Map(source: '[settlementType]', if: new SourceClass(FormCollection::class))]
     public ?string $settlementType = null;
 
     #[Map(source: '[street_type]', if: new SourceClass(AddressCreate::class))]
-    #[Map(source: '[streetType]', if: [self::class, 'isFormAddress'])]
+    #[Map(source: '[streetType]', if: new SourceClass(FormCollection::class))]
     public ?string $streetType = null;
 
     #[Map(source: '[street]')]
@@ -53,11 +53,6 @@ class Model implements ModelContract
 
     #[Map(source: '[zip]')]
     public ?string $zip = null;
-
-    public static function isFormAddress(mixed $value, object $source): bool
-    {
-        return $source instanceof Collection && !$source instanceof AddressCreate;
-    }
 
     public function toModel(): AddressModel
     {
