@@ -20,6 +20,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
+/**
+ * @method static Builder<static> filterByLegalEntityId(int $legalEntityId)
+ */
 class Division extends Model
 {
     use HasCamelCasing;

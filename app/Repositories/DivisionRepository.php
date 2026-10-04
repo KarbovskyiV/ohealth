@@ -7,6 +7,7 @@ namespace App\Repositories;
 use Arr;
 use Exception;
 use App\Models\Division;
+use App\Dto\Division\Model as DivisionData;
 use App\Models\LegalEntity;
 use App\Models\Relations\Phone;
 use App\Models\Relations\Address;
@@ -17,6 +18,42 @@ use App\Classes\eHealth\Api\Division as DivisionApi;
 
 class DivisionRepository
 {
+    /**
+     * Is used as a unify method to save mapped division data object into the database.
+     * Together with addresses and phones relations.
+     *
+     * @param  DivisionData  $data  Mapped Division Data object. can be mapped from different sources (eHealth response, form data etc.)
+     * @param  Division  $division  The Division model instance to be updated
+     * @param  LegalEntity  $legalEntity  The LegalEntity model instance associated with the division
+     * @return Division Saved and reloaded Division model instance with updated relations
+     * @throws \Throwable
+     */
+    public function saveMappedDivision(DivisionData $data, Division $division, LegalEntity $legalEntity): Division
+    {
+        return DB::transaction(function () use ($data, $division, $legalEntity): Division {
+            $data->toModel($division);
+            $division->legalEntity()->associate($legalEntity);
+            $division->saveOrFail();
+
+            $division->addresses()->delete();
+            $division->phones()->delete();
+
+            foreach ($data->addresses as $address) {
+                if (!$division->addresses()->save($address->toModel())) {
+                    throw new \RuntimeException('Cannot save division address.');
+                }
+            }
+
+            foreach ($data->phones as $phone) {
+                if (!$division->phones()->save($phone->toModel())) {
+                    throw new \RuntimeException('Cannot save division phone.');
+                }
+            }
+
+            return $division->refresh()->load(['addresses', 'phones']);
+        });
+    }
+
     /**
      * Saves a list of divisions to the database.
      *
@@ -105,34 +142,6 @@ class DivisionRepository
 
         $division->setAttribute('external_id', $responseData['external_id'] ?? null);
         $division->setAttribute('status', $responseData['status']);
-
-        return $division;
-    }
-
-    /**
-     * Create instance of Division model and save it's data to the DB (with all it's relations aka: Address, Phone and LegalEntity)
-     *
-     * @param  array  $divisionData
-     * @param  \App\Models\LegalEntity  $legalEntity
-     * @return ?Division
-     */
-    public function saveDivisionData(array $divisionData, LegalEntity $legalEntity): ?Division
-    {
-        $division = $this->createOrUpdate($divisionData);
-
-        if (!$division) {
-            return null;
-        }
-
-        $division = $this->createLegalEntityRelation($division, $legalEntity);
-
-        $division->save();
-
-        $division->refresh();
-
-        Repository::address()->syncAddresses($division, $divisionData['addresses']);
-
-        Repository::phone()->syncPhones($division, $divisionData['phones']);
 
         return $division;
     }

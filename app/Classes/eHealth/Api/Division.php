@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Classes\eHealth\Api;
 
+use App\Classes\eHealth\Api\Responses\Collections\DivisionCreate;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use Exception;
@@ -59,9 +60,7 @@ class Division extends Request
      * Get Division details by UUID
      *
      * @param  string  $uuid  The unique identifier of the division.
-     *
      * @return PromiseInterface|EHealthResponse
-     *
      * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
      */
     public function getDetails(string $uuid): PromiseInterface|EHealthResponse
@@ -351,7 +350,7 @@ class Division extends Request
      * Validate single division response data
      * see; https://uaehealthapi.docs.apiary.io/#reference/public.-medical-service-provider-integration-layer/divisions/get-division-details
      */
-    protected function validateOne(EHealthResponse $response): array
+    protected function validateOne(EHealthResponse $response): DivisionCreate
     {
         if (!$response->successful()) {
             throw new Exception('validateOne: ' . $response->body());
@@ -367,7 +366,7 @@ class Division extends Request
             Log::channel('e_health_errors')->error('Validation failed: ' . implode(', ', $validator->errors()->all()));
         }
 
-        return $validator->validate();
+        return new DivisionCreate($validator->validate());
     }
 
     /**

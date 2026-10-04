@@ -5,36 +5,43 @@ declare(strict_types=1);
 namespace App\Dto\Division;
 
 use App\Dto\EhealthMapping;
+use App\Livewire\Division\Forms\DivisionForm;
 use Symfony\Component\ObjectMapper\Attribute\Map;
 
 /**
  * Division payload in the format expected by the eHealth API.
  */
+#[Map(source: DivisionForm::class)]
 class Ehealth
 {
     use EhealthMapping;
 
+    #[Map(source: 'division[name]')]
     public ?string $name = null;
 
+    #[Map(source: 'division[type]')]
     public ?string $type = null;
 
+    #[Map(source: 'division[email]')]
     public ?string $email = null;
 
+    #[Map(source: 'division[externalId]')]
     public ?string $externalId = null;
 
     /** @var array<int, array<string, mixed>> */
-    #[Map(transform: [self::class, 'transformAddresses'])]
+    #[Map(source: 'division[addresses]', transform: [self::class, 'transformAddresses'])]
     public array $addresses = [];
 
     /** @var array<int, array<string, mixed>> */
-    #[Map(transform: [self::class, 'transformPhones'])]
+    #[Map(source: 'division[phones]', transform: [self::class, 'transformPhones'])]
     public array $phones = [];
 
     /** @var array{latitude: float|null, longitude: float|null}|null */
+    #[Map(source: 'division[location]')]
     public ?array $location = null;
 
     /** @var array<string, array<int, array<int, string>>> */
-    #[Map(transform: [self::class, 'transformWorkingHours'])]
+    #[Map(source: 'division[workingHours]', transform: [self::class, 'transformWorkingHours'])]
     public array $workingHours = [];
 
     /**

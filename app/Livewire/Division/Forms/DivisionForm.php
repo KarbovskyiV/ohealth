@@ -21,7 +21,6 @@ use Livewire\Features\SupportFormObjects\Form;
 use Illuminate\Validation\ValidationException;
 use App\Rules\DivisionRules\LegalEntityStatusRule;
 
-// TODO: (after divide DivisionForm onto three classes) rename this one to the DivisionForm
 class DivisionForm extends Form
 {
     use FormTrait;
@@ -99,6 +98,7 @@ class DivisionForm extends Form
 
         $errors = [];
 
+        $this->prepareAddresses();
         $this->checkDefaultAddress();
 
         try {
@@ -126,6 +126,13 @@ class DivisionForm extends Form
         return $failMessage;
     }
 
+    public function prepareAddresses(): void
+    {
+        $this->division['addresses'] = $this->showReceptionAddress
+            ? ['residence' => $this->component->address, 'reception' => $this->component->receptionAddress]
+            : ['residence' => $this->component->address];
+    }
+
     public function rules(): array
     {
         return [
@@ -151,8 +158,8 @@ class DivisionForm extends Form
             'division.location.longitude.required' => __('divisions.errors.location.longitude_required'),
             'division.location.latitude.required' => __('divisions.errors.location.latitude_required'),
             'division.email.email' => __('divisions.errors.email.wrong'),
-            'division.phones.*.type' => __('divisions.errors.phone.type_required'),
-            'division.phones.*.number' => __('divisions.errors.phone.number_required')
+            'division.phones.*.type.required' => __('divisions.errors.phone.type_required'),
+            'division.phones.*.number.required' => __('divisions.errors.phone.number_required')
         ];
     }
 

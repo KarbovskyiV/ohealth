@@ -2,17 +2,35 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Dto;
+namespace Tests\Feature\Division;
 
 use App\Dto\Division\Ehealth;
+use App\Livewire\Division\Forms\DivisionForm;
+use Livewire\Component;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\ObjectMapper\ObjectMapper;
+use Symfony\Component\PropertyAccess\PropertyAccess;
 
 class EhealthDivisionMappingTest extends TestCase
 {
     private function map(array $form): Ehealth
     {
-        return (new ObjectMapper())->map((object) $form, Ehealth::class);
+        return $this->mapForm($this->divisionForm($form));
+    }
+
+    private function divisionForm(array $division): DivisionForm
+    {
+        $form = new DivisionForm(new class extends Component
+        {}, 'divisionForm');
+        $form->division = $division;
+
+        return $form;
+    }
+
+    private function mapForm(DivisionForm $form): Ehealth
+    {
+        return (new ObjectMapper(propertyAccessor: PropertyAccess::createPropertyAccessor()))
+            ->map($form, Ehealth::class);
     }
 
     private function form(array $override = []): array
@@ -80,5 +98,43 @@ class EhealthDivisionMappingTest extends TestCase
 
         $this->assertArrayNotHasKey('legal_entity_id', $data);
         $this->assertArrayNotHasKey('uuid', $data);
+    }
+
+    public function test_maps_optional_external_id_from_the_form(): void
+    {
+        $data = $this->map($this->form(['externalId' => '123']))->toArray();
+
+        $this->assertSame('123', $data['external_id']);
+    }
+
+    public function test_ignores_form_state_and_does_not_mutate_the_source(): void
+    {
+        $division = $this->form();
+        $form = $this->divisionForm($division);
+        $form->search = 'Unrelated search';
+        $form->showReceptionAddress = true;
+
+        $data = $this->mapForm($form)->toArray();
+
+        $this->assertArrayNotHasKey('search', $data);
+        $this->assertArrayNotHasKey('show_reception_address', $data);
+        $this->assertSame($division, $form->division);
+        $this->assertSame('Main division', $data['name']);
+    }
+
+    public function test_normalizes_null_collections_from_the_form(): void
+    {
+        $dto = $this->map($this->form([
+            'addresses' => null,
+            'phones' => null,
+            'workingHours' => null,
+            'location' => null,
+        ]));
+
+        $this->assertSame([], $dto->addresses);
+        $this->assertSame([], $dto->phones);
+        $this->assertSame([], $dto->workingHours);
+        $this->assertNull($dto->location);
+        $this->assertSame([], $dto->toArray()['working_hours']);
     }
 }

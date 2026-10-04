@@ -10,21 +10,21 @@ use App\Models\Division;
 use App\Models\LegalEntity;
 use App\Models\Relations\Phone;
 use App\Classes\eHealth\EHealth;
+use App\Dto\Division\Ehealth as EhealthData;
+use App\Dto\Division\Model as DivisionData;
 use App\Repositories\Repository;
 use App\Traits\WorkTimeUtilities;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use App\Traits\Addresses\AddressSearch;
 use App\Livewire\Division\Trait\HasAction;
-use App\Traits\Addresses\ReceptionAddressSearch;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
+use Symfony\Component\ObjectMapper\ObjectMapper;
+use Symfony\Component\PropertyAccess\PropertyAccess;
 
 class DivisionEdit extends DivisionComponent
 {
     use WorkTimeUtilities;
-    use ReceptionAddressSearch;
-    use AddressSearch;
     use HasAction;
 
     /**
@@ -59,7 +59,7 @@ class DivisionEdit extends DivisionComponent
      * @param  mixed  $value  The value for latitude from input field
      * @return void
      */
-    public function updatedDivisionFormDivisionLocationLatitude($value)
+    public function updatedDivisionFormDivisionLocationLatitude($value): void
     {
         $this->divisionForm->division['location']['latitude'] = empty($value) && !is_numeric($value)
             ? null
@@ -76,48 +76,11 @@ class DivisionEdit extends DivisionComponent
      * @param  mixed  $value  The value for latitude from input field
      * @return void
      */
-    public function updatedDivisionFormDivisionLocationLongitude($value)
+    public function updatedDivisionFormDivisionLocationLongitude($value): void
     {
         $this->divisionForm->division['location']['longitude'] = empty($value) && !is_numeric($value)
             ? null
             : (float) number_format((float) $value, 6, '.', '');
-    }
-
-    /**
-     * Set the division form data based on the provided Division model.
-     *
-     * - Sets the main division parameters from the model.
-     * - Assigns the address and phones to the form.
-     * - Initializes working hours if not already set.
-     *
-     * @param  Division  $division
-     * @return void
-     */
-    public function setDivisionData(Division $division)
-    {
-        $this->divisionForm->setDivision($division->toArray());
-
-        $this->divisionForm->division['addresses'] = $division->addresses->toArray();
-
-        if (!empty($this->divisionForm->division['addresses'])) {
-            foreach ($this->divisionForm->division['addresses'] as $address) {
-                $addressType = strtolower($address['type']);
-
-                switch ($addressType) {
-                    case 'residence':
-                        $this->address = $address;
-                        break;
-                    case 'reception':
-                        $this->receptionAddress = $address;
-                        $this->divisionForm->showReceptionAddress = true;
-                        break;
-                    default:
-                        continue 2;
-                }
-            }
-        }
-
-        $this->divisionForm->division['phones'] = $division->phones->toArray();
     }
 
     /**
@@ -126,17 +89,13 @@ class DivisionEdit extends DivisionComponent
      * @param  bool  $justSave  Whether to show a success message after saving (true by default)
      * @return Division|null
      */
-    public function store($justSave = true): ?Division
+    public function store(bool $justSave = true): ?Division
     {
         if (Auth::user()->cannot('update', Division::find($this->divisionForm->division['id']))) {
             session()->flash('error', __('divisions.policy.deny.edit'));
 
             return null;
         }
-
-        $this->divisionForm->division['addresses'] = $this->divisionForm->showReceptionAddress
-            ? ['residence' => $this->address, 'reception' => $this->receptionAddress]
-            : ['residence' => $this->address];
 
         if ($this->validateDivision()) {
             try {
@@ -187,67 +146,53 @@ class DivisionEdit extends DivisionComponent
      */
     public function divisionUpdate(Division $division): void
     {
+        $divisionEhealthMapped = new ObjectMapper(propertyAccessor: PropertyAccess::createPropertyAccessor())
+            ->map($this->divisionForm, EhealthData::class)
+            ->toArray();
+
         try {
-            $response = $this->updateDivision();
 
-            // If the response is empty, it means the update failed and uncatched
-            if (empty($response)) {
-                throw new Exception(static::class . 'updateDivision() return empty response!');
+            $response = EHealth::division()->update(
+                uuid: $this->divisionForm->division['uuid'] ?? null,
+                data: $divisionEhealthMapped
+            )->validate();
+
+            if ($response->isEmpty()) {
+                throw new Exception('eHealth returned an empty division response!');
             }
-
-            // This need for case if the division has DRAFT status
-            $response['id'] = $division->id;
-
-            // Repository::division()->syncDivisionData($this->divisionForm->division, legalEntity()); // TODO: realize it on the next PRs
-            $division = Repository::division()->saveDivisionData($response, legalEntity()); // TODO: Remove it after the syncDivisionData() will works
-
-            if (!$division) {
-                throw new Exception('Cannot save division data after response!');
-            }
-
-            $this->redirect(route('division.index', [legalEntity()]), navigate: true);
-
-            session()->flash('success', __('forms.success_response'));
-
-            return;
         } catch (EHealthResponseException $err) {
             $err->handle(self::class . ':divisionUpdate', __('errors.ehealth.messages.request_error'));
 
             return;
         } catch (EHealthValidationException $err) {
             Log::channel('e_health_errors')->error(self::class . ':divisionUpdate', ['error' => $err->getDetails()]);
+            session()->flash('error', __('errors.ehealth.messages.request_error'));
+
+            return;
         } catch (Throwable $err) {
-            Log::channel('db_errors')->error(self::class . ':divisionUpdate', ['error' => $err->getMessage()]);
+            Log::channel('e_health_errors')->error(self::class . ':divisionUpdate', ['error' => $err->getMessage()]);
+            session()->flash('error', __('errors.ehealth.messages.request_error'));
+
+            return;
         }
 
-        session()->flash('error', __('errors.ehealth.messages.request_error'));
+        $divisionModelMapped = new ObjectMapper(propertyAccessor: PropertyAccess::createPropertyAccessorBuilder()
+            ->disableExceptionOnInvalidPropertyPath()
+            ->getPropertyAccessor())
+            ->map($response, DivisionData::class);
 
-        return;
-    }
+        try {
+            Repository::division()->saveMappedDivision($divisionModelMapped, $division, legalEntity());
+        } catch (Throwable $err) {
+            Log::channel('db_errors')->error(self::class . ':divisionUpdate()', ['error' => $err->getMessage()]);
+            session()->flash('error', __('errors.database.messages.save_error'));
 
-    /**
-     * Prepares and sends the division data to the eHealth API for an update.
-     *
-     * This protected method is responsible for the direct interaction with the
-     * eHealth service. It prepares the request data, ensuring that location
-     * and working hours are correctly formatted and included, and then calls
-     * the eHealth API's update endpoint. The response is then validated.
-     *
-     * @return array|null The validated response data from the eHealth API on success, or null on failure.
-     */
-    protected function updateDivision(): array|null
-    {
-        $uuid = $this->divisionForm->division['uuid'];
+            return;
+        }
 
-        $division = $this->prepareRequestData();
+        $this->redirect(route('division.index', [legalEntity()]), navigate: true);
 
-        // If location is not set, then use the original location cause the 0 value has been removed by removeEmptyKeys method
-        $division['location'] ??= $this->divisionForm->division['location'];
-
-        // If working_hours is not set, then use the original working_hours value cause the '[]' value has been removed by removeEmptyKeys method
-        $division['working_hours'] = $this->prepareTimeToRequest($this->divisionForm->division['workingHours'], false);
-
-        return EHealth::division()->update(uuid: $uuid, data: $division)->validate();
+        session()->flash('success', __('forms.success_response'));
     }
 
     /**

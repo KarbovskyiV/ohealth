@@ -13,13 +13,14 @@ use App\Enums\Division\Status;
 use Livewire\Attributes\Locked;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\Repository;
+use App\Dto\Division\Model as DivisionData;
+use Symfony\Component\ObjectMapper\ObjectMapper;
+use Symfony\Component\PropertyAccess\PropertyAccess;
 use App\Traits\WorkTimeUtilities;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Session;
-use App\Traits\Addresses\AddressSearch;
 use App\Livewire\Division\Trait\HasAction;
-use App\Traits\Addresses\ReceptionAddressSearch;
 use Livewire\Features\SupportRedirects\Redirector;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
@@ -27,8 +28,6 @@ use App\Exceptions\EHealth\EHealthValidationException;
 class DivisionView extends DivisionComponent
 {
     use WorkTimeUtilities;
-    use ReceptionAddressSearch;
-    use AddressSearch;
     use HasAction;
 
     #[Locked]
@@ -55,50 +54,9 @@ class DivisionView extends DivisionComponent
     }
 
     /**
-     * Set the division form data based on the provided Division model.
-     *
-     * - Sets the main division parameters from the model.
-     * - Assigns the address and phones to the form.
-     * - Initializes working hours if not already set.
-     *
-     * @param  Division  $division
-     * @return void
-     */
-    public function setDivisionData(Division $division)
-    {
-        $this->divisionForm->setDivision($division->toArray());
-
-        $this->divisionForm->division['addresses'] = $division->addresses->toArray();
-
-        if (!empty($this->divisionForm->division['addresses'])) {
-            foreach ($this->divisionForm->division['addresses'] as $address) {
-                $addressType = strtolower($address['type']);
-
-                switch ($addressType) {
-                    case 'residence':
-                        $this->address = $address;
-                        break;
-                    case 'reception':
-                        $this->receptionAddress = $address;
-                        $this->divisionForm->showReceptionAddress = true;
-                        break;
-                    default:
-                        continue 2;
-                }
-            }
-        }
-
-        $this->divisionForm->division['phones'] = $division->phones->toArray();
-
-        $this->divisionForm->division['id'] = $division->id ?? '';
-        $this->divisionForm->division['uuid'] = $division->uuid ?? '';
-    }
-
-    /**
      * Synchronize all the Divisions with stored on the eHealths side
      *
      * @return void
-     *
      * @throws Exception|EHealthResponseException|EHealthValidationException
      */
     public function sync(): RedirectResponse|Redirector|null
@@ -109,11 +67,13 @@ class DivisionView extends DivisionComponent
             return null;
         }
 
-        $division = Division::filterByLegalEntityId(legalEntity()->id)->where('uuid', $this->divisionUuid)->first();
+        $division = Division::query()
+            ->filterByLegalEntityId(legalEntity()->id)
+            ->where('uuid', $this->divisionUuid)
+            ->first();
 
         try {
             $response = EHealth::division()->getDetails(uuid: $division->uuid);
-
             $divisionData = $response->validate();
         } catch (EHealthResponseException $err) {
             Log::channel('e_health_errors')->error(self::class . ':createDivision', ['error' => $err->getDetails()]);
@@ -134,7 +94,19 @@ class DivisionView extends DivisionComponent
             return null;
         }
 
-        Repository::division()->syncDivisionData($divisionData, legalEntity());
+        $divisionModelMapped = new ObjectMapper(propertyAccessor: PropertyAccess::createPropertyAccessorBuilder()
+            ->disableExceptionOnInvalidPropertyPath()
+            ->getPropertyAccessor())
+            ->map($divisionData, DivisionData::class);
+
+        try {
+            Repository::division()->saveMappedDivision($divisionModelMapped, $division, legalEntity());
+        } catch (Throwable $err) {
+            Log::channel('db_errors')->error(self::class . ':sync', ['error' => $err->getMessage()]);
+            session()->flash('error', __('errors.database.messages.save_error'));
+
+            return null;
+        }
 
         return redirect()
             ->route('division.view', [legalEntity(), $division->id])
