@@ -61,7 +61,7 @@ class EquipmentForm extends Form
                 Rule::requiredIf(fn () => in_array($this->type, $requiredTypes, true)),
             ],
             'status' => ['required', 'string', Rule::in(Status::ACTIVE)],
-            'recorder' => ['required', 'uuid', 'exists:employees,uuid'],
+            'recorder' => ['required', 'uuid', Rule::in(array_column($this->component->recorders, 'uuid'))],
             'divisionId' => [
                 'nullable',
                 'uuid',

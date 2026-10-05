@@ -17,6 +17,13 @@ class EquipmentView extends EquipmentComponent
     #[Locked]
     public Equipment $equipment;
 
+    /**
+     * Full name recorder.
+     *
+     * @var string
+     */
+    public string $recorderFullName;
+
     public function mount(LegalEntity $legalEntity, Equipment $equipment): void
     {
         $this->baseMount($legalEntity);

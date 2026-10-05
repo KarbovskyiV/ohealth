@@ -22,6 +22,7 @@ class EquipmentCreate extends EquipmentComponent
     public function mount(LegalEntity $legalEntity): void
     {
         $this->baseMount($legalEntity);
+        $this->loadRecorders($legalEntity);
 
         $this->form->status = Status::ACTIVE->value;
         $this->form->availabilityStatus = AvailabilityStatus::AVAILABLE->value;

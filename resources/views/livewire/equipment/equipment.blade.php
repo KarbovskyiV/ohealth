@@ -6,7 +6,6 @@
     </x-header-navigation>
 
     <div class="form shift-content" wire:key="{{ time() }}">
-
         @include('livewire.equipment.parts.main-data')
         @include('livewire.equipment.parts.additional-data', ['context' => 'create'])
 
@@ -16,10 +15,11 @@
                     {{ __('forms.cancel') }}
                 </a>
 
-                @if(get_class($this) === EquipmentCreate::class)
-                    <button type="submit"
-                            class="button-primary-outline flex items-center gap-2 px-4 py-2"
-                            wire:click="createLocally"
+                @if (get_class($this) === EquipmentCreate::class)
+                    <button
+                        type="submit"
+                        class="button-primary-outline flex items-center gap-2 px-4 py-2"
+                        wire:click="createLocally"
                     >
                         @icon('archive', 'w-4 h-4')
                         {{ __('forms.save') }}

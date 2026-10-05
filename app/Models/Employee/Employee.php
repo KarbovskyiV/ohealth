@@ -14,7 +14,6 @@ use App\Models\Relations\Education;
 use App\Models\Relations\Speciality;
 use App\Models\Relations\Qualification;
 use App\Models\Relations\ScienceDegree;
-use App\Enums\Party\VerificationStatus;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\ReorganizationEmployeeDeclaration;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -187,20 +186,12 @@ class Employee extends BaseEmployee
     }
 
     #[Scope]
-    protected function activeRecorders(Builder $query, int $legalEntityId, bool $skipVerificationCheck = false): Builder
+    protected function activeRecorders(Builder $query, int $legalEntityId): Builder
     {
-        $query->whereLegalEntityId($legalEntityId)
-            ->active();
-
-        if (!$skipVerificationCheck) {
-            $query->whereHas(
-                'party',
-                static fn (Builder $query) => $query->select('id')
-                    ->whereNot('verification_status', VerificationStatus::NOT_VERIFIED)
-            );
-        }
-
-        return $query->with('party:id,first_name,last_name,second_name');
+        return $query->whereLegalEntityId($legalEntityId)
+            ->whereIn('employee_type', [Role::OWNER, Role::ADMIN])
+            ->active()
+            ->with('party:id,first_name,last_name,second_name');
     }
 
     #[Scope]

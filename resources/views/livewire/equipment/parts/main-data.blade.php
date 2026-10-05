@@ -1,27 +1,32 @@
-@use('App\Enums\Equipment\{Status, Type}')
+@use(App\Enums\Equipment\Status)
+@use(App\Enums\Equipment\Type)
 
 <fieldset class="fieldset form">
-    <legend class="legend">
-        {{ __('forms.main_information') }}
-    </legend>
+    <legend class="legend">{{ __('forms.main_information') }}</legend>
 
-    <div class="space-y-4"
-         x-data="{ names: $wire.entangle('form.names'), types: @js(Type::allowedForEquipment()), errors: @js($errors->getMessages()) }"
-         x-init="if (!Array.isArray(names) || names.length === 0) { names = [{ name: '', type: '' }] }"
-         x-id="['name']"
+    <div
+        class="space-y-4"
+        x-data="{ names: $wire.entangle('form.names'), types: @js(Type::allowedForEquipment()), errors: @js($errors->getMessages()) }"
+        x-init="
+            if (! Array.isArray(names) || names.length === 0) {
+                names = [{ name: '', type: '' }];
+            }
+        "
+        x-id="['name']"
     >
         <template x-for="(name, index) in names" :key="index">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-center" :key="index">
+            <div class="grid grid-cols-1 items-center gap-6 md:grid-cols-2 lg:grid-cols-3" :key="index">
                 <div class="form-group group">
-                    <input x-model="names[index].name"
-                           type="text"
-                           :name="$id('name', 'name' + index)"
-                           :id="$id('name', 'name' + index)"
-                           placeholder=" "
-                           required
-                           class="peer input"
-                           :class="{ 'input-error': errors[`form.names.${index}.name`] }"
-                    >
+                    <input
+                        x-model="names[index].name"
+                        type="text"
+                        :name="$id('name', 'name' + index)"
+                        :id="$id('name', 'name' + index)"
+                        placeholder=" "
+                        required
+                        class="peer input"
+                        :class="{ 'input-error': errors[`form.names.${index}.name`] }"
+                    />
                     <label :for="$id('name', 'name' + index)" class="label">
                         {{ __('equipments.name_medical_product') }}
                     </label>
@@ -32,12 +37,13 @@
                 </div>
 
                 <div class="form-group group">
-                    <select x-model="names[index].type"
-                            :name="$id('name', 'type' + index)"
-                            :id="$id('name', 'type' + index)"
-                            required
-                            class="peer input-select"
-                            :class="{ 'input-error': errors[`form.names.${index}.type`] }"
+                    <select
+                        x-model="names[index].type"
+                        :name="$id('name', 'type' + index)"
+                        :id="$id('name', 'type' + index)"
+                        required
+                        class="peer input-select"
+                        :class="{ 'input-error': errors[`form.names.${index}.type`] }"
                     >
                         <option value="" :selected="names[index].type == ''">{{ __('forms.select') }}</option>
                         <template x-for="[key, typeName] in Object.entries(types)" :key="key">
@@ -45,8 +51,9 @@
                         </template>
                     </select>
 
-                    <label :for="$id('name', 'type' + index)"
-                           class="label peer-focus:text-blue-600 peer-valid:text-blue-600"
+                    <label
+                        :for="$id('name', 'type' + index)"
+                        class="label peer-valid:text-blue-600 peer-focus:text-blue-600"
                     >
                         {{ __('equipments.name_type') }}
                     </label>
@@ -57,17 +64,21 @@
 
                 <div class="flex items-center space-x-4">
                     <template x-if="names.length > 1">
-                        <button type="button"
-                                @click.prevent="names.splice(index, 1)"
-                                class="text-red-600 hover:text-red-800 justify-self-start">
+                        <button
+                            type="button"
+                            @click.prevent="names.splice(index, 1)"
+                            class="justify-self-start text-red-600 hover:text-red-800"
+                        >
                             @icon('delete', 'w-5 h-5 text-red-600')
                         </button>
                     </template>
 
                     <template x-if="index === names.length - 1">
-                        <button type="button"
-                                @click.prevent="names.push({ name: '', type: '' })"
-                                class="text-indigo-600 hover:text-indigo-800 item-add">
+                        <button
+                            type="button"
+                            @click.prevent="names.push({ name: '', type: '' })"
+                            class="item-add text-indigo-600 hover:text-indigo-800"
+                        >
                             {{ __('equipments.add_name') }}
                         </button>
                     </template>
@@ -77,77 +88,69 @@
     </div>
 
     <div class="form-row-2 mt-6">
-        <div class="form-group group"
-             x-data="{ type: $wire.entangle('form.type') }"
-        >
-            <x-select2 modelPath="type"
-                       dictionaryName="device_definition_classification_type"
-                       id="typeMedicalDevice"
-                       name="typeMedicalDevice"
-                       class="input peer"
+        <div class="form-group group" x-data="{ type: $wire.entangle('form.type') }">
+            <x-select2
+                modelPath="type"
+                dictionaryName="device_definition_classification_type"
+                id="typeMedicalDevice"
+                name="typeMedicalDevice"
+                class="input peer"
             />
-            <label for="typeMedicalDevice" class="label">
-                {{ __('equipments.type_medical_device') }}
-            </label>
+            <label for="typeMedicalDevice" class="label"> {{ __('equipments.type_medical_device') }} </label>
 
             @error('form.type')
-            <p class="text-error">{{ $message }}</p>
+                <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
 
         <div class="form-group group">
-            <input wire:model="form.serialNumber"
-                   type="text"
-                   name="serialNumber"
-                   id="serialNumber"
-                   placeholder=" "
-                   class="peer input"
-            >
-            <label for="serialNumber" class="label">
-                {{ __('equipments.serial_number') }}
-            </label>
+            <input
+                wire:model="form.serialNumber"
+                type="text"
+                name="serialNumber"
+                id="serialNumber"
+                placeholder=" "
+                class="peer input"
+            />
+            <label for="serialNumber" class="label"> {{ __('equipments.serial_number') }} </label>
 
             @error('form.serialNumber')
-            <p class="text-error">{{ $message }}</p>
+                <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
     </div>
 
     <div class="form-row-2">
         <div class="form-group group">
-            <input value="{{ Status::from($form->status)->label() }}"
-                   type="text"
-                   name="status"
-                   id="status"
-                   placeholder=" "
-                   class="peer input"
-                   disabled
-                   readonly
-            >
-            <label for="status" class="label">
-                {{ __('forms.status.label') }}
-            </label>
+            <input
+                value="{{ Status::from($form->status)->label() }}"
+                type="text"
+                name="status"
+                id="status"
+                placeholder=" "
+                class="peer input"
+                disabled
+                readonly
+            />
+            <label for="status" class="label"> {{ __('forms.status.label') }} </label>
 
             @error('form.status')
-            <p class="text-error">{{ $message }}</p>
+                <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
 
         <div class="form-group group">
-            <input value="{{ $recorderFullName }}"
-                   type="text"
-                   name="recorder"
-                   id="recorder"
-                   placeholder=" "
-                   class="peer input"
-                   disabled
-            >
-            <label for="recorder" class="label">
-                {{ __('equipments.recorder') }}
-            </label>
+            <select wire:model="form.recorder" name="recorder" id="recorder" class="peer input-select" required>
+                @foreach ($recorders as $recorder)
+                    <option value="{{ $recorder['uuid'] }}" wire:key="recorder-{{ $recorder['uuid'] }}">
+                        {{ $recorder['name'] }}
+                    </option>
+                @endforeach
+            </select>
+            <label for="recorder" class="label"> {{ __('equipments.recorder') }} </label>
 
             @error('form.recorder')
-            <p class="text-error">{{ $message }}</p>
+                <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
     </div>
