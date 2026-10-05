@@ -63,7 +63,7 @@
             <p class="text-sm font-medium text-gray-900 dark:text-white">ТОВ "Комунальна лікарня швидкої допомоги №1"</p>
             <p class="text-xs text-gray-500 mt-1">{{ __('patients.electronic_referral') }}</p>
             <p class="text-xs text-gray-500">29.08.2023, 7198-0713-2639-9181</p>
-            <p class="text-xs text-gray-700 mt-2"><span class="font-semibold">{{ __('patients.status') }}:</span> Активний</p>
+            <p class="text-xs text-gray-700 mt-2"><span class="font-semibold">{{ __('patients.status_label') }}:</span> Активний</p>
             <p class="text-xs text-gray-700"><span class="font-semibold">{{ __('patients.state') }}:</span> Новий</p>
             <p class="text-xs text-gray-700"><span class="font-semibold">{{ __('patients.category') }}:</span> Терапевтична взаємодія</p>
             <p class="text-xs text-gray-700"><span class="font-semibold">{{ __('patients.service') }}:</span> Z34002 - пологи; пологи; Амбулаторна/...</p>

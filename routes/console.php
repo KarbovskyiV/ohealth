@@ -21,6 +21,15 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Artisan::command('first-run', function () {
-    $this->call('install', ['--clear' => true, '--wipe' => true, '--key' => true]);
-    $this->call('db:seed', ['--class' => 'DatabaseSeeder']);
+    if (app()->isLocal() && (blank(config('ehealth.test.client_id')) || blank(config('ehealth.test.client_secret')))) {
+        throw new RuntimeException('Test eHealth client ID and secret must be configured before first-run.');
+    }
+
+    if ($this->call('install', ['--clear' => true, '--wipe' => true, '--key' => true]) !== 0) {
+        throw new RuntimeException('Installation failed; database seeding was skipped.');
+    }
+
+    if ($this->call('db:seed', ['--class' => 'DatabaseSeeder']) !== 0) {
+        throw new RuntimeException('Database seeding failed.');
+    }
 })->purpose('Completes the first run of the application');

@@ -1,9 +1,8 @@
 @php
     natcasesort($dictionaries['STREET_TYPE']);
 
-    $divisionView = isset($divisionView) && $divisionView === true;
-    $addressType = $divisionView ? dictionary()->basics()->byName('ADDRESS_TYPE')->where('code', $address['type'] ?? '')->value('description') : null;
-    $addressCountry = $divisionView ? dictionary()->basics()->byName('COUNTRY')->where('code', $address['country'] ?? '')->value('description') : null;
+    $addressTypes = dictionary()->basics()->byName('ADDRESS_TYPE') ?? [];
+    $addressCountries = dictionary()->basics()->byName('COUNTRY') ?? [];
 @endphp
 
 <div
@@ -11,7 +10,6 @@
         searchStartLength: 2,
         address: $wire.entangle('receptionAddress'),
         readonly: {{ $readonly ? 'true' : 'false' }},
-        divisionView: {{ $divisionView ? 'true' : 'false' }},
         selecting: false,
         clearStreet() {
             this.address.building = '';
@@ -71,57 +69,80 @@
     x-init="init()"
     class="{{ $class }}"
 >
-    @if($divisionView)
-         {{-- COUNTRY --}}
-        <div class="form-group group">
-            <input
-                required
-                type="text"
-                placeholder=" "
-                id="addressCountry"
-                class="input peer"
-                value="{{ $addressCountry ?? '-' }}"
-                disabled
-            />
+    {{-- COUNTRY --}}
+    <div class="form-group group">
+        <select
+            x-model="address.country"
+            required
+            id="addressCountryReception"
+            @blur="selecting = false"
+            {{-- This need to properly set a Kyiv area --}}
+            aria-describedby="@error('receptionAddress.country') addressCountryErrorHelp{{ $uid }} @enderror"
+            class="input-select text-gray-800 @error('receptionAddress.country') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
+            :disabled="readonly"
+        >
+            <option :value="address.country" hidden x-text="address.country"></option>
 
-            <label for="addressCountry" class="label z-10">
-                {{ __('forms.country') }}
-            </label>
-        </div>
+            @forelse ($addressCountries as $country)
+                <option value="{{ $country['code'] }}" @disabled($country['code'] !== 'UA')>
+                    {{ $country['description'] }}
+                </option>
+            @empty
+            @endforelse
+        </select>
 
-        {{-- ADDRESS TYPE --}}
-        <div class="form-group group">
-            <input
-                type="text"
-                placeholder=" "
-                id="addressType"
-                class="input peer"
-                value="{{ $addressType ?? '-' }}"
-                disabled
-            />
+        @error('receptionAddress.country')
+            <p id="addressCountryErrorHelp{{ $uid }}" class="text-error">{{ $message }}</p>
+        @enderror
 
-            <label for="addressType" class="label z-10">
-                {{ __('forms.address_type') }}
-            </label>
-        </div>
+        <label for="addressCountryReception" class="label z-10"> {{ __('forms.country') }} </label>
+    </div>
 
-        {{-- SETTLEMENT ID --}}
-        <div class="form-group group">
-            <input
-                x-model="address.settlementId"
-                type="text"
-                placeholder=" "
-                id="addressSettlementId"
-                value="{{ $address['settlementId'] ?? '-' }}"
-                class="input peer"
-                disabled
-            />
+    {{-- ADDRESS TYPE --}}
+    <div class="form-group group">
+        <select
+            x-model="address.type"
+            required
+            id="addressTypeReception"
+            @blur="selecting = false"
+            {{-- This need to properly set a Kyiv area --}}
+            aria-describedby="@error('receptionAddress.type') addressTypeErrorHelp{{ $uid }} @enderror"
+            class="input-select text-gray-800 @error('receptionAddress.type') input-error border-red-500 focus:border-red-500 scroll-to-error @enderror peer"
+            :disabled="readonly"
+        >
+            <option :value="address.type" hidden x-text="address.type"></option>
 
-            <label for="addressSettlementId" class="label z-10">
-                {{ __('forms.settlement_id') }}
-            </label>
-        </div>
-    @endif
+            @forelse ($addressTypes as $type)
+                <option value="{{ $type['code'] }}" @disabled($type['code'] !== 'RECEPTION')>
+                    {{ $type['description'] }}
+                </option>
+            @empty
+            @endforelse
+        </select>
+
+        @error('receptionAddress.type')
+            <p id="addressTypeErrorHelp{{ $uid }}" class="text-error">{{ $message }}</p>
+        @enderror
+
+        <label for="addressTypeReception" class="label z-10"> {{ __('forms.address_type') }} </label>
+    </div>
+
+    {{-- SETTLEMENT ID --}}
+    <div class="form-group group">
+        <input
+            x-model="address.settlementId"
+            type="text"
+            placeholder=" "
+            id="addressSettlementId{{ $uid }}"
+            value="{{ $address['settlementId'] ?? '-' }}"
+            class="input peer"
+            :disabled="readonly"
+        />
+
+        <label for="addressSettlementId{{ $uid }}" class="label z-10">
+            {{ __('forms.settlement_id') }}
+        </label>
+    </div>
 
     {{-- AREA --}}
     <div class="form-group group !z-[18]">

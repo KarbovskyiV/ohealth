@@ -457,7 +457,6 @@
                                     :settlements="$settlements"
                                     :streets="$streets"
                                     :readonly="$readonly"
-                                    :divisionView="$readonly"
                                     class="mt-8 form-row-3"
                                 />
 
@@ -484,7 +483,6 @@
                                             :settlements="$receptionSettlements"
                                             :streets="$receptionStreets"
                                             :readonly="$readonly"
-                                            :divisionView="$readonly"
                                             class="mt-8 form-row-3"
                                         />
                                     </div>

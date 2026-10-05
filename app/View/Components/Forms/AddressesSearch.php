@@ -19,10 +19,11 @@ class AddressesSearch extends Addresses
         array $streets,
         string $class,
         bool $readonly = false,
-        bool $divisionView = false,
-        string $property = 'address'
+        string $property = 'address',
+        bool $enableType = false,
+        bool $enableCountry = false
     ) {
-        parent::__construct($address, $districts, $settlements, $streets, $class, $readonly, $divisionView, $property);
+        parent::__construct($address, $districts, $settlements, $streets, $class, $readonly, $property, $enableType, $enableCountry);
     }
 
     public static function getAddressRules(array $address): array

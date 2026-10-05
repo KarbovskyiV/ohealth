@@ -423,7 +423,7 @@ class PersonComponent extends Component
         }
 
         try {
-            $response = EHealth::personRequest()->create($validated);
+            $response = EHealth::personRequest()->create($this->withoutSettlementTypes($validated));
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when creating a person request');
 
@@ -440,12 +440,12 @@ class PersonComponent extends Component
             if ($this instanceof PersonRequestEdit) {
                 Repository::personRequest()->updateDraft(
                     $this->form->person['id'],
-                    removeEmptyKeys($response->map($response->validate())),
+                    removeEmptyKeys($this->withSettlementTypes($response->map($response->validate()))),
                     $selectedConfidantPersonData
                 );
             } else {
                 Repository::personRequest()->create(
-                    removeEmptyKeys($response->map($response->validate())),
+                    removeEmptyKeys($this->withSettlementTypes($response->map($response->validate()))),
                     $selectedConfidantPersonData
                 );
             }
@@ -615,9 +615,7 @@ class PersonComponent extends Component
     }
 
     /**
-     * Drop the address being edited when it stops being a Ukrainian one or becomes it, because the two are
-     * filled in a different alphabet and only the Ukrainian one takes its values from the address registry.
-     * A switch between two countries abroad keeps everything that was typed in.
+     * Reset the address when its country changes, because Ukrainian and foreign addresses use different forms.
      *
      * @param  mixed  $value
      * @param  string|null  $key
@@ -920,16 +918,19 @@ class PersonComponent extends Component
         try {
             DB::transaction(function () use ($responseData, $approvedPersonRequest, &$successMessage) {
                 Repository::personRequest()->updateStatusByUuid($responseData);
+                $personData = $this->withSettlementTypes(
+                    $approvedPersonRequest->map($approvedPersonRequest->validate())
+                );
 
                 if ($this instanceof PersonUpdate) {
                     Repository::person()->update(
-                        $approvedPersonRequest->map($approvedPersonRequest->validate()),
+                        $personData,
                         $responseData['person_id']
                     );
                     $successMessage = __('patients.messages.person_updated');
                 } else {
                     Repository::person()->create(
-                        $approvedPersonRequest->map($approvedPersonRequest->validate()),
+                        $personData,
                         $responseData['person_id']
                     );
                     $successMessage = __('patients.messages.person_created');
@@ -957,6 +958,38 @@ class PersonComponent extends Component
 
         Session::flash('success', $successMessage);
         $this->redirectRoute('persons.index', [legalEntity()], navigate: true);
+    }
+
+    /**
+     * eHealth rejects settlement_type in person-request creation, though it is stored locally after signing.
+     *
+     * @param  array  $personData
+     * @return array
+     */
+    protected function withoutSettlementTypes(array $personData): array
+    {
+        foreach (array_keys($personData['person']['addresses'] ?? []) as $index) {
+            unset($personData['person']['addresses'][$index]['settlementType']);
+            unset($personData['person']['addresses'][$index]['settlement_type']);
+        }
+
+        return $personData;
+    }
+
+    /**
+     * Person-request responses have no settlement_type, so retain the value selected in the form.
+     *
+     * @param  array  $personData
+     * @return array
+     */
+    protected function withSettlementTypes(array $personData): array
+    {
+        foreach (array_keys($personData['person']['addresses'] ?? []) as $index) {
+            $personData['person']['addresses'][$index]['settlement_type'] =
+                $this->addresses[$index]['settlementType'] ?? null;
+        }
+
+        return $personData;
     }
 
     /**

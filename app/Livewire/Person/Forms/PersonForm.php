@@ -319,8 +319,8 @@ class PersonForm extends BaseForm
     /**
      * Rules of a single address. Its country decides both the alphabet the address is filled in and which of
      * its parts belong to the schema at all: the ones taken from the address registry are dropped from the
-     * payload of an address abroad. The settlement type has no rule on purpose, it is collected to search
-     * the registry but the schema of a person address has no such property and rejects it.
+     * payload of an address abroad. Settlement type is a local Ukrainian-address field and is excluded from
+     * the eHealth person-request payload, which does not accept it.
      *
      * @param  int  $index
      * @param  bool  $isUkraineAddress
@@ -350,6 +350,9 @@ class PersonForm extends BaseForm
             "person.addresses.$index.street" => [$registryField, 'string', 'max:255', $textPattern],
             "person.addresses.$index.settlementId" => $isUkraineAddress
                 ? ['required', 'uuid']
+                : ['exclude'],
+            "person.addresses.$index.settlementType" => $isUkraineAddress
+                ? ['nullable', new InDictionary('SETTLEMENT_TYPE')]
                 : ['exclude'],
             "person.addresses.$index.streetType" => $isUkraineAddress
                 ? ['nullable', new InDictionary('STREET_TYPE')]
