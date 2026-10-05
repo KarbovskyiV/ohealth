@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Division;
 
 use Arr;
-use App\Enums\Status;
 use Livewire\Component;
 use App\Models\Division;
 use App\Traits\FormTrait;
@@ -13,11 +12,20 @@ use App\Repositories\Repository;
 use App\Traits\WorkTimeUtilities;
 use App\Livewire\Division\Forms\DivisionForm;
 use App\Classes\eHealth\Api\Division as DivisionApi;
+use App\Dto\Division\Model as DivisionData;
+use App\Dto\Division\Form as DivisionFormData;
+use App\Models\Relations\Address;
+use App\Traits\Addresses\AddressSearch;
+use App\Traits\Addresses\ReceptionAddressSearch;
+use Symfony\Component\ObjectMapper\ObjectMapper;
+use Symfony\Component\PropertyAccess\PropertyAccess;
 
 class DivisionComponent extends Component
 {
     use FormTrait;
     use WorkTimeUtilities;
+    use AddressSearch;
+    use ReceptionAddressSearch;
 
     /**
      * The form model instance for handling division data.
@@ -25,6 +33,17 @@ class DivisionComponent extends Component
      * @var DivisionForm
      */
     public DivisionForm $divisionForm;
+
+    public function setDivisionData(Division $division): void
+    {
+        $data = new ObjectMapper(propertyAccessor: PropertyAccess::createPropertyAccessor())
+            ->map($division, DivisionFormData::class);
+
+        $this->divisionForm->setDivision($data->toArray());
+        $this->address = $data->address(Address::DEFAULT_TYPE);
+        $this->receptionAddress = $data->address(Address::RECEPTION_TYPE);
+        $this->divisionForm->showReceptionAddress = $data->hasReceptionAddress();
+    }
 
     /**
      * Array containing dictionary names only used within the component.
@@ -127,17 +146,20 @@ class DivisionComponent extends Component
      */
     protected function saveToDB(): ?Division
     {
-        $divisionData = $this->convertArrayKeysToSnakeCase($this->divisionForm->division);
+        $divisionData = new ObjectMapper(propertyAccessor: PropertyAccess::createPropertyAccessorBuilder()
+            ->disableExceptionOnInvalidPropertyPath()
+            ->getPropertyAccessor())
+            ->map($this->divisionForm, DivisionData::class);
 
-        $division = null;
+        $division = $divisionData->uuid ? Division::where('uuid', $divisionData->uuid)->first() : null;
+        if (is_null($division) && isset($divisionData->id)) {
+            $division = Division::find($divisionData->id);
+        }
+        if (is_null($division)) {
+            $division = new Division();
+        }
 
-        $divisionData['status'] = empty($divisionData['uuid'])
-            ? Status::DRAFT->value
-            : Status::UNSYNCED->value;
-
-        $division = Repository::division()->saveDivisionData($divisionData, legalEntity());
-
-        return $division;
+        return Repository::division()->saveMappedDivision($divisionData, $division, legalEntity());
     }
 
     /**

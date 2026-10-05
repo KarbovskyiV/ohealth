@@ -10,23 +10,21 @@ use App\Models\Division;
 use App\Models\LegalEntity;
 use App\Models\Relations\Phone;
 use App\Classes\eHealth\EHealth;
+use App\Dto\Division\Ehealth as EhealthData;
+use App\Dto\Division\Model as DivisionData;
 use App\Repositories\Repository;
 use App\Traits\WorkTimeUtilities;
+use Symfony\Component\ObjectMapper\ObjectMapper;
+use Symfony\Component\PropertyAccess\PropertyAccess;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
-use App\Traits\Addresses\AddressSearch;
 use Illuminate\Support\Facades\Redirect;
-use App\Traits\Addresses\ReceptionAddressSearch;
 use Livewire\Features\SupportRedirects\Redirector;
-use App\Exceptions\EHealth\EHealthResponseException;
-use App\Exceptions\EHealth\EHealthValidationException;
 
 class DivisionCreate extends DivisionComponent
 {
     use WorkTimeUtilities;
-    use AddressSearch;
-    use ReceptionAddressSearch;
 
     /**
      * Array containing dictionary names only used within the component.
@@ -58,7 +56,7 @@ class DivisionCreate extends DivisionComponent
      * @param  mixed  $value  The value for latitude from input field
      * @return void
      */
-    public function updatedDivisionFormDivisionLocationLatitude($value)
+    public function updatedDivisionFormDivisionLocationLatitude($value): void
     {
         $this->divisionForm->division['location']['latitude'] = empty($value) && !is_numeric($value)
             ? null
@@ -72,10 +70,10 @@ class DivisionCreate extends DivisionComponent
      * divisionForm.division.location.longitude property is updated.
      * It ensures the value is always stored as a float.
      *
-     * @param  mixed  $value  The value for latitude from input field
+     * @param  mixed  $value  The value for longitude from input field
      * @return void
      */
-    public function updatedDivisionFormDivisionLocationLongitude($value)
+    public function updatedDivisionFormDivisionLocationLongitude($value): void
     {
         $this->divisionForm->division['location']['longitude'] = empty($value) && !is_numeric($value)
             ? null
@@ -95,10 +93,6 @@ class DivisionCreate extends DivisionComponent
 
             return null;
         }
-
-        $this->divisionForm->division['addresses'] = $this->divisionForm->showReceptionAddress
-            ? ['residence' => $this->address, 'reception' => $this->receptionAddress]
-            : ['residence' => $this->address];
 
         if ($this->validateDivision()) {
             try {
@@ -124,14 +118,14 @@ class DivisionCreate extends DivisionComponent
      */
     public function create(): void
     {
-        // Preliminary store data the the DB
+        // Preliminary store data in the DB
         $division = $this->store(false);
 
         if (!$division || !$division instanceof Division) {
             return;
         }
 
-        // Send request to the eHealth and store reequest data
+        // Send request to the eHealth and store request data
         $this->divisionCreate($division);
     }
 
@@ -150,64 +144,41 @@ class DivisionCreate extends DivisionComponent
      */
     protected function divisionCreate(Division $division): void
     {
+        $divisionEhealthMapped = new ObjectMapper(propertyAccessor: PropertyAccess::createPropertyAccessor())
+            ->map($this->divisionForm, EhealthData::class)
+            ->toArray();
+
         try {
-            $response = $this->createDivision();
-
+            $response = EHealth::division()->create(data: $divisionEhealthMapped)->validate();
             // If the response is empty, it means the create failed and uncatched
-            if (empty($response)) {
-                throw new Exception(static::class . 'createDivision() return empty response!');
+            if ($response->isEmpty()) {
+                throw new Exception('eHealth return empty response!');
             }
 
-            $response['id'] = $division->id;
-
-            // Repository::division()->syncDivisionData($this->divisionForm->division, legalEntity()); // TODO: realize it on the next PRs
-            $division = Repository::division()->saveDivisionData($response, legalEntity()); // TODO: Remove it after the syncDivisionData() will works
-
-            if (!$division) {
-                throw new Exception('Cannot save division data after response!');
-            }
-
-            $this->redirect(route('division.index', [legalEntity()]), navigate: true);
-
-            session()->flash('success', __('forms.success_response'));
-
-            return;
-        } catch (EHealthResponseException $err) {
-            $err->handle(self::class . ':divisionCreate', __('errors.ehealth.messages.request_error'));
-
-            return;
-        } catch (EHealthValidationException $err) {
-            Log::channel('e_health_errors')->error(self::class . ':divisionCreate', ['error' => $err->getDetails()]);
         } catch (Throwable $err) {
-            Log::channel('db_errors')->error(self::class . ':divisionCreate', ['error' => $err->getMessage()]);
+            Log::channel('e_health_errors')->error(self::class . '::divisionCreate()', ['error' => $err->getMessage()]);
+            session()->flash('error', __('errors.ehealth.messages.request_error'));
+
+            return;
         }
 
-        session()->flash('error', __('errors.ehealth.messages.request_error'));
+        $divisionModelMapped = new ObjectMapper(propertyAccessor: PropertyAccess::createPropertyAccessorBuilder()
+            ->disableExceptionOnInvalidPropertyPath()
+            ->getPropertyAccessor())
+            ->map($response, DivisionData::class);
 
-        return;
-    }
+        try {
+            Repository::division()->saveMappedDivision($divisionModelMapped, $division, legalEntity());
+        } catch (Throwable $err) {
+            Log::channel('db_errors')->error(self::class . '::divisionCreate()', ['error' => $err->getMessage()]);
+            session()->flash('error', __('errors.database.messages.save_error'));
 
-    /**
-     * Prepares and sends the division data to the eHealth API for creation
-     *
-     * This method is responsible for the direct interaction with the
-     * eHealth service. It prepares the request data, ensuring that location
-     * and working hours are correctly formatted and included, and then calls
-     * the eHealth API's create endpoint.
-     *
-     * @return array The validated response data from the eHealth API
-     */
-    protected function createDivision(): array
-    {
-        $division = $this->prepareRequestData();
+            return;
+        }
 
-        // If location is not set, then use the original location cause the 0 value has been removed by removeEmptyKeys method
-        $division['location'] ??= $this->divisionForm->division['location'];
+        $this->redirect(route('division.index', [legalEntity()]), navigate: true);
 
-        // If working_hours is not set, then use the original working_hours value cause the '[]' value has been removed by removeEmptyKeys method
-        $division['working_hours'] = $this->prepareTimeToRequest($this->divisionForm->division['workingHours'], false);
-
-        return EHealth::division()->create(data: $division)->validate();
+        session()->flash('success', __('forms.success_response'));
     }
 
     /**
