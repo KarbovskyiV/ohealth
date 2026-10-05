@@ -21,6 +21,7 @@ class EquipmentEdit extends EquipmentComponent
         $this->equipmentId = $equipment->id;
 
         $this->loadEquipmentToForm($equipment);
+        $this->loadRecorders($legalEntity);
         $this->form->ehealthInsertedAt = $equipment->ehealthInsertedAt;
     }
 

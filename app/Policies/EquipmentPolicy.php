@@ -94,6 +94,11 @@ class EquipmentPolicy
             return Response::denyWithStatus(404);
         }
 
+        // Only OWNER and ADMIN are allowed to edit equipment
+        if (!$user->hasAllowedRole([Role::OWNER, Role::ADMIN])) {
+            return Response::denyWithStatus(404);
+        }
+
         // Only draft can be edited
         if ($equipment->status !== Status::DRAFT) {
             return Response::denyWithStatus(404);

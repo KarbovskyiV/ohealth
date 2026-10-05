@@ -7,6 +7,7 @@ namespace App\Livewire\Equipment;
 use App\Classes\eHealth\EHealth;
 use App\Classes\eHealth\EHealthResponse;
 use App\Enums\User\Role;
+use App\Models\Employee\Employee;
 use App\Models\Equipment;
 use App\Models\LegalEntity;
 use App\Traits\FormTrait;
@@ -48,11 +49,11 @@ class EquipmentComponent extends Component
     public array $equipments;
 
     /**
-     * Full name recorder.
+     * Current user's employees allowed to be the recorder.
      *
-     * @var string
+     * @var array
      */
-    public string $recorderFullName;
+    public array $recorders = [];
 
     /**
      * Used to indicate is it edit page, if so update DB row instead of create new one.
@@ -81,21 +82,31 @@ class EquipmentComponent extends Component
                 'availabilityStatus' => $equipment->availabilityStatus
             ])
             ->toArray();
+    }
 
-        // Skip check for verified party, if user has any of that role
-        $skip = Auth::user()->hasAllowedRole([Role::OWNER, Role::HR, Role::ADMIN]);
+    /**
+     * Load the current user's employees allowed to be the recorder, keep the already selected one if it is among them,
+     * otherwise preselect the first one.
+     *
+     * @param  LegalEntity  $legalEntity
+     * @return void
+     */
+    protected function loadRecorders(LegalEntity $legalEntity): void
+    {
+        $this->recorders = Auth::user()->employees()
+            ->activeRecorders($legalEntity->id)
+            ->get(['uuid', 'party_id', 'employee_type'])
+            ->map(static fn (Employee $employee) => [
+                'uuid' => $employee->uuid,
+                'name' => $employee->fullName . ' (' . Role::from($employee->employeeType)->label() . ')'
+            ])
+            ->toArray();
 
-        $recorderData = Auth::user()->employees()
-            ->activeRecorders($legalEntity->id, $skip)
-            ->get(['uuid', 'party_id'])
-            ->first();
+        $recorderIds = array_column($this->recorders, 'uuid');
 
-        if (empty($recorderData)) {
-            abort(403, __('Працівника з відповідними доступами не знайдено.'));
+        if (!in_array($this->form->recorder ?? '', $recorderIds, true)) {
+            $this->form->recorder = $recorderIds[0] ?? '';
         }
-
-        $this->recorderFullName = $recorderData->fullName;
-        $this->form->recorder = $recorderData->uuid;
     }
 
     protected function loadEquipmentToForm(Equipment $equipment): void
