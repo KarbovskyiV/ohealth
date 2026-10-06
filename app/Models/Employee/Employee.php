@@ -124,7 +124,7 @@ class Employee extends BaseEmployee
     }
 
     /**
-     * Scope to the employees the user works as in the legal entity.
+     * Scope to the approved and still working employees the user works as in the legal entity.
      *
      * @param  Builder  $query
      * @param  User  $user
@@ -134,7 +134,7 @@ class Employee extends BaseEmployee
     #[Scope]
     protected function forUserInLegalEntity(Builder $query, User $user, LegalEntity $legalEntity): Builder
     {
-        return $query->forParty($user->partyId)->whereLegalEntityId($legalEntity->id);
+        return $query->forParty($user->partyId)->whereLegalEntityId($legalEntity->id)->active();
     }
 
     public function scopeEmployeeInstance(Builder $query, int $userId, string $legalEntityUUID, array $roles, bool $isInclude = false): void

@@ -232,7 +232,10 @@ class EncounterIndex extends BasePatientComponent
      */
     protected function loadFilterOptions(): void
     {
-        $this->episodes = Repository::episode()->getByPersonId($this->patient());
+        $this->episodes = Episode::readableFor($this->patient(), $this->hasPatientAccess)
+            ->recentlyUpdatedFirst()
+            ->get()
+            ->toArray();
 
         $encounters = Encounter::readableFor($this->patient(), $this->hasPatientAccess)
             ->with(['incomingReferral.type.coding', 'originEpisode.type.coding'])
@@ -301,21 +304,8 @@ class EncounterIndex extends BasePatientComponent
         $periodStart = array_map('trim', explode('—', $this->filterStartDateRange));
         $periodEnd = array_map('trim', explode('—', $this->filterEndDateRange));
 
-        // An approval on the searched episode opens its encounters whichever legal entity manages it
-        $filteredEpisode = $this->filterEpisodeId !== ''
-            ? Episode::forPatient($this->patient())->whereUuid($this->filterEpisodeId)->first()
-            : null;
-        $hasEpisodeAccess = $filteredEpisode !== null
-            && Approval::resourceAccessGrantedTo(Auth::user(), $filteredEpisode, legalEntity())->exists();
-
-        // An origin episode of ours opens the encounters it originated whichever legal entity manages them
-        $isOriginEpisodeOurs = $this->filterOriginEpisodeId !== ''
-            && Episode::forLegalEntity()->whereUuid($this->filterOriginEpisodeId)->exists();
-
         $params = array_filter([
-            'managing_organization_id' => $this->hasPatientAccess || $hasEpisodeAccess || $isOriginEpisodeOurs
-                ? null
-                : legalEntity()->uuid,
+            'managing_organization_id' => $this->hasPatientAccess ? null : legalEntity()->uuid,
             'episode_id' => $this->filterEpisodeId ?: null,
             'incoming_referral_id' => $this->filterIncomingReferralId ?: null,
             'origin_episode_id' => $this->filterOriginEpisodeId ?: null,

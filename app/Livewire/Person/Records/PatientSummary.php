@@ -362,7 +362,7 @@ class PatientSummary extends BasePatientComponent
         // Short encounters are open by a declaration (rule 1) or by the managing organization (rule 2) only
         $encounters = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
             ? Encounter::readableFor($this->patient(), true)
-            : Encounter::forPatient($this->patient())->forLegalEntity();
+            : Encounter::forLegalEntity($this->patient());
 
         $this->setPaginatedRecords(
             'encounters',
@@ -510,9 +510,14 @@ class PatientSummary extends BasePatientComponent
 
     public function getObservations(): void
     {
+        // Short observations are open by a declaration (rule 1) or by the managing organization (rule 2) only
+        $observations = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? Observation::readableFor($this->patient(), true)
+            : Observation::forLegalEntity($this->patient());
+
         $this->setPaginatedRecords(
             'observations',
-            Observation::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            $observations->allowedForSummary()->withAllRelations(),
             'observations'
         );
     }

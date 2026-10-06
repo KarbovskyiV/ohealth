@@ -12,9 +12,12 @@ use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\ObservationSync;
 use App\Livewire\Encounter\Forms\EncounterCancellationForm;
 use App\Livewire\Person\Records\BasePatientComponent;
+use App\Models\Declaration;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
+use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\Observation;
 use App\Repositories\MedicalEvents\Repository;
 use App\Rules\InDictionary;
@@ -23,6 +26,7 @@ use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
 use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -136,6 +140,18 @@ class ObservationIndex extends BasePatientComponent
         $this->loadFilterOptions();
     }
 
+    /**
+     * Whether the user has an active declaration or approval on the patient, which opens the observations of every legal entity.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function hasPatientAccess(): bool
+    {
+        return Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            || Approval::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists();
+    }
+
     #[Computed]
     public function paginatedObservations(): LengthAwarePaginator
     {
@@ -167,7 +183,7 @@ class ObservationIndex extends BasePatientComponent
         try {
             $response = EHealth::observation()->getBySearchParams(
                 $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
+                $this->hasPatientAccess ? [] : ['managing_organization_id' => legalEntity()->uuid]
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing observation');
@@ -216,10 +232,13 @@ class ObservationIndex extends BasePatientComponent
 
     protected function loadFilterOptions(): void
     {
-        $this->episodes = Repository::episode()->getByPersonId($this->patient());
-        $this->encounters = Repository::encounter()->getByPersonId($this->patient());
+        $this->episodes = Episode::readableFor($this->patient(), $this->hasPatientAccess)
+            ->recentlyUpdatedFirst()
+            ->get()
+            ->toArray();
+        $this->encounters = Repository::encounter()->getByPersonId($this->patient(), $this->hasPatientAccess);
 
-        $reports = DiagnosticReport::forPatient($this->patient())
+        $reports = DiagnosticReport::readableFor($this->patient(), $this->hasPatientAccess)
             ->final()
             ->with(['effectivePeriod', 'code.type.coding'])
             ->recentlyUpdatedFirst()
@@ -257,7 +276,7 @@ class ObservationIndex extends BasePatientComponent
      */
     protected function paginateLocalObservations(): LengthAwarePaginator
     {
-        $paginator = Observation::forPatient($this->patient())
+        $paginator = Observation::readableFor($this->patient(), $this->hasPatientAccess)
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));
@@ -285,7 +304,7 @@ class ObservationIndex extends BasePatientComponent
             'issued_from' => $this->filterIssuedFrom ?: null,
             'issued_to' => $this->filterIssuedTo ?: null,
             'device_id' => $this->filterDeviceId ?: null,
-            'managing_organization_id' => legalEntity()->uuid,
+            'managing_organization_id' => $this->hasPatientAccess ? null : legalEntity()->uuid,
             'specimen_id' => $this->filterSpecimenId ?: null,
             'page' => $this->getPage(),
             'page_size' => config('pagination.per_page')

@@ -214,41 +214,65 @@ class Encounter extends Model
     }
 
     /**
-     * Filter encounters whose episode is managed by the current legal entity.
+     * Filter the patient's encounters of the current legal entity. Of the managing organizations the rule names,
+     * only the episode's one is stored for an encounter.
      *
-     * ABAC rules 2 and 3.
+     * ABAC rule 2.
      *
      * @param  Builder  $query
+     * @param  Person|Preperson  $patient
      * @return Builder
      */
     #[Scope]
-    protected function forLegalEntity(Builder $query): Builder
+    protected function forLegalEntity(Builder $query, Person|Preperson $patient): Builder
     {
-        return $query->whereHas(
+        return $query->forPatient($patient)->whereHas(
             'episode',
             static fn (Builder $identifier): Builder => $identifier->whereIn(
                 'value',
-                Episode::forLegalEntity()->pluck('uuid')
+                Episode::forPatient($patient)->managedByLegalEntity()->pluck('uuid')
             )
         );
     }
 
     /**
-     * Filter encounters originated by an episode managed by the current legal entity.
+     * Filter the patient's encounters whose episode is managed by the current legal entity.
+     *
+     * ABAC rule 3.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEpisodeOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'episode',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Episode::forPatient($patient)->managedByLegalEntity()->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's encounters originated by an episode managed by the current legal entity.
      *
      * ABAC rule 6.
      *
      * @param  Builder  $query
+     * @param  Person|Preperson  $patient
      * @return Builder
      */
     #[Scope]
-    protected function originatedInLegalEntity(Builder $query): Builder
+    protected function originatedInLegalEntity(Builder $query, Person|Preperson $patient): Builder
     {
-        return $query->whereHas(
+        return $query->forPatient($patient)->whereHas(
             'originEpisode',
             static fn (Builder $identifier): Builder => $identifier->whereIn(
                 'value',
-                Episode::forLegalEntity()->pluck('uuid')
+                Episode::forPatient($patient)->managedByLegalEntity()->pluck('uuid')
             )
         );
     }
@@ -266,22 +290,15 @@ class Encounter extends Model
     #[Scope]
     protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
     {
-        if (!$hasPatientAccess) {
-            return $query->forPatient($patient)->where(
-                static fn (Builder $encounter): Builder => $encounter->forLegalEntity()
-                    ->orWhere(static fn (Builder $originated): Builder => $originated->originatedInLegalEntity())
-            );
+        if ($hasPatientAccess) {
+            return $patient instanceof Person
+                ? $patient->filterRecordsWithMerged($query)
+                : $query->forPatient($patient);
         }
-
-        if ($patient instanceof Preperson) {
-            return $query->forPatient($patient);
-        }
-
-        $ids = $patient->idsWithMerged();
 
         return $query->where(
-            static fn (Builder $encounter): Builder => $encounter->whereIn('person_id', $ids['personIds'])
-                ->orWhereIn('preperson_id', $ids['prepersonIds'])
+            static fn (Builder $encounter): Builder => $encounter->forLegalEntity($patient)
+                ->orWhere(static fn (Builder $originated): Builder => $originated->originatedInLegalEntity($patient))
         );
     }
 

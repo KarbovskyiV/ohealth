@@ -179,6 +179,23 @@ class Episode extends Model
     }
 
     /**
+     * Filter episodes stored with the current legal entity as the managing organization. Unlike forLegalEntity(),
+     * an episode without a managing organization is left out: its owner is unknown, so it cannot open the records
+     * linked to it.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function managedByLegalEntity(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'managingOrganization',
+            static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
+        );
+    }
+
+    /**
      * Episodes of the patient the user may read: with access to all the patient's data (an active declaration or
      * approval) all of them, including the ones of the persons and prepersons merged into a person, otherwise only
      * the patient's own ones of the current legal entity.
@@ -191,20 +208,13 @@ class Episode extends Model
     #[Scope]
     protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
     {
-        if (!$hasPatientAccess) {
-            return $query->forPatient($patient)->forLegalEntity();
+        if ($hasPatientAccess) {
+            return $patient instanceof Person
+                ? $patient->filterRecordsWithMerged($query)
+                : $query->forPatient($patient);
         }
 
-        if ($patient instanceof Preperson) {
-            return $query->forPatient($patient);
-        }
-
-        $ids = $patient->idsWithMerged();
-
-        return $query->where(
-            static fn (Builder $episode): Builder => $episode->whereIn('person_id', $ids['personIds'])
-                ->orWhereIn('preperson_id', $ids['prepersonIds'])
-        );
+        return $query->forPatient($patient)->forLegalEntity();
     }
 
     #[Scope]

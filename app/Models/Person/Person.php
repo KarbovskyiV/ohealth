@@ -21,6 +21,7 @@ use App\Models\Relations\PersonName;
 use App\Models\Relations\PersonVerificationDetail;
 use App\Models\MedicalEvents\Sql\Approval;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -153,20 +154,24 @@ class Person extends BasePerson
     }
 
     /**
-     * IDs of this person and the persons and prepersons merged into it.
+     * Filter the records of this person and of the persons and prepersons merged into it.
      *
-     * @return array
+     * @param  Builder  $query
+     * @return Builder
      */
-    public function idsWithMerged(): array
+    public function filterRecordsWithMerged(Builder $query): Builder
     {
         $mergedPersons = $this->mergedPersons()
             ->whereStatus(MergedPersonStatus::MERGED)
             ->get(['merged_person_id', 'merged_preperson_id']);
 
-        return [
-            'personIds' => [$this->id, ...$mergedPersons->pluck('mergedPersonId')->filter()],
-            'prepersonIds' => $mergedPersons->pluck('mergedPrepersonId')->filter()->all()
-        ];
+        $personIds = [$this->id, ...$mergedPersons->pluck('mergedPersonId')->filter()];
+        $prepersonIds = $mergedPersons->pluck('mergedPrepersonId')->filter()->all();
+
+        return $query->where(
+            static fn (Builder $record): Builder => $record->whereIn('person_id', $personIds)
+                ->orWhereIn('preperson_id', $prepersonIds)
+        );
     }
 
     /**

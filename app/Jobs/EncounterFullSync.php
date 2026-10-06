@@ -28,20 +28,24 @@ class EncounterFullSync extends EHealthJob
     protected ?string $patientUuid = null;
     protected ?int $personId = null;
     protected ?int $prepersonId = null;
+    protected Person|Preperson $patient;
 
     public function handle(): void
     {
         $this->patientUuid = $this->batch()->options['patient_uuid'] ?? null;
         $this->personId = $this->batch()->options['person_id'] ?? null;
         $this->prepersonId = $this->batch()->options['preperson_id'] ?? null;
+        $this->patient = $this->prepersonId !== null
+            ? Preperson::findOrFail($this->prepersonId)
+            : Person::findOrFail($this->personId);
 
         parent::handle();
     }
 
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse
     {
-        $hasPatientAccess = Declaration::accessGrantedTo($this->user, $this->patient(), $this->legalEntity)->exists()
-            || Approval::accessGrantedTo($this->user, $this->patient(), $this->legalEntity)->exists();
+        $hasPatientAccess = Declaration::accessGrantedTo($this->user, $this->patient, $this->legalEntity)->exists()
+            || Approval::accessGrantedTo($this->user, $this->patient, $this->legalEntity)->exists();
 
         return EHealth::encounter()
             ->withToken($token)
@@ -62,19 +66,7 @@ class EncounterFullSync extends EHealthJob
             return;
         }
 
-        Repository::encounter()->sync($this->patient(), $validatedData);
-    }
-
-    /**
-     * Patient the batch was started for.
-     *
-     * @return Person|Preperson
-     */
-    protected function patient(): Person|Preperson
-    {
-        return $this->prepersonId !== null
-            ? Preperson::findOrFail($this->prepersonId)
-            : Person::findOrFail($this->personId);
+        Repository::encounter()->sync($this->patient, $validatedData);
     }
 
     protected function getNextEntityJob(): ?EHealthJob

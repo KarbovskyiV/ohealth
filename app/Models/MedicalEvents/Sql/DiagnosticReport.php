@@ -261,6 +261,69 @@ class DiagnosticReport extends Model
     }
 
     /**
+     * Filter diagnostic reports managed by the current legal entity.
+     *
+     * ABAC rule 10.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function forLegalEntity(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'managingOrganization',
+            static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
+        );
+    }
+
+    /**
+     * Filter the patient's diagnostic reports originated by an episode managed by the current legal entity.
+     *
+     * ABAC rule 7.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function originatedInLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'originEpisode',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Episode::forPatient($patient)->forLegalEntity()->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Diagnostic reports of the patient the user may read: with access to all the patient's data (an active
+     * declaration or approval) all of them, including the ones of the persons and prepersons merged into a person,
+     * otherwise only the patient's own ones managed by the current legal entity or originated by its episode.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  bool  $hasPatientAccess
+     * @return Builder
+     */
+    #[Scope]
+    protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
+    {
+        if ($hasPatientAccess) {
+            return $patient instanceof Person
+                ? $patient->filterRecordsWithMerged($query)
+                : $query->forPatient($patient);
+        }
+
+        return $query->forPatient($patient)->where(
+            static fn (Builder $report): Builder => $report->forLegalEntity()
+                ->orWhere(static fn (Builder $originated): Builder => $originated->originatedInLegalEntity($patient))
+        );
+    }
+
+    /**
      * Order by most recently updated in eHealth first, keeping records without a timestamp last.
      *
      * @param  Builder  $query
