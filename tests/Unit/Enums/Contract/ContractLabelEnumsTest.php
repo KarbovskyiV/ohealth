@@ -61,20 +61,20 @@ class ContractLabelEnumsTest extends TestCase
         $this->assertSame('-', PaymentMethod::resolveLabel(null));
     }
 
-    public function test_contract_request_signed_is_completed_not_signed(): void
+    public function test_contract_request_signed_label_matches_status_chart(): void
     {
-        $this->assertSame('Завершена', ContractRequestStatus::SIGNED->label());
-        $this->assertSame('Завершена', ContractRequestStatus::resolveLabel('SIGNED'));
-        $this->assertStringNotContainsStringIgnoringCase('підпис', ContractRequestStatus::SIGNED->label());
+        $this->assertSame('Підписана', ContractRequestStatus::SIGNED->label());
+        $this->assertSame('Підписана', ContractRequestStatus::resolveLabel('SIGNED'));
     }
 
-    public function test_contract_terminated_is_terminated_not_completed(): void
+    public function test_contract_terminated_label_matches_status_chart(): void
     {
-        $this->assertSame('Розірваний', ContractStatus::TERMINATED->label());
-        $this->assertSame('Розірваний', ContractStatus::resolveLabel('TERMINATED'));
+        $this->assertSame('Завершений', ContractStatus::TERMINATED->label());
+        $this->assertSame('Завершений', ContractStatus::resolveLabel('TERMINATED'));
         $this->assertSame('Діючий', ContractStatus::VERIFIED->label());
         $this->assertSame('Діючий', ContractStatus::ACTIVE->label());
-        $this->assertSame('Припинена', ContractRequestStatus::TERMINATED->label());
+        // Status Chart: request TERMINATED → «Завершена» (distinct from contract TERMINATED)
+        $this->assertSame('Завершена', ContractRequestStatus::TERMINATED->label());
     }
 
     public function test_contract_status_filter_options_are_verified_and_terminated(): void

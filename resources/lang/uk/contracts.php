@@ -124,12 +124,13 @@ return [
         'new' => 'Новий',
         'in_process' => 'Обробляється',
         'approved' => 'Підтверджений',
-        'terminated' => 'Розірваний',
+        // eHealth Status Chart: contract TERMINATED → «Завершений»; request SIGNED → «Підписана»
+        'terminated' => 'Завершений',
         'declined' => 'Відмінена',
         'pending_nhs_sign' => 'Очікує на підпис НСЗУ',
         'nhs_signed' => 'Підписана зі сторони НСЗУ',
         'msp_approved' => 'Погоджена зі сторони закладу',
-        'signed' => 'Завершена',
+        'signed' => 'Підписана',
         'active' => 'Діючий',
         'verified' => 'Діючий',
         'suspended' => 'Призупинений',
@@ -142,17 +143,20 @@ return [
         'in_process' => 'Обробляється',
         'approved' => 'Підтверджена',
         'declined' => 'Відмінена',
-        'terminated' => 'Припинена',
+        // Status Chart: contract request TERMINATED → «Завершена»
+        'terminated' => 'Завершена',
         'pending_nhs_sign' => 'Очікує на підпис НСЗУ',
         'nhs_signed' => 'Підписана зі сторони НСЗУ',
         'msp_approved' => 'Погоджена зі сторони закладу',
-        'signed' => 'Завершена',
+        // Status Chart: contract request SIGNED → «Підписана» (not «Завершена»)
+        'signed' => 'Підписана',
     ],
 
     'contract_status' => [
         'verified' => 'Діючий',
         'active' => 'Діючий',
-        'terminated' => 'Розірваний',
+        // Status Chart: contract TERMINATED → «Завершений» (not «Розірваний»)
+        'terminated' => 'Завершений',
         'suspended' => 'Призупинений',
         'expired' => 'Протермінований',
     ],
