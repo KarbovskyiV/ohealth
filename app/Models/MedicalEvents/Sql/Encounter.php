@@ -214,6 +214,78 @@ class Encounter extends Model
     }
 
     /**
+     * Filter encounters whose episode is managed by the current legal entity.
+     *
+     * ABAC rules 2 and 3.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function forLegalEntity(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'episode',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Episode::forLegalEntity()->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter encounters originated by an episode managed by the current legal entity.
+     *
+     * ABAC rule 6.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function originatedInLegalEntity(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'originEpisode',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Episode::forLegalEntity()->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Encounters of the patient the user may read: with access to all the patient's data (an active declaration or
+     * approval) all of them, including the ones of the persons and prepersons merged into a person, otherwise only
+     * the patient's own ones of the current legal entity or originated by its episode.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  bool  $hasPatientAccess
+     * @return Builder
+     */
+    #[Scope]
+    protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
+    {
+        if (!$hasPatientAccess) {
+            return $query->forPatient($patient)->where(
+                static fn (Builder $encounter): Builder => $encounter->forLegalEntity()
+                    ->orWhere(static fn (Builder $originated): Builder => $originated->originatedInLegalEntity())
+            );
+        }
+
+        if ($patient instanceof Preperson) {
+            return $query->forPatient($patient);
+        }
+
+        $ids = $patient->idsWithMerged();
+
+        return $query->where(
+            static fn (Builder $encounter): Builder => $encounter->whereIn('person_id', $ids['personIds'])
+                ->orWhereIn('preperson_id', $ids['prepersonIds'])
+        );
+    }
+
+    /**
      * Filter encounters belonging to the given episode, which is stored as an identifier holding its eHealth ID.
      *
      * @param  Builder  $query

@@ -359,10 +359,14 @@ class PatientSummary extends BasePatientComponent
 
     public function getEncounters(): void
     {
+        // Short encounters are open by a declaration (rule 1) or by the managing organization (rule 2) only
+        $encounters = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? Encounter::readableFor($this->patient(), true)
+            : Encounter::forPatient($this->patient())->forLegalEntity();
+
         $this->setPaginatedRecords(
             'encounters',
-            Encounter::forPatient($this->patient())
-                ->with(['class', 'episode.type.coding', 'type.coding', 'period', 'performerSpeciality.coding']),
+            $encounters->with(['class', 'episode.type.coding', 'type.coding', 'period', 'performerSpeciality.coding']),
             'encounters'
         );
     }

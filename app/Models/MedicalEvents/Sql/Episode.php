@@ -6,7 +6,6 @@ namespace App\Models\MedicalEvents\Sql;
 
 use App\Casts\EHealthTimestampCast;
 use App\Enums\Episode\Status;
-use App\Enums\Person\MergedPersonStatus;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use Eloquence\Behaviours\HasCamelCasing;
@@ -181,7 +180,7 @@ class Episode extends Model
 
     /**
      * Episodes of the patient the user may read: with access to all the patient's data (an active declaration or
-     * approval) all of them, including the ones of the persons and prepersons merged into the patient, otherwise only
+     * approval) all of them, including the ones of the persons and prepersons merged into a person, otherwise only
      * the patient's own ones of the current legal entity.
      *
      * @param  Builder  $query
@@ -192,18 +191,19 @@ class Episode extends Model
     #[Scope]
     protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
     {
-        if (!$hasPatientAccess || $patient instanceof Preperson) {
+        if (!$hasPatientAccess) {
             return $query->forPatient($patient)->forLegalEntity();
         }
 
-        $mergedPersons = $patient->mergedPersons()
-            ->whereStatus(MergedPersonStatus::MERGED)
-            ->get(['merged_person_id', 'merged_preperson_id']);
+        if ($patient instanceof Preperson) {
+            return $query->forPatient($patient);
+        }
+
+        $ids = $patient->idsWithMerged();
 
         return $query->where(
-            static fn (Builder $episode): Builder => $episode->wherePersonId($patient->id)
-                ->orWhereIn('person_id', $mergedPersons->pluck('mergedPersonId')->filter()->all())
-                ->orWhereIn('preperson_id', $mergedPersons->pluck('mergedPrepersonId')->filter()->all())
+            static fn (Builder $episode): Builder => $episode->whereIn('person_id', $ids['personIds'])
+                ->orWhereIn('preperson_id', $ids['prepersonIds'])
         );
     }
 

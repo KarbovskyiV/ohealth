@@ -12,14 +12,18 @@ use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\EncounterFullSync;
 use App\Livewire\Encounter\Forms\EncounterCancellationForm;
 use App\Livewire\Person\Records\BasePatientComponent;
+use App\Models\Declaration;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Encounter;
+use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\Identifier;
 use App\Repositories\MedicalEvents\Repository;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -73,6 +77,18 @@ class EncounterIndex extends BasePatientComponent
         $this->loadFilterOptions();
     }
 
+    /**
+     * Whether the user has an active declaration or approval on the patient, which opens the encounters of every legal entity.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function hasPatientAccess(): bool
+    {
+        return Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            || Approval::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists();
+    }
+
     #[Computed]
     public function paginatedEncounters(): LengthAwarePaginator
     {
@@ -121,7 +137,7 @@ class EncounterIndex extends BasePatientComponent
         try {
             $response = EHealth::encounter()->getBySearchParams(
                 $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
+                $this->hasPatientAccess ? [] : ['managing_organization_id' => legalEntity()->uuid]
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing encounters');
@@ -218,7 +234,7 @@ class EncounterIndex extends BasePatientComponent
     {
         $this->episodes = Repository::episode()->getByPersonId($this->patient());
 
-        $encounters = Encounter::forPatient($this->patient())
+        $encounters = Encounter::readableFor($this->patient(), $this->hasPatientAccess)
             ->with(['incomingReferral.type.coding', 'originEpisode.type.coding'])
             ->get();
 
@@ -252,7 +268,7 @@ class EncounterIndex extends BasePatientComponent
      */
     protected function paginateLocalEncounters(): LengthAwarePaginator
     {
-        $paginator = Encounter::forPatient($this->patient())
+        $paginator = Encounter::readableFor($this->patient(), $this->hasPatientAccess)
             ->withRelationships()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));
@@ -285,8 +301,21 @@ class EncounterIndex extends BasePatientComponent
         $periodStart = array_map('trim', explode('—', $this->filterStartDateRange));
         $periodEnd = array_map('trim', explode('—', $this->filterEndDateRange));
 
+        // An approval on the searched episode opens its encounters whichever legal entity manages it
+        $filteredEpisode = $this->filterEpisodeId !== ''
+            ? Episode::forPatient($this->patient())->whereUuid($this->filterEpisodeId)->first()
+            : null;
+        $hasEpisodeAccess = $filteredEpisode !== null
+            && Approval::resourceAccessGrantedTo(Auth::user(), $filteredEpisode, legalEntity())->exists();
+
+        // An origin episode of ours opens the encounters it originated whichever legal entity manages them
+        $isOriginEpisodeOurs = $this->filterOriginEpisodeId !== ''
+            && Episode::forLegalEntity()->whereUuid($this->filterOriginEpisodeId)->exists();
+
         $params = array_filter([
-            'managing_organization_id' => legalEntity()->uuid,
+            'managing_organization_id' => $this->hasPatientAccess || $hasEpisodeAccess || $isOriginEpisodeOurs
+                ? null
+                : legalEntity()->uuid,
             'episode_id' => $this->filterEpisodeId ?: null,
             'incoming_referral_id' => $this->filterIncomingReferralId ?: null,
             'origin_episode_id' => $this->filterOriginEpisodeId ?: null,

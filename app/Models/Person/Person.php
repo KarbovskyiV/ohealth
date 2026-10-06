@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Person;
 
 use App\Enums\Person\AuthenticationMethod;
+use App\Enums\Person\MergedPersonStatus;
 use App\Models\ConfidantPersonRelationshipRequest;
 use App\Models\Declaration;
 use App\Models\Employee\Employee;
@@ -149,6 +150,23 @@ class Person extends BasePerson
     public function approvals(): MorphMany
     {
         return $this->morphMany(Approval::class, 'approvable');
+    }
+
+    /**
+     * IDs of this person and the persons and prepersons merged into it.
+     *
+     * @return array
+     */
+    public function idsWithMerged(): array
+    {
+        $mergedPersons = $this->mergedPersons()
+            ->whereStatus(MergedPersonStatus::MERGED)
+            ->get(['merged_person_id', 'merged_preperson_id']);
+
+        return [
+            'personIds' => [$this->id, ...$mergedPersons->pluck('mergedPersonId')->filter()],
+            'prepersonIds' => $mergedPersons->pluck('mergedPrepersonId')->filter()->all()
+        ];
     }
 
     /**
