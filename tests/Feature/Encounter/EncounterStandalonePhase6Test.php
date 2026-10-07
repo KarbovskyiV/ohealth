@@ -259,9 +259,7 @@ class EncounterStandalonePhase6Test extends TestCase
                 'data' => $rows,
                 'paging' => ['page_number' => $page, 'total_pages' => 2],
             ])));
-            $api->shouldReceive('getMany')->once()->with(\App\Classes\eHealth\Api\Division::URL, [
-                'legal_entity_id' => $destination, 'status' => 'ACTIVE', 'page_size' => 100, 'page' => $page,
-            ])->andReturn($response);
+            $api->shouldReceive('search')->once()->with($destination, $page)->andReturn($response);
         }
         $this->instance(\App\Classes\eHealth\Api\Division::class, $api);
         $harness = $this->makeHarness($this->createTransferEncounter($destination)->id);
@@ -420,7 +418,7 @@ class EncounterStandalonePhase6Test extends TestCase
         $response = new \App\Classes\eHealth\EHealthResponse(new \Illuminate\Http\Client\Response($psr));
 
         $api = \Mockery::mock(\App\Classes\eHealth\Api\Division::class);
-        $api->shouldReceive('getMany')->andReturn($response);
+        $api->shouldReceive('search')->andReturn($response);
         $this->instance(\App\Classes\eHealth\Api\Division::class, $api);
     }
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Encounter\Concerns;
 
-use App\Classes\eHealth\Api\Division as DivisionApi;
 use App\Classes\eHealth\EHealth;
 use App\Enums\MedicalProgram\Type as MedicalProgramType;
 use App\Enums\Person\EncounterStatus;
@@ -482,7 +481,9 @@ trait ManagesEncounterReferrals
         $this->encounterReferralForm['performer'] = $transfer['uuid'];
 
         $location = (string) ($this->encounterReferralForm['location_reference'] ?? '');
-        $this->loadEncounterReferralDivisions($transfer['uuid']);
+        if (!$this->loadEncounterReferralDivisions($transfer['uuid'])) {
+            return true;
+        }
         $this->loadEncounterReferralSpecialities();
         if ($location === '' || !in_array($location, $this->encounterReferralAllowedDivisionIds, true)) {
             $message = $this->encounterReferralDivisions === []
@@ -512,7 +513,7 @@ trait ManagesEncounterReferrals
         Session::flash('error', $message);
     }
 
-    protected function loadEncounterReferralDivisions(string $legalEntityUuid): void
+    protected function loadEncounterReferralDivisions(string $legalEntityUuid): bool
     {
         $this->encounterReferralDivisions = [];
         $this->encounterReferralAllowedDivisionIds = [];
@@ -521,19 +522,14 @@ trait ManagesEncounterReferrals
             $rows = [];
             $page = 1;
             do {
-                $response = EHealth::division()->getMany(DivisionApi::URL, [
-                    'legal_entity_id' => $legalEntityUuid,
-                    'status' => 'ACTIVE',
-                    'page_size' => 100,
-                    'page' => $page++,
-                ]);
+                $response = EHealth::division()->search($legalEntityUuid, $page++);
                 $rows = [...$rows, ...$response->getData()];
             } while ($response->isNotLast());
         } catch (Throwable $exception) {
             Log::warning('EncounterEdit: failed to load destination divisions for transfer referral: '.$exception->getMessage());
             $this->encounterReferralWarningMessage = __('Не вдалося завантажити підрозділи закладу, до якого переводять пацієнта.');
 
-            return;
+            return false;
         }
 
         $divisions = [];
@@ -543,13 +539,14 @@ trait ManagesEncounterReferrals
             }
 
             $id = (string) ($row['id'] ?? $row['uuid'] ?? '');
-            $owner = (string) ($row['legal_entity_id'] ?? $row['legal_entity_uuid'] ?? '');
+            // The public registry filters by destination LE; some rows only expose its name.
+            $owner = (string) ($row['legal_entity_id'] ?? $row['legal_entity_uuid'] ?? data_get($row, 'legal_entity.id') ?? $legalEntityUuid);
             $type = (string) ($row['type'] ?? '');
             $status = strtoupper((string) ($row['status'] ?? ''));
             $active = $row['is_active'] ?? $row['isActive'] ?? true;
 
-            // The divisions endpoint is often scoped to the token legal entity. Keep only the destination facility.
-            if (!Str::isUuid($id) || $owner !== $legalEntityUuid || $status !== 'ACTIVE' || $active === false) {
+            // Registry rows may omit status. eHealth prequalify validates the chosen division before persistence.
+            if (!Str::isUuid($id) || $owner !== $legalEntityUuid || ($status !== '' && $status !== 'ACTIVE') || $active === false) {
                 continue;
             }
 
@@ -566,6 +563,8 @@ trait ManagesEncounterReferrals
 
         $this->encounterReferralDivisions = $divisions;
         $this->encounterReferralAllowedDivisionIds = array_column($divisions, 'id');
+
+        return true;
     }
 
     protected function loadEncounterReferralSpecialities(): void

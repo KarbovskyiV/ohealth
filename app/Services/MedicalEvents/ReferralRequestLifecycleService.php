@@ -220,7 +220,7 @@ class ReferralRequestLifecycleService extends EHealthRequestLifecycleService
             $dbData['service_id'] = $formData['service_id'] ?? null;
             $mapper = Fhir::serviceRequest();
 
-            if (!empty($dbData['program_id']) && $personUuid) {
+            if ($personUuid && (!empty($dbData['program_id']) || $dbData['category'] === 'transfer_of_care')) {
                 $prequalifyPayload = $mapper->toPrequalifyPayload(
                     $dbData,
                     $uuids,

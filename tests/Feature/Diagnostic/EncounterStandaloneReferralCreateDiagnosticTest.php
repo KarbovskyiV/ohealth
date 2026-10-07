@@ -121,6 +121,18 @@ class EncounterStandaloneReferralCreateDiagnosticTest extends TestCase
         $lifecycle = app(ReferralRequestLifecycleService::class);
         $performer = (string) Str::uuid();
         $division = (string) Str::uuid();
+        $prequalifyResponse = Mockery::mock(EHealthResponse::class);
+        $prequalifyResponse->shouldReceive('getData')->andReturn(['data' => [['status' => 'VALID']]]);
+        $this->mock(PatientServiceRequest::class, function ($mock) use ($performer, $division, $prequalifyResponse): void {
+            $mock->shouldReceive('prequalify')->once()->withArgs(function (string $personUuid, array $payload) use ($performer, $division): bool {
+                $this->assertSame($this->person->uuid, $personUuid);
+                $this->assertSame([], $payload['programs']);
+                $this->assertSame($performer, data_get($payload, 'service_request.performer.identifier.value'));
+                $this->assertSame($division, data_get($payload, 'service_request.location_reference.identifier.value'));
+
+                return true;
+            })->andReturn($prequalifyResponse);
+        });
         $context = $lifecycle->resolveEncounterEmployeeContext($this->encounter, $this->employee->id);
         $uuid = $lifecycle->createEncounterDraft($this->encounter, [
             'service_id' => (string) Str::uuid(),

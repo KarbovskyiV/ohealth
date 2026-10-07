@@ -209,6 +209,7 @@ class ServiceRequestMapper implements FhirMapperContract
 
         $payload = [
             'service_request' => array_filter($serviceRequest, static fn ($value) => $value !== null),
+            'programs' => [],
         ];
 
         if (!empty($data['program_id'])) {
