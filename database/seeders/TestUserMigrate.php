@@ -195,7 +195,7 @@ class TestUserMigrate extends Seeder
 
                 $partyId = DB::table('parties')->insertGetId(
                     [
-                        'uuid' => '8656775d-9258-405c-8841-10769360ee1e',
+                        'uuid' => 'ef7ba1a8-ddf1-474e-96a5-61ed9ef42574',
                         'last_name' => 'Безшейко',
                         'first_name' => 'Віталій',
                         'second_name' => 'Григорович',
@@ -248,7 +248,7 @@ class TestUserMigrate extends Seeder
 
                 $ownerUserId = User::insertGetId(
                     [
-                        'uuid' => null,
+                        'uuid' => '012db340-445d-4afa-852c-2f9d636c3b21',
                         'email' => 'vitaliybezsh+fop@gmail.com',
                         'password' => Hash::make($password),
                         'email_verified_at' => new Carbon('2026-08-26T11:03:57Z'),
@@ -279,7 +279,7 @@ class TestUserMigrate extends Seeder
                 }
 
                 $employeeId = DB::table('employees')->insertGetId([
-                    'uuid' => '85b30921-bcef-4a27-8997-5ef11290fbe6',
+                    'uuid' => '65223c10-c88c-40ff-8199-90788d4727f2',
                     'division_uuid' => null,
                     'legal_entity_uuid' => config('ehealth.test.client_id'),
                     'position' => 'P2',
@@ -305,11 +305,11 @@ class TestUserMigrate extends Seeder
                 $this->command->info("\tINFO: A new Employee entry has been successfully inserted into the database");
 
                 EmployeeRequest::create([
-                    'uuid' => 'c68fa3a4-8b58-4753-a865-5b15314d7b03',
+                    'uuid' => '906dac00-f9a2-4b7a-ad96-f399988c33b2',
                     'division_uuid' => null,
                     'legal_entity_uuid' => config('ehealth.test.client_id'),
                     'position' => 'P2',
-                    'start_date' => '2024-09-05',
+                    'start_date' => '2026-08-26',
                     'end_date' => null,
                     'employee_type' => Role::OWNER->value,
                     'inserted_at' => new Carbon('2024-09-05T18:56:03.427768Z'),
