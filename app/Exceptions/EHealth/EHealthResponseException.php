@@ -89,6 +89,7 @@ class EHealthResponseException extends EHealthException
         }
 
         return match ($message) {
+            'client_id refers to legal entity that is not active' => __('errors.ehealth.messages.legal_entity_not_active'),
             'Legal entity type and license type mismatch' => __('errors.ehealth.messages.license_type_mismatch'),
             'License is expired' => __('errors.ehealth.messages.license_expired'),
             'No active primary license found for legal entity' => __('errors.ehealth.messages.no_active_primary_license'),
@@ -149,6 +150,13 @@ class EHealthResponseException extends EHealthException
 
         if ($translationKey !== null) {
             return $response->status() . ': ' . __($translationKey);
+        }
+
+        if ($response->status() === 409) {
+            $translated = $this->translateConflictMessage((string) $errorMessage);
+            if ($translated !== $errorMessage) {
+                return $translated;
+            }
         }
 
         // Hide detailed technical errors in production unless debug is enabled
