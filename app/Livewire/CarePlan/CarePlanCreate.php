@@ -216,7 +216,7 @@ class CarePlanCreate extends BasePatientComponent
             })->toArray();
         }
 
-        $this->form->periodStart = now()->format('d.m.Y');
+        $this->form->periodStart = now()->format(config('app.date_format'));
         $this->form->periodStartTime = now()->format('H:i');
 
         $this->refreshAuthorDisplay();
@@ -687,9 +687,8 @@ class CarePlanCreate extends BasePatientComponent
             'context' => $this->form->context ?: null,
             'title' => $this->form->title,
             'terms_of_service' => $this->form->termsOfService ?: null,
-            'period_start' => convertToYmd($this->form->periodStart),
-            'period_end' => !empty($this->form->periodEnd)
-                ? convertToYmd($this->form->periodEnd) : null,
+            'period_start' => $this->form->periodStartIsoDate(),
+            'period_end' => $this->form->periodEndIsoDate(),
             'encounter_id' => $encounterData['id'],
             'addresses' => $encounterData['addresses'],
             'supporting_info' => [
@@ -942,7 +941,10 @@ class CarePlanCreate extends BasePatientComponent
             }
 
             $carePlanPayload = $repository->formatCarePlanRequest(
-                $this->form->toArray(),
+                array_replace($this->form->toArray(), [
+                    'periodStart' => $this->form->periodStartIsoDate(),
+                    'periodEnd' => $this->form->periodEndIsoDate(),
+                ]),
                 $this->form->encounter ?: null,
                 $encounterData,
                 $author?->uuid,
@@ -1011,8 +1013,8 @@ class CarePlanCreate extends BasePatientComponent
                 'category' => $this->form->category,
                 'title' => $this->form->title,
                 'terms_of_service' => $termsOfService ?: null,
-                'period_start' => convertToYmd($this->form->periodStart),
-                'period_end' => !empty($this->form->periodEnd) ? convertToYmd($this->form->periodEnd) : null,
+                'period_start' => $this->form->periodStartIsoDate(),
+                'period_end' => $this->form->periodEndIsoDate(),
                 'encounter_id' => $encounterData['id'] ?? null,
                 'context' => $this->form->context ?: null,
                 'terms_of_service' => $this->form->termsOfService ?: null,
@@ -1148,8 +1150,8 @@ class CarePlanCreate extends BasePatientComponent
                             'status' => $carePlanStatus,
                             'category' => $this->form->category,
                             'title' => $this->form->title,
-                            'period_start' => convertToYmd($this->form->periodStart),
-                            'period_end' => !empty($this->form->periodEnd) ? convertToYmd($this->form->periodEnd) : null,
+                            'period_start' => $this->form->periodStartIsoDate(),
+                            'period_end' => $this->form->periodEndIsoDate(),
                             'encounter_id' => $encounterData['id'] ?? null,
                         ]);
 
