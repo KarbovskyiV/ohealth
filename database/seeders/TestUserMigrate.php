@@ -19,9 +19,8 @@ class TestUserMigrate extends Seeder
 {
     public function run(): void
     {
-        // Don't run seeder if data of the test instance isn't set
-        if (!(config()?->has('ehealth.test.client_id') && config()?->has('ehealth.test.client_secret'))) {
-            return;
+        if (blank(config('ehealth.test.client_id')) || blank(config('ehealth.test.client_secret'))) {
+            throw new Exception('Test eHealth client ID and secret must be configured before seeding the OWNER.');
         }
 
         try {
@@ -249,7 +248,7 @@ class TestUserMigrate extends Seeder
 
                 $ownerUserId = User::insertGetId(
                     [
-                        'uuid' => '012db340-445d-4afa-852c-2f9d636c3b21',
+                        'uuid' => null,
                         'email' => 'vitaliybezsh+fop@gmail.com',
                         'password' => Hash::make($password),
                         'email_verified_at' => new Carbon('2026-08-26T11:03:57Z'),
@@ -392,6 +391,8 @@ class TestUserMigrate extends Seeder
             });
         } catch (Exception $err) {
             $this->command->error('ERROR: ' . $err->getMessage());
+
+            throw $err;
         }
     }
 }

@@ -2,6 +2,44 @@
      so every part of such an address is typed in --}}
 <div class="form-row-3 mt-8">
     <div class="form-group group">
+        <select
+            wire:model.live="addresses.{{ $index }}.country"
+            id="foreignAddressCountry{{ $index }}"
+            class="input-select peer @error('form.person.addresses.' . $index . '.country') input-error @enderror"
+            required
+        >
+            @foreach ($this->dictionaries['COUNTRY'] as $key => $country)
+                <option value="{{ $key }}">{{ $country }}</option>
+            @endforeach
+        </select>
+
+        <label for="foreignAddressCountry{{ $index }}" class="label">{{ __('forms.country') }}</label>
+
+        @error('form.person.addresses.' . $index . '.country')
+            <p class="text-error">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div class="form-group group">
+        <select
+            wire:model="addresses.{{ $index }}.type"
+            id="foreignAddressType{{ $index }}"
+            class="input-select peer @error('form.person.addresses.' . $index . '.type') input-error @enderror"
+            required
+        >
+            @foreach ($this->dictionaries['ADDRESS_TYPE'] as $key => $addressType)
+                <option value="{{ $key }}">{{ $addressType }}</option>
+            @endforeach
+        </select>
+
+        <label for="foreignAddressType{{ $index }}" class="label">{{ __('forms.type') }}</label>
+
+        @error('form.person.addresses.' . $index . '.type')
+            <p class="text-error">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div class="form-group group">
         <input
             wire:model="addresses.{{ $index }}.area"
             type="text"

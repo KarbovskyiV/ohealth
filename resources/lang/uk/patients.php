@@ -369,7 +369,7 @@ return [
     'organization' => 'Організація',
     'referral' => 'Направлення',
     'electronic_referral' => 'Електронне направлення',
-    'status' => 'Статус',
+    'status_label' => 'Статус',
     'state' => 'Стан',
     'category' => 'Категорія',
     'service' => 'Послуга',

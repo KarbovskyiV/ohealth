@@ -219,7 +219,7 @@ class PersonUpdate extends PersonComponent
 
         try {
             // update
-            $response = EHealth::personRequest()->create($validated);
+            $response = EHealth::personRequest()->create($this->withoutSettlementTypes($validated));
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when updating a person request');
 
@@ -228,7 +228,9 @@ class PersonUpdate extends PersonComponent
 
         // save in DB
         try {
-            Repository::personRequest()->update(removeEmptyKeys($response->map($response->validate())));
+            Repository::personRequest()->update(
+                removeEmptyKeys($this->withSettlementTypes($response->map($response->validate())))
+            );
         } catch (Throwable $exception) {
             $this->handleDatabaseErrors($exception, 'Failed to update person request');
 

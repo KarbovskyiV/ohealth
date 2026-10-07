@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('region')->nullable()->comment('district of area');
             $table->string('settlement')->comment('city name');
             $table->string('settlement_type')->nullable()->comment('Dictionary SETTLEMENT_TYPE - type of settlement as city/town/village etc');
-            $table->string('settlement_id')->comment('settlement identification from uaadresses');
+            $table->string('settlement_id')->nullable()->comment('settlement identification from uaddresses');
             $table->string('street_type')->nullable()->comment('Dictionary STREET_TYPE - type of street as street/road/line etc');
             $table->string('street')->nullable()->comment('street name');
             $table->string('building')->nullable()->comment('number of building');

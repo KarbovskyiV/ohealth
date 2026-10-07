@@ -9,41 +9,6 @@
             class="border-b border-gray-200 pb-8 last:border-b-0 last:pb-0 dark:border-gray-700"
         >
             <div class="form-row-3 mt-8">
-                <div class="form-group">
-                    <select
-                        wire:model="addresses.{{ $index }}.type"
-                        id="addressType{{ $index }}"
-                        class="input-select peer @error('form.person.addresses.' . $index . '.type') input-error @enderror"
-                        required
-                    >
-                        <option value="" hidden>-- {{ __('forms.select') }} --</option>
-
-                        @foreach ($this->dictionaries['ADDRESS_TYPE'] as $key => $addressType)
-                            <option value="{{ $key }}">{{ $addressType }}</option>
-                        @endforeach
-                    </select>
-                    <label for="addressType{{ $index }}" class="label"> {{ __('forms.type') }} </label>
-                    @error('form.person.addresses.' . $index . '.type')
-                        <p class="text-error">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div class="form-group">
-                    <select
-                        wire:model.live="addresses.{{ $index }}.country"
-                        id="addressCountry{{ $index }}"
-                        class="input-select peer @error('form.person.addresses.' . $index . '.country') input-error @enderror"
-                        required
-                    >
-                        @foreach ($this->dictionaries['COUNTRY'] as $key => $country)
-                            <option value="{{ $key }}">{{ $country }}</option>
-                        @endforeach
-                    </select>
-                    <label for="addressCountry{{ $index }}" class="label"> {{ __('forms.country') }} </label>
-                    @error('form.person.addresses.' . $index . '.country')
-                        <p class="text-error">{{ $message }}</p>
-                    @enderror
-                </div>
 
                 @if (count($addresses) > 1)
                     <div class="flex items-start">
@@ -74,6 +39,8 @@
                         :settlements="$settlements"
                         :streets="$streets"
                         :property="'addresses.' . $index"
+                        :enableType="true"
+                        :enableCountry="true"
                         class="form-row-3 mt-8"
                     />
 

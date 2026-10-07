@@ -7,8 +7,8 @@ namespace App\View\Components\Forms;
 use App\Traits\FormTrait;
 use Illuminate\View\Component;
 use App\Classes\eHealth\EHealth;
-use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
+use App\Exceptions\EHealth\EHealthConnectionException;
 
 abstract class Addresses extends Component
 {
@@ -23,8 +23,6 @@ abstract class Addresses extends Component
     private static ?array $fetchedRegions = null;
 
     public bool $readonly;
-
-    public bool $divisionView = false;
 
     public array $address = [];
 
@@ -60,21 +58,25 @@ abstract class Addresses extends Component
      */
     public string $suggestionsSuffix = '';
 
+    public bool $enableType = false;
+
+    public bool $enableCountry = false;
+
     /**
      * Create a new component instance.
      */
     public function __construct(
-        $address,
-        $districts,
-        $settlements,
-        $streets,
-        $class,
-        $readonly = false,
-        $divisionView = false,
-        string $property = 'address'
+        array $address,
+        array $districts,
+        array $settlements,
+        array $streets,
+        string $class,
+        bool $readonly = false,
+        string $property = 'address',
+        bool $enableType = false,
+        bool $enableCountry = false
     ) {
         $this->readonly = $readonly;
-        $this->divisionView = $divisionView;
 
         $this->address = $address;
 
@@ -99,6 +101,10 @@ abstract class Addresses extends Component
         $this->streets = $streets;
 
         $this->class = $class;
+
+        $this->enableType = $enableType;
+
+        $this->enableCountry = $enableCountry;
 
         $this->dictionaries = dictionary()->basics()->getMultipleFormatted(['SETTLEMENT_TYPE', 'STREET_TYPE'])->toArray();
     }

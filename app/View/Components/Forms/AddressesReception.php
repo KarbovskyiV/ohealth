@@ -18,17 +18,16 @@ class AddressesReception extends Addresses
         array $settlements,
         array $streets,
         string $class,
-        bool $readonly = false,
-        bool $divisionView = false
+        bool $readonly = false
     ){
-        parent::__construct($address, $districts, $settlements, $streets, $class, $readonly, $divisionView);
+        parent::__construct($address, $districts, $settlements, $streets, $class, $readonly, property: 'receptionAddress');
     }
 
     public static function getAddressRules(array $address): array
     {
         return [
-            'address.type' => ['required', 'string'],
-            'address.country' => ['required', 'string'],
+            'receptionAddress.type' => ['required', 'string'],
+            'receptionAddress.country' => ['required', 'string'],
             'receptionAddress.area' => ['required', 'string'],
             'receptionAddress.region' => ['nullable', 'string'],
             'receptionAddress.settlementType' => ['required', 'string'],
