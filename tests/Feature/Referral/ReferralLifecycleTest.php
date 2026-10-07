@@ -240,6 +240,13 @@ class ReferralLifecycleTest extends TestCase
             'person_id' => $this->person->id,
             'based_on_id' => $this->fhirIdentifierId((string) $this->deviceActivity->uuid),
         ]);
+
+        $service = \App\Models\MedicalEvents\Sql\ServiceRequestRequest::findOrFail($serviceId);
+        $device = \App\Models\MedicalEvents\Sql\DeviceRequestRequest::findOrFail($deviceId);
+        $this->assertSame($this->serviceActivity->uuid, $service->basedOn->value);
+        $this->assertSame($this->deviceActivity->uuid, $device->basedOn->value);
+        $this->assertSame($this->encounter->uuid, $service->context->value);
+        $this->assertSame($this->encounter->uuid, $device->context->value);
     }
 
     public function test_can_map_to_fhir_payloads(): void
@@ -594,6 +601,8 @@ class ReferralLifecycleTest extends TestCase
             'quantity' => 3.0,
             'based_on_id' => $this->fhirIdentifierId((string) $this->serviceActivity->uuid),
         ]);
+        $referral = \App\Models\MedicalEvents\Sql\ServiceRequestRequest::where('uuid', $draftUuid)->firstOrFail();
+        $this->assertSame($this->serviceActivity->uuid, $referral->basedOn->value);
     }
 
     public function test_livewire_skips_prequalify_when_activity_has_no_program(): void
@@ -623,6 +632,8 @@ class ReferralLifecycleTest extends TestCase
             'status' => 'draft',
             'based_on_id' => $this->fhirIdentifierId((string) $this->serviceActivity->uuid),
         ]);
+        $referral = \App\Models\MedicalEvents\Sql\ServiceRequestRequest::where('uuid', $draftUuid)->firstOrFail();
+        $this->assertSame($this->serviceActivity->uuid, $referral->basedOn->value);
     }
 
     public function test_create_care_plan_device_draft_skips_prequalify_without_program(): void
