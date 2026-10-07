@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Core\EHealthJob;
+use App\Models\Declaration;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Classes\eHealth\EHealth;
@@ -26,6 +28,7 @@ class ObservationSync extends EHealthJob
     protected ?string $patientUuid = null;
     protected ?int $personId = null;
     protected ?int $prepersonId = null;
+    protected Person|Preperson $patient;
 
     public function handle(): void
     {
@@ -33,6 +36,9 @@ class ObservationSync extends EHealthJob
         $this->patientUuid = $this->batch()->options['patient_uuid'] ?? null;
         $this->personId = $this->batch()->options['person_id'] ?? null;
         $this->prepersonId = $this->batch()->options['preperson_id'] ?? null;
+        $this->patient = $this->prepersonId !== null
+            ? Preperson::findOrFail($this->prepersonId)
+            : Person::findOrFail($this->personId);
 
         parent::handle();
     }
@@ -42,12 +48,15 @@ class ObservationSync extends EHealthJob
      */
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse
     {
+        $hasPatientAccess = Declaration::accessGrantedTo($this->user, $this->patient, $this->legalEntity)->exists()
+            || Approval::accessGrantedTo($this->user, $this->patient, $this->legalEntity)->exists();
+
         return EHealth::observation()
             ->withToken($token)
-            ->getBySearchParams($this->patientUuid, [
-                'managing_organization_id' => $this->legalEntity->uuid,
+            ->getBySearchParams($this->patientUuid, array_filter([
+                'managing_organization_id' => $hasPatientAccess ? null : $this->legalEntity->uuid,
                 'page' => $this->page
-            ]);
+            ]));
     }
 
     /**
@@ -63,11 +72,7 @@ class ObservationSync extends EHealthJob
             return;
         }
 
-        $patient = $this->prepersonId !== null
-            ? Preperson::findOrFail($this->prepersonId)
-            : Person::findOrFail($this->personId);
-
-        Repository::observation()->sync($patient, $validatedData);
+        Repository::observation()->sync($this->patient, $validatedData);
     }
 
     /**

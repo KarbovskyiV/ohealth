@@ -290,6 +290,155 @@ class Observation extends Model
     }
 
     /**
+     * Filter the patient's observations of the current legal entity: the managing organization of the episode or of
+     * the diagnostic report is the current legal entity.
+     *
+     * ABAC rule 2.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function forLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->where(
+            static fn (Builder $observation): Builder => $observation
+                ->whereHas(
+                    'context',
+                    static fn (Builder $identifier): Builder => $identifier->whereIn(
+                        'value',
+                        Encounter::forLegalEntity($patient)->pluck('uuid')
+                    )
+                )
+                ->orWhereHas(
+                    'diagnosticReport',
+                    static fn (Builder $identifier): Builder => $identifier->whereIn(
+                        'value',
+                        DiagnosticReport::forPatient($patient)->forLegalEntity()->pluck('uuid')
+                    )
+                )
+        );
+    }
+
+    /**
+     * Filter the patient's observations created within an encounter whose episode is managed by the current legal
+     * entity.
+     *
+     * ABAC rule 3.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEpisodeOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'context',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::inEpisodeOfLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's observations belonging to a diagnostic report originated by an episode managed by the
+     * current legal entity.
+     *
+     * ABAC rule 7.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inDiagnosticReportOriginatedInLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'diagnosticReport',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                DiagnosticReport::originatedInLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's observations created within an encounter originated by an episode managed by the current
+     * legal entity.
+     *
+     * ABAC rule 8.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEncounterOriginatedInLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'context',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::originatedInLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's observations belonging to a diagnostic report managed by the current legal entity.
+     *
+     * ABAC rule 10.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inDiagnosticReportOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'diagnosticReport',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                DiagnosticReport::forPatient($patient)->forLegalEntity()->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Observations of the patient the user may read: with access to all the patient's data (an active declaration or
+     * approval) all of them, including the ones of the persons and prepersons merged into a person, otherwise only
+     * the patient's own ones of the current legal entity or originated by its episode.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  bool  $hasPatientAccess
+     * @return Builder
+     */
+    #[Scope]
+    protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
+    {
+        if ($hasPatientAccess) {
+            return $patient instanceof Person
+                ? $patient->filterRecordsWithMerged($query)
+                : $query->forPatient($patient);
+        }
+
+        return $query->where(
+            static fn (Builder $observation): Builder => $observation->forLegalEntity($patient)
+                ->orWhere(
+                    static fn (Builder $reported): Builder => $reported->inDiagnosticReportOriginatedInLegalEntity($patient)
+                )
+                ->orWhere(
+                    static fn (Builder $originated): Builder => $originated->inEncounterOriginatedInLegalEntity($patient)
+                )
+        );
+    }
+
+    /**
      * Order by most recently updated in eHealth first, keeping records without a timestamp last.
      *
      * @param  Builder  $query

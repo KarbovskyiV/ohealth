@@ -19,6 +19,7 @@ use App\Jobs\ObservationSync;
 use App\Jobs\ConditionSync;
 use App\Jobs\DiagnosticReportSync;
 use App\Jobs\DeviceSync;
+use App\Models\Declaration;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\ClinicalImpression;
@@ -307,8 +308,10 @@ class PatientSummary extends BasePatientComponent
         $this->setPaginatedRecords(
             'episodes',
             Episode::with(['period', 'managingOrganization.type.coding', 'careManager.type.coding'])
-                ->forPatient($this->patient())
-                ->forLegalEntity(),
+                ->readableFor(
+                    $this->patient(),
+                    Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+                ),
             'episodes',
             visible: ['id']
         );
@@ -356,10 +359,14 @@ class PatientSummary extends BasePatientComponent
 
     public function getEncounters(): void
     {
+        // Short encounters are open by a declaration (rule 1) or by the managing organization (rule 2) only
+        $encounters = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? Encounter::readableFor($this->patient(), true)
+            : Encounter::forLegalEntity($this->patient());
+
         $this->setPaginatedRecords(
             'encounters',
-            Encounter::forPatient($this->patient())
-                ->with(['class', 'episode.type.coding', 'type.coding', 'period', 'performerSpeciality.coding']),
+            $encounters->with(['class', 'episode.type.coding', 'type.coding', 'period', 'performerSpeciality.coding']),
             'encounters'
         );
     }
@@ -503,9 +510,14 @@ class PatientSummary extends BasePatientComponent
 
     public function getObservations(): void
     {
+        // Short observations are open by a declaration (rule 1) or by the managing organization (rule 2) only
+        $observations = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? Observation::readableFor($this->patient(), true)
+            : Observation::forLegalEntity($this->patient());
+
         $this->setPaginatedRecords(
             'observations',
-            Observation::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            $observations->allowedForSummary()->withAllRelations(),
             'observations'
         );
     }
@@ -829,7 +841,7 @@ class PatientSummary extends BasePatientComponent
             return;
         }
 
-        $this->mergedPersons = MergedPerson::wherePersonId($this->personId)
+        $this->mergedPersons = $this->patient()->mergedPersons()
             ->whereStatus(MergedPersonStatus::MERGED)
             ->with(['mergedPerson.names', 'mergedPreperson:id,external_id'])
             ->get()
@@ -856,11 +868,11 @@ class PatientSummary extends BasePatientComponent
      */
     public function updatedSelectedMergedPerson(string $mergedUuid): void
     {
-        if ($mergedUuid === '') {
+        if ($mergedUuid === '' || $this->personId === null) {
             return;
         }
 
-        $mergedPerson = MergedPerson::wherePersonId($this->personId)->whereMergedUuid($mergedUuid)->first();
+        $mergedPerson = $this->patient()->mergedPersons()->whereMergedUuid($mergedUuid)->first();
 
         if ($mergedPerson === null) {
             return;

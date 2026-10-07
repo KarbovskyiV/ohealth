@@ -444,12 +444,14 @@ class EncounterRepository extends BaseRepository
     /**
      * Get encounter data that is related to the patient (person or preperson).
      * Every record carries a readable `name` built from the start of its period, its class and its first action,
-     * so it can label a filter option.
+     * so it can label a filter option. When the patient access flag is given, only the encounters the user may read
+     * are returned.
      *
      * @param  Person|Preperson  $patient
+     * @param  bool|null  $hasPatientAccess
      * @return array
      */
-    public function getByPersonId(Person|Preperson $patient): array
+    public function getByPersonId(Person|Preperson $patient, ?bool $hasPatientAccess = null): array
     {
         [$ownerColumn, $ownerId] = $this->resolveOwner($patient);
 
@@ -457,9 +459,11 @@ class EncounterRepository extends BaseRepository
             ->getMultipleFormatted(['eHealth/encounter_classes', 'eHealth/ICPC2/actions'])
             ->toArray();
 
-        return $this->model
-            ->withRelationships()
-            ->where($ownerColumn, $ownerId)
+        $query = $hasPatientAccess === null
+            ? $this->model->where($ownerColumn, $ownerId)
+            : $this->model->readableFor($patient, $hasPatientAccess);
+
+        return $query->withRelationships()
             ->get()
             ->map(static function (Encounter $encounter) use ($dictionaries): array {
                 $data = $encounter->toArray();

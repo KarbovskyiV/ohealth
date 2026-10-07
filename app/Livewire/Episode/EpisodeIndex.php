@@ -15,8 +15,10 @@ use App\Jobs\EpisodeFullSync;
 use App\Livewire\Episode\Forms\EpisodeCancellationForm;
 use App\Livewire\Episode\Forms\EpisodeClosingForm;
 use App\Livewire\Person\Records\BasePatientComponent;
+use App\Models\Declaration;
 use App\Models\Icd10;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Repositories\MedicalEvents\Repository;
@@ -77,6 +79,18 @@ class EpisodeIndex extends BasePatientComponent
         $this->syncStatus = legalEntity()->getEntityStatus(LegalEntity::ENTITY_EPISODE) ?? '';
     }
 
+    /**
+     * Whether the user has an active declaration or approval on the patient, which opens the episodes of every legal entity.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function hasPatientAccess(): bool
+    {
+        return Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            || Approval::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists();
+    }
+
     #[Computed]
     public function paginatedEpisodes(): LengthAwarePaginator
     {
@@ -125,7 +139,7 @@ class EpisodeIndex extends BasePatientComponent
         try {
             $response = EHealth::episode()->getBySearchParams(
                 $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
+                $this->hasPatientAccess ? [] : ['managing_organization_id' => legalEntity()->uuid]
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing episodes');
@@ -216,8 +230,7 @@ class EpisodeIndex extends BasePatientComponent
      */
     protected function paginateLocalEpisodes(): LengthAwarePaginator
     {
-        $paginator = Episode::forPatient($this->patient())
-            ->forLegalEntity()
+        $paginator = Episode::readableFor($this->patient(), $this->hasPatientAccess)
             ->with(['period', 'managingOrganization.type.coding', 'careManager.type.coding'])
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));
@@ -247,7 +260,7 @@ class EpisodeIndex extends BasePatientComponent
             'status' => $this->filterStatus ?: null,
             'period_from' => convertToYmd($period[0] ?? ''),
             'period_to' => convertToYmd($period[1] ?? ''),
-            'managing_organization_id' => legalEntity()->uuid,
+            'managing_organization_id' => $this->hasPatientAccess ? null : legalEntity()->uuid,
             'page' => $page,
             'page_size' => $perPage
         ]);
@@ -311,7 +324,7 @@ class EpisodeIndex extends BasePatientComponent
      */
     private function findOrPullEpisode(string $id): ?Episode
     {
-        $episode = Episode::forPatient($this->patient())->forLegalEntity()->whereUuid($id)->first();
+        $episode = Episode::readableFor($this->patient(), $this->hasPatientAccess)->whereUuid($id)->first();
 
         if ($episode !== null) {
             return $episode;
@@ -330,7 +343,7 @@ class EpisodeIndex extends BasePatientComponent
             return null;
         }
 
-        return Episode::forPatient($this->patient())->forLegalEntity()->whereUuid($id)->first();
+        return Episode::readableFor($this->patient(), $this->hasPatientAccess)->whereUuid($id)->first();
     }
 
     /**

@@ -190,7 +190,7 @@ class EpisodeRepository extends BaseRepository
     public function getDetailsMapByUuids(array $uuids): array
     {
         return collect(
-            Episode::whereIn('uuid', $uuids)
+            $this->model->whereIn('uuid', $uuids)
                 ->select(['uuid', 'name', 'created_at'])
                 ->get()
                 ->toArray()

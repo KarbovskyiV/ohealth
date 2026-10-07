@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Person;
 
 use App\Enums\Person\AuthenticationMethod;
+use App\Enums\Person\MergedPersonStatus;
 use App\Models\ConfidantPersonRelationshipRequest;
 use App\Models\Declaration;
 use App\Models\Employee\Employee;
@@ -15,11 +16,13 @@ use App\Models\MedicalEvents\Sql\DeviceAssociation;
 use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\Observation;
 use App\Models\MedicalEvents\Sql\Specimen;
+use App\Models\MergedPerson;
 use App\Models\Relations\ConfidantPerson;
 use App\Models\Relations\PersonName;
 use App\Models\Relations\PersonVerificationDetail;
 use App\Models\MedicalEvents\Sql\Approval;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -74,6 +77,16 @@ class Person extends BasePerson
     public function deviceAssociations(): HasMany
     {
         return $this->hasMany(DeviceAssociation::class);
+    }
+
+    /**
+     * Persons and prepersons merged into this person.
+     *
+     * @return HasMany
+     */
+    public function mergedPersons(): HasMany
+    {
+        return $this->hasMany(MergedPerson::class);
     }
 
     public function declarations(): HasMany
@@ -144,6 +157,27 @@ class Person extends BasePerson
     public function approvals(): MorphMany
     {
         return $this->morphMany(Approval::class, 'approvable');
+    }
+
+    /**
+     * Filter the records of this person and of the persons and prepersons merged into it.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    public function filterRecordsWithMerged(Builder $query): Builder
+    {
+        $mergedPersons = $this->mergedPersons()
+            ->whereStatus(MergedPersonStatus::MERGED)
+            ->get(['merged_person_id', 'merged_preperson_id']);
+
+        $personIds = [$this->id, ...$mergedPersons->pluck('mergedPersonId')->filter()];
+        $prepersonIds = $mergedPersons->pluck('mergedPrepersonId')->filter()->all();
+
+        return $query->where(
+            static fn (Builder $record): Builder => $record->whereIn('person_id', $personIds)
+                ->orWhereIn('preperson_id', $prepersonIds)
+        );
     }
 
     /**

@@ -157,9 +157,10 @@ class Episode extends Model
     }
 
     /**
-     * Filter out the episodes known to be managed by another legal entity.
-     * The short episode endpoint does not return a managing organization, so those episodes are kept:
-     * without it there is nothing to tell them apart from the ones of the current legal entity.
+     * Filter out the episodes known to be managed by another legal entity. An episode without a managing organization
+     * came from a short (summary) response that does not return one, so it is kept: there is nothing to tell it apart.
+     *
+     * ABAC rule 2.
      *
      * @param  Builder  $query
      * @return Builder
@@ -175,6 +176,45 @@ class Episode extends Model
                     static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
                 )
         );
+    }
+
+    /**
+     * Filter episodes stored with the current legal entity as the managing organization. Unlike forLegalEntity(),
+     * an episode without a managing organization is left out: its owner is unknown, so it cannot open the records
+     * linked to it.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function managedByLegalEntity(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'managingOrganization',
+            static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
+        );
+    }
+
+    /**
+     * Episodes of the patient the user may read: with access to all the patient's data (an active declaration or
+     * approval) all of them, including the ones of the persons and prepersons merged into a person, otherwise only
+     * the patient's own ones of the current legal entity.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  bool  $hasPatientAccess
+     * @return Builder
+     */
+    #[Scope]
+    protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
+    {
+        if ($hasPatientAccess) {
+            return $patient instanceof Person
+                ? $patient->filterRecordsWithMerged($query)
+                : $query->forPatient($patient);
+        }
+
+        return $query->forPatient($patient)->forLegalEntity();
     }
 
     #[Scope]
