@@ -10,7 +10,7 @@
                 <form wire:submit.prevent="search">
                     <div class="flex flex-col gap-2">
                         <label for="requisition" class="text-sm font-medium text-gray-900 dark:text-white">
-                            Пошук за номером направлення (Requisition)
+                            {{ __('referrals.search_requisition_required') }}
                         </label>
                         <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
                             <div class="form-group group w-full sm:w-96">
@@ -29,8 +29,12 @@
                                             .slice(0, 19)
                                     "
                                     autocomplete="off"
+                                    required
                                 />
                                 <label for="requisition" class="label"> XXXX-XXXX-XXXX-XXXX </label>
+                                @error('requisition')
+                                    <p class="text-error">{{ $message }}</p>
+                                @enderror
                             </div>
 
                             <button
@@ -128,7 +132,7 @@
                                         </div>
                                     </div>
                                     <div class="flex shrink-0 flex-wrap items-center gap-2">
-                                        @if (($referral['status'] ?? '') === 'active' || ($referral['status'] ?? '') === 'new')
+                                        @if ($this->canTakeIntoWork($referral) && auth()->user()?->can('service_request:makeinprogress'))
                                             <button
                                                 wire:click="process('{{ $referral['id'] }}', '{{ $referral['subject']['identifier']['value'] ?? '' }}')"
                                                 type="button"
@@ -138,7 +142,8 @@
                                             </button>
                                         @endif
 
-                                        @if (($referral['status'] ?? '') === 'in_progress' || ($referral['status'] ?? '') === 'in_queue' || ($referral['program_processing_status'] ?? '') === 'in_progress')
+                                        @if ($this->canManageUsage($referral))
+                                            @can('service_request:complete')
                                             <button
                                                 wire:click="openCompleteModal('{{ $referral['id'] }}')"
                                                 type="button"
@@ -146,7 +151,8 @@
                                             >
                                                 Погасити направлення
                                             </button>
-
+                                            @endcan
+                                            @can('service_request:use')
                                             <button
                                                 wire:click="openCancelModal('{{ $referral['id'] }}')"
                                                 type="button"
@@ -154,6 +160,7 @@
                                             >
                                                 Відмінити використання
                                             </button>
+                                            @endcan
                                         @endif
                                     </div>
                                 </div>
@@ -185,22 +192,25 @@
                 </button>
                 <div class="mt-2">
                     <h3 class="mb-3 text-lg font-bold text-gray-900 dark:text-white">
-                        Відміна використання направлення
+                        {{ __('referrals.modals.cancel_usage.title') }}
                     </h3>
                     <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-                        Вкажіть причину відміни використання направлення. Це поле є обов'язковим для ЄСОЗ.
+                        {{ __('referrals.modals.cancel_usage.description') }}
                     </p>
                     <div class="mb-5">
                         <label for="cancelLetter" class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
-                            Пояснення (explanatory letter) <span class="text-red-500">*</span>
+                            {{ __('referrals.modals.cancel_usage.letter_label') }} <span class="text-red-500">*</span>
                         </label>
                         <textarea
                             id="cancelLetter"
-                            wire:model="cancelExplanatoryLetter"
+                            wire:model.live.debounce.300ms="cancelExplanatoryLetter"
                             rows="4"
                             class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                            placeholder="Введіть причину відміни використання направлення..."
+                            placeholder="{{ __('referrals.modals.cancel_usage.letter_placeholder') }}"
                         ></textarea>
+                        @error('cancelExplanatoryLetter')
+                            <p class="text-error">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div class="flex justify-end gap-3">
                         <button
@@ -209,7 +219,7 @@
                             class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 focus:ring-4 focus:ring-red-300 focus:outline-none"
                             {{ empty(trim($cancelExplanatoryLetter ?? '')) ? 'disabled' : '' }}
                         >
-                            Підтвердити відміну
+                            {{ __('referrals.modals.cancel_usage.confirm') }}
                         </button>
                         <button
                             wire:click="$set('showCancelModal', false)"
@@ -271,7 +281,7 @@
                         @else
                             <select
                                 id="emzUuid"
-                                wire:model="selectedEmzUuid"
+                                wire:model.change="selectedEmzUuid"
                                 class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             >
                                 <option value="">Оберіть запис…</option>

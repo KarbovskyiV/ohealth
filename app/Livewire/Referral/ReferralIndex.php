@@ -12,6 +12,7 @@ use App\Models\Person\Person;
 use App\Services\MedicalEvents\ReferralRequestLifecycleService;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -48,7 +49,7 @@ class ReferralIndex extends Component
     /** @var list<string> */
     public array $emzTypes = ['encounter', 'procedure', 'diagnostic_report'];
 
-    public function search()
+    public function search(): void
     {
         abort_unless(auth()->user()?->can('service_request:read'), 403);
         $this->validate([
@@ -69,20 +70,26 @@ class ReferralIndex extends Component
             $this->searchResults = $response['data'] ?? $response ?? [];
 
             if (empty($this->searchResults)) {
-                $this->errorMessage = 'Направлення не знайдено.';
+                $this->errorMessage = __('referrals.messages.not_found');
             }
         } catch (Exception $e) {
             Log::error('Search referral error: '.$e->getMessage());
-            $this->errorMessage = 'Помилка під час пошуку: '.$e->getMessage();
+            $this->errorMessage = __('referrals.messages.search_failed');
             $this->searchResults = [];
         }
     }
 
-    public function process(string $uuid, string $patientUuid, ReferralRequestLifecycleService $service)
+    public function process(string $uuid, string $patientUuid, ReferralRequestLifecycleService $service): void
     {
         abort_unless(auth()->user()?->can('service_request:makeinprogress'), 403);
+        $referral = collect($this->searchResults)->firstWhere('id', $uuid);
+        if (!$referral || !$this->canTakeIntoWork($referral)) {
+            Session::flash('error', __('referrals.messages.action_unavailable'));
+
+            return;
+        }
         try {
-            $employee = auth()->user()->employees()->where('legal_entity_id', $this->legalEntity->id)->first();
+            $employee = auth()->user()->employees()->whereLegalEntityId($this->legalEntity->id)->first();
 
             if (!$employee) {
                 throw new Exception('Не знайдено співробітника для виконання дії.');
@@ -98,30 +105,34 @@ class ReferralIndex extends Component
                 }
             }
 
-            $service->takeIntoWork($uuid, $employee, $patientUuid ?: null, array_filter([
+            $response = $service->takeIntoWork($uuid, $employee, $patientUuid ?: null, array_filter([
                 'program_id' => is_string($programId) && $programId !== '' ? $programId : null,
             ]));
 
-            foreach ($this->searchResults as $key => $result) {
-                if (($result['id'] ?? '') === $uuid) {
-                    $this->searchResults[$key]['status'] = 'in_progress';
-                }
-            }
+            $this->updateSearchResult($uuid, 'in_progress', $response);
 
-            $this->dispatch('notify', ['type' => 'success', 'message' => 'Направлення успішно взято в роботу']);
+            Session::flash('success', __('referrals.messages.taken_into_work'));
         } catch (Exception $e) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => 'Помилка: '.$e->getMessage()]);
+            $this->flashOperationError($e);
         }
     }
 
-    public function openCancelModal(string $uuid)
+    public function openCancelModal(string $uuid): void
     {
+        abort_unless(auth()->user()?->can('service_request:use'), 403);
+        $referral = collect($this->searchResults)->firstWhere('id', $uuid);
+        if (!$referral || !$this->canManageUsage($referral)) {
+            Session::flash('error', __('referrals.messages.action_unavailable'));
+
+            return;
+        }
+        $this->resetValidation('cancelExplanatoryLetter');
         $this->referralToCancel = $uuid;
         $this->cancelExplanatoryLetter = '';
         $this->showCancelModal = true;
     }
 
-    public function confirmCancelUsage(ReferralRequestLifecycleService $service)
+    public function confirmCancelUsage(ReferralRequestLifecycleService $service): void
     {
         abort_unless(auth()->user()?->can('service_request:use'), 403);
         $uuid = $this->referralToCancel;
@@ -130,34 +141,37 @@ class ReferralIndex extends Component
             return;
         }
 
-        if (empty(trim($this->cancelExplanatoryLetter))) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => 'Вкажіть причину відміни']);
+        $referral = collect($this->searchResults)->firstWhere('id', $uuid);
+        if (!$referral || !$this->canManageUsage($referral)) {
+            Session::flash('error', __('referrals.messages.action_unavailable'));
 
             return;
         }
 
+        $this->cancelExplanatoryLetter = trim($this->cancelExplanatoryLetter);
+        $this->validate([
+            'cancelExplanatoryLetter' => 'required|string',
+        ], [], [
+            'cancelExplanatoryLetter' => __('referrals.modals.cancel_usage.letter_label'),
+        ]);
+
         try {
-            $referral = collect($this->searchResults)->firstWhere('id', $uuid);
             $patientId = $referral['subject']['identifier']['value'] ?? null;
 
             if (!$patientId) {
                 throw new Exception('Не вдалося знайти ідентифікатор пацієнта.');
             }
 
-            $service->cancelUsage($uuid, $patientId, [
+            $response = $service->cancelUsage($uuid, $patientId, [
                 'explanatory_letter' => $this->cancelExplanatoryLetter,
             ]);
 
-            foreach ($this->searchResults as $key => $result) {
-                if (($result['id'] ?? '') === $uuid) {
-                    $this->searchResults[$key]['status'] = 'active';
-                }
-            }
+            $this->updateSearchResult($uuid, 'active', $response);
 
-            $this->dispatch('notify', ['type' => 'success', 'message' => 'Використання направлення успішно відмінено']);
+            Session::flash('success', __('referrals.messages.cancel_usage_success'));
             $this->showCancelModal = false;
         } catch (Exception $e) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => 'Помилка: '.$e->getMessage()]);
+            $this->flashOperationError($e);
         }
     }
 
@@ -173,8 +187,9 @@ class ReferralIndex extends Component
         }
     }
 
-    public function openCompleteModal(string $uuid)
+    public function openCompleteModal(string $uuid): void
     {
+        abort_unless(auth()->user()?->can('service_request:complete'), 403);
         $this->referralToComplete = $uuid;
         $this->availableEmzResources = [];
         $this->selectedEmzUuid = '';
@@ -183,7 +198,13 @@ class ReferralIndex extends Component
         $referral = collect($this->searchResults)->firstWhere('id', $uuid);
 
         if (!$referral) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => 'Направлення не знайдено.']);
+            Session::flash('error', __('referrals.messages.not_found'));
+
+            return;
+        }
+
+        if (!$this->canManageUsage($referral)) {
+            Session::flash('error', __('referrals.messages.action_unavailable'));
 
             return;
         }
@@ -191,15 +212,15 @@ class ReferralIndex extends Component
         $patientId = $referral['subject']['identifier']['value'] ?? null;
 
         if (!$patientId) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => 'Не вдалося визначити пацієнта для цього направлення.']);
+            Session::flash('error', __('referrals.messages.patient_identifier_missing'));
 
             return;
         }
 
-        $person = Person::where('uuid', $patientId)->first();
+        $person = Person::whereUuid($patientId)->first();
 
         if (!$person) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => 'Пацієнт не знайдений у локальній базі даних.']);
+            Session::flash('error', __('referrals.messages.patient_not_found'));
 
             return;
         }
@@ -208,7 +229,7 @@ class ReferralIndex extends Component
         $this->showCompleteModal = true;
     }
 
-    public function confirmComplete(ReferralRequestLifecycleService $service)
+    public function confirmComplete(ReferralRequestLifecycleService $service): void
     {
         abort_unless(auth()->user()?->can('service_request:complete'), 403);
         $uuid = $this->referralToComplete;
@@ -216,45 +237,81 @@ class ReferralIndex extends Component
         $resourceType = $this->selectedEmzType;
 
         if (empty($uuid) || empty($resourceUuid) || empty($resourceType)) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => __('care-plan.referral_complete_emz_required')]);
+            Session::flash('error', __('care-plan.referral_complete_emz_required'));
 
             return;
         }
 
         if (!in_array($resourceType, $this->emzTypes, true)) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => __('care-plan.referral_complete_invalid_emz_type')]);
+            Session::flash('error', __('care-plan.referral_complete_invalid_emz_type'));
+
+            return;
+        }
+
+        $referral = collect($this->searchResults)->firstWhere('id', $uuid);
+        if (!$referral || !$this->canManageUsage($referral)) {
+            Session::flash('error', __('referrals.messages.action_unavailable'));
 
             return;
         }
 
         if (!$this->assertEmzLinkedToReferral($uuid, $resourceType, $resourceUuid)) {
-            $this->dispatch('notify', [
-                'type' => 'error',
-                'message' => __('care-plan.referral_complete_emz_not_linked'),
-            ]);
+            Session::flash('error', __('care-plan.referral_complete_emz_not_linked'));
 
             return;
         }
 
         try {
-            $service->completeReferral($uuid, $resourceUuid, $resourceType);
+            $response = $service->completeReferral($uuid, $resourceUuid, $resourceType);
+            $this->updateSearchResult($uuid, 'completed', $response);
 
-            foreach ($this->searchResults as $key => $result) {
-                if (($result['id'] ?? '') === $uuid) {
-                    $this->searchResults[$key]['status'] = 'completed';
-                }
-            }
-
-            $this->dispatch('notify', ['type' => 'success', 'message' => 'Направлення успішно погашено']);
+            Session::flash('success', __('referrals.messages.complete_success'));
             $this->showCompleteModal = false;
         } catch (Exception $e) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => 'Помилка: '.$e->getMessage()]);
+            $this->flashOperationError($e);
         }
     }
 
     public function render()
     {
         return view('livewire.referral.referral-index');
+    }
+
+    public function canTakeIntoWork(array $referral): bool
+    {
+        return in_array($referral['status'] ?? '', ['active', 'new'], true)
+            && !$this->canManageUsage($referral);
+    }
+
+    public function canManageUsage(array $referral): bool
+    {
+        if (in_array($referral['status'] ?? '', ['draft', 'completed', 'recalled', 'revoked', 'entered_in_error', 'entered-in-error'], true)) {
+            return false;
+        }
+
+        return in_array($referral['status'] ?? '', ['in_progress', 'in_queue'], true)
+            || ($referral['program_processing_status'] ?? '') === 'in_progress';
+    }
+
+    private function updateSearchResult(string $uuid, string $status, array $response): void
+    {
+        foreach ($this->searchResults as $key => $result) {
+            if (($result['id'] ?? '') !== $uuid) {
+                continue;
+            }
+
+            $this->searchResults[$key]['status'] = $status;
+            unset($this->searchResults[$key]['program_processing_status']);
+            if (isset($response['program_processing_status'])) {
+                $this->searchResults[$key]['program_processing_status'] = $response['program_processing_status'];
+            }
+        }
+    }
+
+    private function flashOperationError(Exception $exception): void
+    {
+        Log::error('ReferralIndex: operation failed', ['exception' => $exception]);
+        Session::flash('error', __('referrals.messages.operation_failed'));
     }
 
     private function loadEmzResourcesForComplete(string $referralUuid): void
