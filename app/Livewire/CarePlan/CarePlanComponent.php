@@ -338,9 +338,10 @@ abstract class CarePlanComponent extends Component
 
         // Fetch patient diagnostic reports for justifications (grounds)
         $this->availableReports = DiagnosticReport::where('person_id', $personId)
+            ->with('code')
             ->get()->map(fn ($dr) => [
                 'uuid' => $dr->uuid,
-                'name' => $dr->code?->text ?: 'Diagnostic Report',
+                'name' => $dr->code?->displayValue ?: $dr->code?->value ?: 'Diagnostic Report',
                 'date' => $dr->issued ? Carbon::parse($dr->issued)->format('d.m.Y') : '-',
             ])->toArray();
 
