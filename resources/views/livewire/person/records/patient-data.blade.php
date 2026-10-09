@@ -104,33 +104,35 @@
                 </div>
             </div>
 
-            <div x-data="{ 
-                showDataAccessDrawer: false, 
-                showAllDataDrawer: false, 
-                showDiagnosisGroupsDrawer: false,
-                showDiagnosisCodesDrawer: false,
-                showServiceGroupsDrawer: false,
-                showServiceCodesDrawer: false,
-                showSensitiveDataDrawer: false,
-                showSensitiveCodesDrawer: false,
-                showReferralsDrawer: false,
-                selectedDataType: '',
-                selectedDiagnosisGroup: '',
-                selectedServiceGroup: '',
-                selectedSensitiveGroup: '',
-                selectedReferralOrganization: '',
-                selectedReferral: '',
-                forbiddenGroups: $wire.forbiddenGroups || [],
-                init() {
-                    this.$watch('selectedDataType', value => {
-                        this.showAllDataDrawer = value === 'all';
-                        this.showDiagnosisGroupsDrawer = value === 'diagnosis_groups';
-                        this.showSensitiveDataDrawer = value === 'sensitive';
-                        this.showServiceGroupsDrawer = value === 'service_groups';
-                        this.showReferralsDrawer = value === 'referrals';
-                    });
-                }
-            }">
+            <div
+                x-data="{
+                    showDataAccessDrawer: false,
+                    showAllDataDrawer: false,
+                    showDiagnosisGroupsDrawer: false,
+                    showDiagnosisCodesDrawer: false,
+                    showServiceGroupsDrawer: false,
+                    showServiceCodesDrawer: false,
+                    showSensitiveDataDrawer: false,
+                    showSensitiveCodesDrawer: false,
+                    showReferralsDrawer: false,
+                    selectedDataType: '',
+                    selectedDiagnosisGroup: '',
+                    selectedServiceGroup: '',
+                    selectedSensitiveGroup: '',
+                    selectedReferralOrganization: '',
+                    selectedReferral: '',
+                    forbiddenGroups: $wire.forbiddenGroups || [],
+                    init() {
+                        this.$watch('selectedDataType', (value) => {
+                            this.showAllDataDrawer = value === 'all';
+                            this.showDiagnosisGroupsDrawer = value === 'diagnosis_groups';
+                            this.showSensitiveDataDrawer = value === 'sensitive';
+                            this.showServiceGroupsDrawer = value === 'service_groups';
+                            this.showReferralsDrawer = value === 'referrals';
+                        });
+                    },
+                }"
+            >
                 <button
                     @click="showDataAccessDrawer = true"
                     type="button"
@@ -150,7 +152,6 @@
                 @include('livewire.person.parts.drawers.data-access-service-codes')
                 @include('livewire.person.parts.drawers.data-access-referrals')
             </div>
-
 
             <button
                 type="button"
@@ -1386,13 +1387,16 @@
             <a href="{{ route('persons.index', [legalEntity()]) }}" class="button-minor" style="margin: 0 !important">
                 {{ __('forms.back') }}
             </a>
-            <a
-                href="{{ route('persons.update', [legalEntity(), $personId]) }}"
-                class="button-primary"
-                style="margin: 0 !important"
-            >
-                {{ __('patients.edit_data') }}
-            </a>
+
+            @can('create', PersonRequest::class)
+                <a
+                    href="{{ route('persons.update', [legalEntity(), $personId]) }}"
+                    class="button-primary"
+                    style="margin: 0 !important"
+                >
+                    {{ __('patients.edit_data') }}
+                </a>
+            @endcan
         </div>
 
         @if ($canManageConfidantRelationships)

@@ -24,7 +24,7 @@
 
                         @if (empty($emergencyContactEvidences))
                             <p class="py-8 text-center text-gray-500 dark:text-gray-400">
-                                {{ __('patients.emergency_contact_request.no_evidences') }}
+                                {{ trans_choice('patients.emergency_contact_request.no_evidences', config('ehealth.emergency_contact_medical_event_max_days_passed') + 1) }}
                             </p>
                         @else
                             <table class="table-input w-full">

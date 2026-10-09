@@ -274,7 +274,6 @@ class DiagnosticReportRepository extends BaseRepository
 
             $ownerColumn = $diagnosticReport->prepersonId !== null ? 'preperson_id' : 'person_id';
 
-
             Observation::query()
                 ->where($ownerColumn, $diagnosticReport->getAttribute($ownerColumn))
                 ->whereHas('diagnosticReport', fn (Builder $query) => $query->where('value', $diagnosticReport->uuid))
@@ -331,28 +330,6 @@ class DiagnosticReportRepository extends BaseRepository
             ->where($ownerColumn, $ownerId)
             ->get()
             ->toArray();
-    }
-
-    /**
-     * Get paginated diagnostic reports related to the patient.
-     *
-     * @param  Person|Preperson  $patient
-     * @param  int  $page
-     * @param  int  $pageSize
-     * @return LengthAwarePaginator
-     */
-    public function getPaginatedByPatient(
-        Person|Preperson $patient,
-        int $page,
-        int $pageSize
-    ): LengthAwarePaginator {
-        [$ownerColumn, $ownerId] = $this->resolveOwner($patient);
-
-        return $this->model
-            ->withAllRelations()
-            ->where($ownerColumn, $ownerId)
-            ->latest()
-            ->paginate($pageSize, ['*'], 'page', $page);
     }
 
     /**
@@ -460,7 +437,6 @@ class DiagnosticReportRepository extends BaseRepository
                     $ownerColumn => $ownerId,
                     'based_on_id' => $basedOn?->id,
                     'code_id' => $code->id,
-                    'effective_date_time' => $datum['effectiveDateTime'] ?? null,
                     'encounter_id' => $encounter?->id,
                     'division_id' => $division?->id,
                     'conclusion_code_id' => $conclusionCode?->id,
@@ -474,7 +450,9 @@ class DiagnosticReportRepository extends BaseRepository
                     'issued' => $data['issued'],
                     'conclusion' => $data['conclusion'] ?? null,
                     'explanatory_letter' => $data['explanatory_letter'] ?? null,
-                    'primary_source' => $data['primary_source']
+                    'primary_source' => $data['primary_source'],
+                    'ehealth_inserted_at' => $data['ehealth_inserted_at'] ?? $existing?->ehealthInsertedAt ?? now(),
+                    'ehealth_updated_at' => $data['ehealth_updated_at'] ?? now()
                 ];
 
                 if ($existing) {
@@ -518,14 +496,12 @@ class DiagnosticReportRepository extends BaseRepository
     /**
      * Sync diagnostic report performers.
      *
-     * @param DiagnosticReport $diagnosticReport
-     * @param array $performers
+     * @param  DiagnosticReport  $diagnosticReport
+     * @param  array  $performers
      * @return void
      */
-    private function syncPerformers(
-        DiagnosticReport $diagnosticReport, 
-        array $performers
-    ): void {
+    private function syncPerformers(DiagnosticReport $diagnosticReport, array $performers): void
+    {
         $existingPerformers = $diagnosticReport
             ->performer()
             ->with('reference.type.coding')
