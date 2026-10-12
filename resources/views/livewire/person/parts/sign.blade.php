@@ -36,6 +36,12 @@
                         {{ __('forms.max_file_size_and_format') }}
                     </p>
 
+                    @if (str_starts_with($document['type'], 'confidant_person.') && str_ends_with($document['type'], '.BIRTH_CERTIFICATE_FOREIGN'))
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">
+                            {{ __('patients.birth_certificate_foreign_upload_hint') }}
+                        </p>
+                    @endif
+
                     @error("form.uploadedDocuments.$key")
                         <p class="text-error">{{ $message }}</p>
                     @enderror

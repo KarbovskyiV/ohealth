@@ -8,6 +8,7 @@ use App\Classes\Cipher\Api\CipherRequest;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\Person\Status;
+use App\Enums\Person\VerificationStatus;
 use App\Exceptions\Cipher\CipherConnectionException;
 use App\Exceptions\Cipher\CipherException;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -246,11 +247,29 @@ class PersonComponent extends Component
 
         $birthDate = CarbonImmutable::parse($personData['birthDate']);
 
-        // Below the full legal capacity age a person cannot be a confidant (the remaining eligibility
-        // rules — legal capacity, verification statuses — are enforced by eHealth)
+        // Below the full legal capacity age a person cannot be a confidant (legal capacity itself is enforced
+        // by eHealth)
         if ($birthDate->age < config('ehealth.person_full_legal_capacity_age')) {
             $this->invalidPersonId = $personData['id'];
             $this->invalidPersonReason = __('patients.age_insufficient_for_confidant_person');
+
+            return;
+        }
+
+        try {
+            $verificationStatus = EHealth::person()->getPersonVerificationDetails($personData['id'])
+                ->validate()['verification_status'];
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error when getting verification details of the chosen person');
+
+            return;
+        }
+
+        if ($verificationStatus !== VerificationStatus::VERIFIED->value) {
+            $this->invalidPersonId = $personData['id'];
+            $this->invalidPersonReason = __('patients.confidant_person_not_verified', [
+                'status' => VerificationStatus::from($verificationStatus)->label()
+            ]);
 
             return;
         }
@@ -717,14 +736,21 @@ class PersonComponent extends Component
     }
 
     /**
-     * Show translated documents name.
+     * Show translated documents name, marking the ones that prove the confidant relationship, since they may be
+     * of the same type as the patient's own document.
      *
      * @param  array  $document
      * @return string
      */
     public function getDocumentLabel(array $document): string
     {
-        return __('patients.documents.' . Str::afterLast($document['type'], '.'));
+        $label = __('patients.documents.' . Str::afterLast($document['type'], '.'));
+
+        if (str_starts_with($document['type'], 'confidant_person.')) {
+            return __('patients.confidant_person_document_label', ['document' => $label]);
+        }
+
+        return $label;
     }
 
     /**

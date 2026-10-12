@@ -226,7 +226,7 @@ class PersonForm extends BaseForm
             'person.secret' => ['required', 'string', 'min:6'],
             'person.email' => [
                 'nullable',
-                'email',
+                'email:filter',
                 'string',
                 Rule::unique('persons', 'email')
                     ->when(
@@ -579,6 +579,10 @@ class PersonForm extends BaseForm
             'person.unzr.required' => __('validation.custom.person.unzr_required_for_national_id'),
             'person.unzr.prohibited' => __('validation.custom.person.unzr_prohibited_for_foreign'),
             'person.taxId.unique' => __('validation.custom.person.tax_id_already_used'),
+            'person.documents.*.issuedAt.after_or_equal' => __('validation.custom.person.issued_at_before_birth_date'),
+            'person.confidantPerson.documentsRelationship.*.issuedAt.after_or_equal' => __(
+                'validation.custom.person.issued_at_before_birth_date'
+            ),
             'person.documents.*.issuingCountry.required' => __(
                 'validation.custom.person.issuing_country_required_for_foreign'
             ),
