@@ -8,7 +8,15 @@ Workflow `.github/workflows/azure-openai-review.yml` надсилає текст
 - Вручну: Actions → Azure OpenAI PR review → Run workflow, вибрати `main`, вказати номер відкритого PR. Так можна перевірити вже наявний PR або PR зовнішнього автора.
 - Draft і закриті PR пропускаються. PR в інші гілки не аналізуються.
 
+Подія `pull_request_target` лише ставить завдання на рев’ю через `workflow_dispatch` з `ref: main` і номером/head SHA PR. Цей dispatcher має тільки `actions: write`, не отримує Azure-токен і не завантажує код PR. Аналіз виконується в окремому запуску `workflow_dispatch` на довіреному `main`: його OIDC subject відповідає вже налаштованому federated credential `repo:openhealths/nationHealth:ref:refs/heads/main`. Прямий Azure Login із події PR мав би subject `repo:openhealths/nationHealth:pull_request` і завершувався б AADSTS700213. Запуск на `main` повторно звіряє очікуваний head; застаріле завдання пропускається. Ручний запуск використовує той самий шлях; поле `expected_head_sha` можна залишити порожнім. Dispatch і аналіз мають окремі concurrency-групи, щоб запуск аналізу не скасовував власний dispatcher.
+
 ## Що відбувається
+
+Підсумковий коментар містить лише статус завершення, модель, кількість переглянутих файлів, посилання на commit/запуск і конкретні зауваження з шляхом та рядком коду. Без зауважень — «Зауважень немає»; якщо аналізувати нічого — «Немає доступних змін для перевірки». Технічні ліміти, пріоритети файлів і загальні пояснення залишаються в цій документації, а не повторюються в кожному PR. Часткове охоплення видно з кількості файлів; якщо окремі фрагменти пропущені або зауваження скорочені через розмір коментаря, їх кількість показується окремо.
+
+У PR в секції перевірок і на вкладці **Checks** з’являється `Azure OpenAI PR review`, прив’язаний до head commit PR. Статус реєструється до Azure Login: спочатку «Рев’ю взято в роботу», далі «Виконується: порція N із M», після публікації коментаря — «Рев’ю завершено: зауважень N». Деталі містять прогрес і посилання на запуск Actions. Підсумковий коментар явно позначений «✅ Рев’ю завершено» й містить deployment моделі та посилання на запуск.
+
+Зелений Check означає, що аналіз і публікація завершилися, навіть якщо є зауваження P1/P2. Це не approval і не підтвердження проходження тестів. Зміна PR під час аналізу або відсутність доступних patches дає нейтральний результат; повторний запуск уже проаналізованої пари head/base завершується без нових запитів до моделі. Помилки й звичайне скасування завершують Check як failure/cancelled через завершальний крок workflow. Якщо runner примусово зупинений або завершальний крок не зміг звернутися до GitHub, Check може залишитися in progress: статус запуску в Actions є остаточним, потрібен повторний запуск.
 
 1. GitHub завантажує тільки довірений скрипт із `main`. Код гілки PR не виконується; Composer/npm і тести PR в цьому workflow не запускаються.
 2. OIDC надає тимчасовий доступ managed identity `nationhealth-github-review` до Azure. API key не потрібен.
@@ -31,7 +39,7 @@ Repository variables в `openhealths/nationHealth`:
 
 Identity має роль `Cognitive Services OpenAI User` на Foundry account із моделлю. Federated credential має issuer `https://token.actions.githubusercontent.com`, audience `api://AzureADTokenExchange` і subject `repo:openhealths/nationHealth:ref:refs/heads/main`.
 
-Права workflow: `contents: read`, `pull-requests: write`, `id-token: write`. Checkout не зберігає GitHub credentials. Azure Login і Checkout закріплені за commit SHA. PHP із розширеннями curl і mbstring уже є на GitHub runner; application dependencies не потрібні.
+Права workflow: `contents: read`, `pull-requests: write`, `checks: write`, `id-token: write`. `checks: write` потрібне для статусу на commit PR; додаткових Azure-ролей або API keys не потрібно. Checkout не зберігає GitHub credentials. Azure Login і Checkout закріплені за commit SHA. PHP із розширеннями curl і mbstring уже є на GitHub runner; application dependencies не потрібні.
 
 Запити до моделі оплачуються в Azure у підписці Foundry-ресурсу. GitHub-hosted стандартний runner для цього public repo не потребує Azure VM. Паралельні запуски для одного PR скасовуються; workflow можна вимкнути в Actions, якщо потрібно зупинити рев’ю.
 

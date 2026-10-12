@@ -1,4 +1,5 @@
 name: Azure OpenAI PR review
+run-name: 'Azure review · PR #${{ github.event.pull_request.number || inputs.pull_request_number }}'
 
 on:
   pull_request_target:
@@ -10,33 +11,57 @@ on:
         description: Open PR number to review
         required: true
         type: string
+      expected_head_sha:
+        description: Commit from the automatic PR event (leave empty for manual runs)
+        required: false
+        type: string
 
 permissions: {}
 
 concurrency:
-  group: azure-review-${{ github.event.pull_request.number || inputs.pull_request_number }}
+  group: azure-review-${{ github.event_name }}-${{ github.event.pull_request.number || inputs.pull_request_number }}
   cancel-in-progress: true
 
 jobs:
+  dispatch-review:
+    # PR events have a different OIDC subject. Queue a main-branch run without Azure access.
+    if: >-
+      github.repository == 'openhealths/nationHealth' && github.ref == 'refs/heads/main' &&
+      github.event_name == 'pull_request_target' && !github.event.pull_request.draft &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Queue trusted main review for this PR commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh workflow run azure-openai-review.yml --repo "$GITHUB_REPOSITORY" --ref main \
+            -f pull_request_number="$PR_NUMBER" -f expected_head_sha="$EXPECTED_HEAD_SHA"
+
   review:
     # Only trusted main code runs with Azure credentials. Fork code is fetched as JSON patches.
     if: >-
       github.repository == 'openhealths/nationHealth' && github.ref == 'refs/heads/main' &&
-      (github.event_name == 'workflow_dispatch' ||
-      (!github.event.pull_request.draft &&
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)))
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: write
+      checks: write
       id-token: write
     env:
       AZURE_CORE_OUTPUT: none
       AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
       AZURE_OPENAI_DEPLOYMENT: ${{ vars.AZURE_OPENAI_DEPLOYMENT }}
-      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pull_request_number }}
-      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ inputs.pull_request_number }}
+      EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Load the trusted review script from main
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -45,7 +70,12 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github/scripts
 
+      - name: Register the review status on the PR commit
+        id: review-status
+        run: php .github/scripts/azure-openai-review.php --start
+
       - name: Sign in to Azure using OIDC
+        if: steps.review-status.outputs.active == 'true'
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -53,11 +83,20 @@ jobs:
           allow-no-subscriptions: true
 
       - name: Review the PR diff and update the bot comment
+        if: steps.review-status.outputs.active == 'true'
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          AZURE_REVIEW_CHECK_ID: ${{ steps.review-status.outputs.check_id }}
+          AZURE_REVIEW_HEAD_SHA: ${{ steps.review-status.outputs.head_sha }}
         shell: bash
         run: |
           token="$(az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken --output tsv)"
           echo "::add-mask::$token"
           export AZURE_OPENAI_ACCESS_TOKEN="$token"
           php .github/scripts/azure-openai-review.php
+
+      - name: Close the review status after failure or cancellation
+        if: always() && steps.review-status.outputs.check_id != ''
+        env:
+          AZURE_REVIEW_CHECK_ID: ${{ steps.review-status.outputs.check_id }}
+          REVIEW_JOB_STATUS: ${{ job.status }}
+        run: php .github/scripts/azure-openai-review.php --finish

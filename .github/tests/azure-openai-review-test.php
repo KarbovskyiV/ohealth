@@ -20,6 +20,9 @@ function simulateReview(array $options = []): array
     putenv('AZURE_OPENAI_DEPLOYMENT=gpt-6.1-sol');
     putenv('EXPECTED_HEAD_SHA='.($options['expectedSha'] ?? ''));
     putenv('GITHUB_STEP_SUMMARY');
+    putenv('GITHUB_RUN_ID=456');
+    putenv('AZURE_REVIEW_CHECK_ID='.(!empty($options['checks']) ? '42' : ''));
+    putenv('AZURE_REVIEW_HEAD_SHA='.($options['registeredSha'] ?? ''));
     $headSha = str_repeat('a', 40);
     $baseSha = str_repeat('b', 40);
     $pr = ['state' => 'open', 'draft' => false, 'changed_files' => 1,
@@ -32,12 +35,25 @@ function simulateReview(array $options = []): array
     $modelCalls = 0;
     $prReads = 0;
     $published = [];
+    $checkUpdates = [];
     $failure = null;
     $request = static function (string $method, string $url, ?array $payload) use (
-        &$modelCalls, &$prReads, &$published, $pr, $options, $files, $finding
+        &$modelCalls, &$prReads, &$published, &$checkUpdates, $pr, $options, $files, $finding
     ): array {
+        if (str_contains($url, '/check-runs')) {
+            if ($method === 'GET') {
+                return ['status' => $options['checkStatus'] ?? 'in_progress'];
+            }
+            $checkUpdates[] = ['method' => $method, 'payload' => $payload,
+                'modelCalls' => $modelCalls, 'publishedComments' => count($published)];
+
+            return ['id' => 42];
+        }
         if (str_contains($url, '/chat/completions')) {
             $modelCalls++;
+            if (!empty($options['modelFailure'])) {
+                throw new RuntimeException('Synthetic model failure');
+            }
             check($payload['store'] === false && $payload['max_completion_tokens'] === 6000, 'Cost/storage settings are missing');
 
             return ['choices' => [['finish_reason' => 'stop', 'message' => [
@@ -56,6 +72,9 @@ function simulateReview(array $options = []): array
             return $prReads > 1 && $modelCalls > 0 ? array_replace_recursive($pr, $options['currentPr'] ?? []) : $pr;
         }
         if (in_array($method, ['POST', 'PATCH'], true) && str_contains($url, '/comments')) {
+            if (!empty($options['publishFailure'])) {
+                throw new RuntimeException('Synthetic comment publication failure');
+            }
             $published[] = ['method' => $method, 'url' => $url, 'body' => $payload['body']];
 
             return ['id' => 1];
@@ -64,14 +83,26 @@ function simulateReview(array $options = []): array
     };
     ob_start();
     try {
+        if (!empty($options['start'])) {
+            $outputs = startAzureReview($request);
+            if ($outputs['active'] === 'true') {
+                putenv('AZURE_REVIEW_CHECK_ID='.$outputs['check_id']);
+                putenv('AZURE_REVIEW_HEAD_SHA='.$outputs['head_sha']);
+            } else {
+                return compact('published', 'modelCalls', 'failure', 'checkUpdates');
+            }
+        }
         runAzureReview($request);
     } catch (Throwable $error) {
         $failure = $error->getMessage();
     } finally {
+        if (isset($options['finishStatus'])) {
+            finishAzureReview($request, $options['finishStatus']);
+        }
         ob_end_clean();
     }
 
-    return compact('published', 'modelCalls', 'failure');
+    return compact('published', 'modelCalls', 'failure', 'checkUpdates');
 }
 
 $result = simulateReview();
@@ -178,4 +209,49 @@ $result = simulateReview(['files' => [['filename' => 'app/Large.php', 'status' =
     'findings' => [], 'currentPr' => ['head' => ['sha' => str_repeat('c', 40)]]]);
 check($result['modelCalls'] === 1 && $result['published'] === [], 'A head change must stop the remaining batches without publishing partial results');
 
-echo "25 review safety and behavior checks passed.\n";
+$result = simulateReview(['start' => true, 'checkStatus' => 'completed', 'finishStatus' => 'success']);
+check($result['checkUpdates'][0]['payload']['head_sha'] === str_repeat('a', 40)
+    && $result['checkUpdates'][0]['modelCalls'] === 0
+    && str_ends_with($result['checkUpdates'][0]['payload']['details_url'], '/actions/runs/456'),
+    'The check must be registered on the PR commit before inference, with a run link');
+$lastCheck = end($result['checkUpdates']);
+check($lastCheck['payload']['conclusion'] === 'success' && $lastCheck['publishedComments'] === 1,
+    'A successful check must follow final comment publication');
+check(str_contains($result['published'][0]['body'], '**✅ Рев’ю завершено.**')
+    && str_contains($result['published'][0]['body'], '/actions/runs/456'), 'The final comment needs an explicit completion status and run link');
+
+$result = simulateReview(['start' => true, 'pr' => ['draft' => true]]);
+check($result['checkUpdates'] === [] && $result['modelCalls'] === 0, 'Drafts must not register or execute a review');
+
+$result = simulateReview(['checks' => true, 'files' => [['filename' => 'app/Large.php', 'status' => 'added', 'patch' => $largePatch]], 'findings' => []]);
+$progress = array_values(array_filter($result['checkUpdates'], static fn (array $update): bool => $update['payload']['status'] === 'in_progress'));
+check(count($progress) === 2 && str_contains($progress[0]['payload']['output']['title'], '1 із 2')
+    && str_contains($progress[1]['payload']['output']['title'], '2 із 2'), 'Check progress must track both batches');
+
+$result = simulateReview(['checks' => true, 'registeredSha' => str_repeat('c', 40)]);
+check($result['modelCalls'] === 0 && end($result['checkUpdates'])['payload']['conclusion'] === 'neutral',
+    'A head change after registration must not review a different commit under the old check');
+
+$result = simulateReview(['checks' => true, 'currentPr' => ['head' => ['sha' => str_repeat('c', 40)]]]);
+check($result['published'] === [] && end($result['checkUpdates'])['payload']['conclusion'] === 'neutral',
+    'Stale results must finish neutrally without publishing');
+
+$result = simulateReview(['checks' => true, 'comments' => [['id' => 42, 'user' => ['login' => 'github-actions[bot]'],
+    'body' => REVIEW_MARKER."\n".$fingerprint]]]);
+check($result['modelCalls'] === 0 && end($result['checkUpdates'])['payload']['conclusion'] === 'success',
+    'A previously completed review must complete its new check without spending model tokens');
+
+foreach (['modelFailure', 'publishFailure'] as $failureCase) {
+    $result = simulateReview(['checks' => true, $failureCase => true, 'finishStatus' => 'failure']);
+    check($result['failure'] !== null && end($result['checkUpdates'])['payload']['conclusion'] === 'failure',
+        'A failed model request or comment publication must not finish green');
+}
+
+$result = simulateReview(['checks' => true, 'modelFailure' => true, 'finishStatus' => 'cancelled']);
+check(end($result['checkUpdates'])['payload']['conclusion'] === 'cancelled', 'Cancellation must close an unfinished check');
+
+$result = simulateReview(['checks' => true, 'files' => [], 'findings' => []]);
+check($result['modelCalls'] === 0 && end($result['checkUpdates'])['payload']['conclusion'] === 'neutral',
+    'No analyzable files must finish neutrally rather than claim successful analysis');
+
+echo "34 review safety and behavior checks passed.\n";
