@@ -1,7 +1,8 @@
 @use('App\Enums\Person\AuthenticationMethod')
 
-<fieldset class="fieldset"
-          x-data="{
+<fieldset
+    class="fieldset"
+    x-data="{
               authenticationMethods: $wire.entangle('form.person.authenticationMethods'),
               isIncapacitated: $wire.entangle('isIncapacitated'),
               showAuthDocDrawer: false,
@@ -15,7 +16,7 @@
                       const availableTypes = this.availableAuthMethods.map(method => method.value);
 
                       // If current auth method is not available in the new state, reset it
-                      if (currentAuthType && !availableTypes.includes(currentAuthType)) {
+                      if (currentAuthType && ! availableTypes.includes(currentAuthType)) {
                           this.authenticationMethods[0].type = '';
                           // Clear phoneNumber if switching away from OTP
                           if (this.authenticationMethods[0].phoneNumber) {
@@ -29,15 +30,15 @@
                   const allMethods = [
                       {
                           value: '{{ AuthenticationMethod::OTP->value }}',
-                          label: '{{ __('forms.authentication') }} {{ AuthenticationMethod::OTP->label() }}'
+                          label: '{{ AuthenticationMethod::OTP->label() }}'
                       },
                       {
                           value: '{{ AuthenticationMethod::OFFLINE->value }}',
-                          label: '{{ __('forms.authentication') }} {{ AuthenticationMethod::OFFLINE->label() }}'
+                          label: '{{ AuthenticationMethod::OFFLINE->label() }}'
                       },
                       {
                           value: '{{ AuthenticationMethod::THIRD_PERSON->value }}',
-                          label: '{{ __('forms.authentication') }} {{ AuthenticationMethod::THIRD_PERSON->label() }}'
+                          label: '{{ AuthenticationMethod::THIRD_PERSON->label() }}'
                       }
                   ];
 
@@ -58,14 +59,13 @@
 
     <div class="form-row-3">
         <div class="form-group group">
-            <label for="relationType" class="sr-only">
-                {{ __('forms.authentication') }}
-            </label>
-            <select x-model="authenticationMethods[0].type"
-                    x-init="$nextTick(() => authenticationMethods = JSON.parse(JSON.stringify(authenticationMethods)))"
-                    id="relationType"
-                    class="input-select peer @error('form.person.authenticationMethods.*.type') input-error @enderror"
-                    required
+            <label for="relationType" class="sr-only"> {{ __('forms.authentication') }} </label>
+            <select
+                x-model="authenticationMethods[0].type"
+                x-init="$nextTick(() => (authenticationMethods = JSON.parse(JSON.stringify(authenticationMethods))))"
+                id="relationType"
+                class="input-select peer @error('form.person.authenticationMethods.*.type') input-error @enderror"
+                required
             >
                 <option selected value="">
                     {{ __('forms.select') }} {{ mb_strtolower(__('forms.authentication')) }} *
@@ -75,29 +75,30 @@
                 </template>
             </select>
 
-            @error('form.person.authenticationMethods.*.type') <p class="text-error">{{ $message }}</p> @enderror
+            @error('form.person.authenticationMethods.*.type')
+                <p class="text-error">{{ $message }}</p>
+            @enderror
         </div>
     </div>
 
     <template x-if="authenticationMethods[0]?.type === '{{ AuthenticationMethod::OTP->value }}'">
         <div class="form-row-3">
             <div class="form-group group">
-                <input x-model="authenticationMethods[0].phoneNumber"
-                       type="text"
-                       x-mask="+380999999999"
-                       name="phoneNumber"
-                       id="phoneNumber"
-                       class="input peer @error('form.person.authenticationMethods.*.phoneNumber') input-error @enderror"
-                       placeholder=" "
-                       required
-                       autocomplete="off"
+                <input
+                    x-model="authenticationMethods[0].phoneNumber"
+                    type="text"
+                    x-mask="+380999999999"
+                    name="phoneNumber"
+                    id="phoneNumber"
+                    class="input peer @error('form.person.authenticationMethods.*.phoneNumber') input-error @enderror"
+                    placeholder=" "
+                    required
+                    autocomplete="off"
                 />
-                <label for="phoneNumber" class="label">
-                    {{ __('forms.phone_number') }}
-                </label>
+                <label for="phoneNumber" class="label"> {{ __('forms.phone_number') }} </label>
 
                 @error('form.person.authenticationMethods.*.phoneNumber')
-                <p class="text-error">{{ $message }}</p>
+                    <p class="text-error">{{ $message }}</p>
                 @enderror
             </div>
         </div>
@@ -106,20 +107,21 @@
     <template x-if="authenticationMethods[0]?.type === '{{ AuthenticationMethod::THIRD_PERSON->value }}'">
         <div class="form-row-3">
             <div class="form-group group">
-                <input x-model="authenticationMethods[0].alias"
-                       type="text"
-                       name="alias"
-                       id="alias"
-                       class="input peer @error('form.person.authenticationMethods.*.alias') input-error @enderror"
-                       placeholder=" "
-                       required
-                       autocomplete="off"
+                <input
+                    x-model="authenticationMethods[0].alias"
+                    type="text"
+                    name="alias"
+                    id="alias"
+                    class="input peer @error('form.person.authenticationMethods.*.alias') input-error @enderror"
+                    placeholder=" "
+                    required
+                    autocomplete="off"
                 />
-                <label for="alias" class="label">
-                    {{ __('patients.alias') }}
-                </label>
+                <label for="alias" class="label"> {{ __('patients.alias') }} </label>
 
-                @error('form.person.authenticationMethods.*.alias') <p class="text-error">{{ $message }}</p> @enderror
+                @error('form.person.authenticationMethods.*.alias')
+                    <p class="text-error">{{ $message }}</p>
+                @enderror
             </div>
         </div>
     </template>

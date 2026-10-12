@@ -35,6 +35,21 @@
                       }
 
                       return age >= this.noSelfRegistrationAge && age < this.fullLegalCapacityAge;
+                  },
+
+                  {{-- A filled in expiration date has to be later than today --}}
+                  get isExpirationDatePast() {
+                      const [day, month, year] = (this.modalDocument.expirationDate ?? '').split('.');
+
+                      if (! day || ! month || year?.length !== 4) {
+                          return false;
+                      }
+
+                      const expirationDate = new Date(Number(year), Number(month) - 1, Number(day));
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+
+                      return expirationDate <= today;
                   }
               }"
     >
@@ -166,7 +181,6 @@
                 <div
                     x-show="openModal"
                     x-cloak
-                    @keydown.escape.prevent.stop="openModal = false"
                     role="dialog"
                     aria-modal="true"
                     x-id="['modal-title']"
@@ -181,14 +195,9 @@
                     <div
                         x-show="openModal"
                         x-transition
-                        @click="openModal = false"
                         class="relative flex min-h-screen items-center justify-center p-4"
                     >
-                        <div
-                            @click.stop
-                            x-trap.noscroll.inert="openModal"
-                            class="modal-content h-fit w-full lg:max-w-7xl"
-                        >
+                        <div x-trap.noscroll.inert="openModal" class="modal-content h-fit w-full lg:max-w-7xl">
                             {{-- Title --}}
                             <h3 class="modal-header" :id="$id('modal-title')">{{ __('forms.document') }}</h3>
 
@@ -290,41 +299,48 @@
                                     </div>
 
                                     {{-- The date when was issued --}}
-                                    <div class="relative">
-                                        @icon('calendar-week', 'w-5 h-5 svg-input absolute left-1 !top-2/3 transform -translate-y-1/2 pointer-events-none')
-
+                                    <div>
                                         <label for="documentIssuedAt" class="label-modal">
                                             {{ __('forms.document_issued_at') }}
                                             <span class="text-red-600"> *</span>
                                         </label>
-                                        <input
-                                            x-model="modalDocument.issuedAt"
-                                            datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
-                                            type="text"
-                                            name="documentIssuedAt"
-                                            id="documentIssuedAt"
-                                            class="input-modal datepicker-input"
-                                            autocomplete="off"
-                                        />
+                                        <div class="relative">
+                                            @icon('calendar-week', 'w-5 h-5 svg-input absolute left-1 top-1/2! transform -translate-y-1/2 pointer-events-none')
+
+                                            <input
+                                                x-model="modalDocument.issuedAt"
+                                                datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
+                                                type="text"
+                                                name="documentIssuedAt"
+                                                id="documentIssuedAt"
+                                                class="input-modal datepicker-input"
+                                                autocomplete="off"
+                                            />
+                                        </div>
                                     </div>
 
                                     {{-- The date when expired --}}
-                                    <div class="relative">
-                                        @icon('calendar-week', 'w-5 h-5 svg-input absolute left-1 !top-2/3 transform -translate-y-1/2 pointer-events-none')
-
+                                    <div>
                                         <label for="documentExpirationDate" class="label-modal">
                                             {{ __('forms.valid_until') }}
                                             <span class="text-red-600"> *</span>
                                         </label>
-                                        <input
-                                            x-model="modalDocument.expirationDate"
-                                            datepicker-min-date="{{ now()->format(config('app.date_format')) }}"
-                                            type="text"
-                                            name="documentExpirationDate"
-                                            id="documentExpirationDate"
-                                            class="input-modal datepicker-input"
-                                            autocomplete="off"
-                                        />
+                                        <div class="relative">
+                                            @icon('calendar-week', 'w-5 h-5 svg-input absolute left-1 top-1/2! transform -translate-y-1/2 pointer-events-none')
+
+                                            <input
+                                                x-model="modalDocument.expirationDate"
+                                                datepicker-min-date="{{ now()->addDay()->format(config('app.date_format')) }}"
+                                                type="text"
+                                                name="documentExpirationDate"
+                                                id="documentExpirationDate"
+                                                class="input-modal datepicker-input"
+                                                autocomplete="off"
+                                            />
+                                        </div>
+                                        <p x-show="isExpirationDatePast" class="text-error">
+                                            {{ __('validation.custom.person.expiration_date_in_future') }}
+                                        </p>
                                     </div>
                                 </div>
                                 <p class="mb-2 text-sm text-gray-400">{{ __('forms.form_required_note') }}</p>
@@ -347,7 +363,8 @@
                                         ! modalDocument.number.trim() ||
                                         ! modalDocument.issuedBy.trim() ||
                                         ! modalDocument.issuedAt.trim() ||
-                                        (! uaOnlyTypes.includes(modalDocument.type) && ! modalDocument.issuingCountry)"
+                                        (! uaOnlyTypes.includes(modalDocument.type) && ! modalDocument.issuingCountry) ||
+                                        isExpirationDatePast"
                                     >
                                         {{ __('forms.save') }}
                                     </button>

@@ -27,8 +27,9 @@
     x-cloak
     class="fixed top-0 right-0 h-screen bg-white pt-20 shadow-2xl dark:bg-gray-800"
     style="z-index: 47; width: 50%"
-    id="add-document-drawer"
     tabindex="-1"
+    {{-- The drawer can be included more than once on a page, so every instance gets its own field ids --}}
+    x-id="['document-type', 'document-number', 'document-issued-by', 'document-issued-at', 'document-expiry-date']"
 >
     <div class="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
         <h2
@@ -43,7 +44,7 @@
                 <div class="form-group group">
                     <select
                         name="documentRelationshipType"
-                        id="documentRelationshipType"
+                        :id="$id('document-type')"
                         class="input-select peer"
                         x-model="newDocument.type"
                         @change="newDocument.typeLabel = $event.target.options[$event.target.selectedIndex].text"
@@ -54,35 +55,35 @@
                             <option value="{{ $key }}">{{ $document }}</option>
                         @endforeach
                     </select>
-                    <label for="documentRelationshipType" class="label"> {{ __('forms.document_type') }} </label>
+                    <label :for="$id('document-type')" class="label"> {{ __('forms.document_type') }} </label>
                 </div>
 
                 <div class="form-group group">
                     <input
                         type="text"
                         name="documentNumber"
-                        id="documentNumber"
+                        :id="$id('document-number')"
                         class="input peer"
                         placeholder=" "
                         autocomplete="off"
                         x-model="newDocument.number"
                         required
                     />
-                    <label for="documentNumber" class="label"> {{ __('forms.document_number') }} </label>
+                    <label :for="$id('document-number')" class="label"> {{ __('forms.document_number') }} </label>
                 </div>
 
                 <div class="form-group group">
                     <input
                         type="text"
                         name="documentIssuedBy"
-                        id="documentIssuedBy"
+                        :id="$id('document-issued-by')"
                         class="input peer"
                         placeholder=" "
                         autocomplete="off"
                         x-model="newDocument.issuedBy"
                         required
                     />
-                    <label for="documentIssuedBy" class="label"> {{ __('forms.issued_by') }} </label>
+                    <label :for="$id('document-issued-by')" class="label"> {{ __('forms.issued_by') }} </label>
                 </div>
             </div>
 
@@ -93,14 +94,16 @@
                             type="text"
                             datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
                             name="documentIssueDate"
-                            id="documentIssueDate"
+                            :id="$id('document-issued-at')"
                             class="datepicker-input with-leading-icon input peer"
                             placeholder=" "
                             autocomplete="off"
                             x-model="newDocument.issuedAt"
                             required
                         />
-                        <label for="documentIssueDate" class="wrapped-label"> {{ __('forms.issued_date') }} </label>
+                        <label :for="$id('document-issued-at')" class="wrapped-label">
+                            {{ __('forms.issued_date') }}
+                        </label>
                     </div>
                 </div>
 
@@ -108,15 +111,17 @@
                     <div class="datepicker-wrapper">
                         <input
                             type="text"
-                            datepicker-min-date="{{ now()->format(config('app.date_format')) }}"
+                            datepicker-min-date="{{ now()->addDay()->format(config('app.date_format')) }}"
                             name="documentExpiryDate"
-                            id="documentExpiryDate"
+                            :id="$id('document-expiry-date')"
                             class="datepicker-input with-leading-icon input peer"
                             placeholder=" "
                             autocomplete="off"
                             x-model="newDocument.expiryDate"
                         />
-                        <label for="documentExpiryDate" class="wrapped-label"> {{ __('forms.expiry_date') }} </label>
+                        <label :for="$id('document-expiry-date')" class="wrapped-label">
+                            {{ __('forms.valid_until') }}
+                        </label>
                     </div>
                 </div>
             </div>

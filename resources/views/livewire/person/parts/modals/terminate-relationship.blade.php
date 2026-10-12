@@ -38,12 +38,15 @@
                     </h2>
 
                     {{-- Warning Box --}}
-                    <div role="alert" class="mb-6 rounded-lg p-4" style="background-color: #fffbe6">
+                    <div
+                        role="alert"
+                        class="mb-6 rounded-lg bg-yellow-50 p-4 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                    >
                         <div class="flex items-start gap-3">
                             <div class="mt-0.5 shrink-0">
-                                @icon('alert-circle', 'w-5 h-5 text-gray-600 dark:text-gray-400')
+                                @icon('alert-circle', 'w-5 h-5')
                             </div>
-                            <div class="flex-1 text-sm text-gray-700 dark:text-gray-300">
+                            <div class="flex-1 text-sm">
                                 <p class="mb-2">{{ __('patients.terminate_relationship_warning_1') }}</p>
                                 <p>{{ __('patients.terminate_relationship_warning_2') }}</p>
                             </div>

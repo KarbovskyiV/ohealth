@@ -16,12 +16,14 @@ use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\Person\Person;
 use App\Models\Relations\AuthenticationMethod as AuthenticationMethodModel;
 use App\Models\Relations\ConfidantPerson;
+use App\Models\Relations\Document;
 use App\Repositories\Repository;
 use App\Rules\PhoneNumber;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -64,9 +66,15 @@ trait InteractsWithAuthenticationMethods
                 $confidant = $relationship->person;
                 $method['confidantPerson'] = [
                     'name' => $confidant->fullName,
-                    'taxId' => $confidant->taxId,
-                    'unzr' => $confidant->unzr,
-                    'documentsPerson' => $confidant->documents->toArray(),
+                    // Masked the way the registry returns them, only the last two characters stay visible
+                    'taxId' => $confidant->taxId === null ? null : Str::mask($confidant->taxId, '*', 0, -2),
+                    'unzr' => $confidant->unzr === null ? null : Str::mask($confidant->unzr, '*', 0, -2),
+                    'documentsPerson' => $confidant->documents
+                        ->map(static fn (Document $document): array => [
+                            'type' => $document->type,
+                            'number' => Str::mask($document->number, '*', 0, -2)
+                        ])
+                        ->all(),
                     'phones' => $confidant->phones->first() === null
                         ? null
                         : ['number' => $confidant->phones->first()->number],

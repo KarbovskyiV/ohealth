@@ -68,6 +68,10 @@ class EHealthResponseException extends EHealthException
             $message = $this->translateConflictMessage((string) $raw);
         }
 
+        if ($flashMessage === null && $this->response->json('error.message') === 'Invalid verification code') {
+            $message = __('errors.ehealth.messages.invalid_verification_code');
+        }
+
         Session::flash('error', $message);
     }
 

@@ -59,7 +59,7 @@
 
         @foreach ($this->uploadedDocuments as $key => $document)
             <div class="flex pb-4" wire:key="{{ $key }}">
-                <div class="flex-grow">
+                <div class="grow">
                     <label
                         class="mb-3 block text-sm font-medium text-gray-900 dark:text-white"
                         for="fileInput-{{ $key }}"
@@ -107,7 +107,7 @@
                 type="button"
                 wire:click.prevent="resendCodeOnConfidantPersonRelationship"
                 :disabled="localTimer > 0"
-                class="button-minor mt-4 mb-8 flex max-w-xs flex-1 items-end gap-4"
+                class="button-minor gap-2 self-center whitespace-nowrap"
             >
                 @icon('mail', 'w-4 h-4')
                 <span>{{ __('forms.send_again') }}</span>
@@ -120,7 +120,7 @@
         <div class="flex gap-3">
             <button type="button" @click="showAuthDrawer = false" class="button-minor">{{ __('forms.back') }}</button>
 
-            <div>
+            <div class="flex gap-3">
                 <button
                     type="button"
                     @click="

@@ -51,14 +51,11 @@
                                         <div class="flex items-start justify-between gap-4">
                                             <div
                                                 class="shrink"
-                                                x-data="{
-                                                    labels: @js(AuthenticationMethod::options()),
-                                                    prefix: '{{ __('forms.authentication') }}'
-                                                }"
+                                                x-data="{ labels: @js(AuthenticationMethod::options()) }"
                                             >
                                                 <h3
                                                     class="text-lg font-bold text-gray-900 dark:text-white"
-                                                    x-text="`${prefix} ${labels[method.type] ?? method.type}`"
+                                                    x-text="labels[method.type] ?? method.type"
                                                 ></h3>
                                             </div>
 

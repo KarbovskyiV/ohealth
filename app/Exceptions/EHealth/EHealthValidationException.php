@@ -7,8 +7,10 @@ namespace App\Exceptions\EHealth;
 use App\Core\Arr;
 use App\Enums\CarePlanStatus;
 use App\Enums\EHealth\ErrorType;
+use App\Enums\Person\VerificationStatus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
 
 class EHealthValidationException extends EHealthException
 {
@@ -91,7 +93,9 @@ class EHealthValidationException extends EHealthException
         if (isset($this->details['error']['invalid']) && is_array($this->details['error']['invalid'])) {
             $invalids = $this->details['error']['invalid'];
 
+            // An entry that names neither the field nor the reason only repeats the message above
             $errors = collect($invalids)
+                ->filter(static fn (array $item): bool => isset($item['entry']) || isset($item['rules'][0]['description']))
                 ->map(function ($item) {
                     $entry = $item['entry'] ?? 'unknow field';
                     $description = $item['rules'][0]['description'] ?? 'no description';
@@ -109,11 +113,16 @@ class EHealthValidationException extends EHealthException
                         return __('Категорія послуги: обрана послуга не відповідає вказаній категорії в ЕСОЗ. Будь ласка, оберіть правильну категорію в полі «Категорія» (наприклад, Діагностична процедура / Процедура / Лабораторна діагностика тощо)');
                     }
 
-                    return "$entry: $description";
+                    $ruleMessage = $this->translateRule($entry, $item['rules'][0]['rule'] ?? null);
+
+                    // Errors are joined by commas here, so the closing period of a validation message is dropped
+                    return $ruleMessage !== null ? rtrim($ruleMessage, '.') : "$entry: $description";
                 })
                 ->implode(', ');
 
-            $message .= " ($errors)";
+            if ($errors !== '') {
+                $message .= " ($errors)";
+            }
         }
 
         return $message;
@@ -187,6 +196,12 @@ class EHealthValidationException extends EHealthException
 
             if ($eHealthKey === 'status') {
                 return null;
+            }
+
+            $ruleMessage = $this->translateRule($eHealthKey, $ruleName);
+
+            if ($ruleMessage !== null) {
+                return $ruleMessage;
             }
 
             $eHealthKey = str_replace(['$.', 'employee_request.'], '', $eHealthKey);
@@ -303,6 +318,8 @@ class EHealthValidationException extends EHealthException
     {
         $exactMessages = [
             'Care plan has unfinished activities' => 'care_plan_has_unfinished_activities',
+            'Confidant Person relationship does not belong to this person' => 'confidant_relationship_not_of_person',
+            'Limit of confidant persons with this person is exhausted' => 'confidant_persons_limit_exhausted',
         ];
         if (isset($exactMessages[$message])) {
             return __('errors.ehealth.messages.'.$exactMessages[$message]);
@@ -332,6 +349,15 @@ class EHealthValidationException extends EHealthException
             ]);
         }
 
+        // Only the statuses the enum knows match, so any other one falls through to the original message
+        $verificationStatuses = implode('|', VerificationStatus::values());
+
+        if (preg_match("/^Person with cumulative verification status ($verificationStatuses) can not be submitted as confidant\.?$/", $message, $matches) === 1) {
+            return __('patients.confidant_person_not_verified', [
+                'status' => VerificationStatus::from($matches[1])->label()
+            ]);
+        }
+
         if (preg_match('/^Care plan in status (\S+) cannot be completed$/i', $message, $matches) === 1) {
             return __('errors.ehealth.messages.care_plan_cannot_complete_in_status', [
                 'status' => CarePlanStatus::labelFor($matches[1]),
@@ -339,6 +365,49 @@ class EHealthValidationException extends EHealthException
         }
 
         return $message;
+    }
+
+    /**
+     * Translate a field rule by the matching built-in validation message, so the error reads the same as when our
+     * own form rejects the value. Null when the rule has no counterpart.
+     *
+     * @param  string  $entry
+     * @param  string|null  $rule
+     * @return string|null
+     */
+    protected function translateRule(string $entry, ?string $rule): ?string
+    {
+        $validationKey = match ($rule) {
+            'required' => 'validation.required',
+            'email' => 'validation.email',
+            'uuid' => 'validation.uuid',
+            'date' => 'validation.date',
+            default => null
+        };
+
+        if ($validationKey === null) {
+            return null;
+        }
+
+        return __($validationKey, ['attribute' => $this->translateEntry($entry)]);
+    }
+
+    /**
+     * Name a payload field the way our forms do, e.g. '$.person.documents[0].issued_at' is looked up as
+     * 'person.documents.*.issuedAt' among the validation attributes. Falls back to the entry itself.
+     *
+     * @param  string  $entry
+     * @return string
+     */
+    protected function translateEntry(string $entry): string
+    {
+        $key = collect(explode('.', preg_replace(['/^\$\./', '/\[\d+]/'], ['', '.*'], $entry)))
+            ->map(static fn (string $segment): string => Str::camel($segment))
+            ->implode('.');
+
+        $attribute = Arr::get(__('validation.attributes'), $key);
+
+        return is_string($attribute) ? $attribute : $entry;
     }
 
     /**

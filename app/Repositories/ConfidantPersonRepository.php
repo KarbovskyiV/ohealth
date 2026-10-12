@@ -227,9 +227,8 @@ class ConfidantPersonRepository
         // Find the subject person (the person who needs confidants)
         $subjectPerson = Person::whereUuid($subjectPersonUuid)->firstOrFail();
 
-        // First, completely remove all existing confidant person relationships for this subject
-        // to ensure a clean sync without duplicates
-        ConfidantPerson::where('subject_person_id', $subjectPerson->id)->delete();
+        // Relationships recorded before eHealth assigned them an identifier are superseded by the synced ones
+        ConfidantPerson::where('subject_person_id', $subjectPerson->id)->whereNull('uuid')->delete();
 
         $syncedConfidantPersons = collect();
 
@@ -249,16 +248,21 @@ class ConfidantPersonRepository
                 Repository::document()->sync($confidantPerson, $confidantPersonData['documents_person']);
             }
 
+            // A relationship is matched by its own identifier, so a sync of only the active or only the expired ones
+            // leaves the rest in place
             foreach ($relationships as $relationshipData) {
-                $confidantPersonRelation = ConfidantPerson::create([
-                    'uuid' => $relationshipData['uuid'] ?? null,
-                    'person_id' => $confidantPerson->id,
-                    'subject_person_id' => $subjectPerson->id,
-                    'active_to' => $relationshipData['active_to'] ?? null,
-                    'sync_status' => JobStatus::COMPLETED
-                ]);
+                $confidantPersonRelation = ConfidantPerson::updateOrCreate(
+                    ['uuid' => $relationshipData['uuid']],
+                    [
+                        'person_id' => $confidantPerson->id,
+                        'subject_person_id' => $subjectPerson->id,
+                        'active_to' => $relationshipData['active_to'] ?? null,
+                        'sync_status' => JobStatus::COMPLETED
+                    ]
+                );
 
-                // Add relationship documents for this specific relationship
+                // The documents belong to the relationship, so they are replaced along with it
+                $confidantPersonRelation->documentsRelationship()->delete();
                 $confidantPersonRelation->documentsRelationship()->createMany(
                     collect($relationshipData['documents_relationship'] ?? [])
                         ->map(static fn (array $document): array => [
