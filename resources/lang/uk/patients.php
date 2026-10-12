@@ -45,9 +45,6 @@ return [
         'secondary' => 'Не основний'
     ],
     'authentication_method' => [
-        'otp' => 'через СМС',
-        'offline' => 'через документи',
-        'third_person' => 'через третю особу',
         'na' => 'відсутній'
     ],
     'documents' => [
@@ -288,8 +285,7 @@ return [
         'approval_verification_failed' => 'Помилка верифікації дозволу',
         'approval_sms_error' => 'Помилка при повторній відправці СМС для підтвердження дозволу',
         'approval_creation_failed' => 'Помилка при створенні дозволу',
-        'emergency_contact_evidence_invalid' => 'Обраний медичний запис не може бути підставою для отримання контакту для екстреного зв’язку.',
-    ],
+        'emergency_contact_evidence_invalid' => 'Обраний медичний запис не може бути підставою для отримання контакту для екстреного зв’язку.',    ],
 
     'emergency_contact_request' => [
         'get_contact' => 'Отримати контакт з ЕСОЗ',

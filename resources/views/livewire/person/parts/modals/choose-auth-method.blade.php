@@ -56,7 +56,7 @@
                                             @click="localStep = {{ AuthStep::ADD_NEW_BY_SMS }}; openAdd = false"
                                             class="w-full cursor-pointer rounded px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
                                         >
-                                            {{ __('patients.authentication_SMS') }}
+                                            {{ AuthenticationMethod::OTP->label() }}
                                         </button>
 
                                         <button
@@ -65,7 +65,7 @@
                                             @click="openAdd = false"
                                             class="w-full cursor-pointer rounded px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
                                         >
-                                            {{ __('patients.authentication_documents') }}
+                                            {{ AuthenticationMethod::OFFLINE->label() }}
                                         </button>
                                     @endif
 
@@ -75,7 +75,7 @@
                                             @click="localStep = {{ AuthStep::ADD_NEW_BY_THIRD_PERSON }}; openAdd = false"
                                             class="w-full cursor-pointer rounded px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
                                         >
-                                            {{ __('patients.authentication_third_person') }}
+                                            {{ AuthenticationMethod::THIRD_PERSON->label() }}
                                         </button>
                                     @endif
                                 </div>
@@ -102,14 +102,11 @@
                                         <div class="flex items-start justify-between">
                                             <div
                                                 class="shrink"
-                                                x-data="{
-                                                    labels: @js(AuthenticationMethod::options()),
-                                                    prefix: '{{ __('forms.authentication') }}'
-                                                }"
+                                                x-data="{ labels: @js(AuthenticationMethod::options()) }"
                                             >
                                                 <h3
                                                     class="font-bold text-gray-900 dark:text-white"
-                                                    x-text="`${prefix} ${labels[method.type] ?? method.type}`"
+                                                    x-text="labels[method.type] ?? method.type"
                                                 ></h3>
                                             </div>
 

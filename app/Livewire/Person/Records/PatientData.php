@@ -144,7 +144,7 @@ class PatientData extends BasePatientComponent
      * {true}: when we get person data from eHealth and update local person data,
      * {false}: when we didn't do it yet or sync isn't needed.
      *
-     * @var bool
+     * @var array
      */
     public array $forbiddenGroups = [];
 
@@ -222,8 +222,6 @@ class PatientData extends BasePatientComponent
 
             return false;
         }
-
-        Session::flash('success', __('patients.messages.files_uploaded_successfully'));
 
         return true;
     }

@@ -8,7 +8,6 @@ use App\Classes\Cipher\Api\CipherRequest;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
 use App\Enums\Person\Status;
-use App\Enums\Person\VerificationStatus;
 use App\Exceptions\Cipher\CipherConnectionException;
 use App\Exceptions\Cipher\CipherException;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -23,7 +22,6 @@ use App\Notifications\NhsVerificationNeededNotification;
 use App\Repositories\Repository;
 use App\Traits\Addresses\BaseAddress;
 use App\Traits\FormTrait;
-use Carbon\CarbonImmutable;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -245,61 +243,16 @@ class PersonComponent extends Component
         $this->invalidPersonReason = null;
         $this->selectedConfidantPersonId = null;
 
-        $birthDate = CarbonImmutable::parse($personData['birthDate']);
-
-        // Below the full legal capacity age a person cannot be a confidant (legal capacity itself is enforced
-        // by eHealth)
-        if ($birthDate->age < config('ehealth.person_full_legal_capacity_age')) {
-            $this->invalidPersonId = $personData['id'];
-            $this->invalidPersonReason = __('patients.age_insufficient_for_confidant_person');
-
-            return;
-        }
-
         try {
-            $verificationStatus = EHealth::person()->getPersonVerificationDetails($personData['id'])
-                ->validate()['verification_status'];
+            $this->invalidPersonReason = $this->form->confidantRejectionReason($personData);
         } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error when getting verification details of the chosen person');
+            $exception->handle('Error when checking the chosen person as a confidant');
 
             return;
         }
 
-        if ($verificationStatus !== VerificationStatus::VERIFIED->value) {
+        if ($this->invalidPersonReason !== null) {
             $this->invalidPersonId = $personData['id'];
-            $this->invalidPersonReason = __('patients.confidant_person_not_verified', [
-                'status' => VerificationStatus::from($verificationStatus)->label()
-            ]);
-
-            return;
-        }
-
-        try {
-            $relationships = EHealth::person()->getConfidantPersonRelationships($personData['id'])->validate();
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error when getting confidant person relationships of the chosen person');
-
-            return;
-        }
-
-        if (Person::isRepresentedByConfidant($relationships)) {
-            $this->invalidPersonId = $personData['id'];
-            $this->invalidPersonReason = __('patients.confidant_person_has_own_confidants');
-
-            return;
-        }
-
-        try {
-            $authenticationMethods = EHealth::person()->getAuthMethods($personData['id'])->validate();
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error when getting authentication methods of the chosen person');
-
-            return;
-        }
-
-        if (!Person::hasActiveOtpAuthenticationMethod($authenticationMethods)) {
-            $this->invalidPersonId = $personData['id'];
-            $this->invalidPersonReason = __('patients.confidant_person_has_no_otp_auth_method');
 
             return;
         }
@@ -1078,14 +1031,7 @@ class PersonComponent extends Component
             }
         }
 
-        // Show final status message
-        if ($successCount === $totalFiles) {
-            Session::flash('success', __('patients.messages.files_uploaded_successfully'));
-
-            return true;
-        }
-
-        return false;
+        return $successCount === $totalFiles;
     }
 
     /**

@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 namespace App\Livewire\Person\Forms;
 
+use App\Classes\eHealth\EHealth;
 use App\Core\BaseForm;
 use App\Enums\Person\AuthenticationMethod;
+use App\Enums\Person\VerificationStatus;
+use App\Exceptions\EHealth\EHealthConnectionException;
+use App\Exceptions\EHealth\EHealthResponseException;
+use App\Exceptions\EHealth\EHealthValidationException;
+use App\Models\Person\Person;
 use App\Models\Relations\AuthenticationMethod as AuthenticationMethodModel;
 use App\Rules\AlphaNumericWithSymbols;
 use App\Rules\InDictionary;
@@ -472,7 +478,7 @@ class PersonForm extends BaseForm
             'documentsRelationship.*.number' => ['required', 'string', 'max:255'],
             'documentsRelationship.*.issuedBy' => ['required', 'string', 'max:255'],
             'documentsRelationship.*.issuedAt' => ['required', 'date_format:' . config('app.date_format')],
-            'documentsRelationship.*.activeTo' => ['nullable', 'date_format:' . config('app.date_format')]
+            'documentsRelationship.*.activeTo' => ['nullable', 'date_format:' . config('app.date_format'), 'after:today']
         ];
     }
 
@@ -486,6 +492,47 @@ class PersonForm extends BaseForm
             'documents.*.issuedBy' => ['required', 'string', 'max:255'],
             'documents.*.issuedAt' => ['required', 'date_format:' . config('app.date_format')]
         ];
+    }
+
+    /**
+     * Reason the found person cannot become the legal representative of the patient, or null when they can.
+     * Besides the age and the relationships of the patient, the person has to be verified, must not be represented
+     * by someone themselves and needs an active SMS authentication method.
+     *
+     * @param  array  $personData  The found person as the search returns it
+     * @return string|null
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     */
+    public function confidantRejectionReason(array $personData): ?string
+    {
+        if (CarbonImmutable::parse($personData['birthDate'])->age < config('ehealth.person_full_legal_capacity_age')) {
+            return __('patients.age_insufficient_for_confidant_person');
+        }
+
+        if ($this->isRepresentedBy($personData['id'])) {
+            return __('patients.confidant_person_already_represents_patient');
+        }
+
+        $verificationStatus = EHealth::person()->getPersonVerificationDetails($personData['id'])
+            ->validate()['verification_status'];
+
+        if ($verificationStatus !== VerificationStatus::VERIFIED->value) {
+            return __('patients.confidant_person_not_verified', [
+                'status' => VerificationStatus::from($verificationStatus)->label()
+            ]);
+        }
+
+        if (Person::isRepresentedByConfidant(
+            EHealth::person()->getConfidantPersonRelationships($personData['id'])->validate()
+        )) {
+            return __('patients.confidant_person_has_own_confidants');
+        }
+
+        if (!Person::hasActiveOtpAuthenticationMethod(EHealth::person()->getAuthMethods($personData['id'])->validate())) {
+            return __('patients.confidant_person_has_no_otp_auth_method');
+        }
+
+        return null;
     }
 
     /**
@@ -582,6 +629,9 @@ class PersonForm extends BaseForm
             'person.documents.*.issuedAt.after_or_equal' => __('validation.custom.person.issued_at_before_birth_date'),
             'person.confidantPerson.documentsRelationship.*.issuedAt.after_or_equal' => __(
                 'validation.custom.person.issued_at_before_birth_date'
+            ),
+            'person.confidantPerson.documentsRelationship.*.activeTo.after' => __(
+                'validation.custom.person.expiration_date_in_future'
             ),
             'person.documents.*.issuingCountry.required' => __(
                 'validation.custom.person.issuing_country_required_for_foreign'

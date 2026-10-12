@@ -801,7 +801,7 @@
 
             @can('view', ConfidantPerson::class)
                 <div
-                    x-data="{ open: true }"
+                    x-data="{ open: true, isExpired: null }"
                     class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
                 >
                     <h2>
@@ -823,6 +823,18 @@
                                 <h3 class="text-base font-semibold text-gray-900 dark:text-white">
                                     {{ __('patients.confidant_persons') }}
                                 </h3>
+                                <div class="form-group group ml-auto w-48">
+                                    <select
+                                        id="filterIsExpired"
+                                        x-model.boolean="isExpired"
+                                        class="input-select peer w-full"
+                                    >
+                                        <option value="">{{ __('forms.all') }}</option>
+                                        <option value="false">{{ __('patients.active_status') }}</option>
+                                        <option value="true">{{ __('patients.inactive_status') }}</option>
+                                    </select>
+                                    <label class="label" for="filterIsExpired">{{ __('forms.status.label') }}</label>
+                                </div>
                                 <button
                                     type="button"
                                     class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
@@ -861,7 +873,10 @@
                                                 $cpName = $cp['names'][0] ?? [];
                                                 $firstCpPhone = $cp['phones'][0] ?? null;
                                             @endphp
-                                            <tr wire:key="confidant-{{ $key }}">
+                                            <tr
+                                                wire:key="confidant-{{ $key }}"
+                                                x-show="isExpired === null || isExpired === {{ $relationship['isActive'] ? 'false' : 'true' }}"
+                                            >
                                                 <td class="td-input align-top font-medium text-gray-900 dark:text-white">
                                                     <div>
                                                         {{ $cpName['lastName'] ?? '' }} {{ $cpName['firstName'] ?? '' }} {{ $cpName['secondName'] ?? '' }}
@@ -870,10 +885,10 @@
                                                         {{ __('forms.gender') }} : {{ Gender::tryFrom($cp['gender'] ?? '')?->label() ?? '-' }}
                                                     </div>
                                                     <div class="text-xs font-normal text-gray-500">
-                                                        {{ __('forms.rnokpp') }}: {{ $cp['taxId'] ?? '-' }}
+                                                        {{ __('forms.rnokpp') }}: {{ empty($cp['taxId']) ? '-' : Str::mask($cp['taxId'], '*', 0, -2) }}
                                                     </div>
                                                     <div class="text-xs font-normal text-gray-500">
-                                                        {{ __('patients.unzr') }}: {{ $cp['unzr'] ?? '-' }}
+                                                        {{ __('patients.unzr') }}: {{ empty($cp['unzr']) ? '-' : Str::mask($cp['unzr'], '*', 0, -2) }}
                                                     </div>
                                                 </td>
                                                 <td class="td-input align-top">
@@ -1155,15 +1170,7 @@
                                     <div class="mb-4 flex items-start justify-between">
                                         <div>
                                             <h3 class="text-base font-semibold text-gray-900 dark:text-white">
-                                                @if (($method['type'] ?? '') === 'OTP')
-                                                    {{ __('patients.authentication_SMS') }}
-                                                @elseif (($method['type'] ?? '') === 'THIRD_PERSON')
-                                                    {{ __('patients.authentication_third_person') }}
-                                                @elseif (($method['type'] ?? '') === 'OFFLINE')
-                                                    {{ __('patients.authentication_documents') }}
-                                                @else
-                                                    {{ $method['type'] ?? '' }}
-                                                @endif
+                                                {{ AuthenticationMethod::from($method['type'])->label() }}
                                             </h3>
                                             <p class="mt-1 text-xs text-gray-500">
                                                 {{ __('patients.authentication_method_name') }}:
@@ -1294,6 +1301,33 @@
                                                     <label class="label">{{ __('patients.unzr') }}</label>
                                                 </div>
                                             </div>
+                                            @foreach ($method['confidantPerson']['documentsPerson'] ?? [] as $documentIndex => $document)
+                                                <div
+                                                    class="space-y-4"
+                                                    wire:key="confidant-document-{{ $methodIndex }}-{{ $documentIndex }}"
+                                                >
+                                                    <div class="form-group group">
+                                                        <input
+                                                            type="text"
+                                                            class="input peer"
+                                                            placeholder=" "
+                                                            readonly
+                                                            value="{{ __('patients.documents.' . $document['type']) }}"
+                                                        />
+                                                        <label class="label">{{ __('forms.document_type') }}</label>
+                                                    </div>
+                                                    <div class="form-group group">
+                                                        <input
+                                                            type="text"
+                                                            class="input peer"
+                                                            placeholder=" "
+                                                            readonly
+                                                            value="{{ $document['number'] }}"
+                                                        />
+                                                        <label class="label">{{ __('forms.document_number') }}</label>
+                                                    </div>
+                                                </div>
+                                            @endforeach
                                             @if (!empty($method['confidantPerson']['phones']))
                                                 <div class="form-group group">
                                                     <input
@@ -1349,7 +1383,7 @@
                                             "
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
-                                            {{ __('patients.authentication_SMS') }}
+                                            {{ AuthenticationMethod::OTP->label() }}
                                         </button>
 
                                         <button
@@ -1358,7 +1392,7 @@
                                             @click="openAdd = false"
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
-                                            {{ __('patients.authentication_documents') }}
+                                            {{ AuthenticationMethod::OFFLINE->label() }}
                                         </button>
                                     @endif
 
@@ -1372,7 +1406,7 @@
                                             "
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
-                                            {{ __('patients.authentication_third_person') }}
+                                            {{ AuthenticationMethod::THIRD_PERSON->label() }}
                                         </button>
                                     @endif
                                 </div>

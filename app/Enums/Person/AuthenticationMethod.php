@@ -15,13 +15,17 @@ enum AuthenticationMethod: string
     case THIRD_PERSON = 'THIRD_PERSON';
     case NA = 'NA';
 
+    /**
+     * Name of the method as the AUTHENTICATION_METHOD dictionary gives it. NA is not part of the dictionary.
+     *
+     * @return string
+     */
     public function label(): string
     {
-        return match ($this) {
-            self::OTP => __('patients.authentication_method.otp'),
-            self::OFFLINE => __('patients.authentication_method.offline'),
-            self::THIRD_PERSON => __('patients.authentication_method.third_person'),
-            self::NA => __('patients.authentication_method.na')
-        };
+        if ($this === self::NA) {
+            return __('patients.authentication_method.na');
+        }
+
+        return dictionary()->basics()->byName('AUTHENTICATION_METHOD')->asCodeDescription()->get($this->value);
     }
 }

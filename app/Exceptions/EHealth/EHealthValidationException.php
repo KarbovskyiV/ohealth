@@ -318,6 +318,8 @@ class EHealthValidationException extends EHealthException
     {
         $exactMessages = [
             'Care plan has unfinished activities' => 'care_plan_has_unfinished_activities',
+            'Confidant Person relationship does not belong to this person' => 'confidant_relationship_not_of_person',
+            'Limit of confidant persons with this person is exhausted' => 'confidant_persons_limit_exhausted',
         ];
         if (isset($exactMessages[$message])) {
             return __('errors.ehealth.messages.'.$exactMessages[$message]);
@@ -347,7 +349,10 @@ class EHealthValidationException extends EHealthException
             ]);
         }
 
-        if (preg_match('/^Person with cumulative verification status (\S+) can not be submitted as confidant\.?$/i', $message, $matches) === 1) {
+        // Only the statuses the enum knows match, so any other one falls through to the original message
+        $verificationStatuses = implode('|', VerificationStatus::values());
+
+        if (preg_match("/^Person with cumulative verification status ($verificationStatuses) can not be submitted as confidant\.?$/", $message, $matches) === 1) {
             return __('patients.confidant_person_not_verified', [
                 'status' => VerificationStatus::from($matches[1])->label()
             ]);
