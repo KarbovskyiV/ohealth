@@ -380,7 +380,7 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
      */
     private function identityDocumentNumber(array $documents): ?string
     {
-        $allowed = ['PASSPORT', 'NATIONAL_ID', 'REFUGEE_CERTIFICATE', 'PERMANENT_RESIDENCE_PERMIT'];
+        $allowedDocumentTypes = config('ehealth.no_tax_id_document_types', []);
 
         foreach ($documents as $document) {
             if (!is_array($document)) {
@@ -390,7 +390,7 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
             $type = $document['type'] ?? null;
             $number = $document['number'] ?? null;
 
-            if (is_string($type) && in_array($type, $allowed, true) && is_string($number) && $number !== '') {
+            if (is_string($type) && in_array($type, $allowedDocumentTypes, true) && is_string($number) && $number !== '') {
                 return $number;
             }
         }

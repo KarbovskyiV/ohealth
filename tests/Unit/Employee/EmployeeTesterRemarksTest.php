@@ -248,6 +248,7 @@ class EmployeeTesterRemarksTest extends TestCase
                 'invalid' => [[
                     'entry' => 'party.email',
                     'rules' => [[
+                        'rule' => 'email',
                         'description' => 'expected "ната@yahoo.com" to be an email address',
                     ]],
                 ]],
@@ -280,10 +281,31 @@ class EmployeeTesterRemarksTest extends TestCase
         $this->assertStringContainsString('Email', $emailMessage);
         $this->assertStringContainsString('латиницею', $emailMessage);
         $this->assertStringNotContainsString('to be an email address', $emailMessage);
+        $this->assertStringContainsString('латиницею', $email->getFormattedMessage());
 
         $this->assertStringContainsString('не може повторюватись', $duplicate->getTranslatedMessage());
         $this->assertStringContainsString('Невірний номер РНОКПП', $taxId->getTranslatedMessage());
         $this->assertStringNotContainsString('invalid tax_id value', $taxId->getTranslatedMessage());
+        $this->assertStringContainsString('не може повторюватись', $duplicate->getFormattedMessage());
+        $this->assertStringContainsString('Невірний номер РНОКПП', $taxId->getFormattedMessage());
+    }
+
+    #[Test]
+    public function genericEhealthRulesFromMainRemainTranslated(): void
+    {
+        $exception = new EHealthValidationException([
+            'error' => [
+                'type' => 'validation_failed',
+                'invalid' => [[
+                    'entry' => '$.party.first_name',
+                    'rules' => [['rule' => 'required', 'description' => 'required property first_name was not present']],
+                ]],
+            ],
+        ]);
+        $expectedMessage = __('validation.required', ['attribute' => __('forms.first_name')]);
+
+        $this->assertStringContainsString($expectedMessage, $exception->getTranslatedMessage());
+        $this->assertStringContainsString(rtrim($expectedMessage, '.'), $exception->getFormattedMessage());
     }
 
     private function employeeScreen(): EmployeeComponent

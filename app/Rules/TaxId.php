@@ -14,14 +14,6 @@ use Illuminate\Translation\PotentiallyTranslatedString;
 
 class TaxId implements ValidationRule, DataAwareRule
 {
-    // The allowed document types for validation when noTaxId is true.
-    protected const array ALLOWED_DOCUMENT_TYPES = [
-        'PASSPORT',
-        'NATIONAL_ID',
-        'REFUGEE_CERTIFICATE',
-        'PERMANENT_RESIDENCE_PERMIT',
-    ];
-
     /**
      * The entire data array under validation.
      *
@@ -123,7 +115,7 @@ class TaxId implements ValidationRule, DataAwareRule
         // When no_tax_id=true, tax_id stores an identity document number (not РНОКПП).
         if ($this->noTaxId) {
             $identityDoc = collect($this->documents)->first(
-                fn (array $doc) => in_array($doc['type'] ?? '', self::ALLOWED_DOCUMENT_TYPES, true)
+                fn (array $doc) => in_array($doc['type'] ?? '', config('ehealth.no_tax_id_document_types', []), true)
                     && !empty($doc['number'])
             );
 

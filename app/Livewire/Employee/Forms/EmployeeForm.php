@@ -11,9 +11,11 @@ use App\Livewire\Party\PartyEdit;
 use App\Models\Employee\BaseEmployee;
 use App\Rules\DateFormat;
 use App\Rules\DocumentNumber;
+use App\Rules\DocumentIssuedAfterBirthDate;
 use App\Rules\HasIdentityDocumentRule;
 use App\Rules\UniquePassportRule;
 use Carbon\Carbon;
+use Closure;
 use Livewire\Component;
 use Livewire\Form;
 use App\Rules\Name;
@@ -256,26 +258,7 @@ class EmployeeForm extends Form
                 'required',
                 new DateFormat(),
                 'before_or_equal:today',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    $birthDate = $this->party['birthDate'] ?? null;
-
-                    if (!is_string($value) || $value === '' || !is_string($birthDate) || $birthDate === '') {
-                        return;
-                    }
-
-                    $format = (string) config('app.date_format');
-
-                    try {
-                        $issued = Carbon::createFromFormat($format, $value);
-                        $birth = Carbon::createFromFormat($format, $birthDate);
-                    } catch (\Throwable) {
-                        return;
-                    }
-
-                    if ($issued !== false && $birth !== false && $issued->startOfDay()->lt($birth->startOfDay())) {
-                        $fail(__('validation.custom.employee.document_issued_before_birth'));
-                    }
-                },
+                new DocumentIssuedAfterBirthDate($this->party['birthDate'] ?? null),
             ],
         ];
     }
@@ -308,7 +291,7 @@ class EmployeeForm extends Form
             'doctor.educations.*.speciality' => ['required', 'string', 'max:255'],
 
             'doctor.specialities' => array_merge($specialitiesRules, [
-                function (string $attribute, mixed $value, \Closure $fail) use ($isMedicalType): void {
+                function (string $attribute, mixed $value, Closure $fail) use ($isMedicalType): void {
                     if (!is_array($value)) {
                         return;
                     }

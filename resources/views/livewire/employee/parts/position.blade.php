@@ -40,63 +40,69 @@
         </div>
 
         {{-- 2. Position: dictionary options are server-rendered so the selected code matches the label. --}}
-        <div class="form-group">
-            @if ($this->isPositionDataLocked)
-                <input
-                    type="text"
-                    id="position"
-                    class="peer input text-gray-500 dark:text-gray-400"
-                    value="{{ $this->positionDisplayLabel() }}"
-                    disabled
-                    placeholder=" "
-                />
-            @else
-                @if ($customPositionAllowed)
-                    <label class="mb-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                        <input
-                            type="checkbox"
-                            wire:model.live="form.positionIsCustom"
-                            :disabled="$wire.isPositionDataLocked || $wire.isCorePositionDataLocked"
-                        />
-                        {{ __('forms.position_custom_toggle') }}
-                    </label>
-                @endif
-
-                @if ($customPositionAllowed && $this->form->positionIsCustom)
+        <div class="flex min-w-0 items-start gap-3">
+            <div class="form-group min-w-0 flex-1">
+                @if ($this->isPositionDataLocked)
                     <input
                         type="text"
-                        name="position"
                         id="position"
                         class="peer input text-gray-500 dark:text-gray-400"
-                        required
-                        wire:model="form.position"
-                        wire:key="position-custom"
-                        :disabled="$wire.isPositionDataLocked || $wire.isCorePositionDataLocked"
+                        value="{{ $this->positionDisplayLabel() }}"
+                        disabled
                         placeholder=" "
                     />
                 @else
-                    <select
-                        name="position"
-                        id="position"
-                        class="peer input appearance-none bg-white text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                        required
-                        wire:model="form.position"
-                        wire:key="position-dictionary-{{ $this->form->employeeType }}"
-                        :disabled="$wire.isPositionDataLocked || $wire.isCorePositionDataLocked"
-                    >
-                        <option value="" disabled {{ $this->form->position === '' ? 'selected' : '' }} hidden>
-                            {{ __('forms.select_position') }}
-                        </option>
-                        @foreach ($positionOptions as $positionKey => $positionName)
-                            <option value="{{ $positionKey }}">{{ $positionName }}</option>
-                        @endforeach
-                    </select>
+                    @if ($customPositionAllowed && $this->form->positionIsCustom)
+                        <input
+                            type="text"
+                            name="position"
+                            id="position"
+                            class="peer input text-gray-500 dark:text-gray-400"
+                            required
+                            wire:model="form.position"
+                            wire:key="position-custom"
+                            :disabled="$wire.isPositionDataLocked || $wire.isCorePositionDataLocked"
+                            placeholder=" "
+                        />
+                    @else
+                        <select
+                            name="position"
+                            id="position"
+                            class="peer input appearance-none bg-white text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                            required
+                            wire:model="form.position"
+                            wire:key="position-dictionary-{{ $this->form->employeeType }}"
+                            :disabled="$wire.isPositionDataLocked || $wire.isCorePositionDataLocked"
+                        >
+                            <option value="" disabled {{ $this->form->position === '' ? 'selected' : '' }} hidden>
+                                {{ __('forms.select_position') }}
+                            </option>
+                            @foreach ($positionOptions as $positionKey => $positionName)
+                                <option value="{{ $positionKey }}">{{ $positionName }}</option>
+                            @endforeach
+                        </select>
+                    @endif
                 @endif
+                <label for="position" class="label">{{ __('forms.position') }}</label>
+                @error('form.position')
+                    <p class="text-error">{{ $message }}</p>
+                @enderror
+            </div>
+
+            @if ($customPositionAllowed && !$this->isPositionDataLocked)
+                <label
+                    for="positionIsCustom"
+                    class="mt-2.5 inline-flex shrink-0 cursor-pointer items-center gap-2 text-sm text-gray-600 dark:text-gray-300"
+                >
+                    <x-checkbox
+                        id="positionIsCustom"
+                        class="employee-position-mode-checkbox h-4 w-4 shrink-0"
+                        wire:model.live="form.positionIsCustom"
+                        :disabled="$this->isCorePositionDataLocked"
+                    />
+                    <span>{{ __('forms.position_custom_toggle') }}</span>
+                </label>
             @endif
-            <label for="position" class="label">{{ __('forms.position') }}</label>
-            @error('form.position')
-                <p class="text-error">{{ $message }}</p>
-            @enderror
         </div>
     </div>
 

@@ -385,7 +385,7 @@ return [
     'addQualification' => 'Додати кваліфікацію',
     'addScienceDegree' => 'Додати науковий ступінь',
     'workingExperience_hint' => 'Необов\'язково. Якщо вказуєте досвід, це ціле число років більше 0.',
-    'position_custom_toggle' => 'Вказати посаду вручну',
+    'position_custom_toggle' => 'Ввести вручну',
     'form_required_note' => '* Поля, позначені зірочкою, є обов’язковими для заповнення.',
     'contracts' => 'Договори',
     'medical_service' => 'Медична послуга',

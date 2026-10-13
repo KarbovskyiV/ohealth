@@ -1,8 +1,11 @@
 <div>
+    @use('App\Models\Employee\Employee')
+    @use('App\Models\Employee\EmployeeRequest')
+    @use('Illuminate\Support\Carbon')
     {{-- Header Navigation with shift-content class for alignment --}}
     <x-header-navigation class="breadcrumb-form shift-content">
         <x-slot name="title">
-            @if ($employee instanceof \App\Models\Employee\EmployeeRequest)
+            @if ($employee instanceof EmployeeRequest)
                 {{ __('forms.view_employee_request') }}
             @else
                 {{ __('forms.view_employee') }}
@@ -12,7 +15,7 @@
 
         {{-- SYNC button --}}
         <div class="flex items-center gap-2">
-            @if ($employee instanceof \App\Models\Employee\Employee)
+            @if ($employee instanceof Employee)
                 @can('syncEmployee', $employee)
                     <button
                         wire:click="sync"
@@ -32,7 +35,7 @@
         <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
             <div>
                 <dt class="text-gray-500">
-                    @if ($employee instanceof \App\Models\Employee\EmployeeRequest)
+                    @if ($employee instanceof EmployeeRequest)
                         {{ __('forms.employee_request_identifier') }}
                     @else
                         {{ __('forms.employee_uuid') }}
@@ -43,14 +46,14 @@
             <div>
                 <dt class="text-gray-500">{{ __('forms.status.label') }}</dt>
                 <dd>
-                    @if ($employee instanceof \App\Models\Employee\EmployeeRequest && $employee->isPendingEhealth())
+                    @if ($employee instanceof EmployeeRequest && $employee->isPendingEhealth())
                         Підписано в ЄСОЗ
                     @else
                         {{ $employee->status?->label() ?? $employee->status }}
                     @endif
                 </dd>
             </div>
-            @if ($employee instanceof \App\Models\Employee\EmployeeRequest)
+            @if ($employee instanceof EmployeeRequest)
                 <div>
                     <dt class="text-gray-500">{{ __('forms.inserted_at') }}</dt>
                     <dd>{{ ($employee->inserted_at ?? $employee->created_at)?->format('d.m.Y H:i') ?? '—' }}</dd>
@@ -58,14 +61,12 @@
             @else
                 <div>
                     <dt class="text-gray-500">{{ __('forms.end_date') }}</dt>
-                    <dd>
-                        {{ $employee->end_date ? \Illuminate\Support\Carbon::parse($employee->end_date)->format('d.m.Y') : '—' }}
-                    </dd>
+                    <dd>{{ $employee->end_date ? Carbon::parse($employee->end_date)->format('d.m.Y') : '—' }}</dd>
                 </div>
             @endif
         </dl>
 
-        @if ($employee instanceof \App\Models\Employee\Employee && $employee->party)
+        @if ($employee instanceof Employee && $employee->party)
             @php
                 $verificationDetails = \App\Services\Party\PartyVerificationCache::get($employee->party->uuid ?? '')['details'] ?? [];
                 $unverifiedStreams = collect(['drfo', 'dracs_death', 'dms_passport'])
@@ -122,7 +123,7 @@
                 &larr; {{ __('forms.back_to_list') }}
             </a>
 
-            @if ($employee instanceof \App\Models\Employee\Employee)
+            @if ($employee instanceof Employee)
                 <div class="flex items-center gap-3">
                     @can('deactivate', $employee)
                         <button
@@ -154,7 +155,7 @@
             @endif
         </div>
     </div>
-    @if ($employee instanceof \App\Models\Employee\Employee)
+    @if ($employee instanceof Employee)
         @include('livewire.employee.parts.modals.deactivate-modal')
     @endif
 </div>
