@@ -20,4 +20,16 @@ class ServiceRequestRequestPolicy
 
         return Response::allow();
     }
+
+    /**
+     * Determine whether the user can take an electronic referral into work.
+     */
+    public function use(User $user): Response
+    {
+        if ($user->cannot('service_request:use')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
 }

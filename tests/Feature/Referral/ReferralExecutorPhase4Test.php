@@ -17,6 +17,7 @@ use App\Models\Person\Person;
 use App\Models\User;
 use App\Services\MedicalEvents\Mappers\ServiceRequestMapper;
 use App\Services\MedicalEvents\ReferralRequestLifecycleService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -260,6 +261,29 @@ class ReferralExecutorPhase4Test extends TestCase
         $method = new \ReflectionMethod($component, 'resolveAllReferrals');
         $method->invokeArgs($component, [&$validated, true]);
         $this->assertSame($record->uuid, $validated['encounter']['referralNumber']);
+    }
+
+    public function testEncounterSelectionWithoutUsePermissionIsDeniedByPolicyWith404(): void
+    {
+        $this->user->revokePermissionTo('service_request:use');
+        $this->actingAs($this->user);
+        $record = $this->createActiveReferral();
+        $component = $this->encounterCreateComponent($record);
+        $component->confirmedElectronicReferralUuid = $record->uuid;
+        $lifecycle = Mockery::mock(ReferralRequestLifecycleService::class);
+        $lifecycle->shouldNotReceive('takeIntoWork');
+        app(PatientServiceRequestApi::class)->shouldNotReceive('getById');
+
+        try {
+            $component->selectElectronicReferral($record->uuid, $lifecycle);
+            $this->fail('Referral selection must be denied by the policy before preparation.');
+        } catch (AuthorizationException $exception) {
+            $this->assertSame(404, $exception->status());
+            $this->assertSame(404, $exception->response()->status());
+        }
+
+        $this->assertSame($record->uuid, $component->confirmedElectronicReferralUuid);
+        $this->assertSame('active', $record->fresh()->status);
     }
 
     public function test_failed_selection_clears_previous_confirmation_and_shows_a_field_error(): void

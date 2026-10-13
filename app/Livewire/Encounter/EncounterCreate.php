@@ -15,6 +15,7 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
+use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
@@ -82,7 +83,7 @@ class EncounterCreate extends EncounterComponent
      */
     public function selectElectronicReferral(string $referralUuid, ReferralRequestLifecycleService $lifecycle): void
     {
-        abort_unless(Auth::user()?->can('service_request:use'), 403);
+        $this->authorize('use', ServiceRequestRequest::class);
         $this->preparedElectronicReferralUuid = null;
         $this->confirmedElectronicReferralUuid = null;
         $this->selectedReferralUuid = null;
