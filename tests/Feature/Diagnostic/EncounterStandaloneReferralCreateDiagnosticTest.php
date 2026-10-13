@@ -15,9 +15,13 @@ use App\Models\Person\Person;
 use App\Models\User;
 use App\Services\MedicalEvents\ReferralRequestLifecycleService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -197,6 +201,89 @@ class EncounterStandaloneReferralCreateDiagnosticTest extends TestCase
         $this->assertFalse($schema->hasColumn('service_request_requests', 'performer_legal_entity_uuid'));
     }
 
+    public static function legacyMigrationStates(): array
+    {
+        return ['pending update' => [false], 'previous update recorded' => [true]];
+    }
+
+    #[DataProvider('legacyMigrationStates')]
+    public function testLegacyDatabaseUpgradesThroughMigratorAndCanCreateNormalReferral(bool $previousUpdateRecorded): void
+    {
+        $columns = ['performer_id', 'location_reference_id', 'performer_type_id'];
+        Schema::table('service_request_requests', static function (Blueprint $table) use ($columns): void {
+            foreach ($columns as $columnName) {
+                $table->dropConstrainedForeignId($columnName);
+            }
+        });
+        $existingRecord = ServiceRequestRequest::create([
+            'uuid' => (string) Str::uuid(), 'employee_id' => $this->employee->id,
+            'person_id' => $this->person->id, 'status' => 'active',
+            'service_id' => (string) Str::uuid(), 'quantity' => 1,
+        ]);
+        if ($previousUpdateRecorded) {
+            app('migrator')->getRepository()->log('2026_10_01_142000_add_transfer_fields_to_service_request_requests_table', 1);
+        }
+        $migrationPaths = [
+            database_path('migrations/update/0_1/2026_10_01_142000_add_transfer_fields_to_service_request_requests_table.php'),
+            $this->transferUpgradePath(),
+        ];
+
+        $this->artisan('migrate', ['--path' => $migrationPaths, '--realpath' => true])->assertExitCode(0);
+
+        $foreignKeys = collect(Schema::getForeignKeys('service_request_requests'))
+            ->keyBy(static fn (array $foreignKey): string => implode(',', $foreignKey['columns']));
+        foreach (['performer_id' => 'identifiers', 'location_reference_id' => 'identifiers', 'performer_type_id' => 'codeable_concepts'] as $columnName => $targetTable) {
+            $this->assertTrue(Schema::hasColumn('service_request_requests', $columnName));
+            $this->assertSame($targetTable, $foreignKeys[$columnName]['foreign_table']);
+            $this->assertSame(['id'], $foreignKeys[$columnName]['foreign_columns']);
+        }
+        $this->assertSame('active', $existingRecord->fresh()->status);
+        $this->assertSame($existingRecord->serviceId, $existingRecord->fresh()->serviceId);
+
+        $lifecycle = app(ReferralRequestLifecycleService::class);
+        $uuid = $lifecycle->createEncounterDraft($this->encounter, [
+            'service_id' => (string) Str::uuid(), 'category' => 'diagnostic_procedure',
+        ], 1, $lifecycle->resolveEncounterEmployeeContext($this->encounter, $this->employee->id));
+        $draft = ServiceRequestRequest::whereUuid($uuid)->firstOrFail();
+        $this->assertNull($draft->performerId);
+        $this->assertNull($draft->locationReferenceId);
+        $this->assertNull($draft->performerTypeId);
+
+        $this->artisan('migrate', ['--path' => $migrationPaths, '--realpath' => true])->assertExitCode(0);
+        $this->assertSame(1, DB::table('migrations')->where('migration', '2026_10_13_120000_ensure_referral_transfer_reference_columns')->count());
+
+        $this->artisan('migrate:rollback', ['--path' => $migrationPaths, '--realpath' => true, '--step' => 1])->assertExitCode(0);
+        foreach ($columns as $columnName) {
+            $this->assertSame(!$previousUpdateRecorded, Schema::hasColumn('service_request_requests', $columnName));
+        }
+        $this->assertSame($existingRecord->uuid, $existingRecord->fresh()->uuid);
+        $this->artisan('migrate', ['--path' => $migrationPaths, '--realpath' => true])->assertExitCode(0);
+        $this->assertTrue(Schema::hasColumns('service_request_requests', $columns));
+    }
+
+    public function testFreshInstallationKeepsItsColumnsWhenUpgradeIsRolledBack(): void
+    {
+        $foreignKeys = Schema::getForeignKeys('service_request_requests');
+        $this->artisan('migrate', ['--path' => $this->transferUpgradePath(), '--realpath' => true])->assertExitCode(0);
+        $this->artisan('migrate:rollback', ['--path' => $this->transferUpgradePath(), '--realpath' => true, '--step' => 1])->assertExitCode(0);
+
+        $this->assertTrue(Schema::hasColumns('service_request_requests', ['performer_id', 'location_reference_id', 'performer_type_id']));
+        $this->assertSame($foreignKeys, Schema::getForeignKeys('service_request_requests'));
+    }
+
+    public function testPartialSchemaRollbackRemovesOnlyTheNewlyAddedColumn(): void
+    {
+        Schema::table('service_request_requests', static function (Blueprint $table): void {
+            $table->dropConstrainedForeignId('performer_type_id');
+        });
+        $this->artisan('migrate', ['--path' => $this->transferUpgradePath(), '--realpath' => true])->assertExitCode(0);
+        $this->assertTrue(Schema::hasColumn('service_request_requests', 'performer_type_id'));
+        $this->artisan('migrate:rollback', ['--path' => $this->transferUpgradePath(), '--realpath' => true, '--step' => 1])->assertExitCode(0);
+
+        $this->assertFalse(Schema::hasColumn('service_request_requests', 'performer_type_id'));
+        $this->assertTrue(Schema::hasColumns('service_request_requests', ['performer_id', 'location_reference_id']));
+    }
+
     public function testCreateEncounterDraftPersistsStandaloneServiceRequestWithProgram(): void
     {
         $serviceId = (string) Str::uuid();
@@ -250,5 +337,10 @@ class EncounterStandaloneReferralCreateDiagnosticTest extends TestCase
         $this->assertNotNull($local);
         $this->assertSame($this->encounter->uuid, $local->context?->value);
         $this->assertNull($local->basedOnId);
+    }
+
+    private function transferUpgradePath(): string
+    {
+        return database_path('migrations/update/0_1/2026_10_13_120000_ensure_referral_transfer_reference_columns.php');
     }
 }
