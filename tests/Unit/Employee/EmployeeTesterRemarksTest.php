@@ -84,6 +84,10 @@ class EmployeeTesterRemarksTest extends TestCase
         $this->assertTrue($this->rulesContainIn($doctorRules));
         $this->assertTrue(Validator::make(['position' => 'Лікар-хірург'], ['position' => $doctorRules])->fails());
         $this->assertFalse(Validator::make(['position' => 'P8'], ['position' => $doctorRules])->fails());
+
+        $form->employeeType = 'ADMIN';
+        $form->positionIsCustom = false;
+        $this->assertFalse(Validator::make(['position' => 'P5'], ['position' => $this->positionRules($form)])->fails());
     }
 
     #[Test]
