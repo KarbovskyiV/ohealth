@@ -1,10 +1,10 @@
 name: Azure OpenAI PR review
-run-name: 'Azure review · PR #${{ github.event.pull_request.number || inputs.pull_request_number }}'
+run-name: 'Azure review · ${{ inputs.pull_request_number && format("PR #{0}", inputs.pull_request_number) || format("CI run {0}", github.event.workflow_run.id) }}'
 
 on:
-  pull_request_target:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: [Domain tests]
+    types: [completed]
   workflow_dispatch:
     inputs:
       pull_request_number:
@@ -19,29 +19,34 @@ on:
 permissions: {}
 
 concurrency:
-  group: azure-review-${{ github.event_name }}-${{ github.event.pull_request.number || inputs.pull_request_number }}
+  group: azure-review-${{ github.event_name }}-${{ github.event.workflow_run.head_branch || inputs.pull_request_number }}
   cancel-in-progress: true
 
 jobs:
   dispatch-review:
-    # PR events have a different OIDC subject. Queue a main-branch run without Azure access.
+    # Only successful, current PR CI can queue a main-branch run without Azure access.
     if: >-
       github.repository == 'openhealths/nationHealth' && github.ref == 'refs/heads/main' &&
-      github.event_name == 'pull_request_target' && !github.event.pull_request.draft &&
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+      github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       actions: write
+      contents: read
+      pull-requests: read
     steps:
-      - name: Queue trusted main review for this PR commit
+      - name: Load the trusted CI gate from main
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Verify CI and queue trusted main review
         env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          gh workflow run azure-openai-review.yml --repo "$GITHUB_REPOSITORY" --ref main \
-            -f pull_request_number="$PR_NUMBER" -f expected_head_sha="$EXPECTED_HEAD_SHA"
+          GITHUB_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: php .github/scripts/azure-ci-gate.php --queue
 
   review:
     # Only trusted main code runs with Azure credentials. Fork code is fetched as JSON patches.
@@ -55,6 +60,7 @@ jobs:
       pull-requests: write
       checks: write
       id-token: write
+      actions: read
     env:
       AZURE_CORE_OUTPUT: none
       AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
@@ -68,11 +74,17 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-          sparse-checkout: .github/scripts
+          sparse-checkout: |
+            .github/scripts
+            docs/technical-requirements
 
       - name: Register the review status on the PR commit
         id: review-status
         run: php .github/scripts/azure-openai-review.php --start
+
+      - name: Require successful tests and frontend build on the current commit
+        if: steps.review-status.outputs.active == 'true'
+        run: php .github/scripts/azure-ci-gate.php
 
       - name: Sign in to Azure using OIDC
         if: steps.review-status.outputs.active == 'true'
@@ -100,3 +112,27 @@ jobs:
           AZURE_REVIEW_CHECK_ID: ${{ steps.review-status.outputs.check_id }}
           REVIEW_JOB_STATUS: ${{ job.status }}
         run: php .github/scripts/azure-openai-review.php --finish
+
+      - name: Register technical requirements review
+        id: requirements-status
+        if: success() && steps.review-status.outputs.active == 'true'
+        run: php .github/scripts/azure-requirements-review.php --start
+
+      - name: Review technical requirements against base and PR code
+        if: steps.requirements-status.outputs.active == 'true'
+        env:
+          AZURE_REVIEW_CHECK_ID: ${{ steps.requirements-status.outputs.check_id }}
+          AZURE_REVIEW_HEAD_SHA: ${{ steps.requirements-status.outputs.head_sha }}
+        shell: bash
+        run: |
+          token="$(az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken --output tsv)"
+          echo "::add-mask::$token"
+          export AZURE_OPENAI_ACCESS_TOKEN="$token"
+          php .github/scripts/azure-requirements-review.php
+
+      - name: Close technical requirements status after failure or cancellation
+        if: always() && steps.requirements-status.outputs.check_id != ''
+        env:
+          AZURE_REVIEW_CHECK_ID: ${{ steps.requirements-status.outputs.check_id }}
+          REVIEW_JOB_STATUS: ${{ job.status }}
+        run: php .github/scripts/azure-requirements-review.php --finish

@@ -63,7 +63,7 @@ function reviewRequest(string $method, string $url, ?array $payload = null): arr
         throw new RuntimeException("API request failed (HTTP $status). Check access, quota and service availability.");
     }
 
-    return json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+    return $status === 204 ? [] : json_decode($response, true, 512, JSON_THROW_ON_ERROR);
 }
 
 function reviewPages(string $url, callable $request): array
@@ -92,7 +92,8 @@ function reviewDiffs(array $files): array
         $path = $file['filename'];
         $patch = $file['patch'] ?? '';
         $containsKeyMaterial = preg_match('~-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----|^[-+ ]?PuTTY-User-Key-File-\d+:~m', $patch) === 1;
-        if ($patch === '' || reviewKeyFile($path) || reviewKeyFile($file['previous_filename'] ?? '')
+        if ($patch === '' || str_starts_with($path, 'docs/technical-requirements/')
+            || reviewKeyFile($path) || reviewKeyFile($file['previous_filename'] ?? '')
             || $containsKeyMaterial
             || preg_match('~(^|/)(vendor|node_modules|build)/|(^|/)\.env(?!\.example$)|\.lock$|(^|/)package-lock\.json$~', $path)) {
             continue;
