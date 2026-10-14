@@ -11,6 +11,7 @@ use App\Models\Equipment;
 use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
 use App\Rules\MedicalEvents\ObservationComponents;
+use App\Rules\MedicalEvents\ObservationValue;
 use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
 use Carbon\CarbonImmutable;
@@ -64,6 +65,7 @@ class ObservationForm extends Form
             'observations' => ['nullable', 'array'],
             'observations.*' => [
                 'array',
+                new ObservationValue(),
                 function (string $attribute, mixed $value, Closure $fail): void {
                     if (data_get($value, 'primarySource') === true && !empty($value['performerEmployeeId'])) {
                         $this->validatePerformer($value['performerEmployeeId'], $fail);

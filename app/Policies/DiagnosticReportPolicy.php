@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\JobStatus;
 use App\Enums\Person\DiagnosticReportStatus;
 use App\Enums\Status;
 use App\Enums\User\Role;
@@ -36,6 +37,23 @@ class DiagnosticReportPolicy
     public function create(User $user): Response
     {
         if ($user->cannot('diagnostic_report:write')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Determine whether the user can change the diagnostic report and sign it: a draft that is not waiting for eHealth.
+     */
+    public function update(User $user, DiagnosticReport $diagnosticReport): Response
+    {
+        if ($user->cannot('diagnostic_report:write')) {
+            return Response::denyWithStatus(404);
+        }
+
+        if ($diagnosticReport->status !== DiagnosticReportStatus::DRAFT
+            || $diagnosticReport->ehealthLinks()->latest('id')->value('status') === JobStatus::PENDING->value) {
             return Response::denyWithStatus(404);
         }
 

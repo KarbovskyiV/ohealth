@@ -322,6 +322,7 @@ class DetectedIssueIndex extends BasePatientComponent
     protected function paginateLocalIssues(): LengthAwarePaginator
     {
         $paginator = DetectedIssue::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

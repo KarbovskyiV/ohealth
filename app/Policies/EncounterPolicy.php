@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\JobStatus;
 use App\Enums\Person\EncounterStatus;
 use App\Enums\Status;
 use App\Enums\User\Role;
@@ -34,6 +35,23 @@ class EncounterPolicy
     public function create(User $user): Response
     {
         if ($user->cannot('encounter:write')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Determine whether the user can change the encounter package and sign it: a draft that is not waiting for eHealth.
+     */
+    public function update(User $user, Encounter $encounter): Response
+    {
+        if ($user->cannot('encounter:write')) {
+            return Response::denyWithStatus(404);
+        }
+
+        if ($encounter->status !== EncounterStatus::DRAFT
+            || $encounter->ehealthLinks()->latest('id')->value('status') === JobStatus::PENDING->value) {
             return Response::denyWithStatus(404);
         }
 

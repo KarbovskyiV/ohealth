@@ -143,7 +143,7 @@
                             <button
                                 type="button"
                                 @click="openGroupActions = false"
-                                class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                class="dropdown-button flex! w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                             >
                                 <span class="text-gray-500">
                                     @icon('close', 'w-4 h-4')
@@ -252,8 +252,8 @@
                                             <a
                                                 href="{{
                                                     $prepersonId
-                                                    ? route('prepersons.encounter.edit', [legalEntity(), 'preperson' => $prepersonId, 'encounterId' => data_get($encounter, 'id')])
-                                                    : route('encounter.edit', [legalEntity(), 'person' => $personId, 'encounterId' => data_get($encounter, 'id')])
+                                                    ? route('prepersons.encounter.view', [legalEntity(), 'preperson' => $prepersonId, 'encounterId' => data_get($encounter, 'id')])
+                                                    : route('encounter.view', [legalEntity(), 'person' => $personId, 'encounterId' => data_get($encounter, 'id')])
                                                 }}"
                                                 wire:navigate
                                                 class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"

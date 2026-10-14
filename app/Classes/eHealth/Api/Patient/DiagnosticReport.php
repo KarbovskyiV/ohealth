@@ -29,6 +29,8 @@ class DiagnosticReport extends PatientApiBase
      */
     public function create(string $uuid, array $data = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateSubmittedJob(...));
+
         return $this->post(self::URL . "/$uuid/diagnostic_report_package", $data);
     }
 

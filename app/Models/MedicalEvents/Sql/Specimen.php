@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\MedicalEvents\Sql;
 
+use App\Enums\Person\EncounterStatus;
 use App\Casts\EHealthTimestampCast;
 use App\Enums\Specimen\Status;
 use App\Models\Person\Person;
@@ -217,6 +218,25 @@ class Specimen extends Model
     protected function forPatient(Builder $query, Person|Preperson $patient): Builder
     {
         return $patient instanceof Preperson ? $query->wherePrepersonId($patient->id) : $query->wherePersonId($patient->id);
+    }
+
+    /**
+     * Leave out the records of an encounter package eHealth has not accepted yet, which is still a draft.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function notInDraftEncounter(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->whereDoesntHave(
+            'context',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::forPatient($patient)->whereStatus(EncounterStatus::DRAFT)->pluck('uuid')
+            )
+        );
     }
 
     /**

@@ -14,7 +14,6 @@ use App\Models\MedicalEvents\Sql\Procedure;
 use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\DeviceDispense;
 use App\Models\MedicalEvents\Sql\DeviceRequestRequest;
-use App\Models\MedicalEvents\Sql\Identifier;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Classes\eHealth\EHealth;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -233,6 +232,7 @@ class DeviceDispenses extends BasePatientComponent
     protected function paginateLocalDeviceDispenses(): LengthAwarePaginator
     {
         $paginator = DeviceDispense::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->latest()
             ->paginate(config('pagination.per_page'));
@@ -365,7 +365,7 @@ class DeviceDispenses extends BasePatientComponent
                 static function (array $deviceDispense) use ($employeeNames, $legalEntityNames, $deviceNames): array {
                     $deviceUuid = data_get($deviceDispense, 'details.0.device.identifier.value');
 
-                    if ($deviceUuid  && !data_get($deviceDispense, 'details.0.device.displayValue') && isset($deviceNames[$deviceUuid])) {
+                    if ($deviceUuid && !data_get($deviceDispense, 'details.0.device.displayValue') && isset($deviceNames[$deviceUuid])) {
                         data_set($deviceDispense, 'details.0.device.displayValue', $deviceNames[$deviceUuid]);
                     }
 
@@ -553,7 +553,7 @@ class DeviceDispenses extends BasePatientComponent
             ->filter()
             ->toArray();
     }
-    
+
     private function buildSearchParams(): array
     {
         return array_filter([

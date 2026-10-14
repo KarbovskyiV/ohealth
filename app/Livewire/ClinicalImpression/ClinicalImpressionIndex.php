@@ -194,6 +194,7 @@ class ClinicalImpressionIndex extends BasePatientComponent
     protected function paginateLocalClinicalImpressions(): LengthAwarePaginator
     {
         $paginator = ClinicalImpression::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

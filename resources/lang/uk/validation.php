@@ -319,6 +319,9 @@ return [
                 'service_not_found' => 'Вибраної послуги немає в довіднику послуг',
                 'invalid_amb_category' => 'Для амбулаторної взаємодії послуга має належати до категорії «консультування»'
             ],
+            'referralNumber' => [
+                'service_not_provided' => 'Направлення видане на послугу :service. Додайте її до дій, діагностичних звітів або процедур взаємодії.'
+            ],
             'observations' => [
                 'patient_identity_required' => 'Для альтернативної ідентифікації обов’язкові спостереження з кодами: :codes',
                 'patient_identity_not_allowed' => 'Для альтернативної ідентифікації неприпустимі спостереження з кодами: :codes',
@@ -366,6 +369,8 @@ return [
         'language' => 'мова',
         'phone' => 'телефон',
         'statusReason' => 'причина',
+        'basedOn' => 'електронне направлення',
+        'paperReferral' => 'паперове направлення',
         'reasonContext.reason' => 'причина створення неідентифікованого пацієнта',
         'reasonContext.ambulanceCardNumber' => '№ картки виїзду швидкої медичної допомоги',
         'reasonContext.policeReportId' => 'ідентифікатор заяви в поліцію',

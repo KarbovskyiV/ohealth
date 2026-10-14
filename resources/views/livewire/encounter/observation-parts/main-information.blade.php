@@ -368,7 +368,7 @@
                         <button
                             type="button"
                             id="decrement-button"
-                            :disabled="componentMap[modalObservation.codeCode]?.calculation"
+                            :disabled="!!componentMap[modalObservation.codeCode]?.calculation"
                             @click="
                                 modalObservation.valueQuantityValue = Math.max(
                                     min,
@@ -407,7 +407,7 @@
                             required
                             x-model.number="modalObservation.valueQuantityValue"
                             autocomplete="off"
-                            :readonly="componentMap[modalObservation.codeCode]?.calculation"
+                            :readonly="!!componentMap[modalObservation.codeCode]?.calculation"
                             :min="min"
                             :max="max"
                             @input="
@@ -423,7 +423,7 @@
                         <button
                             type="button"
                             id="increment-button"
-                            :disabled="componentMap[modalObservation.codeCode]?.calculation"
+                            :disabled="!!componentMap[modalObservation.codeCode]?.calculation"
                             @click="
                                 modalObservation.valueQuantityValue = Math.min(
                                     max,

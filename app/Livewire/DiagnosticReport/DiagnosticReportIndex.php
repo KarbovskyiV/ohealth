@@ -550,6 +550,7 @@ class DiagnosticReportIndex extends BasePatientComponent
     protected function paginateLocalDiagnosticReports(): LengthAwarePaginator
     {
         $paginator = DiagnosticReport::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

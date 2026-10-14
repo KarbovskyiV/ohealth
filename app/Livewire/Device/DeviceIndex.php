@@ -278,6 +278,7 @@ class DeviceIndex extends BasePatientComponent
     protected function paginateLocalDevices(): LengthAwarePaginator
     {
         $paginator = Device::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

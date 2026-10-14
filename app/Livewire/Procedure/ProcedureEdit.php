@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Procedure;
 
 use App\Core\Arr;
+use App\Enums\Person\ProcedureStatus;
 use App\Models\Division;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Procedure;
@@ -13,7 +14,9 @@ use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
 use App\Services\MedicalEvents\Fhir;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Locked;
 use Throwable;
 
@@ -21,6 +24,13 @@ class ProcedureEdit extends ProcedureComponent
 {
     #[Locked]
     public int $procedureId;
+
+    /**
+     * Procedure status, shown in the eHealth status block while the procedure was never submitted.
+     *
+     * @var string
+     */
+    public string $statusLabel;
 
     public function mount(
         LegalEntity $legalEntity,
@@ -38,7 +48,8 @@ class ProcedureEdit extends ProcedureComponent
             ->firstOrFail();
 
         $this->procedureUuid = $procedure->uuid;
-        $this->isReadonly = request()->routeIs('*procedure.view');
+        $this->statusLabel = ProcedureStatus::from($procedure->status)->label();
+        $this->isReadonly = Auth::user()->cannot('update', $procedure);
 
         $procedureData = $procedure->toArray();
 
@@ -72,6 +83,11 @@ class ProcedureEdit extends ProcedureComponent
         );
 
         $this->form->procedure = Fhir::procedure()->fromFhir($procedureData, $detailsMap);
+
+        // A draft keeps no outcome status of its own, so it is picked again before signing
+        if ($procedure->status === ProcedureStatus::DRAFT->value) {
+            $this->form->procedure['status'] = '';
+        }
 
         $focalDeviceIds = collect($this->form->procedure['focalDevice'] ?? [])
             ->pluck('manipulatedId')
@@ -120,6 +136,39 @@ class ProcedureEdit extends ProcedureComponent
         $this->loadIcd10Descriptions($this->form->procedure['reasonReferences'] ?? []);
     }
 
+    /**
+     * Validate and save the draft, unless it was submitted from another page since this one was opened.
+     *
+     * @param  array  $procedureData
+     * @return void
+     */
+    public function save(array $procedureData): void
+    {
+        if (Auth::user()->cannot('update', Procedure::findOrFail($this->procedureId))) {
+            Session::flash('error', __('procedures.policy.update'));
+
+            return;
+        }
+
+        parent::save($procedureData);
+    }
+
+    /**
+     * Sign and submit the draft, unless it was submitted from another page since this one was opened.
+     *
+     * @return void
+     */
+    public function sign(): void
+    {
+        if (Auth::user()->cannot('update', Procedure::findOrFail($this->procedureId))) {
+            Session::flash('error', __('procedures.policy.update'));
+
+            return;
+        }
+
+        parent::sign();
+    }
+
     protected function loadSelectedElectronicReferral(string $uuid): string
     {
         $referral = Repository::serviceRequest()->findByUuid($uuid);
@@ -156,7 +205,7 @@ class ProcedureEdit extends ProcedureComponent
             if (data_get($this->form->procedure, 'referralType') === 'electronic' && filled($uuid)) {
                 $this->storeElectronicReferralIfMissing($uuid, Auth::user()->getProcedureWriterEmployee());
             }
-            
+
             Repository::procedure()->sync($this->patient(), [$this->fhirToSync($formattedData)]);
 
             return $this->procedureId;

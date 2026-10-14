@@ -6,7 +6,9 @@ namespace App\Livewire\Person\Records;
 
 use App\Classes\eHealth\EHealth;
 use App\Enums\JobStatus;
+use App\Enums\Person\DiagnosticReportStatus;
 use App\Enums\Person\MergedPersonStatus;
+use App\Enums\Person\ProcedureStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Exceptions\EHealth\EHealthResponseException;
@@ -415,7 +417,7 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'clinicalImpressions',
-            ClinicalImpression::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            ClinicalImpression::forPatient($this->patient())->notInDraftEncounter($this->patient())->allowedForSummary()->withAllRelations(),
             'clinicalImpressions'
         );
     }
@@ -463,7 +465,7 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'immunizations',
-            Immunization::forPatient($this->patient())->withAllRelations(),
+            Immunization::forPatient($this->patient())->notInDraftEncounter($this->patient())->withAllRelations(),
             'immunizations'
         );
     }
@@ -517,7 +519,7 @@ class PatientSummary extends BasePatientComponent
 
         $this->setPaginatedRecords(
             'observations',
-            $observations->allowedForSummary()->withAllRelations(),
+            $observations->notInDraftEncounter($this->patient())->notInDraftDiagnosticReport($this->patient())->allowedForSummary()->withAllRelations(),
             'observations'
         );
     }
@@ -600,7 +602,7 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'conditions',
-            Condition::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            Condition::forPatient($this->patient())->notInDraftEncounter($this->patient())->allowedForSummary()->withAllRelations(),
             'conditions',
             fn (array $conditions) => $this->populateIcd10Descriptions($conditions)
         );
@@ -650,7 +652,11 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'diagnosticReports',
-            DiagnosticReport::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            DiagnosticReport::forPatient($this->patient())
+                ->whereNot('status', DiagnosticReportStatus::DRAFT)
+                ->notInDraftEncounter($this->patient())
+                ->allowedForSummary()
+                ->withAllRelations(),
             'diagnosticReports'
         );
     }
@@ -739,7 +745,7 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'devices',
-            Device::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            Device::forPatient($this->patient())->notInDraftEncounter($this->patient())->allowedForSummary()->withAllRelations(),
             'devices'
         );
     }
@@ -787,7 +793,11 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'procedures',
-            Procedure::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            Procedure::forPatient($this->patient())
+                ->whereNot('status', ProcedureStatus::DRAFT)
+                ->notInDraftEncounter($this->patient())
+                ->allowedForSummary()
+                ->withAllRelations(),
             'procedures'
         );
     }

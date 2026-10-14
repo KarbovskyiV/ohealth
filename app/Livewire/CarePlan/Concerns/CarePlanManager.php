@@ -780,7 +780,7 @@ trait CarePlanManager
         $encounterId = $this->carePlan->encounterId;
 
         if ($personId && $encounterId) {
-            $this->redirectRoute('encounter.edit', [legalEntity(), $personId, $encounterId], navigate: true);
+            $this->redirectRoute('encounter.view', [legalEntity(), $personId, $encounterId], navigate: true);
 
             return;
         }

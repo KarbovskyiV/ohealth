@@ -324,6 +324,7 @@ class DeviceAssociationIndex extends BasePatientComponent
     protected function paginateLocalAssociations(): LengthAwarePaginator
     {
         $paginator = DeviceAssociation::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

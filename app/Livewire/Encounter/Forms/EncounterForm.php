@@ -11,9 +11,11 @@ use App\Rules\InDictionary;
 use App\Rules\OnlyOnePrimaryDiagnosis;
 use App\Rules\PastDateTime;
 use App\Models\Employee\Employee;
+use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\In;
 
@@ -171,7 +173,8 @@ class EncounterForm extends BaseForm
                 Rule::requiredIf(($this->encounter['referralType'] ?? '') === 'electronic'),
                 'nullable',
                 'string',
-                'max:255'
+                'max:255',
+                $this->referralServiceIsProvided()
             ],
             'encounter.paperReferral' => [
                 Rule::requiredIf(($this->encounter['referralType'] ?? '') === 'paper'),
@@ -585,6 +588,44 @@ class EncounterForm extends BaseForm
                 && empty($this->component->procedureForm->procedures)
             ) {
                 $fail(__('validation.custom.encounter.actionReferences.required_activity'));
+            }
+        };
+    }
+
+    /**
+     * The service the electronic referral asks for is provided by an action reference, a diagnostic report or
+     * a procedure of the encounter. A referral to a service group names no single service, so it is not checked.
+     *
+     * @return Closure
+     */
+    private function referralServiceIsProvided(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if (($this->encounter['referralType'] ?? '') !== 'electronic' || blank($value)) {
+                return;
+            }
+
+            // The form names the referral by its number until it is resolved to its ID on saving
+            $serviceId = (
+                Str::isUuid($value)
+                ? ServiceRequestRequest::whereUuid($value)
+                : ServiceRequestRequest::whereRequestNumber($value)
+            )->value('service_id');
+
+            if ($serviceId === null) {
+                return;
+            }
+
+            $providedServiceIds = collect($this->encounter['actionReferences'] ?? [])->pluck('uuid')
+                ->merge(collect($this->component->diagnosticReportForm->diagnosticReports)->pluck('codeValue'))
+                ->merge(collect($this->component->procedureForm->procedures)->pluck('codeValue'));
+
+            if (!$providedServiceIds->contains($serviceId)) {
+                $service = dictionary()->services()->flattened()->firstWhere('id', $serviceId);
+
+                $fail(__('validation.custom.encounter.referralNumber.service_not_provided', [
+                    'service' => $service !== null ? "{$service['code']} «{$service['name']}»" : $serviceId
+                ]));
             }
         };
     }

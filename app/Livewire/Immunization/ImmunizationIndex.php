@@ -190,6 +190,7 @@ class ImmunizationIndex extends BasePatientComponent
     protected function paginateLocalImmunizations(): LengthAwarePaginator
     {
         $paginator = Immunization::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

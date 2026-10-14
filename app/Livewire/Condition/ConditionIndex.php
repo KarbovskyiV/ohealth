@@ -201,6 +201,7 @@ class ConditionIndex extends BasePatientComponent
     protected function paginateLocalConditions(): LengthAwarePaginator
     {
         $paginator = Condition::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

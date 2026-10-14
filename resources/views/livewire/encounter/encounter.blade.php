@@ -1,5 +1,7 @@
 @php
     use App\Livewire\Encounter\EncounterEdit;
+    use App\Livewire\Encounter\EncounterView;
+    use App\Models\MedicalEvents\Sql\Encounter;
 
     $patientName = $patientFullName ?? __('forms.patient');
     $title = __('encounters.label') . ' - ' . $patientName;
@@ -41,7 +43,8 @@
     };
 @endphp
 
-<x-layouts.patient :showLegacyMessages="false"
+<x-layouts.patient
+    :showLegacyMessages="false"
     :personId="$personId"
     :patientFullName="$patientFullName"
     :hideNavigation="true"
@@ -264,6 +267,15 @@
         >
             <!-- Main Content -->
             <div class="flex-1 space-y-4">
+                @if ($this instanceof EncounterView)
+                    <livewire:components.submission-status
+                        :recordType="Encounter::class"
+                        :recordId="$encounterId"
+                        :recordStatusLabel="$this->statusLabel"
+                        :editUrl="$this->editUrl"
+                    />
+                @endif
+
                 @foreach (array_merge($mainGroups, $footerItems) as $item)
                     @if (isset($item['view']))
                         @if ($item['id'] === 'observations')
@@ -327,38 +339,8 @@
                     @endif
                 @endforeach
 
-                @if ($this instanceof EncounterEdit)
-                    <div class="mt-4">
-                        <fieldset class="fieldset-card mb-4 p-4 sm:p-8 sm:pb-10">
-                            <legend class="legend">{{ __('forms.status.label') }}</legend>
-
-                            <div class="mb-2 flex flex-col gap-6 sm:flex-row sm:items-end">
-                                <div class="form-group group flex-1">
-                                    <input
-                                        type="text"
-                                        id="ehealthStatus"
-                                        class="input peer text-gray-500"
-                                        value="{{ __('forms.status.signed') }}"
-                                        readonly
-                                        placeholder=" "
-                                    />
-                                    <label for="ehealthStatus" class="label"> {{ __('forms.status.label') }} </label>
-                                </div>
-
-                                @unless ($isReadonly)
-                                    <div class="mb-1">
-                                        <button type="button" class="button-primary px-8">
-                                            {{ __('forms.update') }}
-                                        </button>
-                                    </div>
-                                @endunless
-                            </div>
-                        </fieldset>
-                    </div>
-                @endif
-
                 <!-- Additional Actions -->
-                @if (isset($encounterId))
+                @if ($this instanceof EncounterEdit && $this->isFinished)
                     <div class="mt-10 border-t border-gray-100 pt-10 dark:border-gray-700">
                         <h3 class="mb-6 text-[17px] font-bold text-gray-900 dark:text-gray-100">
                             {{ __('encounters.additional_actions') }}
@@ -417,13 +399,15 @@
                 <!-- Actions -->
                 <div class="pt-8">
                     <div class="flex flex-wrap gap-4">
+                        <a href="{{ url()->previous() }}" class="button-minor">{{ __('forms.back') }}</a>
+
                         @if ($this instanceof EncounterEdit && $this->canBeCancelled)
                             <button
                                 wire:click="openPackageCancellation"
                                 type="button"
                                 class="button-primary-outline-red"
                             >
-                                {{ __('forms.delete') }}
+                                {{ __('encounters.encounter_entered_in_error') }}
                             </button>
 
                             <button
@@ -434,7 +418,6 @@
                                 {{ __('encounters.records_entered_in_error') }}
                             </button>
                         @endif
-
 
                         @unless ($isReadonly)
                             <button
