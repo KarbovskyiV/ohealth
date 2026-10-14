@@ -88,7 +88,16 @@ class CarePlanConfiguredPeriodTest extends TestCase
             $mock->shouldReceive('getAuthMethods')->andReturn($response);
         });
         $this->mock(DictionaryManager::class, function ($mock): void {
-            $mock->shouldReceive('basics')->andReturn(new BasicDictionaryCollection());
+            $mock->shouldReceive('basics')->andReturn(new BasicDictionaryCollection([
+                ['name' => 'eHealth/care_plan_categories', 'values' => [['code' => '736382003', 'description' => 'План лікування']]],
+                ['name' => 'eHealth/encounter_classes', 'values' => [['code' => 'AMB', 'description' => 'Амбулаторна взаємодія']]],
+                ['name' => 'PROVIDING_CONDITION', 'values' => [['code' => 'OUTPATIENT', 'description' => 'Амбулаторно']]],
+                ['name' => 'AUTHENTICATION_METHOD', 'values' => [
+                    ['code' => 'OTP', 'description' => 'Одноразовий пароль'],
+                    ['code' => 'OFFLINE', 'description' => 'Без SMS'],
+                    ['code' => 'THIRD_PERSON', 'description' => 'Через іншу особу'],
+                ]],
+            ]));
         });
         $payload = null;
         $this->mock(SignatureService::class, function ($mock) use (&$payload): void {

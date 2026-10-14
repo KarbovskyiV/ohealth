@@ -286,6 +286,74 @@ class ReferralExecutorPhase4Test extends TestCase
         $this->assertSame('active', $record->fresh()->status);
     }
 
+    public function testRedeemModalAfterSignedEncounterCompletesWithoutRepeatingQualifyOrUse(): void
+    {
+        $this->actingAs($this->user);
+        $record = $this->createActiveReferral();
+        $component = $this->encounterCreateComponent($record);
+        $encounter = $this->finishedEncounterForReferral($record);
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldReceive('qualify')->once()->ordered()->with($record->uuid, [
+            'programs' => [[
+                'identifier' => [
+                    'type' => ['coding' => [['system' => 'eHealth/resources', 'code' => 'medical_program']]],
+                    'value' => $record->programId,
+                ],
+            ]],
+        ])->andReturn($this->remoteResponse([['status' => 'VALID']]));
+        $api->shouldReceive('process')->once()->ordered()->andReturn($this->remoteResponse(['status' => 'active']));
+        $api->shouldReceive('complete')->once()->ordered()->with($record->uuid, [
+            'based_on' => [[
+                'identifier' => [
+                    'type' => ['coding' => [['system' => 'eHealth/resources', 'code' => 'encounter']]],
+                    'value' => $encounter->uuid,
+                ],
+            ]],
+        ])->andReturn($this->remoteResponse(['status' => 'completed']));
+        $this->instance(ServiceRequestApi::class, $api);
+        app(PatientServiceRequestApi::class)->shouldReceive('getById')->once()
+            ->with($this->person->uuid, $record->uuid)
+            ->andReturn($this->remoteResponse($this->remoteReferral($record)));
+        $lifecycle = app(ReferralRequestLifecycleService::class);
+
+        $component->selectElectronicReferral($record->uuid, $lifecycle);
+        $this->assertSame($record->uuid, $component->confirmedElectronicReferralUuid);
+        $this->assertSame('in_progress', $record->fresh()->status);
+
+        // The signed encounter has been synced; the user confirms the completion modal.
+        $component->referralToRedeemUuid = $record->uuid;
+        $component->createdEncounterUuidForRedeem = $encounter->uuid;
+        $component->showReferralRedeemModal = true;
+        $component->redeemReferral($lifecycle);
+
+        $this->assertFalse($component->showReferralRedeemModal);
+        $this->assertSame('completed', $record->fresh()->status);
+        $this->assertSame(__('encounters.messages.referral_redeemed'), session('success'));
+        $this->assertNull(session('error'));
+    }
+
+    public function testRedeemModalCannotPrepareAnUnconfirmedReferralAfterSigning(): void
+    {
+        $this->actingAs($this->user);
+        $record = $this->createActiveReferral();
+        $component = $this->encounterCreateComponent($record);
+        $encounter = $this->finishedEncounterForReferral($record);
+        $component->preparedElectronicReferralUuid = $record->uuid;
+        $component->referralToRedeemUuid = $record->uuid;
+        $component->createdEncounterUuidForRedeem = $encounter->uuid;
+        $component->showReferralRedeemModal = true;
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldNotReceive('qualify', 'process', 'complete');
+        $this->instance(ServiceRequestApi::class, $api);
+        app(PatientServiceRequestApi::class)->shouldNotReceive('getById');
+
+        $component->redeemReferral(app(ReferralRequestLifecycleService::class));
+
+        $this->assertFalse($component->showReferralRedeemModal);
+        $this->assertSame('active', $record->fresh()->status);
+        $this->assertStringContainsString(__('Направлення не було підтверджено перед підписанням взаємодії.'), session('error'));
+    }
+
     public function test_failed_selection_clears_previous_confirmation_and_shows_a_field_error(): void
     {
         $this->actingAs($this->user);
@@ -661,5 +729,20 @@ class ReferralExecutorPhase4Test extends TestCase
         $this->assertSame(['auth_method_id' => $authUuid], $sr['inform_with']);
         $this->assertSame($conditionUuid, $sr['reason_reference'][0]['identifier']['value']);
         $this->assertSame('condition', $sr['reason_reference'][0]['identifier']['type']['coding'][0]['code']);
+    }
+
+    private function finishedEncounterForReferral(ServiceRequestRequest $record): Encounter
+    {
+        $class = \App\Models\MedicalEvents\Sql\Coding::create(['code' => 'AMB', 'system' => 'eHealth/encounter_classes']);
+        $type = \App\Models\MedicalEvents\Sql\CodeableConcept::create();
+        $episode = Identifier::create(['value' => (string) Str::uuid()]);
+        $incoming = Identifier::create(['value' => $record->uuid]);
+
+        return Encounter::create([
+            'uuid' => (string) Str::uuid(), 'person_id' => $this->person->id,
+            'status' => 'finished', 'episode_id' => $episode->id,
+            'class_id' => $class->id, 'type_id' => $type->id,
+            'incoming_referral_id' => $incoming->id, 'ehealth_inserted_at' => now(),
+        ]);
     }
 }
