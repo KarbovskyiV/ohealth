@@ -7,11 +7,12 @@ namespace App\Livewire\Procedure;
 use App\Classes\eHealth\EHealth;
 use App\Classes\Cipher\Api\CipherRequest;
 use App\Core\Arr;
+use App\Enums\Person\ProcedureStatus;
 use App\Enums\Status;
 use App\Enums\User\Role;
+use App\Jobs\RemoteEHealthLinksProcessing;
 use App\Enums\Equipment\AvailabilityStatus;
 use App\Livewire\Procedure\Forms\ProcedureForm as Form;
-use App\Repositories\MedicalEvents\Repository;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\Person\Person;
@@ -26,6 +27,7 @@ use App\Exceptions\EHealth\EHealthException;
 use App\Exceptions\Cipher\CipherConnectionException;
 use App\Exceptions\Cipher\CipherException;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
@@ -118,6 +120,12 @@ class ProcedureComponent extends Component
 
     public array $equipmentOptionsByDivision = [];
 
+    /**
+     * Whether the procedure can't be changed: it is viewed, accepted by eHealth or waiting for it.
+     *
+     * @var bool
+     */
+    #[Locked]
     public bool $isReadonly = false;
 
     protected array $dictionaryNames = [
@@ -237,13 +245,25 @@ class ProcedureComponent extends Component
         return Fhir::procedure()->toFhir($validatedData['procedure'], $uuids);
     }
 
+    /**
+     * Validate and store the procedure locally as a draft, without sending it to eHealth.
+     *
+     * @param  array  $procedureData
+     * @return void
+     */
     public function save(array $procedureData): void
     {
+        if ($this->isReadonly) {
+            return;
+        }
+
         $formattedData = $this->buildFormattedData($procedureData);
 
         if ($formattedData === null) {
             return;
         }
+
+        $formattedData['status'] = ProcedureStatus::DRAFT->value;
 
         try {
             $procedureId = $this->persist($formattedData);
@@ -255,25 +275,15 @@ class ProcedureComponent extends Component
 
         Session::flash('success', __('procedures.messages.saved'));
 
-        if ($this->prepersonId !== null) {
-            $this->redirectRoute(
-                'prepersons.procedure.edit',
-                [legalEntity(), 'preperson' => $this->prepersonId, 'procedureId' => $procedureId],
-                navigate: true
-            );
-
-            return;
-        }
-
-        $this->redirectRoute(
-            'procedure.edit',
-            [legalEntity(), 'person' => $this->personId, 'procedureId' => $procedureId],
-            navigate: true
-        );
+        $this->redirectToPage($procedureId, 'edit');
     }
 
     public function sign(): void
     {
+        if ($this->isReadonly) {
+            return;
+        }
+
         try {
             $validatedCipher = $this->form->validate($this->form->signingRules());
         } catch (ValidationException $exception) {
@@ -289,9 +299,11 @@ class ProcedureComponent extends Component
             return;
         }
 
+        $requestData = Arr::toSnakeCase($formattedData);
+
         try {
             $signedContent = new CipherRequest()->signData(
-                Arr::toSnakeCase($formattedData),
+                $requestData,
                 $validatedCipher['knedp'],
                 $validatedCipher['keyContainerUpload'],
                 $validatedCipher['password'],
@@ -304,41 +316,78 @@ class ProcedureComponent extends Component
             return;
         }
 
+        // The procedure is kept as a draft until eHealth accepts it
+        $formattedData['status'] = ProcedureStatus::DRAFT->value;
+
         try {
-            $response = EHealth::procedure()->create($this->patientUuid, [
-                'signed_data' => $signedContent->getBase64Data(),
-            ]);
-
             $procedureId = $this->persist($formattedData);
-
-            Session::flash('success', __('procedures.messages.create_request_sent'));
-
-            if ($this->prepersonId !== null) {
-                $this->redirectRoute(
-                    'prepersons.procedure.view',
-                    [legalEntity(), 'preperson' => $this->prepersonId, 'procedureId' => $procedureId],
-                    navigate: true
-                );
-
-                return;
-            }
-
-            $this->redirectRoute(
-                'procedure.view',
-                [legalEntity(), 'person' => $this->personId, 'procedureId' => $procedureId],
-                navigate: true
-            );
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error when signing procedure');
-            Session::flash('error-modal', $exception->getMessage());
-
-            return;
         } catch (Throwable $exception) {
             $this->handleDatabaseErrors($exception, 'Error while saving procedure');
             Session::flash('error-modal', $exception->getMessage());
 
             return;
         }
+
+        try {
+            $submission = RemoteEHealthLinksProcessing::startSubmission(Procedure::findOrFail($procedureId), $requestData);
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Error while starting procedure submission');
+            $this->redirectToPage($procedureId, 'view');
+
+            return;
+        }
+
+        try {
+            $response = EHealth::procedure()->create($this->patientUuid, ['signed_data' => $signedContent->getBase64Data()]);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error when signing procedure');
+            RemoteEHealthLinksProcessing::markSubmissionFailed($submission);
+            $this->redirectToPage($procedureId, 'view');
+
+            return;
+        }
+
+        // eHealth received the procedure already, so it stays submitted and locked even if following it fails
+        try {
+            RemoteEHealthLinksProcessing::track($submission, $response->validate());
+
+            Session::flash('success', __('procedures.messages.create_request_sent'));
+        } catch (Throwable $exception) {
+            Log::channel('e_health_errors')->error('Submitted procedure is not tracked', [
+                'procedureId' => $procedureId,
+                'response' => $response->getData(),
+                'exception' => $exception->getMessage()
+            ]);
+            Session::flash('error', __('errors.ehealth.messages.submission_not_tracked'));
+        }
+
+        $this->redirectToPage($procedureId, 'view');
+    }
+
+    /**
+     * Open the given page, 'edit' or 'view', of the stored procedure.
+     *
+     * @param  int  $procedureId
+     * @param  string  $page
+     * @return void
+     */
+    protected function redirectToPage(int $procedureId, string $page): void
+    {
+        if ($this->prepersonId !== null) {
+            $this->redirectRoute(
+                "prepersons.procedure.$page",
+                [legalEntity(), 'preperson' => $this->prepersonId, 'procedureId' => $procedureId],
+                navigate: true
+            );
+
+            return;
+        }
+
+        $this->redirectRoute(
+            "procedure.$page",
+            [legalEntity(), 'person' => $this->personId, 'procedureId' => $procedureId],
+            navigate: true
+        );
     }
 
     protected function buildFormattedData(array $procedureData): ?array

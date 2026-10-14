@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Models\MedicalEvents\Sql;
 
 use App\Casts\EHealthTimestampCast;
+use App\Contracts\SubmittedToEHealth;
 use App\Enums\Person\EncounterStatus;
+use App\Models\EhealthLink;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -15,9 +17,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
-class Encounter extends Model
+class Encounter extends Model implements SubmittedToEHealth
 {
     protected $fillable = [
         'uuid',
@@ -166,9 +169,24 @@ class Encounter extends Model
         return $this->hasOne(EncounterHospitalization::class);
     }
 
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
+    }
+
     public function preperson(): BelongsTo
     {
         return $this->belongsTo(Preperson::class);
+    }
+
+    /**
+     * eHealth jobs the signed encounter package was submitted with, the latest one telling how the last submission went.
+     *
+     * @return MorphMany
+     */
+    public function ehealthLinks(): MorphMany
+    {
+        return $this->morphMany(EhealthLink::class, 'linkable');
     }
 
     /**
@@ -319,7 +337,8 @@ class Encounter extends Model
     }
 
     /**
-     * Order by most recently updated in eHealth first, keeping records without a timestamp last.
+     * Order by most recently updated in eHealth first, keeping records without a timestamp last. Drafts lead the list,
+     * by their local update time, as they are not in eHealth yet.
      *
      * @param  Builder  $query
      * @return Builder
@@ -327,8 +346,10 @@ class Encounter extends Model
     #[Scope]
     protected function recentlyUpdatedFirst(Builder $query): Builder
     {
-        return $query->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
-            ->orderByDesc('ehealth_updated_at');
+        return $query->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [EncounterStatus::DRAFT->value])
+            ->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('ehealth_updated_at')
+            ->orderByDesc('updated_at');
     }
 
     /**

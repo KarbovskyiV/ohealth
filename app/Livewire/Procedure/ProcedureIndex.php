@@ -494,6 +494,7 @@ class ProcedureIndex extends BasePatientComponent
     protected function paginateLocalProcedures(): LengthAwarePaginator
     {
         $paginator = Procedure::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->latest()
             ->paginate(config('pagination.per_page'));
@@ -695,7 +696,11 @@ class ProcedureIndex extends BasePatientComponent
     {
         return [
             'filterCategory' => ['nullable', 'string', 'max:255'],
-            'filterStatus' => ['nullable', Rule::in(ProcedureStatus::values())],
+            'filterStatus' => [
+                'nullable',
+                Rule::in(ProcedureStatus::values()),
+                Rule::notIn([ProcedureStatus::DRAFT->value])
+            ],
             'filterEpisodeId' => ['nullable', 'uuid'],
             'filterUsedReferenceId' => ['nullable', 'uuid'],
             'filterBasedOn' => ['nullable', 'uuid'],

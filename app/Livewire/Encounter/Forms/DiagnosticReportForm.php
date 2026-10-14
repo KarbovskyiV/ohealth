@@ -151,7 +151,20 @@ class DiagnosticReportForm extends Form
                 'string',
                 new InDictionary('eHealth/ICD10_AM/condition_codes')
             ],
-            'diagnosticReports.*.conclusion' => ['nullable', 'string', 'max:3000'],
+            'diagnosticReports.*.conclusion' => Rule::forEach(
+                function (mixed $value, string $attribute): array {
+                    $index = (int) explode('.', $attribute)[1];
+
+                    $categoryCode = data_get($this->diagnosticReports[$index] ?? [], 'categoryCode');
+
+                    return [
+                        Rule::requiredIf(in_array($categoryCode, ['diagnostic_procedure', 'imaging'], true)),
+                        'nullable',
+                        'string',
+                        'max:3000'
+                    ];
+                }
+            ),
             'diagnosticReports.*.specimenIds' => ['nullable', 'array'],
             'diagnosticReports.*.specimenIds.*' => [
                 'required',

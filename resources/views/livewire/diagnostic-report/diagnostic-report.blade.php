@@ -1,11 +1,24 @@
 @php
+    use App\Livewire\DiagnosticReport\DiagnosticReportView;
+    use App\Models\MedicalEvents\Sql\DiagnosticReport;
+
     $isReadonly = $isReadonly ?? ($this->isReadonly ?? false);
-    $isDraft = data_get($this->form->diagnosticReport, 'status') === \App\Enums\Person\DiagnosticReportStatus::DRAFT->value;
 @endphp
 <section class="section-form">
     <x-header-navigation class="breadcrumb-form">
         <x-slot name="title">{{ __('diagnostic-reports.plural') }} - {{ $patientFullName }}</x-slot>
     </x-header-navigation>
+
+    @if ($this instanceof DiagnosticReportView)
+        <div class="form mb-4">
+            <livewire:components.submission-status
+                :recordType="DiagnosticReport::class"
+                :recordId="$diagnosticReportId"
+                :recordStatusLabel="$statusLabel"
+                :editUrl="$editUrl"
+            />
+        </div>
+    @endif
 
     <form
         class="form"
@@ -155,11 +168,7 @@
                 />
 
                 <div class="mt-8">
-                    <button
-                        type="button"
-                        @click="openServiceCatalog = false"
-                        class="button-minor"
-                    >
+                    <button type="button" @click="openServiceCatalog = false" class="button-minor">
                         {{ __('forms.cancel') }}
                     </button>
                 </div>
@@ -169,29 +178,17 @@
         <div class="flex gap-8">
             <a href="{{ url()->previous() }}" type="submit" class="button-minor"> {{ __('forms.back') }} </a>
 
-            @if ($isReadonly && $isDraft)
-                <a
-                    href="{{
-                        $prepersonId
-                        ? route('prepersons.diagnostic-report.edit', [legalEntity(), 'preperson' => $prepersonId, 'diagnosticReportId' => $diagnosticReportId])
-                        : route('diagnostic-report.edit', [legalEntity(), 'person' => $personId, 'diagnosticReportId' => $diagnosticReportId])
-                    }}"
-                    wire:navigate
-                    class="button-primary"
-                >
-                    {{ __('forms.edit') }}
-                </a>
-            @endif
-
             @unless ($isReadonly)
                 <button
                     @click.prevent="
-                        modalDiagnosticReport.performerEmployeeIds = modalDiagnosticReport.performerEmployeeIds.filter(Boolean);
+                        modalDiagnosticReport.performerEmployeeIds =
+                            modalDiagnosticReport.performerEmployeeIds.filter(Boolean);
                         modalDiagnosticReport.specimenIds = modalDiagnosticReport.specimenIds.filter(Boolean);
 
                         $wire.save(modalDiagnosticReport);
                     "
-                    :disabled="['diagnostic_procedure', 'imaging'].includes(modalDiagnosticReport.categoryCode) && ! String(modalDiagnosticReport.resultsInterpreterEmployeeId ?? '').trim()"
+                    :disabled="['diagnostic_procedure', 'imaging'].includes(modalDiagnosticReport.categoryCode) &&
+                    ! String(modalDiagnosticReport.resultsInterpreterEmployeeId ?? '').trim()"
                     type="submit"
                     class="button-primary-outline"
                 >
@@ -200,15 +197,14 @@
 
                 <button
                     @click="
-                        modalDiagnosticReport.performerEmployeeIds = modalDiagnosticReport.performerEmployeeIds.filter(Boolean);
+                        modalDiagnosticReport.performerEmployeeIds =
+                            modalDiagnosticReport.performerEmployeeIds.filter(Boolean);
                         modalDiagnosticReport.specimenIds = modalDiagnosticReport.specimenIds.filter(Boolean);
 
                         $wire.openSignatureModal(modalDiagnosticReport);
                     "
-                    :disabled="
-                        ['diagnostic_procedure', 'imaging'].includes(modalDiagnosticReport.categoryCode)
-                        && ! String(modalDiagnosticReport.resultsInterpreterEmployeeId ?? '').trim()
-                    "
+                    :disabled="['diagnostic_procedure', 'imaging'].includes(modalDiagnosticReport.categoryCode) &&
+                    ! String(modalDiagnosticReport.resultsInterpreterEmployeeId ?? '').trim()"
                     type="button"
                     class="button-primary flex items-center gap-2"
                 >

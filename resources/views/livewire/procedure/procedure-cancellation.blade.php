@@ -32,7 +32,7 @@
 
                         <div class="mt-12 max-w-5xl">
                             <label
-                                for="cancellationReason"
+                                for="statusReason"
                                 class="mb-4 block text-sm font-medium text-gray-700 dark:text-gray-200"
                             >
                                 {{ __('medical-events.cancel_modal.reason_label') }} *

@@ -104,7 +104,8 @@ return [
         'component_duplicate' => 'Компонент «:component» вказано більше одного разу.',
         'component_value_invalid' => 'Значення компонента «:component» недопустиме.',
         'component_out_of_range' => 'Значення компонента «:component» має бути від :min до :max.',
-        'value_calculation_mismatch' => 'Значення спостереження має дорівнювати сумі балів компонентів (:sum).'
+        'value_calculation_mismatch' => 'Значення спостереження має дорівнювати сумі балів компонентів (:sum).',
+        'value_required' => 'Вкажіть значення або компоненти для :observation.'
     ],
 
     // Field names for :attribute in validation messages

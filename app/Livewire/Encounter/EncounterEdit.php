@@ -7,15 +7,19 @@ namespace App\Livewire\Encounter;
 use App\Classes\Cipher\Api\CipherRequest;
 use App\Classes\eHealth\EHealth;
 use App\Core\Arr;
+use App\Enums\Episode\Status as EpisodeStatus;
 use App\Enums\Person\EncounterStatus;
+use App\Enums\Person\ServiceRequestStatus;
 use App\Livewire\Encounter\Forms\EncounterCancellationForm;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
+use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
 use App\Services\MedicalEvents\Fhir;
+use App\Services\MedicalEvents\ReferralRequestLifecycleService;
 use App\Traits\HandlesEncounterCancellation;
 use App\Exceptions\Cipher\CipherConnectionException;
 use App\Exceptions\Cipher\CipherException;
@@ -27,6 +31,7 @@ use Illuminate\Validation\ValidationException;
 use App\Livewire\Encounter\Concerns\ManagesEncounterEPrescription;
 use App\Livewire\Encounter\Concerns\ManagesEncounterReferrals;
 use App\Livewire\Encounter\Concerns\ResolvesEncounterStandaloneContext;
+use Exception;
 use Livewire\Attributes\Locked;
 use Throwable;
 
@@ -47,12 +52,53 @@ class EncounterEdit extends EncounterComponent
     public bool $isReadonly;
 
     /**
+     * Episode type the draft was saved with, which stays as it is, since a new episode is stored along with the draft.
+     *
+     * @var string
+     */
+    #[Locked]
+    public string $episodeType = 'new';
+
+    /**
      * Whether the encounter may be marked as entered in error by the current user.
      *
      * @var bool
      */
     #[Locked]
     public bool $canBeCancelled;
+
+    /**
+     * Encounter status, shown in the eHealth status block while the package was never submitted.
+     *
+     * @var string
+     */
+    public string $statusLabel;
+
+    /**
+     * Whether eHealth accepted the encounter, so records referring to it, as prescriptions or referrals, can be added.
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $isFinished;
+
+    /**
+     * Electronic referral the accepted encounter was based on, taken into work but not redeemed yet.
+     *
+     * @var string|null
+     */
+    #[Locked]
+    public ?string $referralToRedeemId = null;
+
+    public bool $showReferralRedeemModal = false;
+
+    /**
+     * Episode opened along with the package and stored only locally, so it is created in eHealth on signing.
+     *
+     * @var string|null
+     */
+    #[Locked]
+    public ?string $draftEpisodeId = null;
 
     public EncounterCancellationForm $cancellationForm;
 
@@ -71,11 +117,37 @@ class EncounterEdit extends EncounterComponent
         $this->canBeCancelled = Auth::user()->can('cancel', $encounterModel);
         $this->cancelledRecords = Repository::encounter()->cancelledRecordIds($encounterModel->uuid);
 
-        $encounter = $encounterModel->toArray();
-        $this->isReadonly = $encounter['status'] !== EncounterStatus::DRAFT->value;
+        $this->statusLabel = $encounterModel->status->label();
+        $this->isFinished = $encounterModel->status === EncounterStatus::FINISHED;
 
-        $this->episodeType = 'existing';
-        $this->form->episode = array_merge($this->form->episode, ['id' => data_get($encounter, 'episode.identifier.value', '')]);
+        $referralId = $encounterModel->incomingReferral?->value;
+
+        if (
+            $encounterModel->status === EncounterStatus::FINISHED
+            && $referralId !== null
+            && strtolower((string) Repository::serviceRequest()->findByUuid($referralId)?->status) === ServiceRequestStatus::IN_PROGRESS->value
+        ) {
+            $this->referralToRedeemId = $referralId;
+            $this->showReferralRedeemModal = true;
+        }
+
+        $encounter = $encounterModel->toArray();
+        $this->isReadonly = Auth::user()->cannot('update', $encounterModel);
+
+        $episodeId = data_get($encounter, 'episode.identifier.value', '');
+        $draftEpisode = Episode::whereUuid($episodeId)->whereStatus(EpisodeStatus::DRAFT)->with('type')->first();
+
+        if ($draftEpisode !== null) {
+            $this->draftEpisodeId = $draftEpisode->uuid;
+            $this->episodeType = 'new';
+            $this->form->episode = array_merge(
+                $this->form->episode,
+                ['typeCode' => $draftEpisode->type->code, 'name' => $draftEpisode->name]
+            );
+        } else {
+            $this->episodeType = 'existing';
+            $this->form->episode = array_merge($this->form->episode, ['id' => $episodeId]);
+        }
 
         $this->initializeComponent(loadEpisodes: !$this->isReadonly);
 
@@ -150,10 +222,18 @@ class EncounterEdit extends EncounterComponent
             return null;
         }
 
+        // The package may have been submitted from another page since this one was opened
+        if (Auth::user()->cannot('update', Encounter::findOrFail($this->encounterId))) {
+            Session::flash('error', __('encounters.policy.update'));
+
+            return null;
+        }
+
         try {
             $this->syncEncounterParticipants();
             // Validating from the component runs every form of the package and collects their errors in one pass
             $validated = $this->validate();
+            $this->resolveAllReferrals($validated);
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
@@ -179,8 +259,18 @@ class EncounterEdit extends EncounterComponent
             'encounter' => $encounter['uuid'],
             'visit' => data_get($encounter, 'visit.identifier.value'),
             'employee' => Auth::user()->getEncounterWriterEmployee($validated['encounter']['classCode'])->uuid,
-            'episode' => $validated['episode']['id']
+            'episode' => $this->episodeType === 'new' ? $this->draftEpisodeId : $validated['episode']['id']
         ];
+
+        $fhirEpisode = $this->episodeType === 'new' && $this->draftEpisodeId !== null
+            ? Fhir::episode()->toFhir(
+                $validated['episode'],
+                $uuids,
+                $validated['encounter']['periodDate'],
+                $validated['encounter']['periodStart'],
+                EpisodeStatus::DRAFT
+            )
+            : null;
 
         $fhir = Fhir::encounterPackage()->toFhir($validated, $uuids);
         $fhirEncounter = $fhir['encounter'];
@@ -198,6 +288,11 @@ class EncounterEdit extends EncounterComponent
 
         try {
             $this->storePackageElectronicReferralsIfMissing();
+
+            if ($fhirEpisode !== null) {
+                Repository::episode()->updateDraft(Episode::whereUuid($this->draftEpisodeId)->firstOrFail(), $fhirEpisode);
+            }
+
             Repository::encounter()->sync($this->patient(), [$this->fhirToSync($fhirEncounter)]);
             Repository::condition()->sync($this->patient(), array_map($this->fhirToSync(...), $fhirConditions));
             Repository::immunization()->sync($this->patient(), array_map($this->fhirToSync(...), $fhirImmunizations));
@@ -240,6 +335,7 @@ class EncounterEdit extends EncounterComponent
         // Sections with no records stay out of the package, the same way the create flow signs it
         return array_filter([
             'encounter' => $fhirEncounter,
+            'episode' => $fhirEpisode,
             'conditions' => $fhirConditions,
             'immunizations' => $fhirImmunizations,
             'diagnosticReports' => $fhirDiagnosticReports,
@@ -277,8 +373,9 @@ class EncounterEdit extends EncounterComponent
             return;
         }
 
-        if (Auth::user()->cannot('create', Encounter::class)) {
-            Session::flash('error', __('encounters.policy.create'));
+        // The package may have been submitted from another page since this one was opened
+        if (Auth::user()->cannot('update', Encounter::findOrFail($this->encounterId))) {
+            Session::flash('error', __('encounters.policy.update'));
             $this->showSignatureModal = false;
 
             return;
@@ -297,6 +394,43 @@ class EncounterEdit extends EncounterComponent
         $formattedData = $this->save();
         if (is_null($formattedData)) {
             return;
+        }
+
+        if (isset($formattedData['episode'])) {
+            $formattedData['episode']['status'] = EpisodeStatus::ACTIVE->value;
+
+            try {
+                EHealth::episode()->create($this->patientUuid, Arr::toSnakeCase($formattedData['episode']));
+            } catch (EHealthException|EHealthConnectionException $exception) {
+                $exception->handle('Error when create episode');
+                $this->showSignatureModal = false;
+
+                return;
+            }
+
+            // eHealth accepted the episode; only now promote the local draft
+            try {
+                Repository::episode()->updateDraft(
+                    Episode::whereUuid($this->draftEpisodeId)->firstOrFail(),
+                    $formattedData['episode']
+                );
+            } catch (Throwable $exception) {
+                $this->handleDatabaseErrors($exception, 'Failed to store created episode');
+                $this->showSignatureModal = false;
+
+                return;
+            }
+
+            // The episode exists in eHealth now, so a retry after a failure below refers to it instead of creating it again
+            $this->episodeType = 'existing';
+            $this->form->episode = array_merge(
+                $this->form->episode,
+                ['id' => $this->draftEpisodeId, 'typeCode' => '', 'name' => '']
+            );
+            $this->draftEpisodeId = null;
+
+            // The episode was sent on its own, it is not part of the signed package
+            unset($formattedData['episode']);
         }
 
         $formattedData['encounter']['status'] = EncounterStatus::FINISHED->value;
@@ -320,93 +454,45 @@ class EncounterEdit extends EncounterComponent
             return;
         }
 
+        $this->showSignatureModal = false;
+
         try {
-            $resp = EHealth::encounter()->submit($this->patientUuid, [
-                'visit' => [
-                    'id' => data_get($formattedData, 'encounter.visit.identifier.value'),
-                    'period' => data_get($formattedData, 'encounter.period')
-                ],
-                'signed_data' => $signedContent->getBase64Data()
-            ]);
-
-            $jobId = $resp->getData()['job_id'] ?? null;
-            if (!$jobId && isset($resp->getData()['links'][0]['href'])) {
-                $jobId = basename($resp->getData()['links'][0]['href']);
-            }
-
-            if (!$jobId) {
-                throw new \RuntimeException(__('encounters.messages.job_id_not_received'));
-            }
-
-            $jobApi = EHealth::job();
-            $attempts = 0;
-            do {
-                sleep(2);
-                $finalResponse = $jobApi->getDetails($jobId)->getData();
-                $attempts++;
-                $status = strtolower((string) ($finalResponse['status'] ?? ''));
-            } while (in_array($status, ['pending', 'accepted', 'processing'], true) && $attempts < 15);
-
-            if ($status !== 'processed' && $status !== 'active') {
-                $errorHandler = new \App\Classes\eHealth\Errors\ErrorHandler();
-                $errorResult = $errorHandler->handleError($finalResponse);
-                $errorMessages = $errorResult['errors'] ?? [];
-
-                if (empty($errorMessages) || $errorMessages[0] === 'No valid error information provided.') {
-                    $fallbackMsg = data_get($finalResponse, 'error.message')
-                        ?? data_get($finalResponse, 'message')
-                        ?? 'Unknown eHealth Error';
-                    $errorMessages = [$fallbackMsg];
-                }
-
-                $formattedError = implode("\n", $errorMessages);
-                throw new \RuntimeException($formattedError);
-            }
-
-            $encounterUuid = $formattedData['encounter']['id'];
-            $syncData = EHealth::encounter()->getById($this->patientUuid, $encounterUuid)->validate();
-            Repository::encounter()->sync($this->patient(), [$syncData]);
-
-            Session::flash('success', __('encounters.messages.signed_and_sent'));
-            $this->showSignatureModal = false;
-
-            if ($this->prepersonId !== null) {
-                $this->redirectRoute(
-                    'prepersons.encounter.edit',
-                    [legalEntity(), 'preperson' => $this->prepersonId, 'encounterId' => $this->encounterId],
-                    navigate: true
-                );
-            } else {
-                $this->redirectRoute(
-                    'encounter.edit',
-                    [legalEntity(), 'person' => $this->personId, 'encounterId' => $this->encounterId],
-                    navigate: true
-                );
-            }
-
+            $this->submitPackage(Encounter::findOrFail($this->encounterId), $formattedData, $signedContent->getBase64Data());
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while submitting encounter');
-            $this->showSignatureModal = false;
-        } catch (\RuntimeException $exception) {
-            logger()->error('Encounter submission runtime error: ' . $exception->getMessage());
-            Session::flash('error', $exception->getMessage());
-            $this->showSignatureModal = false;
-        } catch (\Throwable $exception) {
-            logger()->error('Encounter submission unexpected error: ' . $exception->getMessage(), [
-                'trace' => $exception->getTraceAsString(),
-            ]);
-            $errorMessage = __('encounters.messages.unexpected_error');
-            Session::flash('error', $errorMessage);
-            $this->showSignatureModal = false;
+
+            return;
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Error while tracking encounter submission');
+
+            return;
         }
 
-        Encounter::query()
-            ->whereId($this->encounterId)
-            ->update([
-                'status' => EncounterStatus::FINISHED->value
-            ]);
+        $this->redirectRoute(
+            $this->prepersonId !== null ? 'prepersons.encounter.view' : 'encounter.view',
+            $this->prepersonId !== null
+                ? [legalEntity(), 'preperson' => $this->prepersonId, 'encounterId' => $this->encounterId]
+                : [legalEntity(), 'person' => $this->personId, 'encounterId' => $this->encounterId],
+            navigate: true
+        );
+    }
 
-        $this->redirectRoute('persons.index', [legalEntity()], navigate: true);
+    /**
+     * Redeem the electronic referral the accepted encounter was based on.
+     *
+     * @param  ReferralRequestLifecycleService  $service
+     * @return void
+     */
+    public function redeemReferral(ReferralRequestLifecycleService $service): void
+    {
+        $this->showReferralRedeemModal = false;
+
+        try {
+            $service->completeReferral($this->referralToRedeemId, $this->encounterUuid);
+            Session::flash('success', __('encounters.messages.referral_redeemed'));
+        } catch (Exception $exception) {
+            Session::flash('error', __('encounters.messages.referral_redeem_error', ['message' => $exception->getMessage()]));
+        }
     }
 
     private function loadSelectedReferralsForView(array $records): void
@@ -505,7 +591,7 @@ class EncounterEdit extends EncounterComponent
         // Cancelled records leave the encounter itself alive, so the page reloads to show them as they now are
         if ($this->selectedCancellationRecords() !== []) {
             $this->redirectRoute(
-                $this->prepersonId !== null ? 'prepersons.encounter.edit' : 'encounter.edit',
+                $this->prepersonId !== null ? 'prepersons.encounter.view' : 'encounter.view',
                 $this->prepersonId !== null
                     ? [legalEntity(), 'preperson' => $this->prepersonId, 'encounterId' => $this->encounterId]
                     : [legalEntity(), $this->personId, $this->encounterId],
