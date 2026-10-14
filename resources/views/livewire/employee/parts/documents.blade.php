@@ -17,7 +17,7 @@
                 documents = Array.isArray(initial) ? JSON.parse(JSON.stringify(initial)) : [];
             })();
             $watch('documents', (val) => {
-                $wire.set('form.documents', Array.isArray(val) ? JSON.parse(JSON.stringify(val)) : [], false);
+                $wire.set('form.documents', Array.isArray(val) ? JSON.parse(JSON.stringify(val)) : [], true);
             });
         "
     >

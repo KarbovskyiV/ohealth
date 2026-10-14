@@ -670,6 +670,8 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
      */
     protected function applyEmployeeTypeBusinessRules(): void
     {
+        $this->syncTaxIdFromDocument();
+
         $isOwnerContext = false;
 
         // 1. If the OWNER type is selected right now
