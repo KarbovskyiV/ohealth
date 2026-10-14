@@ -116,7 +116,7 @@ class EncounterStandaloneReferralCreateDiagnosticTest extends TestCase
         ]);
     }
 
-    public function test_create_encounter_draft_persists_standalone_service_request_with_program(): void
+    public function testCreateEncounterDraftPersistsStandaloneServiceRequestWithProgram(): void
     {
         $serviceId = (string) Str::uuid();
         $programId = (string) Str::uuid();
@@ -160,13 +160,14 @@ class EncounterStandaloneReferralCreateDiagnosticTest extends TestCase
             'uuid' => $draftUuid,
             'service_id' => $serviceId,
             'program_id' => $programId,
-            'context_id' => $this->encounter->id,
+            'status' => 'draft',
             'person_id' => $this->person->id,
             'employee_id' => $this->employee->id,
         ]);
 
-        $local = ServiceRequestRequest::query()->where('uuid', $draftUuid)->first();
+        $local = ServiceRequestRequest::whereUuid($draftUuid)->first();
         $this->assertNotNull($local);
+        $this->assertSame($this->encounter->uuid, $local->context?->value);
         $this->assertNull($local->basedOnId);
     }
 }

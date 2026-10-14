@@ -353,7 +353,9 @@ class ReferralExecutorPhase4Test extends TestCase
             ->assertSet('selectedEmzType', 'encounter')
             ->set('selectedEmzUuid', $encounterUuid)
             ->call('confirmComplete')
-            ->assertDispatched('notify');
+            ->assertSet('searchResults.0.status', 'completed')
+            ->assertSee(__('referrals.messages.complete_success'))
+            ->assertNotDispatched('notify');
     }
 
     public function test_search_results_translate_diagnostic_procedure_category(): void
