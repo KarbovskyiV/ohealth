@@ -12,6 +12,7 @@ use App\Models\MedicalEvents\Sql\Encounter;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Tests\Concerns\MocksBasicDictionaries;
 use Mockery;
 
 use Illuminate\Support\Str;
@@ -19,6 +20,7 @@ use Illuminate\Support\Str;
 class CarePlanLifecycleTest extends TestCase
 {
     use DatabaseTransactions;
+    use MocksBasicDictionaries;
 
     protected function migrateDatabases()
     {
@@ -35,6 +37,7 @@ class CarePlanLifecycleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->mockBasicDictionaries();
 
         config(['cipher.api.domain' => 'https://cipher.invalid']);
         \Illuminate\Support\Facades\Cache::put('knedp_certificate_authority', [], 60);

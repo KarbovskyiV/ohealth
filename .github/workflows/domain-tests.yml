@@ -1,0 +1,70 @@
+# Owned domain PHPUnit: employee, party, care plan, ePrescription, service request.
+# Same scripts as Azure Pipelines. PostgreSQL is installed with apt — no Docker.
+
+name: Domain tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: domain-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phpunit:
+    name: Owned domain suites
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      APP_ENV: testing
+      COMPOSER_NO_INTERACTION: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Initialize isolated testing environment
+        run: bash scripts/ci/initialize-testing-env.sh
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: "8.4"
+          extensions: pgsql, mbstring, xml, curl, zip, bcmath, intl, gd, sqlite, redis
+          coverage: none
+
+      - name: Composer install
+        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader
+
+      - name: PostgreSQL without Docker
+        run: |
+          set -euo pipefail
+          chmod +x scripts/ci/install-postgres.sh scripts/ci/prepare-testing-db.sh scripts/ci/run-domain-tests.sh
+          scripts/ci/install-postgres.sh
+
+      - name: Bootstrap .env for testing
+        run: |
+          set -euo pipefail
+          cp -n .env.example .env || true
+          php artisan config:clear --no-interaction
+
+      - name: Install and update testing DB
+        run: scripts/ci/prepare-testing-db.sh
+
+      - name: PHPUnit owned domains
+        run: scripts/ci/run-domain-tests.sh
+
+      - name: Publish JUnit
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: phpunit-domain-junit
+          path: storage/ci/phpunit-domain-junit.xml
+          if-no-files-found: ignore

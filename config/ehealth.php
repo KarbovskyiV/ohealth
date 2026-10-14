@@ -33,6 +33,8 @@ return [
         'page_size' => env('EHEALTH_PAGE_SIZE', 300),
         'page_size_max' => env('EHEALTH_PAGE_SIZE_MAX', 500),
         'page_size_le_connections_max' => env('EHEALTH_MIS_CONNECTIONS_PAGE_SIZE_MAX', 100),
+        // Install seeds icd_10 from the live dictionary. CI has no PSK; the public mock returns 403.
+        'seed_icd10_from_api' => filter_var(env('EHEALTH_SEED_ICD10', true), FILTER_VALIDATE_BOOL),
     ],
 
     'party_verification' => [

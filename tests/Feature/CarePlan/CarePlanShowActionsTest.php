@@ -25,10 +25,12 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Tests\Concerns\MocksBasicDictionaries;
 
 class CarePlanShowActionsTest extends TestCase
 {
     use DatabaseTransactions;
+    use MocksBasicDictionaries;
 
     protected Person $person;
 
@@ -41,6 +43,7 @@ class CarePlanShowActionsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->mockBasicDictionaries();
 
         config(['cipher.api.domain' => 'https://cipher.invalid']);
         \Illuminate\Support\Facades\Cache::put('knedp_certificate_authority', [], 60);
