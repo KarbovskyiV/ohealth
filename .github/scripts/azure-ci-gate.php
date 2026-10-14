@@ -30,7 +30,7 @@ function azureCiJobs(array $run, string $headSha, callable $request): bool
     return !in_array(false, $required, true);
 }
 
-function azureCiLatest(array $pr, callable $request): array
+function azureCiLatest(array $pr, callable $request, bool $requireSuccess = true): array
 {
     $api = 'https://api.github.com/repos/'.REVIEW_REPOSITORY;
     $sha = $pr['head']['sha'];
@@ -39,7 +39,7 @@ function azureCiLatest(array $pr, callable $request): array
     $runs = $result['workflow_runs'] ?? [];
     usort($runs, static fn (array $a, array $b): int => [(int) $b['run_number'], (int) ($b['run_attempt'] ?? 1)] <=> [(int) $a['run_number'], (int) ($a['run_attempt'] ?? 1)]);
     $run = $runs[0] ?? [];
-    if (!azureCiJobs($run, $sha, $request)) {
+    if ($requireSuccess && !azureCiJobs($run, $sha, $request)) {
         throw new RuntimeException('Current PR commit needs successful Owned domain suites and Frontend build before Azure review.');
     }
 
@@ -63,8 +63,9 @@ function queueAzureReview(array $run, callable $request): array
             || !in_array($pr['author_association'] ?? '', ['OWNER', 'MEMBER', 'COLLABORATOR'], true)) {
             continue;
         }
-        $latest = azureCiLatest($pr, $request);
-        if ($latest['id'] !== $run['id'] || ($latest['run_attempt'] ?? 1) !== ($run['run_attempt'] ?? 1)) {
+        $latest = azureCiLatest($pr, $request, false);
+        if (($latest['id'] ?? null) !== $run['id'] || ($latest['run_attempt'] ?? 1) !== ($run['run_attempt'] ?? 1)
+            || !azureCiJobs($latest, $sha, $request)) {
             continue;
         }
         $request('POST', "$api/actions/workflows/azure-openai-review.yml/dispatches", [

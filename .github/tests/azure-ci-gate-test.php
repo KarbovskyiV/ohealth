@@ -53,6 +53,9 @@ $handler = static function (string $method, string $url, ?array $payload) use ($
 };
 gateCheck(queueAzureReview($run, $handler) === [7] && $dispatches === 1, 'Valid PR was not dispatched');
 $latestFailure = array_replace($run, ['id' => 124, 'run_number' => 11, 'conclusion' => 'failure']);
+gateCheck(queueAzureReview($run, static function ($method, $url, $payload) use ($handler, $run, $latestFailure): array {
+    return str_contains($url, '/domain-tests.yml/runs?') ? ['workflow_runs' => [$run, $latestFailure]] : $handler($method, $url, $payload);
+}) === [], 'Superseded automatic run must skip instead of dispatching or failing');
 try {
     azureCiLatest($pr, static function ($method, $url) use ($run, $latestFailure, $jobs): array {
         return str_contains($url, '/runs?') ? ['workflow_runs' => [$run, $latestFailure]] : $jobs;
