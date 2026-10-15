@@ -1336,10 +1336,11 @@ class PersonForm extends BaseForm
             $invalidTypes = array_diff($submittedTypes, $noSelfAuthAgeDocumentTypes);
 
             if (!empty($invalidTypes)) {
-                $translatedTypes = array_map(static function (string $type): string {
-                    return __('patients.documents.' . $type) ?: $type;
-                }, $noSelfAuthAgeDocumentTypes);
-                $allowedTypesList = implode(', ', $translatedTypes);
+                $documentTypes = dictionary()->basics()->byName('DOCUMENT_TYPE')->asCodeDescription();
+                $allowedTypesList = implode(', ', array_map(
+                    static fn (string $type): ?string => $documentTypes->get($type),
+                    $noSelfAuthAgeDocumentTypes
+                ));
 
                 throw ValidationException::withMessages([
                     'person.documents' => __(
