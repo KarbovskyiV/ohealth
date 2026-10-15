@@ -2,6 +2,7 @@
 
 `edition-39.json` отримано з PDF, наданого для цієї роботи:
 `39-MIS-Tehnichni-vymogy-v-redaktsii-nakazu-NSZU-464-vid-25.08.2026.pdf`.
+Публічне джерело: [ehealth.gov.ua — редакція 39](https://ehealth.gov.ua/wp-content/uploads/2026/08/39-MIS-Tehnichni-vymogy-v-redaktsii-nakazu-NSZU-464-vid-25.08.2026.pdf).
 Метадані містять SHA-256 оригінального PDF, редакцію, наказ і 218 фізичних сторінок.
 Оригінальний PDF зберігається окремо від Git; JSON містить текст 1629 нумерованих
 пунктів, а не модельний переказ. Сторінки є PDF-сторінками, включно з титульною.
