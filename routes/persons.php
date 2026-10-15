@@ -98,11 +98,15 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
                 ->name('edit');
             Route::get('/update/{person}', PersonUpdate::class)->can('create', PersonRequest::class)->name('update');
 
+            Route::get('/{person}/patient-data', PatientData::class)
+                ->can('viewAny', Person::class)
+                ->name('patient-data');
+
+            Route::get('/{person}/verification', PatientVerification::class)
+                ->can('view', PersonVerificationDetail::class)
+                ->name('verification');
+
             Route::middleware('can:view,' . Person::class)->group(function () {
-                Route::get('/{person}/patient-data', PatientData::class)->name('patient-data');
-                Route::get('/{person}/verification', PatientVerification::class)
-                    ->can('view', PersonVerificationDetail::class)
-                    ->name('verification');
                 Route::get('/{person}/summary', PatientSummary::class)->can('view', Person::class)->name('summary');
                 Route::get('/{person}/specimens/{specimen}', PatientSpecimenView::class)
                     ->can('view', Specimen::class)

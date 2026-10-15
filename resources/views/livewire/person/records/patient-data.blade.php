@@ -422,382 +422,394 @@
                                 />
                                 <label class="label">{{ __('forms.gender') }}</label>
                             </div>
-                            <div class="form-group group">
-                                <input
-                                    type="text"
-                                    class="input peer"
-                                    placeholder=" "
-                                    readonly
-                                    value="{{ $form->person['taxId'] ?? '-' }}"
-                                />
-                                <label class="label">{{ __('forms.rnokpp') }}</label>
-                            </div>
+                            @if ($this->canViewPersonalData)
+                                <div class="form-group group">
+                                    <input
+                                        type="text"
+                                        class="input peer"
+                                        placeholder=" "
+                                        readonly
+                                        value="{{ $form->person['taxId'] ?? '-' }}"
+                                    />
+                                    <label class="label">{{ __('forms.rnokpp') }}</label>
+                                </div>
+                            @endif
                         </div>
 
-                        <div class="mt-8">
-                            <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white">
-                                {{ __('patients.person_documents') }}
-                            </h3>
-                            <table class="table-input w-full">
-                                <thead class="thead-input">
-                                    <tr>
-                                        <th scope="col" class="th-input">{{ __('forms.document_type') }}</th>
-                                        <th scope="col" class="th-input">{{ __('forms.number') }}</th>
-                                        <th scope="col" class="th-input">{{ __('forms.issued_by') }}</th>
-                                        <th scope="col" class="th-input">{{ __('forms.issued_at') }}</th>
-                                        <th scope="col" class="th-input">{{ __('forms.valid_until') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @if (!empty($documentsList))
-                                        @foreach ($documentsList as $document)
+                        @if ($this->canViewPersonalData)
+                            <div class="mt-8">
+                                <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white">
+                                    {{ __('patients.person_documents') }}
+                                </h3>
+                                <table class="table-input w-full">
+                                    <thead class="thead-input">
+                                        <tr>
+                                            <th scope="col" class="th-input">{{ __('forms.document_type') }}</th>
+                                            <th scope="col" class="th-input">{{ __('forms.number') }}</th>
+                                            <th scope="col" class="th-input">{{ __('forms.issued_by') }}</th>
+                                            <th scope="col" class="th-input">{{ __('forms.issued_at') }}</th>
+                                            <th scope="col" class="th-input">{{ __('forms.valid_until') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (!empty($documentsList))
+                                            @foreach ($documentsList as $document)
+                                                <tr>
+                                                    <td class="td-input font-medium text-gray-900 dark:text-white">
+                                                        {{ $dictionaries['DOCUMENT_TYPE'][$document['type']] ?? $document['type'] }}
+                                                    </td>
+                                                    <td class="td-input text-gray-700 dark:text-gray-300">
+                                                        {{ $document['number'] ?? '-' }}
+                                                    </td>
+                                                    <td class="td-input text-gray-700 dark:text-gray-300">
+                                                        {{ $document['issuedBy'] ?? '-' }}
+                                                    </td>
+                                                    <td class="td-input text-gray-700 dark:text-gray-300">
+                                                        {{ !empty($document['issuedAt']) ? \Carbon\Carbon::parse($document['issuedAt'])->format('d.m.Y') : '-' }}
+                                                    </td>
+                                                    <td class="td-input text-gray-700 dark:text-gray-300">
+                                                        {{ !empty($document['expirationDate']) ? \Carbon\Carbon::parse($document['expirationDate'])->format('d.m.Y') : '-' }}
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        @else
                                             <tr>
-                                                <td class="td-input font-medium text-gray-900 dark:text-white">
-                                                    {{ $dictionaries['DOCUMENT_TYPE'][$document['type']] ?? $document['type'] }}
-                                                </td>
-                                                <td class="td-input text-gray-700 dark:text-gray-300">
-                                                    {{ $document['number'] ?? '-' }}
-                                                </td>
-                                                <td class="td-input text-gray-700 dark:text-gray-300">
-                                                    {{ $document['issuedBy'] ?? '-' }}
-                                                </td>
-                                                <td class="td-input text-gray-700 dark:text-gray-300">
-                                                    {{ !empty($document['issuedAt']) ? \Carbon\Carbon::parse($document['issuedAt'])->format('d.m.Y') : '-' }}
-                                                </td>
-                                                <td class="td-input text-gray-700 dark:text-gray-300">
-                                                    {{ !empty($document['expirationDate']) ? \Carbon\Carbon::parse($document['expirationDate'])->format('d.m.Y') : '-' }}
+                                                <td colspan="5" class="td-input py-4 text-center text-gray-500">
+                                                    {{ __('patients.no_documents') }}
                                                 </td>
                                             </tr>
-                                        @endforeach
-                                    @else
-                                        <tr>
-                                            <td colspan="5" class="td-input py-4 text-center text-gray-500">
-                                                {{ __('patients.no_documents') }}
-                                            </td>
-                                        </tr>
-                                    @endif
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="mt-8">
-                            <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white">
-                                {{ __('forms.address') }}
-                            </h3>
-
-                            <div class="form-row-3">
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $address['area'] ?? '-' }}"
-                                    />
-                                    <label class="label">{{ __('forms.area') }}</label>
-                                </div>
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $address['region'] ?? '-' }}"
-                                    />
-                                    <label class="label">{{ __('forms.region') }}</label>
-                                </div>
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $dictionaries['SETTLEMENT_TYPE'][$address['settlementType'] ?? ''] ?? ($address['settlementType'] ?? '-') }}"
-                                    />
-                                    <label class="label">{{ __('forms.settlement_type') }}</label>
-                                </div>
+                                        @endif
+                                    </tbody>
+                                </table>
                             </div>
 
-                            <div class="form-row-3">
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $address['settlement'] ?? '-' }}"
-                                    />
-                                    <label class="label">{{ __('forms.settlement') }}</label>
-                                </div>
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $dictionaries['STREET_TYPE'][$address['streetType'] ?? ''] ?? ($address['streetType'] ?? '-') }}"
-                                    />
-                                    <label class="label">{{ __('forms.street_type') }}</label>
-                                </div>
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $address['street'] ?? '-' }}"
-                                    />
-                                    <label class="label">{{ __('forms.street') }}</label>
-                                </div>
-                            </div>
+                            <div class="mt-8">
+                                <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white">
+                                    {{ __('forms.address') }}
+                                </h3>
 
-                            <div class="form-row-3">
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $address['building'] ?? '-' }}"
-                                    />
-                                    <label class="label">{{ __('forms.building') }}</label>
+                                <div class="form-row-3">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $address['area'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.area') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $address['region'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.region') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $dictionaries['SETTLEMENT_TYPE'][$address['settlementType'] ?? ''] ?? ($address['settlementType'] ?? '-') }}"
+                                        />
+                                        <label class="label">{{ __('forms.settlement_type') }}</label>
+                                    </div>
                                 </div>
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $address['apartment'] ?? '-' }}"
-                                    />
-                                    <label class="label">{{ __('forms.apartment') }}</label>
+
+                                <div class="form-row-3">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $address['settlement'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.settlement') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $dictionaries['STREET_TYPE'][$address['streetType'] ?? ''] ?? ($address['streetType'] ?? '-') }}"
+                                        />
+                                        <label class="label">{{ __('forms.street_type') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $address['street'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.street') }}</label>
+                                    </div>
                                 </div>
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $address['zip'] ?? '-' }}"
-                                    />
-                                    <label class="label">{{ __('forms.zip_code') }}</label>
+
+                                <div class="form-row-3">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $address['building'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.building') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $address['apartment'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.apartment') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $address['zip'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.zip_code') }}</label>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
 
-            <div
-                x-data="{ open: true }"
-                class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
-            >
-                <h2>
-                    <button
-                        type="button"
-                        class="group flex w-full cursor-pointer items-center justify-between px-6 py-4 text-left"
-                        @click="open = ! open"
-                        :aria-expanded="open"
-                    >
-                        <span class="text-base font-semibold text-gray-900 dark:text-white">
-                            {{ __('patients.contact_data') }}
-                        </span>
-                        @icon('chevron-down', 'w-5 h-5 text-gray-400 transition-transform group-aria-expanded:rotate-180 shrink-0')
-                    </button>
-                </h2>
-                <div x-show="open" wire:ignore.self>
-                    <div class="border-t border-gray-100 px-6 pt-6 pb-6 dark:border-gray-700">
-                        <div class="mb-6 flex items-center justify-end">
-                            @can('syncPersonData', Person::class)
-                                <button
-                                    type="button"
-                                    class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
-                                    style="margin: 0 !important"
-                                    wire:click.once="syncPersonDataFromEHealth()"
-                                >
-                                    @icon('refresh', 'w-4 h-4')
-                                    <span>{{ $isSyncing ? __('forms.sync_retry') : __('patients.sync_personal_data') }}</span>
-                                </button>
-                            @endcan
-                        </div>
-
-                        @php
-                            $phonesList = $form->person['phones'] ?? [];
-                            $firstPhone = $phonesList[0] ?? null;
-                            $otherPhones = array_slice($phonesList, 1);
-                        @endphp
-
-                        <div class="form-row-3">
-                            <div class="form-group group">
-                                <input
-                                    type="text"
-                                    class="input peer"
-                                    placeholder=" "
-                                    readonly
-                                    value="{{ $firstPhone ? ($dictionaries['PHONE_TYPE'][$firstPhone['type']] ?? $firstPhone['type']) : '-' }}"
-                                />
-                                <label class="label">{{ __('forms.phone_type') }}</label>
+            @if ($this->canViewPersonalData || Auth::user()->can('syncPersonData', Person::class))
+                <div
+                    x-data="{ open: true }"
+                    class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                >
+                    <h2>
+                        <button
+                            type="button"
+                            class="group flex w-full cursor-pointer items-center justify-between px-6 py-4 text-left"
+                            @click="open = ! open"
+                            :aria-expanded="open"
+                        >
+                            <span class="text-base font-semibold text-gray-900 dark:text-white">
+                                {{ __('patients.contact_data') }}
+                            </span>
+                            @icon('chevron-down', 'w-5 h-5 text-gray-400 transition-transform group-aria-expanded:rotate-180 shrink-0')
+                        </button>
+                    </h2>
+                    <div x-show="open" wire:ignore.self>
+                        <div class="border-t border-gray-100 px-6 pt-6 pb-6 dark:border-gray-700">
+                            <div class="mb-6 flex items-center justify-end">
+                                @can('syncPersonData', Person::class)
+                                    <button
+                                        type="button"
+                                        class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                        style="margin: 0 !important"
+                                        wire:click.once="syncPersonDataFromEHealth()"
+                                    >
+                                        @icon('refresh', 'w-4 h-4')
+                                        <span>{{ $isSyncing ? __('forms.sync_retry') : __('patients.sync_personal_data') }}</span>
+                                    </button>
+                                @endcan
                             </div>
-                            <div class="form-group group">
-                                <input
-                                    type="text"
-                                    class="input peer"
-                                    placeholder=" "
-                                    readonly
-                                    value="{{ $firstPhone['number'] ?? '-' }}"
-                                />
-                                <label class="label">{{ __('forms.phone') }}</label>
-                            </div>
-                            <div class="form-group group">
-                                <input
-                                    type="text"
-                                    class="input peer"
-                                    placeholder=" "
-                                    readonly
-                                    value="{{ $form->person['email'] ?? '-' }}"
-                                />
-                                <label class="label">{{ __('patients.email_address') }}</label>
-                            </div>
-                        </div>
 
-                        @foreach ($otherPhones as $phone)
-                            <div class="form-row-3">
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $dictionaries['PHONE_TYPE'][$phone['type']] ?? $phone['type'] }}"
-                                    />
-                                    <label class="label">{{ __('forms.phone_type') }}</label>
+                            @if ($this->canViewPersonalData)
+                                @php
+                                    $phonesList = $form->person['phones'] ?? [];
+                                    $firstPhone = $phonesList[0] ?? null;
+                                    $otherPhones = array_slice($phonesList, 1);
+                                @endphp
+
+                                <div class="form-row-3">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $firstPhone ? ($dictionaries['PHONE_TYPE'][$firstPhone['type']] ?? $firstPhone['type']) : '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.phone_type') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $firstPhone['number'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.phone') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $form->person['email'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('patients.email_address') }}</label>
+                                    </div>
                                 </div>
-                                <div class="form-group group">
-                                    <input
-                                        type="text"
-                                        class="input peer"
-                                        placeholder=" "
-                                        readonly
-                                        value="{{ $phone['number'] ?? '-' }}"
-                                    />
-                                    <label class="label">{{ __('forms.phone') }}</label>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
 
-            <div
-                x-data="{ open: true }"
-                class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
-            >
-                <h2>
-                    <button
-                        type="button"
-                        class="group flex w-full cursor-pointer items-center justify-between px-6 py-4 text-left"
-                        @click="open = ! open"
-                        :aria-expanded="open"
-                    >
-                        <span class="text-base font-semibold text-gray-900 dark:text-white">
-                            {{ __('patients.emergency_contact') }}
-                        </span>
-                        @icon('chevron-down', 'w-5 h-5 text-gray-400 transition-transform group-aria-expanded:rotate-180 shrink-0')
-                    </button>
-                </h2>
-
-                <div x-show="open" wire:ignore.self>
-                    <div class="border-t border-gray-100 px-6 pt-6 pb-6 dark:border-gray-700">
-                        <div class="mb-6 flex items-center justify-end gap-4">
-                            @can('viewEmergencyContact', Person::class)
-                                <button
-                                    type="button"
-                                    class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
-                                    style="margin: 0 !important"
-                                    wire:click.prevent="openEmergencyContactModal"
-                                >
-                                    @icon('phone', 'w-4 h-4')
-                                    <span>{{ __('patients.emergency_contact_request.get_contact') }}</span>
-                                </button>
-                            @endcan
-
-                            @can('syncPersonData', Person::class)
-                                <button
-                                    type="button"
-                                    class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
-                                    style="margin: 0 !important"
-                                    wire:click.once="syncPersonDataFromEHealth()"
-                                >
-                                    @icon('refresh', 'w-4 h-4')
-                                    <span>{{ $isSyncing ? __('forms.sync_retry') : __('patients.sync_personal_data') }}</span>
-                                </button>
-                            @endcan
-                        </div>
-
-                        @php
-                            $emergency = $form->person['emergencyContact'] ?? [];
-                            $emergencyPhones = $emergency['phones'] ?? [];
-                            $firstEmergencyPhone = $emergencyPhones[0] ?? null;
-                        @endphp
-
-                        <div class="form-row-3">
-                            <div class="form-group group">
-                                <input
-                                    type="text"
-                                    class="input peer"
-                                    placeholder=" "
-                                    readonly
-                                    value="{{ $emergency['lastName'] ?? '-' }}"
-                                />
-                                <label class="label">{{ __('forms.last_name') }}</label>
-                            </div>
-                            <div class="form-group group">
-                                <input
-                                    type="text"
-                                    class="input peer"
-                                    placeholder=" "
-                                    readonly
-                                    value="{{ $emergency['firstName'] ?? '-' }}"
-                                />
-                                <label class="label">{{ __('forms.first_name') }}</label>
-                            </div>
-                            <div class="form-group group">
-                                <input
-                                    type="text"
-                                    class="input peer"
-                                    placeholder=" "
-                                    readonly
-                                    value="{{ $emergency['secondName'] ?? '-' }}"
-                                />
-                                <label class="label">{{ __('forms.second_name') }}</label>
-                            </div>
-                        </div>
-
-                        <div class="form-row-3">
-                            <div class="form-group group">
-                                <input
-                                    type="text"
-                                    class="input peer"
-                                    placeholder=" "
-                                    readonly
-                                    value="{{ $firstEmergencyPhone ? ($dictionaries['PHONE_TYPE'][$firstEmergencyPhone['type']] ?? $firstEmergencyPhone['type']) : '-' }}"
-                                />
-                                <label class="label">{{ __('forms.phone_type') }}</label>
-                            </div>
-                            <div class="form-group group">
-                                <input
-                                    type="text"
-                                    class="input peer"
-                                    placeholder=" "
-                                    readonly
-                                    value="{{ $firstEmergencyPhone['number'] ?? '-' }}"
-                                />
-                                <label class="label">{{ __('forms.phone') }}</label>
-                            </div>
+                                @foreach ($otherPhones as $phone)
+                                    <div class="form-row-3">
+                                        <div class="form-group group">
+                                            <input
+                                                type="text"
+                                                class="input peer"
+                                                placeholder=" "
+                                                readonly
+                                                value="{{ $dictionaries['PHONE_TYPE'][$phone['type']] ?? $phone['type'] }}"
+                                            />
+                                            <label class="label">{{ __('forms.phone_type') }}</label>
+                                        </div>
+                                        <div class="form-group group">
+                                            <input
+                                                type="text"
+                                                class="input peer"
+                                                placeholder=" "
+                                                readonly
+                                                value="{{ $phone['number'] ?? '-' }}"
+                                            />
+                                            <label class="label">{{ __('forms.phone') }}</label>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @endif
                         </div>
                     </div>
                 </div>
-            </div>
+            @endif
+
+            @if ($this->canViewPersonalData || Auth::user()->canAny(['viewEmergencyContact', 'syncPersonData'], Person::class))
+                <div
+                    x-data="{ open: true }"
+                    class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                >
+                    <h2>
+                        <button
+                            type="button"
+                            class="group flex w-full cursor-pointer items-center justify-between px-6 py-4 text-left"
+                            @click="open = ! open"
+                            :aria-expanded="open"
+                        >
+                            <span class="text-base font-semibold text-gray-900 dark:text-white">
+                                {{ __('patients.emergency_contact') }}
+                            </span>
+                            @icon('chevron-down', 'w-5 h-5 text-gray-400 transition-transform group-aria-expanded:rotate-180 shrink-0')
+                        </button>
+                    </h2>
+
+                    <div x-show="open" wire:ignore.self>
+                        <div class="border-t border-gray-100 px-6 pt-6 pb-6 dark:border-gray-700">
+                            <div class="mb-6 flex items-center justify-end gap-4">
+                                @can('viewEmergencyContact', Person::class)
+                                    <button
+                                        type="button"
+                                        class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                        style="margin: 0 !important"
+                                        wire:click.prevent="openEmergencyContactModal"
+                                    >
+                                        @icon('phone', 'w-4 h-4')
+                                        <span>{{ __('patients.emergency_contact_request.get_contact') }}</span>
+                                    </button>
+                                @endcan
+
+                                @can('syncPersonData', Person::class)
+                                    <button
+                                        type="button"
+                                        class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                        style="margin: 0 !important"
+                                        wire:click.once="syncPersonDataFromEHealth()"
+                                    >
+                                        @icon('refresh', 'w-4 h-4')
+                                        <span>{{ $isSyncing ? __('forms.sync_retry') : __('patients.sync_personal_data') }}</span>
+                                    </button>
+                                @endcan
+                            </div>
+
+                            @if ($this->canViewPersonalData)
+                                @php
+                                    $emergency = $form->person['emergencyContact'] ?? [];
+                                    $emergencyPhones = $emergency['phones'] ?? [];
+                                    $firstEmergencyPhone = $emergencyPhones[0] ?? null;
+                                @endphp
+
+                                <div class="form-row-3">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $emergency['lastName'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.last_name') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $emergency['firstName'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.first_name') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $emergency['secondName'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.second_name') }}</label>
+                                    </div>
+                                </div>
+
+                                <div class="form-row-3">
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $firstEmergencyPhone ? ($dictionaries['PHONE_TYPE'][$firstEmergencyPhone['type']] ?? $firstEmergencyPhone['type']) : '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.phone_type') }}</label>
+                                    </div>
+                                    <div class="form-group group">
+                                        <input
+                                            type="text"
+                                            class="input peer"
+                                            placeholder=" "
+                                            readonly
+                                            value="{{ $firstEmergencyPhone['number'] ?? '-' }}"
+                                        />
+                                        <label class="label">{{ __('forms.phone') }}</label>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             @can('view', ConfidantPerson::class)
                 <div
@@ -885,10 +897,10 @@
                                                         {{ __('forms.gender') }} : {{ Gender::tryFrom($cp['gender'] ?? '')?->label() ?? '-' }}
                                                     </div>
                                                     <div class="text-xs font-normal text-gray-500">
-                                                        {{ __('forms.rnokpp') }}: {{ empty($cp['taxId']) ? '-' : Str::mask($cp['taxId'], '*', 0, -2) }}
+                                                        {{ __('forms.rnokpp') }}: {{ ($cp['taxId'] ?? null) ?: '-' }}
                                                     </div>
                                                     <div class="text-xs font-normal text-gray-500">
-                                                        {{ __('patients.unzr') }}: {{ empty($cp['unzr']) ? '-' : Str::mask($cp['unzr'], '*', 0, -2) }}
+                                                        {{ __('patients.unzr') }}: {{ ($cp['unzr'] ?? null) ?: '-' }}
                                                     </div>
                                                 </td>
                                                 <td class="td-input align-top">
@@ -999,7 +1011,7 @@
                             </table>
 
                             @can('create', ConfidantPerson::class)
-                                @if (!$this->form->hasLegalCapacityDocument())
+                                @if (!$this->hasLegalCapacityDocument())
                                     <button
                                         type="button"
                                         @click="

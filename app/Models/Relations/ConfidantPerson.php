@@ -7,6 +7,7 @@ namespace App\Models\Relations;
 use App\Casts\EHealthDateCast;
 use App\Enums\JobStatus;
 use Carbon\CarbonImmutable;
+use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ConfidantPerson extends Model
 {
+    use HasCamelCasing;
+
     protected $table = 'confidant_persons';
 
     protected $hidden = [

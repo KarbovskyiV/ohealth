@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\User\Role;
+use App\Models\Declaration;
+use App\Models\MedicalEvents\Sql\Approval;
+use App\Models\Person\Person;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -40,6 +43,22 @@ class PersonPolicy
         }
 
         return Response::allow();
+    }
+
+    /**
+     * Determine whether the user can view the personal data of the patient stored locally: only with an active
+     * declaration or approval on the patient, the way eHealth itself would give it out.
+     */
+    public function viewPersonalData(User $user, Person $person): Response
+    {
+        if ($user->cannot('personal_data:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        $hasPatientAccess = Declaration::accessGrantedTo($user, $person, legalEntity())->exists()
+            || Approval::accessGrantedTo($user, $person, legalEntity())->exists();
+
+        return $hasPatientAccess ? Response::allow() : Response::denyWithStatus(404);
     }
 
     /**

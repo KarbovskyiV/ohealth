@@ -455,14 +455,20 @@ class PersonForm extends BaseForm
         return ['uploadedDocuments.*' => ['required', 'file', 'mimes:jpeg,jpg', 'max:10000']];
     }
 
-    public function rulesForCreateNewConfidantPersonRelationshipRequest(): array
+    /**
+     * Get validation rules for creating a confidant person relationship request.
+     *
+     * @param  bool  $hasLegalCapacityDocument  Whether the documents of the patient prove their own legal capacity
+     * @return array
+     */
+    public function rulesForCreateNewConfidantPersonRelationshipRequest(bool $hasLegalCapacityDocument): array
     {
         return [
             'confidantPersonId' => [
                 'required',
                 'uuid',
-                function (string $attribute, mixed $value, callable $fail): void {
-                    if ($this->hasLegalCapacityDocument()) {
+                function (string $attribute, mixed $value, callable $fail) use ($hasLegalCapacityDocument): void {
+                    if ($hasLegalCapacityDocument) {
                         $fail(__('validation.custom.person.confidant_prohibited_for_legally_capable_person'));
 
                         return;

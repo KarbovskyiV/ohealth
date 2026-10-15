@@ -1,5 +1,6 @@
 @use('App\Enums\Person\AuthStep')
 @use('App\Enums\Person\Gender')
+@use('App\Models\Relations\ConfidantPerson')
 
 <div
     x-data="{
@@ -170,23 +171,25 @@
             {{ __('forms.back') }}
         </button>
 
-        <button
-            type="button"
-            @click="
-                showAuthMethodModal = false;
+        @can('create', ConfidantPerson::class)
+            <button
+                type="button"
+                @click="
+                    showAuthMethodModal = false;
 
-                const parentData = getParentData();
+                    const parentData = getParentData();
 
-                if (parentData) {
-                    parentData.resetForm();
-                    parentData.resetSearchFilters();
-                    parentData.confidantPerson.documentsRelationship = [];
-                    parentData.showConfidantPersonDrawer = true;
-                }
-            "
-            class="button-outline-primary"
-        >
-            {{ __('patients.new_confidant_person') }}
-        </button>
+                    if (parentData) {
+                        parentData.resetForm();
+                        parentData.resetSearchFilters();
+                        parentData.confidantPerson.documentsRelationship = [];
+                        parentData.showConfidantPersonDrawer = true;
+                    }
+                "
+                class="button-outline-primary"
+            >
+                {{ __('patients.new_confidant_person') }}
+            </button>
+        @endcan
     </div>
 </div>
