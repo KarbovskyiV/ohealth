@@ -112,10 +112,12 @@
                 wire:key="preperson-{{ $preperson->id }}"
                 class="shift-content mt-6 mb-16 max-w-6xl rounded-lg border border-gray-200 p-4 shadow sm:p-8 sm:pb-10 dark:border-gray-700 dark:bg-gray-800"
             >
-                <legend class="legend">ID {{ $preperson->externalId }}</legend>
+                <legend class="legend">ID {{ $preperson->uuid ?? '-' }}</legend>
 
                 <div class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
                     <div class="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
+                        <span>{{ __('preperson.external_id') }}: {{ $preperson->externalId ?? '-' }}</span>
+
                         @if ($preperson->birthDate)
                             <span class="flex items-center gap-1.5">
                                 @icon('calendar-outline', 'w-6 h-6 text-gray-800 dark:text-white')

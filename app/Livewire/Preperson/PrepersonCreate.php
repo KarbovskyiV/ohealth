@@ -7,6 +7,7 @@ namespace App\Livewire\Preperson;
 use App\Core\Arr;
 use App\Enums\Preperson\Status;
 use App\Models\Preperson;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
@@ -37,6 +38,7 @@ class PrepersonCreate extends PrepersonComponent
         $personData['note'] = $this->form->buildNote();
         $personData['reasonContext'] = $validated['reasonContext'];
         $personData['status'] = Status::DRAFT->value;
+        $personData['createdBy'] = Auth::user()->activeEmployee()?->id;
 
         if (!empty($personData['birthDate'])) {
             $personData['birthDate'] = convertToYmd($personData['birthDate']);
@@ -83,6 +85,7 @@ class PrepersonCreate extends PrepersonComponent
         // Reason_context is stored only here, never sent to eHealth.
         $record = Arr::toSnakeCase($personData);
         $record['reason_context'] = Arr::toSnakeCase($validated['reasonContext']);
+        $record['created_by'] = Auth::user()->activeEmployee()?->id;
 
         try {
             $preperson = DB::transaction(static function () use ($record): Preperson {

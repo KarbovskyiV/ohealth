@@ -6,7 +6,6 @@ namespace App\Policies;
 
 use App\Enums\Preperson\Status as PrepersonStatus;
 use App\Enums\Status;
-use App\Models\LegalEntity;
 use App\Models\Preperson;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -15,11 +14,11 @@ class PrepersonPolicy
 {
     /**
      * Deny every ability when the current legal entity cannot operate with prepersons.
-     * Prepersons are available only for outpatient and emergency legal entities.
+     * Prepersons are available only for the legal entity types listed in PREPERSON_LEGAL_ENTITIES_ALLOWED_TYPES.
      */
     public function before(User $user, string $ability): ?Response
     {
-        if (!in_array(legalEntity()->type->name, [LegalEntity::TYPE_OUTPATIENT, LegalEntity::TYPE_EMERGENCY], true)) {
+        if (!in_array(legalEntity()->type->name, config('ehealth.preperson_legal_entities_allowed_types'), true)) {
             return Response::denyWithStatus(404);
         }
 

@@ -48,6 +48,13 @@ class PrepersonIndex extends Component
     public ?int $editingId = null;
 
     /**
+     * Whether the list shows the preperson searched by ID in eHealth instead of the local ones.
+     *
+     * @var bool
+     */
+    public bool $isSearching = false;
+
+    /**
      * The preperson whose information certificate is currently open, if any.
      *
      * @return Preperson|null
@@ -220,11 +227,58 @@ class PrepersonIndex extends Component
     #[Computed]
     public function prepersons(): LengthAwarePaginator
     {
-        $query = Preperson::query();
+        return $this->isSearching
+            ? $this->searchPrepersonFromEHealth()
+            : $this->paginateLocalPrepersons();
+    }
 
-        if (!empty($this->searchId)) {
-            $query->whereLike('external_id', '%' . trim($this->searchId) . '%');
+    /**
+     * Apply the search filters, resetting pagination to the first page.
+     * When an ID is given, the preperson is searched in eHealth instead of the local ones.
+     *
+     * @return void
+     */
+    public function search(): void
+    {
+        $this->resetPage();
+
+        $this->searchId = trim($this->searchId ?? '');
+        $this->isSearching = false;
+
+        if (empty($this->searchId)) {
+            return;
         }
+
+        try {
+            $this->validate(['searchId' => ['uuid']]);
+        } catch (ValidationException $exception) {
+            Session::flash('error', $exception->validator->errors()->first());
+
+            throw $exception;
+        }
+
+        $this->isSearching = true;
+    }
+
+    /**
+     * Clear all search filters and reset pagination.
+     *
+     * @return void
+     */
+    public function resetFilters(): void
+    {
+        $this->reset(['searchId', 'searchName', 'searchBirthDate', 'isSearching']);
+        $this->resetPage();
+    }
+
+    /**
+     * Paginate the prepersons of the current legal entity stored locally.
+     *
+     * @return LengthAwarePaginator
+     */
+    protected function paginateLocalPrepersons(): LengthAwarePaginator
+    {
+        $query = Preperson::with('createdByEmployee')->forLegalEntity(legalEntity()->id);
 
         if (!empty($this->searchName)) {
             $term = '%' . trim($this->searchName) . '%';
@@ -244,24 +298,27 @@ class PrepersonIndex extends Component
     }
 
     /**
-     * Apply the search filters, resetting pagination to the first page.
+     * Fetch the preperson searched by ID from eHealth, regardless of the legal entity it was created in.
+     * Its local copy is refreshed with the response, since the row actions work with the local record.
      *
-     * @return void
+     * @return LengthAwarePaginator
      */
-    public function search(): void
+    protected function searchPrepersonFromEHealth(): LengthAwarePaginator
     {
-        $this->resetPage();
-    }
+        $prepersons = [];
 
-    /**
-     * Clear all search filters and reset pagination.
-     *
-     * @return void
-     */
-    public function resetFilters(): void
-    {
-        $this->reset(['searchId', 'searchName', 'searchBirthDate']);
-        $this->resetPage();
+        try {
+            $validated = EHealth::preperson()->getById($this->searchId)->validate();
+            $prepersons[] = Preperson::updateOrCreate(['uuid' => $validated['uuid']], $validated);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error when getting a preperson by ID');
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Failed to store preperson from eHealth');
+        }
+
+        return new LengthAwarePaginator(collect($prepersons), count($prepersons), config('pagination.per_page'), 1, [
+            'path' => LengthAwarePaginator::resolveCurrentPath()
+        ]);
     }
 
     /**

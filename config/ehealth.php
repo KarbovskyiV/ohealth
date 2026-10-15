@@ -694,6 +694,7 @@ return [
 
     // Config params Preperson
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20233683284/DRAFT+Config+params+Preperson+ENT-057
+    'preperson_legal_entities_allowed_types' => ['OUTPATIENT', 'EMERGENCY'],
     'preperson_healthcare_services_speciality_types' => [
         'ADOLESCENT_MEDICINE', 'AEROSPACE_MEDICINE', 'ALLERGOLOGY', 'ANAESTHETICS', 'ANALYTICAL_AND_CONTROL_PHARMACY',
         'AUDIOLOGY', 'BACTERIOLOGY', 'CARDIOLOGY', 'CARDIOVASCULAR_SURGERY', 'CLINICAL_BIOCHEMISTRY',
