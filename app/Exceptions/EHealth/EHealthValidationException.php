@@ -316,6 +316,12 @@ class EHealthValidationException extends EHealthException
 
     protected function translateTopLevelMessage(string $message): string
     {
+        $translated = EHealthException::translate($message);
+
+        if ($translated !== $message) {
+            return $translated;
+        }
+
         $exactMessages = [
             'Care plan has unfinished activities' => 'care_plan_has_unfinished_activities',
             'Confidant Person relationship does not belong to this person' => 'confidant_relationship_not_of_person',

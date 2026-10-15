@@ -46,3 +46,6 @@ opencode.json
 
 # CI PHPUnit artifacts
 /storage/ci/
+
+# Local git worktrees (never belong in a feature PR)
+.worktrees/
