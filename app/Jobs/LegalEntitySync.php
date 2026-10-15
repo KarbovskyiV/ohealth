@@ -34,8 +34,6 @@ class LegalEntitySync extends EHealthJob
         $validated = $response->validate();
 
         Repository::legalEntity()->saveLegators($this->legalEntity, $validated);
-
-        $this->sendEntityNotification('legal_entity', 'completed');
     }
 
     /**

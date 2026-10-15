@@ -66,6 +66,7 @@ use App\Livewire\Specimen\SpecimenCreate;
 use App\Livewire\Specimen\SpecimenIndex;
 use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Relations\Party;
+use App\Models\Connection;
 use App\Models\Declaration;
 use App\Models\Division;
 use App\Models\EmployeeRole;
@@ -74,8 +75,9 @@ use App\Models\HealthcareService;
 use App\Models\LegalEntity;
 use App\Models\License;
 use Illuminate\Support\Facades\Route;
-use App\Livewire\LegalEntity\Connections\LegalEntityConnectionIndex;
 use App\Livewire\LegalEntity\Connections\LegalEntityConnectionShow;
+use App\Livewire\LegalEntity\Connections\LegalEntityConnectionIndex;
+use App\Livewire\LegalEntity\Connections\LegalEntityConnectionCreate;
 
 /*
 |--------------------------------------------------------------------------
@@ -129,6 +131,10 @@ Route::middleware(['auth:web', 'verified'])->group(function () {
         Route::get('/legal-entities/create', CreateLegalEntity::class)
             ->can('limitedAction', LegalEntity::class)
             ->name('legal-entity.new.create');
+
+        Route::get('/connection/create', LegalEntityConnectionCreate::class)
+            ->can('create', Connection::class)
+            ->name('connection.create');
     });
 });
 
@@ -153,9 +159,13 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
                 ->can('viewAny', LegalEntity::class)
                 ->name('legal-entity.details');
 
+            Route::get('/connection/create', LegalEntityConnectionCreate::class)
+                ->can('create', Connection::class)
+                ->name('connection.legal-entity.create');
+
             Route::prefix('connection')->name('connection.')->middleware(['permission:connection:read|client:read'])->group(function () {
-                Route::get('/', LegalEntityConnectionIndex::class)->name('index');
-                Route::get('/{connection}', LegalEntityConnectionShow::class)->name('show');
+                Route::get('/', LegalEntityConnectionIndex::class)->can('viewAny', Connection::class)->name('index');
+                Route::get('/{connection}', LegalEntityConnectionShow::class)->can('view', 'connection')->name('show');
             });
 
             Route::get('/healthcare-service', HealthcareServiceIndex::class)

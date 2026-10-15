@@ -229,6 +229,7 @@ abstract class EHealthJob implements ShouldQueue
                 ->withOption('legal_entity_id', $this->legalEntity->id)
                 ->withOption('token', Crypt::encryptString($this->token)) // Passing the same token to the next job
                 ->withOption('user', $this->user)
+                ->withOption('sync_entity', $this->batch()?->options['sync_entity'] ?? null)
                 ->withOption('patient_uuid', $this->batch()?->options['patient_uuid'] ?? null)
                 ->withOption('person_id', $this->batch()?->options['person_id'] ?? null)
                 ->withOption('preperson_id', $this->batch()?->options['preperson_id'] ?? null)

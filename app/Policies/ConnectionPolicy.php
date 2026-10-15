@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Enums\User\Role;
 use App\Models\Connection;
 use Illuminate\Auth\Access\Response;
+use Illuminate\Support\Facades\Auth;
 use App\Enums\LegalEntity\ConnectionStatus;
+use App\Auth\EHealth\Services\TokenStorage;
 
 class ConnectionPolicy
 {
@@ -17,7 +19,7 @@ class ConnectionPolicy
      */
     public function viewAny(User $user): Response
     {
-        if ($user->can('connection:read') && $user->can('client:read')) {
+        if ($user->can('connection:read')) {
             return Response::allow();
         }
 
@@ -31,7 +33,6 @@ class ConnectionPolicy
     {
         if (
             $user->can('connection:read') &&
-            $user->can('client:read') &&
             $connection->legalEntityId === legalEntity()->id
         ) {
             return Response::allow();
@@ -41,11 +42,19 @@ class ConnectionPolicy
     }
 
     /**
-     * Determine whether the user can update any connection.
+     * Determine whether the user can create a connection.
      */
     public function create(User $user): Response
     {
-        if ($user->can('connection:write')) {
+        if (Auth::guard('web')->check() && !Auth::guard('ehealth')->check()) {
+            return Response::allow();
+        }
+
+        if (
+            Auth::guard('ehealth')->check() &&
+            app(TokenStorage::class)->getBearerToken() &&
+            $user->can('connection:write')
+        ) {
             return Response::allow();
         }
 
@@ -58,6 +67,7 @@ class ConnectionPolicy
     public function update(User $user, Connection $connection): Response
     {
         if (
+            $user->hasAllowedRole([Role::OWNER]) &&
             $user->can('connection:write') &&
             $connection->legalEntityId === legalEntity()->id &&
             $connection->status === ConnectionStatus::ACTIVE->value
@@ -126,6 +136,7 @@ class ConnectionPolicy
         if (
             $user->can('connection:read') &&
             $user->can('client:read') &&
+            $connection->legalEntityId === legalEntity()->id &&
             $connection->status === ConnectionStatus::ACTIVE->value
         ) {
             return Response::allow();

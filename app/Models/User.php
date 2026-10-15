@@ -15,6 +15,7 @@ use App\Models\Relations\Party;
 use App\Models\Employee\Employee;
 use App\Models\Role as ModelsRole;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Traits\HasRoles;
@@ -677,7 +678,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         // If teams are disabled, fallback to original behavior
         if (!config('permission.teams')) {
-            return $this->syncPermissionsParent(...$permissions);
+            return $this->syncPermissionsAtomically(...$permissions);
         }
 
         $teamId = getPermissionsTeamId();
@@ -685,7 +686,7 @@ class User extends Authenticatable implements MustVerifyEmail
         // Team context is mandatory when teams are enabled
         if (!$teamId) {
             // Calling original syncPermissions with empty set
-            return $this->syncPermissionsParent([]);
+            return $this->syncPermissionsAtomically([]);
         }
 
         // Normalize inputs to unique, non-empty permission names (strings):
@@ -711,7 +712,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
         // Calling original syncPermissions with empty set
         if ($incoming->isEmpty()) {
-            return $this->syncPermissionsParent([]);
+            return $this->syncPermissionsAtomically([]);
         }
 
         // Allowed permissions for those roles AND for this LegalEntity type
@@ -721,13 +722,40 @@ class User extends Authenticatable implements MustVerifyEmail
         $filtered = $incoming->intersect($allowed)->values()->all();
 
         // Delegate to original syncPermissions for the filtered set
-        $result = $this->syncPermissionsParent($filtered);
+        $result = $this->syncPermissionsAtomically($filtered);
 
         // Refresh caches and relations
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->unsetRelation('permissions');
 
         return $result;
+    }
+
+    /**
+     * Serialize permission replacement for the same user across login requests and queued jobs.
+     */
+    protected function syncPermissionsAtomically(...$permissions)
+    {
+        if (!$this->exists) {
+            return $this->syncPermissionsParent(...$permissions);
+        }
+
+        // Spatie replaces permissions by deleting existing pivot rows and then inserting new ones.
+        // Login requests and queued synchronization jobs can otherwise interleave these operations
+        // for the same user and attempt to insert duplicate model_has_permissions keys.
+        //
+        // Every synchronization through this helper locks the same user row before changing the
+        // permissions pivot. Another synchronization for this user waits until the transaction
+        // commits or rolls back. Locking the user also works when no permission rows exist yet.
+        // The transaction restores the previous permissions if replacement fails; a transaction
+        // without this shared row lock would not prevent concurrent replacements.
+        return DB::transaction(function () use ($permissions) {
+            // Execute the query to acquire the lock; its result is intentionally unused.
+            // Avoid eager loading relationships and fail if the user no longer exists.
+            $this->newModelQuery()->whereKey($this->getKey())->lockForUpdate()->firstOrFail();
+
+            return $this->syncPermissionsParent(...$permissions);
+        });
     }
 
     /**

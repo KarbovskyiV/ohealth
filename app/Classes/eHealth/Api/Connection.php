@@ -20,6 +20,11 @@ class Connection extends Request
 
     public const string URL_CREATE = '/api/connections';
 
+    public static function redirectUri(): string
+    {
+        return config('ehealth.api.connection_redirect_uri');
+    }
+
     /**
      * Get the list of clients (legal entities) associated with the configured eHealth connection.
      *

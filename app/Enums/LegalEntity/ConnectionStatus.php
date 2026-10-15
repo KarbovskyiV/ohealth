@@ -13,12 +13,14 @@ enum ConnectionStatus: string
 {
     use EnumUtils;
 
+    case PENDING = 'PENDING';  // Custom status for pending verification
     case ACTIVE = 'ACTIVE';
     case TERMINATED = 'TERMINATED';
 
     public function label(): string
     {
         return match ($this) {
+            self::PENDING => __('declarations.status.pending_verification'),
             self::ACTIVE => __('declarations.status.active'),
             self::TERMINATED => __('declarations.status.terminated')
         };
@@ -32,6 +34,7 @@ enum ConnectionStatus: string
     public function color(): string
     {
         return match ($this) {
+            self::PENDING => 'badge-yellow',
             self::ACTIVE => 'badge-green',
             self::TERMINATED => 'badge-red'
         };

@@ -145,11 +145,29 @@ class EHealthResponseException extends EHealthException
             return __('forms.invalid_kep_password');
         }
 
+        $translationKey = $this->getErrorTranslationKey($errorMessage);
+
+        if ($translationKey !== null) {
+            return $response->status() . ': ' . __($translationKey);
+        }
+
         // Hide detailed technical errors in production unless debug is enabled
         if (!config('app.debug') && !app()->isLocal()) {
             return __('care-plan.unexpected_error') ?? 'Виникла помилка при взаємодії з eHealth';
         }
 
         return $response->status() . ': ' . $errorMessage;
+    }
+
+    /**
+     * Get the translation key for a known eHealth error message.
+     */
+    protected function getErrorTranslationKey(string $message): ?string
+    {
+        return match ($message) {
+            'Identity, password combination is wrong.' => 'auth.login.error.validation.credentials',
+            'The redirection URI provided does not match a pre-registered value.' => 'errors.ehealth.messages.redirect_uri_mismatch',
+            default => null,
+        };
     }
 }

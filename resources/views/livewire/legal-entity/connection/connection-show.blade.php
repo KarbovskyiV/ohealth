@@ -39,7 +39,7 @@
                     id="name"
                     class="input peer"
                     placeholder=" "
-                    value="{{ $connection->client->name }}"
+                    value="{{ $connection->client?->name ?: (data_get($connection->legalEntity?->edr, 'name') ?: '-') }}"
                     disabled
                 >
                 <label for="name" class="label">{{ __('legal-entity-connection.facility_name') }}</label>

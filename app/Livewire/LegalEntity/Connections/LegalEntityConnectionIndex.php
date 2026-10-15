@@ -26,9 +26,11 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Session;
 use App\Notifications\SyncNotification;
 use App\Traits\BatchLegalEntityQueries;
+use App\Enums\LegalEntity\ConnectionStatus;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
+use App\Classes\eHealth\Api\Connection as ConnectionApi;
 use App\Livewire\LegalEntity\Connections\Form\ConnectionForm;
 
 class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
@@ -46,8 +48,6 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
     public const string BATCH_SUBNAME = 'ConnectionClientSync';
 
     public bool $showSignatureModal = false;
-
-    public string $clientUuid = '';
 
     public ConnectionForm $form;
 
@@ -91,9 +91,12 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
             return;
         }
 
+        $this->form->clientUuid = $clientUuid;
+        $this->form->validate($this->form->rulesForClientId());
+
         $this->dataToSign = [
-            'client_id' => $clientUuid,
-            'redirect_uri' => config('ehealth.api.connection_redirect_uri')
+            'client_id' => $this->form->clientUuid,
+            'redirect_uri' => ConnectionApi::redirectUri()
         ];
 
         $this->showSignatureModal = true;
@@ -101,7 +104,13 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
 
     public function sign()
     {
-        $this->form->validate($this->form->rulesForSign());
+        if (Auth::user()->cannot('create', Connection::class)) {
+            session()->flash('error', __('legal-entity-connection.policy.restrict.create'));
+
+            return;
+        }
+
+        $this->form->validate($this->form->rulesForSign(skipTaxIdValidation: true));
 
         try {
             $signedData = signatureService()->signData(
@@ -154,7 +163,7 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
             return;
         }
 
-        if (!Repository::legalEntity()->syncConnections([$connectionData], $this->legalEntity)) {
+        if (!Repository::legalEntity()->syncConnections([$connectionData], $this->legalEntity, ConnectionStatus::PENDING)) {
             return;
         }
 
@@ -167,7 +176,7 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
         } catch (Throwable $err) {
             Log::error('Connection creation: cannot update client secret for Legal Entity: ', ['legalEntity' => $connection->legalEntity->id]);
 
-            session()->flash('success', 'Зв\'язок успішно встановлений!');
+            session()->flash('error', __('Помилка збереження токену (secret) для закладу'));
 
             return;
         }
@@ -180,7 +189,11 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
         }
 
         // If connection was successful, the connection uuid should exist in the eHealth system.
-        $isSuccessfulConnect = in_array($connection->uuid, array_column($connectionsData['responseData'], 'uuid'), true);
+        $isSuccessfulConnect = \in_array($connection->uuid, array_column($connectionsData['responseData'], 'uuid'), true);
+
+        if ($isSuccessfulConnect) {
+            $connection->update(['status' => ConnectionStatus::ACTIVE->value]);
+        }
 
         return $isSuccessfulConnect
            ? redirect()->route('connection.show', [$this->legalEntity ?? legalEntity(), $connection->id])->with('success', __('legal-entity-connection.connection_established'))
@@ -243,9 +256,9 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
             $user->notify(new SyncNotification('connection', 'started'));
 
             $this->legalEntity->setEntityStatus(JobStatus::PROCESSING);
-        } else {
+        } elseif (!empty($connections['responseData'])) {
             // Client synchronization
-            if (count($connections['responseData']) === 1) {
+            if (\count($connections['responseData']) === 1) {
                 $clientUuid = Arr::get($connections, 'responseData.0.client_uuid', null);
 
                 if (!$this->syncSingleClient($clientUuid)) {
