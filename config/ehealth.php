@@ -170,7 +170,7 @@ return [
         ],
         'ADMIN' => [
             'position' => [
-                ' P5', 'P6', 'P14', 'P18', 'P19'
+                'P5', 'P6', 'P14', 'P18', 'P19'
             ]
         ],
         'HR' => [
@@ -660,6 +660,9 @@ return [
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20214317118/DRAFT+Config+params+Person+ENT-050#VALIDATE_PERSON_TAX_ID_UNIQUENESS
     'validate_person_tax_id_uniqueness' => true,
     'third_person_limit' => 150,
+    'no_tax_id_document_types' => [
+        'PASSPORT', 'NATIONAL_ID', 'REFUGEE_CERTIFICATE', 'PERMANENT_RESIDENCE_PERMIT',
+    ],
     'employee_identity_document_types' => [
         // EMPLOYEE_IDENTITY_DOCUMENT_TYPES — chart parameter, API-005-024-0001 §9 Validate request (Logic)
         // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/17570365551/DRAFT+REST+API+Create+Employee+Request+v2+API-005-024-0001

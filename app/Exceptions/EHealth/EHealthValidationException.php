@@ -120,6 +120,12 @@ class EHealthValidationException extends EHealthException
                         return __('Категорія послуги: обрана послуга не відповідає вказаній категорії в ЕСОЗ. Будь ласка, оберіть правильну категорію в полі «Категорія» (наприклад, Діагностична процедура / Процедура / Лабораторна діагностика тощо)');
                     }
 
+                    $translatedDescription = $this->translateRuleDescription($description);
+
+                    if ($translatedDescription !== null) {
+                        return "$entry: $translatedDescription";
+                    }
+
                     $ruleMessage = $this->translateRule($entry, $item['rules'][0]['rule'] ?? null, $item['rules'][0]['params'] ?? []);
 
                     // Errors are joined by commas here, so the closing period of a validation message is dropped
@@ -148,6 +154,7 @@ class EHealthValidationException extends EHealthException
             'party.second_name' => __('forms.second_name'),
             'party.birth_date' => __('forms.birth_date'),
             'party.tax_id' => __('forms.tax_id'),
+            'party.email' => __('forms.email'),
             'party.working_experience' => __('forms.working_experience'),
             'doctor' => __('forms.doctor_data'),
             'start_date' => __('forms.start_date_work'),
@@ -207,7 +214,8 @@ class EHealthValidationException extends EHealthException
                 return null;
             }
 
-            $ruleMessage = $this->translateRule($eHealthKey, $ruleName, Arr::get($detail, 'rules.0.params') ?? []);
+            $translatedDescription = $this->translateRuleDescription($message);
+            $ruleMessage = $translatedDescription === null ? $this->translateRule($eHealthKey, $ruleName, Arr::get($detail, 'rules.0.params') ?? []) : null;
 
             if ($ruleMessage !== null) {
                 return $ruleMessage;
@@ -217,9 +225,11 @@ class EHealthValidationException extends EHealthException
             $normalizedKey = preg_replace('/\.?\[\d+\]/', '.*', $eHealthKey);
             $translatedKey = $eHealthFieldTranslations[$normalizedKey] ?? $eHealthFieldTranslations[$eHealthKey] ?? $eHealthKey;
 
-            $translatedMessage = '';
+            $translatedMessage = $translatedDescription ?? '';
 
-            if (str_contains($message, 'employee doesn\'t have speciality with active speciality_officio')) {
+            if ($translatedMessage !== '') {
+                // Known eHealth rule text is already Ukrainian.
+            } elseif (str_contains($message, 'employee doesn\'t have speciality with active speciality_officio')) {
                 $translatedMessage = __(
                     'errors.ehealth.messages.employee doesn\'t have speciality with active speciality_officio'
                 );
@@ -362,6 +372,26 @@ class EHealthValidationException extends EHealthException
         }
 
         return false;
+    }
+
+    /**
+     * Ukrainian text for eHealth rule descriptions that otherwise stay in English.
+     */
+    private function translateRuleDescription(string $message): ?string
+    {
+        if (str_contains($message, 'to be an email address')) {
+            return __('errors.ehealth.messages.email_must_be_latin');
+        }
+
+        if (str_contains($message, 'No duplicate values')) {
+            return __('errors.ehealth.messages.no_duplicate_values');
+        }
+
+        if (str_contains($message, 'invalid tax_id')) {
+            return __('errors.ehealth.messages.invalid_tax_id');
+        }
+
+        return null;
     }
 
     protected function translateTopLevelMessage(string $message): string
