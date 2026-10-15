@@ -38,6 +38,54 @@ class ReferralLifecycleTest extends TestCase
     protected CarePlanActivity $serviceActivity;
     protected CarePlanActivity $deviceActivity;
 
+    public function test_transfer_without_program_is_prequalified_before_draft_persistence(): void
+    {
+        $destination = (string) Str::uuid();
+        $division = (string) Str::uuid();
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldReceive('prequalify')->once()->with($this->person->uuid, Mockery::on(function (array $payload) use ($destination, $division) {
+            $this->assertSame([], $payload['programs']);
+            $this->assertSame($destination, data_get($payload, 'service_request.performer.identifier.value'));
+            $this->assertSame($division, data_get($payload, 'service_request.location_reference.identifier.value'));
+
+            return true;
+        }))->andReturn(new EHealthResponse(new \GuzzleHttp\Psr7\Response(200, [], json_encode(['data' => []]))));
+        $this->instance(ServiceRequestApi::class, $api);
+
+        $uuid = app(\App\Services\MedicalEvents\ReferralRequestLifecycleService::class)->createEncounterDraft($this->encounter, [
+            'category' => 'transfer_of_care', 'service_id' => (string) Str::uuid(),
+            'performer' => $destination, 'location_reference' => $division,
+        ], 1, [
+            'employee_id' => $this->employee->id, 'employee_uuid' => $this->employee->uuid,
+            'legal_entity_uuid' => legalEntity()->uuid,
+        ]);
+
+        $record = Repository::serviceRequest()->findByUuid($uuid);
+        $this->assertNotNull($record);
+        $this->assertSame($destination, $record->performer->value);
+        $this->assertSame($division, $record->locationReference->value);
+    }
+
+    public function test_transfer_rejected_by_ehealth_is_not_persisted_even_without_program(): void
+    {
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldReceive('prequalify')->once()->andThrow(new \App\Exceptions\EHealth\EHealthValidationException([
+            'error' => ['message' => 'LocationReference is not an active division'],
+        ]));
+        $this->instance(ServiceRequestApi::class, $api);
+        $count = \App\Models\MedicalEvents\Sql\ServiceRequestRequest::count();
+
+        try {
+            app(\App\Services\MedicalEvents\ReferralRequestLifecycleService::class)->createEncounterDraft($this->encounter, [
+                'category' => 'transfer_of_care', 'service_id' => (string) Str::uuid(),
+                'performer' => (string) Str::uuid(), 'location_reference' => (string) Str::uuid(),
+            ], 1, ['employee_id' => $this->employee->id, 'employee_uuid' => $this->employee->uuid, 'legal_entity_uuid' => legalEntity()->uuid]);
+            $this->fail('eHealth rejection must stop transfer persistence.');
+        } catch (\App\Exceptions\EHealth\EHealthValidationException) {
+            $this->assertSame($count, \App\Models\MedicalEvents\Sql\ServiceRequestRequest::count());
+        }
+    }
+
     protected function migrateDatabases()
     {
         $this->artisan('migrate:fresh', [
@@ -240,6 +288,13 @@ class ReferralLifecycleTest extends TestCase
             'person_id' => $this->person->id,
             'based_on_id' => $this->fhirIdentifierId((string) $this->deviceActivity->uuid),
         ]);
+
+        $service = \App\Models\MedicalEvents\Sql\ServiceRequestRequest::findOrFail($serviceId);
+        $device = \App\Models\MedicalEvents\Sql\DeviceRequestRequest::findOrFail($deviceId);
+        $this->assertSame($this->serviceActivity->uuid, $service->basedOn->value);
+        $this->assertSame($this->deviceActivity->uuid, $device->basedOn->value);
+        $this->assertSame($this->encounter->uuid, $service->context->value);
+        $this->assertSame($this->encounter->uuid, $device->context->value);
     }
 
     public function test_can_map_to_fhir_payloads(): void
@@ -594,6 +649,8 @@ class ReferralLifecycleTest extends TestCase
             'quantity' => 3.0,
             'based_on_id' => $this->fhirIdentifierId((string) $this->serviceActivity->uuid),
         ]);
+        $referral = \App\Models\MedicalEvents\Sql\ServiceRequestRequest::where('uuid', $draftUuid)->firstOrFail();
+        $this->assertSame($this->serviceActivity->uuid, $referral->basedOn->value);
     }
 
     public function test_livewire_skips_prequalify_when_activity_has_no_program(): void
@@ -623,6 +680,8 @@ class ReferralLifecycleTest extends TestCase
             'status' => 'draft',
             'based_on_id' => $this->fhirIdentifierId((string) $this->serviceActivity->uuid),
         ]);
+        $referral = \App\Models\MedicalEvents\Sql\ServiceRequestRequest::where('uuid', $draftUuid)->firstOrFail();
+        $this->assertSame($this->serviceActivity->uuid, $referral->basedOn->value);
     }
 
     public function test_create_care_plan_device_draft_skips_prequalify_without_program(): void
