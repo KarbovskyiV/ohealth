@@ -33,6 +33,7 @@ use App\Livewire\Encounter\Concerns\ManagesEncounterReferrals;
 use App\Livewire\Encounter\Concerns\ResolvesEncounterStandaloneContext;
 use Exception;
 use Livewire\Attributes\Locked;
+use RuntimeException;
 use Throwable;
 
 class EncounterEdit extends EncounterComponent
@@ -488,6 +489,13 @@ class EncounterEdit extends EncounterComponent
         $this->showReferralRedeemModal = false;
 
         try {
+            if (
+                $this->referralToRedeemId === null
+                || strtolower((string) Repository::serviceRequest()->findByUuid($this->referralToRedeemId)?->status) !== ServiceRequestStatus::IN_PROGRESS->value
+            ) {
+                throw new RuntimeException(__('Направлення не було підтверджено перед підписанням взаємодії.'));
+            }
+
             $service->completeReferral($this->referralToRedeemId, $this->encounterUuid);
             Session::flash('success', __('encounters.messages.referral_redeemed'));
         } catch (Exception $exception) {

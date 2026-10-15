@@ -320,13 +320,14 @@ class ReferralExecutorPhase4Test extends TestCase
         $this->assertSame($record->uuid, $component->confirmedElectronicReferralUuid);
         $this->assertSame('in_progress', $record->fresh()->status);
 
-        // The signed encounter has been synced; the user confirms the completion modal.
-        $component->referralToRedeemUuid = $record->uuid;
-        $component->createdEncounterUuidForRedeem = $encounter->uuid;
-        $component->showReferralRedeemModal = true;
-        $component->redeemReferral($lifecycle);
+        // The async submission has been accepted; completion now runs on the encounter view.
+        $view = new \App\Livewire\Encounter\EncounterView();
+        $view->referralToRedeemId = $record->uuid;
+        $view->encounterUuid = $encounter->uuid;
+        $view->showReferralRedeemModal = true;
+        $view->redeemReferral($lifecycle);
 
-        $this->assertFalse($component->showReferralRedeemModal);
+        $this->assertFalse($view->showReferralRedeemModal);
         $this->assertSame('completed', $record->fresh()->status);
         $this->assertSame(__('encounters.messages.referral_redeemed'), session('success'));
         $this->assertNull(session('error'));
@@ -336,11 +337,10 @@ class ReferralExecutorPhase4Test extends TestCase
     {
         $this->actingAs($this->user);
         $record = $this->createActiveReferral();
-        $component = $this->encounterCreateComponent($record);
         $encounter = $this->finishedEncounterForReferral($record);
-        $component->preparedElectronicReferralUuid = $record->uuid;
-        $component->referralToRedeemUuid = $record->uuid;
-        $component->createdEncounterUuidForRedeem = $encounter->uuid;
+        $component = new \App\Livewire\Encounter\EncounterView();
+        $component->referralToRedeemId = $record->uuid;
+        $component->encounterUuid = $encounter->uuid;
         $component->showReferralRedeemModal = true;
         $api = Mockery::mock(ServiceRequestApi::class);
         $api->shouldNotReceive('qualify', 'process', 'complete');
