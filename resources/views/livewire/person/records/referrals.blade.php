@@ -119,7 +119,7 @@
                                         </a>
                                     @elseif (!empty($referral['encounterId']) && $personId)
                                         <a
-                                            href="{{ route('encounter.edit', [legalEntity(), 'person' => $personId, 'encounterId' => $referral['encounterId']]) }}"
+                                            href="{{ route('encounter.view', [legalEntity(), 'person' => $personId, 'encounterId' => $referral['encounterId']]) }}"
                                             class="text-link"
                                         >
                                             {{ $referral['basisLabel'] }}
@@ -148,7 +148,7 @@
                                             </button>
                                             @if (!empty($referral['encounterId']) && $personId)
                                                 <a
-                                                    href="{{ route('encounter.edit', [legalEntity(), 'person' => $personId, 'encounterId' => $referral['encounterId']]) }}"
+                                                    href="{{ route('encounter.view', [legalEntity(), 'person' => $personId, 'encounterId' => $referral['encounterId']]) }}"
                                                     class="text-link text-xs"
                                                 >
                                                     {{ __('Редагувати') }}
@@ -212,11 +212,15 @@
                                     <td colspan="8" class="bg-gray-50 px-4 py-3 text-sm dark:bg-gray-900/30">
                                         <div class="grid gap-3 sm:grid-cols-3">
                                             <div>
-                                                <div class="text-[10px] text-gray-400 uppercase">{{ __('Пріоритет') }}</div>
+                                                <div class="text-[10px] text-gray-400 uppercase">
+                                                    {{ __('Пріоритет') }}
+                                                </div>
                                                 <div class="font-medium">{{ $referral['priorityLabel'] ?? '—' }}</div>
                                             </div>
                                             <div>
-                                                <div class="text-[10px] text-gray-400 uppercase">{{ __('Програма') }}</div>
+                                                <div class="text-[10px] text-gray-400 uppercase">
+                                                    {{ __('Програма') }}
+                                                </div>
                                                 <div class="font-medium">{{ $referral['programName'] ?? '—' }}</div>
                                             </div>
                                             <div>
@@ -224,7 +228,9 @@
                                                 <div class="font-medium break-all">{{ $referral['uuid'] }}</div>
                                             </div>
                                             <div class="sm:col-span-3">
-                                                <div class="text-[10px] text-gray-400 uppercase">{{ __('Примітка') }}</div>
+                                                <div class="text-[10px] text-gray-400 uppercase">
+                                                    {{ __('Примітка') }}
+                                                </div>
                                                 <div>{{ $referral['note'] !== '' ? $referral['note'] : '—' }}</div>
                                             </div>
                                             <div class="sm:col-span-3">

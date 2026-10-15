@@ -313,6 +313,7 @@ class PatientSpecimens extends BasePatientComponent
     protected function paginateLocalSpecimens(): LengthAwarePaginator
     {
         $paginator = Specimen::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->latest('ehealth_inserted_at')
             ->paginate(config('pagination.per_page'));

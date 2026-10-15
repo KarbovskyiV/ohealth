@@ -113,7 +113,7 @@ class EHealthValidationException extends EHealthException
                         return __('Категорія послуги: обрана послуга не відповідає вказаній категорії в ЕСОЗ. Будь ласка, оберіть правильну категорію в полі «Категорія» (наприклад, Діагностична процедура / Процедура / Лабораторна діагностика тощо)');
                     }
 
-                    $ruleMessage = $this->translateRule($entry, $item['rules'][0]['rule'] ?? null);
+                    $ruleMessage = $this->translateRule($entry, $item['rules'][0]['rule'] ?? null, $item['rules'][0]['params'] ?? []);
 
                     // Errors are joined by commas here, so the closing period of a validation message is dropped
                     return $ruleMessage !== null ? rtrim($ruleMessage, '.') : "$entry: $description";
@@ -198,7 +198,7 @@ class EHealthValidationException extends EHealthException
                 return null;
             }
 
-            $ruleMessage = $this->translateRule($eHealthKey, $ruleName);
+            $ruleMessage = $this->translateRule($eHealthKey, $ruleName, Arr::get($detail, 'rules.0.params') ?? []);
 
             if ($ruleMessage !== null) {
                 return $ruleMessage;
@@ -320,6 +320,7 @@ class EHealthValidationException extends EHealthException
             'Care plan has unfinished activities' => 'care_plan_has_unfinished_activities',
             'Confidant Person relationship does not belong to this person' => 'confidant_relationship_not_of_person',
             'Limit of confidant persons with this person is exhausted' => 'confidant_persons_limit_exhausted',
+            'client_id refers to legal entity that is not active' => 'legal_entity_not_active',
         ];
         if (isset($exactMessages[$message])) {
             return __('errors.ehealth.messages.'.$exactMessages[$message]);
@@ -373,10 +374,17 @@ class EHealthValidationException extends EHealthException
      *
      * @param  string  $entry
      * @param  string|null  $rule
+     * @param  array  $params  Fields the rule refers to, as oneOf lists the fields one of which is required
      * @return string|null
      */
-    protected function translateRule(string $entry, ?string $rule): ?string
+    protected function translateRule(string $entry, ?string $rule, array $params = []): ?string
     {
+        if ($rule === 'oneOf') {
+            return __('errors.ehealth.messages.one_of', [
+                'fields' => collect($params)->map($this->translateEntry(...))->implode(', ')
+            ]);
+        }
+
         $validationKey = match ($rule) {
             'required' => 'validation.required',
             'email' => 'validation.email',

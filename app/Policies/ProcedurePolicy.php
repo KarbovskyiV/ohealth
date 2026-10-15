@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\JobStatus;
+use App\Enums\Person\ProcedureStatus;
 use App\Enums\Status;
 use App\Enums\User\Role;
 use App\Models\Employee\Employee;
@@ -37,6 +39,23 @@ class ProcedurePolicy
     public function create(User $user): Response
     {
         if ($user->cannot('procedure:write')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Determine whether the user can change the procedure and sign it: a draft that is not waiting for eHealth.
+     */
+    public function update(User $user, Procedure $procedure): Response
+    {
+        if ($user->cannot('procedure:write')) {
+            return Response::denyWithStatus(404);
+        }
+
+        if ($procedure->status !== ProcedureStatus::DRAFT->value
+            || $procedure->ehealthLinks()->latest('id')->value('status') === JobStatus::PENDING->value) {
             return Response::denyWithStatus(404);
         }
 

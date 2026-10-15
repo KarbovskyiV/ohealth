@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\DiagnosticReport;
 
 use App\Core\Arr;
-use App\Enums\Person\DiagnosticReportStatus;
 use App\Models\LegalEntity;
 use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\DiagnosticReport;
@@ -13,7 +12,9 @@ use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
 use App\Services\MedicalEvents\Fhir;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Locked;
 use Throwable;
 
@@ -22,7 +23,12 @@ class DiagnosticReportEdit extends DiagnosticReportComponent
     #[Locked]
     public int $diagnosticReportId;
 
-    public bool $isReadonly = false;
+    /**
+     * Report status, shown in the eHealth status block while the report was never submitted.
+     *
+     * @var string
+     */
+    public string $statusLabel;
 
     public function mount(
         LegalEntity $legalEntity,
@@ -41,8 +47,8 @@ class DiagnosticReportEdit extends DiagnosticReportComponent
 
         $this->diagnosticReportUuid = $diagnosticReport->uuid;
 
-        $this->isReadonly = request()->routeIs('diagnostic-report.view')
-            || $diagnosticReport->status === DiagnosticReportStatus::FINAL;
+        $this->statusLabel = $diagnosticReport->status->label();
+        $this->isReadonly = Auth::user()->cannot('update', $diagnosticReport);
 
         $diagnosticReportFhirData = Arr::toCamelCase($diagnosticReport->toArray());
 
@@ -114,6 +120,39 @@ class DiagnosticReportEdit extends DiagnosticReportComponent
         $this->form->observations = collect(Repository::observation()->getByDiagnosticReportId($diagnosticReportId))
             ->map(fn (array $observation) => Fhir::observation()->fromFhir($observation))
             ->toArray();
+    }
+
+    /**
+     * Validate and save the draft, unless it was submitted from another page since this one was opened.
+     *
+     * @param  array  $diagnosticReportData
+     * @return void
+     */
+    public function save(array $diagnosticReportData): void
+    {
+        if (Auth::user()->cannot('update', DiagnosticReport::findOrFail($this->diagnosticReportId))) {
+            Session::flash('error', __('diagnostic-reports.policy.update'));
+
+            return;
+        }
+
+        parent::save($diagnosticReportData);
+    }
+
+    /**
+     * Sign and submit the draft, unless it was submitted from another page since this one was opened.
+     *
+     * @return void
+     */
+    public function sign(): void
+    {
+        if (Auth::user()->cannot('update', DiagnosticReport::findOrFail($this->diagnosticReportId))) {
+            Session::flash('error', __('diagnostic-reports.policy.update'));
+
+            return;
+        }
+
+        parent::sign();
     }
 
     protected function loadSelectedElectronicReferral(string $uuid): string

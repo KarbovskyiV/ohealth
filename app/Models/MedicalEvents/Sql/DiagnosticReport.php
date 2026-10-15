@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Models\MedicalEvents\Sql;
 
+use App\Enums\Person\EncounterStatus;
 use App\Casts\EHealthTimestampCast;
+use App\Contracts\SubmittedToEHealth;
 use App\Enums\Person\DiagnosticReportStatus;
+use App\Models\EhealthLink;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use Carbon\CarbonImmutable;
@@ -18,9 +21,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
-class DiagnosticReport extends Model
+class DiagnosticReport extends Model implements SubmittedToEHealth
 {
     use HasCamelCasing;
 
@@ -145,9 +149,24 @@ class DiagnosticReport extends Model
         );
     }
 
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
+    }
+
     public function preperson(): BelongsTo
     {
         return $this->belongsTo(Preperson::class);
+    }
+
+    /**
+     * eHealth jobs the signed report was submitted with, the latest one telling how the last submission went.
+     *
+     * @return MorphMany
+     */
+    public function ehealthLinks(): MorphMany
+    {
+        return $this->morphMany(EhealthLink::class, 'linkable');
     }
 
     public function basedOn(): BelongsTo
@@ -261,6 +280,25 @@ class DiagnosticReport extends Model
     }
 
     /**
+     * Leave out the records of an encounter package eHealth has not accepted yet, which is still a draft.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function notInDraftEncounter(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->whereDoesntHave(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::forPatient($patient)->whereStatus(EncounterStatus::DRAFT)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
      * Filter diagnostic reports managed by the current legal entity.
      *
      * ABAC rule 10.
@@ -324,7 +362,8 @@ class DiagnosticReport extends Model
     }
 
     /**
-     * Order by most recently updated in eHealth first, keeping records without a timestamp last.
+     * Order by most recently updated in eHealth first, keeping records without a timestamp last. Drafts lead the list,
+     * by their local update time, as they are not in eHealth yet.
      *
      * @param  Builder  $query
      * @return Builder
@@ -332,8 +371,10 @@ class DiagnosticReport extends Model
     #[Scope]
     protected function recentlyUpdatedFirst(Builder $query): Builder
     {
-        return $query->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
-            ->orderByDesc('ehealth_updated_at');
+        return $query->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [DiagnosticReportStatus::DRAFT->value])
+            ->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('ehealth_updated_at')
+            ->orderByDesc('updated_at');
     }
 
     /**

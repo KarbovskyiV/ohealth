@@ -29,6 +29,8 @@ class Encounter extends PatientApiBase
      */
     public function submit(string $id, array $data): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateSubmittedJob(...));
+
         return $this->post(self::URL . "/$id/encounter_package", $data);
     }
 

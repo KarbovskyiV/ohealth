@@ -1,7 +1,23 @@
+@php
+    use App\Livewire\Procedure\ProcedureView;
+    use App\Models\MedicalEvents\Sql\Procedure;
+@endphp
+
 <section class="section-form">
     <x-header-navigation class="breadcrumb-form">
         <x-slot name="title">{{ __('procedures.plural') }} - {{ $patientFullName }}</x-slot>
     </x-header-navigation>
+
+    @if ($this instanceof ProcedureView)
+        <div class="form mb-4">
+            <livewire:components.submission-status
+                :recordType="Procedure::class"
+                :recordId="$procedureId"
+                :recordStatusLabel="$statusLabel"
+                :editUrl="$editUrl"
+            />
+        </div>
+    @endif
 
     <form
         class="form"

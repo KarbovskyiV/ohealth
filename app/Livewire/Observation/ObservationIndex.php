@@ -336,6 +336,8 @@ class ObservationIndex extends BasePatientComponent
     protected function paginateLocalObservations(): LengthAwarePaginator
     {
         $paginator = Observation::readableFor($this->patient(), $this->hasPatientAccess)
+            ->notInDraftEncounter($this->patient())
+            ->notInDraftDiagnosticReport($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

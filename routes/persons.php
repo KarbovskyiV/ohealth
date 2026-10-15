@@ -19,9 +19,11 @@ use App\Livewire\DeviceDispense\DeviceDispenses;
 use App\Livewire\DiagnosticReport\DiagnosticReportCreate;
 use App\Livewire\DiagnosticReport\DiagnosticReportEdit;
 use App\Livewire\DiagnosticReport\DiagnosticReportIndex;
+use App\Livewire\DiagnosticReport\DiagnosticReportView;
 use App\Livewire\Encounter\EncounterCreate;
 use App\Livewire\Encounter\EncounterEdit;
 use App\Livewire\Encounter\EncounterIndex;
+use App\Livewire\Encounter\EncounterView;
 use App\Livewire\Episode\EpisodeCreate;
 use App\Livewire\Episode\EpisodeEdit;
 use App\Livewire\Episode\EpisodeIndex;
@@ -51,6 +53,7 @@ use App\Livewire\Preperson\PrepersonIndex;
 use App\Livewire\Procedure\ProcedureCreate;
 use App\Livewire\Procedure\ProcedureEdit;
 use App\Livewire\Procedure\ProcedureIndex;
+use App\Livewire\Procedure\ProcedureView;
 use App\Livewire\Specimen\SpecimenCreate;
 use App\Livewire\Specimen\SpecimenEdit;
 use App\Models\CarePlan;
@@ -192,7 +195,8 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
 
         Route::middleware('can:create,' . Encounter::class)->name('encounter.')->group(function () {
             Route::get('/{person}/encounter/create', EncounterCreate::class)->name('create');
-            Route::get('/{person}/encounter/{encounterId}', EncounterEdit::class)->name('edit');
+            Route::get('/{person}/encounter/{encounterId}', EncounterView::class)->name('view');
+            Route::get('/{person}/encounter/{encounterId}/edit', EncounterEdit::class)->name('edit');
         });
 
         Route::get('/{personId}/care-plan/create', CarePlanCreate::class)
@@ -203,7 +207,7 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
             Route::get('{person}/diagnostic-report/create', DiagnosticReportCreate::class)
                 ->can('create', DiagnosticReport::class)
                 ->name('diagnostic-report.create');
-            Route::get('{person}/diagnostic-report/{diagnosticReportId}', DiagnosticReportEdit::class)
+            Route::get('{person}/diagnostic-report/{diagnosticReportId}', DiagnosticReportView::class)
                 ->name('diagnostic-report.view')
                 ->whereNumber('diagnosticReportId');
             Route::get('{person}/diagnostic-report/{diagnosticReportId}/edit', DiagnosticReportEdit::class)
@@ -213,7 +217,7 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId', 'e
             Route::get('{person}/procedure/create', ProcedureCreate::class)
                 ->can('create', Procedure::class)
                 ->name('procedure.create');
-            Route::get('{person}/procedure/{procedureId}', ProcedureEdit::class)
+            Route::get('{person}/procedure/{procedureId}', ProcedureView::class)
                 ->name('procedure.view')
                 ->whereNumber('procedureId');
             Route::get('{person}/procedure/{procedureId}/edit', ProcedureEdit::class)
@@ -345,7 +349,11 @@ Route::prefix('prepersons')
         Route::get('/{preperson}/encounter/create', EncounterCreate::class)
             ->can('view', 'preperson')
             ->name('encounter.create');
-        Route::get('/{preperson}/encounter/{encounterId}', EncounterEdit::class)
+        Route::get('/{preperson}/encounter/{encounterId}', EncounterView::class)
+            ->can('view', 'preperson')
+            ->whereNumber('encounterId')
+            ->name('encounter.view');
+        Route::get('/{preperson}/encounter/{encounterId}/edit', EncounterEdit::class)
             ->can('view', 'preperson')
             ->whereNumber('encounterId')
             ->name('encounter.edit');
@@ -354,7 +362,7 @@ Route::prefix('prepersons')
             ->can('view', 'preperson')
             ->can('create', DiagnosticReport::class)
             ->name('diagnostic-report.create');
-        Route::get('/{preperson}/diagnostic-report/{diagnosticReportId}', DiagnosticReportEdit::class)
+        Route::get('/{preperson}/diagnostic-report/{diagnosticReportId}', DiagnosticReportView::class)
             ->can('view', 'preperson')
             ->whereNumber('diagnosticReportId')
             ->name('diagnostic-report.view');
@@ -367,7 +375,7 @@ Route::prefix('prepersons')
             ->can('view', 'preperson')
             ->can('create', Procedure::class)
             ->name('procedure.create');
-        Route::get('/{preperson}/procedure/{procedureId}', ProcedureEdit::class)
+        Route::get('/{preperson}/procedure/{procedureId}', ProcedureView::class)
             ->can('view', 'preperson')
             ->whereNumber('procedureId')
             ->name('procedure.view');

@@ -110,7 +110,7 @@
                                     modalProcedure.codeValue = '';
                                     selectedServiceFromCatalog = null;
 
-                                    if (!value) {
+                                    if (! value) {
                                         this.referrals = [];
                                         this.showReferrals = false;
 
@@ -130,7 +130,7 @@
                                 get filteredReferrals() {
                                     const value = this.normalize(this.referralNumber);
 
-                                    if (!value) {
+                                    if (! value) {
                                         return this.referrals;
                                     }
 
@@ -142,7 +142,7 @@
                                 applyReferral(referral) {
                                     this.referralExhausted = referral?.isExhausted === true;
 
-                                    if (this.referralExhausted || !referral?.isProcedureAllowed) {
+                                    if (this.referralExhausted || ! referral?.isProcedureAllowed) {
                                         modalProcedure.basedOnIdentifier = '';
                                         modalProcedure.categoryCode = '';
                                         modalProcedure.codeValue = '';
@@ -182,16 +182,16 @@
                                 <input
                                     x-model="referralNumber"
                                     @unless ($isReadonly ?? false)
-                                    @focus="if (referrals.length > 0) showReferrals = true"
-                                    @input.debounce.1000ms="
-                                        referralNumber = $el.value.toUpperCase();
-                                        searchReferrals();
-                                    "
+                                        @focus="if (referrals.length > 0) showReferrals = true;"
+                                        @input.debounce.1000ms="
+                                            referralNumber = $el.value.toUpperCase();
+                                            searchReferrals();
+                                        "
                                     @endunless
                                     type="text"
                                     name="basedOnIdentifier"
                                     id="procedureBasedOnIdentifier"
-                                    class="input !pr-7 peer uppercase"
+                                    class="input peer !pr-7 uppercase"
                                     placeholder=" "
                                     autocomplete="off"
                                     x-mask="****-****-****-****"
@@ -221,12 +221,16 @@
                                         <button
                                             type="button"
                                             @click="selectReferral(referral)"
-                                            :disabled="referral.isExhausted || !referral.isProcedureAllowed"
-                                            :class="!referral.isExhausted && referral.isProcedureAllowed ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'cursor-not-allowed'"
+                                            :disabled="referral.isExhausted || ! referral.isProcedureAllowed"
+                                            :class="! referral.isExhausted && referral.isProcedureAllowed
+                                                ? 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                : 'cursor-not-allowed'"
                                             class="w-full rounded-md px-3 py-2 text-left"
                                         >
                                             <div
-                                                :class="!referral.isExhausted && referral.isProcedureAllowed ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'"
+                                                :class="! referral.isExhausted && referral.isProcedureAllowed
+                                                    ? 'text-gray-900 dark:text-white'
+                                                    : 'text-gray-400 dark:text-gray-500'"
                                                 class="font-medium"
                                                 x-text="referral.requisition"
                                             ></div>
@@ -239,7 +243,7 @@
                                             </div>
 
                                             <div
-                                                x-show="!referral.isExhausted && !referral.isProcedureAllowed"
+                                                x-show="! referral.isExhausted && ! referral.isProcedureAllowed"
                                                 class="mt-1 text-xs text-gray-400 dark:text-gray-500"
                                             >
                                                 {{ __('procedures.validation.referral_not_allowed') }}
@@ -295,6 +299,7 @@
                                     class="input peer"
                                     placeholder=" "
                                     autocomplete="off"
+                                    required
                                 />
                                 <label for="procedureRequesterEmployeeName" class="label">
                                     {{ __('medical-events.referral.author') }}
@@ -401,8 +406,12 @@
                     x-model="modalProcedure.categoryCode"
                     @unless ($isReadonly ?? false)
                         :disabled="modalProcedure.referralType === 'electronic' && modalProcedure.basedOnIdentifier"
-                        :class="modalProcedure.referralType === 'electronic' && modalProcedure.basedOnIdentifier ? 'cursor-not-allowed pointer-events-none' : ''"
-                        :style="modalProcedure.referralType === 'electronic' && modalProcedure.basedOnIdentifier ? 'color: rgb(107 114 128) !important; -webkit-text-fill-color: rgb(107 114 128) !important;' : ''"
+                        :class="modalProcedure.referralType === 'electronic' && modalProcedure.basedOnIdentifier
+                            ? 'cursor-not-allowed pointer-events-none'
+                            : ''"
+                        :style="modalProcedure.referralType === 'electronic' && modalProcedure.basedOnIdentifier
+                            ? 'color: rgb(107 114 128) !important; -webkit-text-fill-color: rgb(107 114 128) !important;'
+                            : ''"
                     @endunless
                     @change="
                         if (selectedServiceFromCatalog) {
@@ -466,7 +475,7 @@
         {{-- Services --}}
         <div class="form-row-2 relative z-1">
             <div class="form-group group">
-                <template x-if="!selectedServiceFromCatalog">
+                <template x-if="! selectedServiceFromCatalog">
                     <div>
                         <x-select2
                             modelPath="modalProcedure.codeValue"
@@ -488,22 +497,24 @@
                             id="serviceCodeFromCatalog"
                             :value="`[${selectedServiceFromCatalog.code}] – ${selectedServiceFromCatalog.name}`"
                             readonly
-                            :class="modalProcedure.referralType === 'electronic' && modalProcedure.basedOnIdentifier ? 'text-gray-400 cursor-not-allowed pointer-events-none dark:text-gray-500' : ''"
+                            :class="modalProcedure.referralType === 'electronic' && modalProcedure.basedOnIdentifier
+                                ? 'text-gray-400 cursor-not-allowed pointer-events-none dark:text-gray-500'
+                                : ''"
                             class="input"
-                        >
+                        />
 
                         <label for="serviceCodeFromCatalog" class="label">
                             {{ __('forms.select') }} {{ mb_strtolower(__('procedures.code')) }} *
                         </label>
 
                         <button
-                            x-show="modalProcedure.referralType !== 'electronic' || !modalProcedure.basedOnIdentifier"
+                            x-show="modalProcedure.referralType !== 'electronic' || ! modalProcedure.basedOnIdentifier"
                             type="button"
                             @click="
                                 modalProcedure.codeValue = '';
                                 selectedServiceFromCatalog = null;
                             "
-                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                            class="absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                         >
                             @icon('close', 'w-4 h-4')
                         </button>
@@ -517,17 +528,12 @@
 
             @unless ($isReadonly ?? false)
                 <button
-                    x-show="modalProcedure.referralType !== 'electronic' || !modalProcedure.basedOnIdentifier"
+                    x-show="modalProcedure.referralType !== 'electronic' || ! modalProcedure.basedOnIdentifier"
                     type="button"
                     @click.prevent="openServiceCatalog = true"
                     class="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                 >
-                    <svg
-                        class="h-5 w-5 shrink-0"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        aria-hidden="true"
-                    >
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                         <path
                             d="M8 4.667C8 3.96 7.719 3.281 7.219 2.781 6.719 2.281 6.041 2 5.333 2H1.333V12H6c.53 0 1.039.21 1.414.586.375.375.586.884.586 1.414M8 4.667V14m0-9.333c0-.707.281-1.386.781-1.886.5-.5 1.179-.781 1.886-.781h4V12h-4.667c-.53 0-1.039.21-1.414.586-.375.375-.586.884-.586 1.414"
                             stroke="currentColor"

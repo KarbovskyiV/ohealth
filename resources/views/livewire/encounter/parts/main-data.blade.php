@@ -1,3 +1,7 @@
+@php
+    use App\Livewire\Encounter\EncounterEdit;
+@endphp
+
 <div
     class="p-4 sm:p-8"
     id="patient-data-section"
@@ -96,7 +100,7 @@
                     name="episode"
                     class="default-radio"
                     :checked="episodeType === 'existing'"
-                    @disabled($this->isHospitalizationRefusal)
+                    @disabled($this->isHospitalizationRefusal || $this instanceof EncounterEdit)
                 />
                 <label for="existingEpisode" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
                     {{ __('encounters.episode_existing') }}
@@ -116,6 +120,7 @@
                     name="episode"
                     class="default-radio"
                     :checked="episodeType === 'new'"
+                    @disabled($this instanceof EncounterEdit)
                 />
                 <label for="newEpisode" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
                     {{ __('encounters.episode_new') }}

@@ -9,13 +9,13 @@
             <a
                 href="{{
                     $prepersonId
-                    ? route('prepersons.encounter.create', [legalEntity(), 'preperson' => $prepersonId])
-                    : route('encounter.create', [legalEntity(), 'person' => $personId])
+                    ? route('prepersons.procedure.create', [legalEntity(), 'preperson' => $prepersonId])
+                    : route('procedure.create', [legalEntity(), 'person' => $personId])
                 }}"
                 class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
             >
                 @icon('plus', 'w-4 h-4')
-                {{ __('encounters.new') }}
+                {{ __('procedures.new') }}
             </a>
         @endcan
 
@@ -150,6 +150,7 @@
                             </option>
 
                             @foreach (ProcedureStatus::cases() as $status)
+                                @continue($status === ProcedureStatus::DRAFT)
                                 <option value="{{ $status->value }}">{{ $status->label() }}</option>
                             @endforeach
                         </select>
@@ -296,17 +297,19 @@
                                             {{ __('forms.view_details') }}
                                         </button>
 
-                                        <button
-                                            type="button"
-                                            @click="close($refs.button)"
-                                            wire:click="openProcedureCancellation('{{ data_get($procedure, 'uuid') }}')"
-                                            wire:loading.attr="disabled"
-                                            wire:target="openProcedureCancellation"
-                                            class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                        >
-                                            @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                            {{ __('medical-events.mark_as_error') }}
-                                        </button>
+                                        @unless (data_get($procedure, 'status') === ProcedureStatus::DRAFT->value)
+                                            <button
+                                                type="button"
+                                                @click="close($refs.button)"
+                                                wire:click="openProcedureCancellation('{{ data_get($procedure, 'uuid') }}')"
+                                                wire:loading.attr="disabled"
+                                                wire:target="openProcedureCancellation"
+                                                class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                            >
+                                                @icon('alert-circle', 'w-5 h-5 text-gray-500')
+                                                {{ __('medical-events.mark_as_error') }}
+                                            </button>
+                                        @endunless
                                     </div>
                                 </div>
                             </div>

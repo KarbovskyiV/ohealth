@@ -15,6 +15,7 @@ use App\Enums\Person\ServiceRequestStatus;
 use App\Enums\Status;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
+use App\Jobs\RemoteEHealthLinksProcessing;
 use App\Livewire\Encounter\Forms\ClinicalImpressionForm;
 use App\Livewire\Encounter\Forms\DetectedIssueForm;
 use App\Livewire\Encounter\Forms\DeviceAssociationForm;
@@ -50,6 +51,10 @@ use App\Traits\SearchesElectronicReferrals;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -671,8 +676,122 @@ class EncounterComponent extends Component
     }
 
     /**
+     * Find the eHealth ID of the electronic referral the form names by its number.
+     *
+     * @param  string  $referralNumber
+     * @return string|null
+     */
+    protected function resolveReferralUuid(string $referralNumber): ?string
+    {
+        if (empty($referralNumber) || Str::isUuid($referralNumber)) {
+            return $referralNumber;
+        }
+
+        if ($this->selectedReferralUuid !== null) {
+            $selectedReferral = collect($this->availableReferrals)->firstWhere('id', $this->selectedReferralUuid);
+
+            if (($selectedReferral['requisition'] ?? null) === $referralNumber) {
+                return $this->selectedReferralUuid;
+            }
+        }
+
+        $referral = collect($this->availableReferrals)->firstWhere('requisition', $referralNumber);
+
+        if ($referral !== null || $this->personId === null) {
+            return data_get($referral, 'id');
+        }
+
+        // A referral taken into work is no longer offered among the active ones, so it is found among the stored ones
+        return ServiceRequestRequest::wherePersonId($this->personId)->whereRequestNumber($referralNumber)->value('uuid');
+    }
+
+    /**
+     * Replace the referral numbers of the encounter and its procedures with the referral IDs eHealth expects.
+     *
+     * @param  array  $validated
+     * @return void
+     * @throws ValidationException
+     */
+    protected function resolveAllReferrals(array &$validated): void
+    {
+        if (($validated['encounter']['referralType'] ?? '') === 'electronic' && !empty($validated['encounter']['referralNumber'])) {
+            $originalNumber = $validated['encounter']['referralNumber'];
+            $uuid = $this->resolveReferralUuid($originalNumber);
+
+            if ($uuid === null) {
+                throw ValidationException::withMessages([
+                    'form.encounter.referralNumber' => __('encounters.messages.referral_not_found')
+                ]);
+            }
+
+            $validated['encounter']['referralNumber'] = $uuid;
+            $validated['encounter']['referralDisplayValue'] = $originalNumber;
+        }
+
+        foreach ($validated['procedures'] ?? [] as $index => $procedure) {
+            if (($procedure['referralType'] ?? '') !== 'electronic' || empty($procedure['basedOnIdentifier'])) {
+                continue;
+            }
+
+            $uuid = $this->resolveReferralUuid($procedure['basedOnIdentifier']);
+
+            if ($uuid === null) {
+                throw ValidationException::withMessages([
+                    "form.procedures.{$index}.basedOnIdentifier" => __('encounters.messages.referral_not_found')
+                ]);
+            }
+
+            $validated['procedures'][$index]['basedOnIdentifier'] = $uuid;
+        }
+    }
+
+    /**
+     * Submit the signed encounter package and hand its eHealth job over to the queue. The encounter stays a draft
+     * until the job is processed, so a rejected package can be fixed and signed again.
+     *
+     * @param  Encounter  $encounter
+     * @param  array  $formattedData
+     * @param  string  $signedData
+     * @return void
+     * @throws EHealthException|EHealthConnectionException|Throwable
+     */
+    protected function submitPackage(Encounter $encounter, array $formattedData, string $signedData): void
+    {
+        $submission = RemoteEHealthLinksProcessing::startSubmission($encounter, $formattedData);
+
+        try {
+            $response = EHealth::encounter()->submit($this->patientUuid, [
+                'visit' => [
+                    'id' => data_get($formattedData, 'encounter.visit.identifier.value'),
+                    'period' => data_get($formattedData, 'encounter.period')
+                ],
+                'signed_data' => $signedData
+            ]);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            RemoteEHealthLinksProcessing::markSubmissionFailed($submission);
+
+            throw $exception;
+        }
+
+        // eHealth received the package already, so it stays submitted and locked even if following it fails
+        try {
+            RemoteEHealthLinksProcessing::track($submission, $response->validate());
+
+            Session::flash('success', __('encounters.messages.package_sent'));
+        } catch (Throwable $exception) {
+            Log::channel('e_health_errors')->error('Submitted encounter package is not tracked', [
+                'encounterId' => $encounter->id,
+                'response' => $response->getData(),
+                'exception' => $exception->getMessage()
+            ]);
+            Session::flash('error', __('errors.ehealth.messages.submission_not_tracked'));
+        }
+    }
+
+    /**
      * Initialize the component data for the current patient.
      *
+     * @param  bool  $loadEpisodes
      * @return void
      */
     protected function initializeComponent(bool $loadEpisodes = true): void

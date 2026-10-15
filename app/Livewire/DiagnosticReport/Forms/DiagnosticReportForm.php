@@ -13,6 +13,7 @@ use App\Enums\Specimen\Status as SpecimenStatus;
 use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
 use App\Rules\MedicalEvents\ObservationComponents;
+use App\Rules\MedicalEvents\ObservationValue;
 use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
 use App\Models\Employee\Employee;
@@ -256,6 +257,13 @@ class DiagnosticReportForm extends BaseForm
                 new InDictionary('eHealth/ICD10_AM/condition_codes')
             ],
             'diagnosticReport.conclusion' => [
+                Rule::requiredIf(
+                    in_array(
+                        data_get($this->diagnosticReport, 'categoryCode'),
+                        self::RESULTS_INTERPRETER_REQUIRED_CATEGORIES,
+                        true
+                    )
+                ),
                 'nullable',
                 'string',
                 'max:1000',
@@ -379,6 +387,7 @@ class DiagnosticReportForm extends BaseForm
             ],
 
             'observations' => ['nullable', 'array'],
+            'observations.*' => ['array', new ObservationValue()],
             'observations.*.uuid' => ['nullable', 'uuid'],
             'observations.*.categorySystem' => ['required_with:observations', 'string'],
             'observations.*.categoryCode' => [
