@@ -28,7 +28,6 @@
                 id="emergencyContactLastName"
                 class="input peer @error('form.person.emergencyContact.lastName') input-error @enderror"
                 placeholder=" "
-                required
                 autocomplete="off"
             />
             <label for="emergencyContactLastName" class="label"> {{ __('forms.last_name') }} </label>

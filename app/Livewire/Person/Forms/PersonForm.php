@@ -281,7 +281,7 @@ class PersonForm extends BaseForm
             ],
 
             'person.emergencyContact.firstName' => ['required', 'min:1', 'max:255'],
-            'person.emergencyContact.lastName' => ['required', 'min:1', 'max:255'],
+            'person.emergencyContact.lastName' => ['nullable', 'min:1', 'max:255'],
             'person.emergencyContact.secondName' => ['nullable', 'min:1', 'max:255'],
             'person.emergencyContact.phones.*.type' => ['required', 'string', 'distinct'],
             'person.emergencyContact.phones.*.number' => ['required', 'string', 'regex:/^\+[0-9]{11,12}$/', 'distinct'],
@@ -367,10 +367,7 @@ class PersonForm extends BaseForm
             "person.addresses.$index.apartment" => $isUkraineAddress
                 ? ['nullable', 'string', 'max:255']
                 : ['nullable', $buildingPattern],
-            // The five digit index is the Ukrainian postal code, an address abroad follows its own country
-            "person.addresses.$index.zip" => $isUkraineAddress
-                ? ['nullable', 'string', new Zip()]
-                : ['nullable', 'string', 'max:255']
+            "person.addresses.$index.zip" => ['nullable', 'string', new Zip()]
         ];
     }
 
@@ -613,13 +610,15 @@ class PersonForm extends BaseForm
             }
         }
 
+        $documentTypes = dictionary()->basics()->byName('DOCUMENT_TYPE', false)->asCodeDescription();
+
         foreach ($this->person['documents'] ?? [] as $index => $document) {
             if (blank($document['type'] ?? null)) {
                 continue;
             }
 
             $attributes["person.documents.$index.number"] = __('validation.custom.person.document_number_of', [
-                'document' => __('patients.documents.' . $document['type'])
+                'document' => $documentTypes->get($document['type'])
             ]);
         }
 
@@ -667,11 +666,12 @@ class PersonForm extends BaseForm
         $uaOnlyTypes = config('ehealth.document_types_issuing_country_ua_only');
         $notUaTypes = config('ehealth.document_types_issuing_country_not_ua');
 
+        $documentTypes = dictionary()->basics()->byName('DOCUMENT_TYPE', false)->asCodeDescription();
         $messages = [];
 
         foreach ($this->person['documents'] ?? [] as $key => $document) {
             $type = $document['type'] ?? null;
-            $documentType = __('patients.documents.' . $type) ?: $type;
+            $documentType = $documentTypes->get($type);
 
             if (in_array($type, $notUaTypes, true)) {
                 $messages["person.documents.$key.issuingCountry.not_in"] =
@@ -739,11 +739,14 @@ class PersonForm extends BaseForm
                     empty($document['expirationDate'])
                     && $this->isExpirationDateRequiredForDocument($document, $requiredTypes)
                 ) {
-                    $translatedType = __("patients.documents.{$document['type']}") ?: $document['type'];
-
                     return __(
                         'validation.custom.person.expiration_date_required_for_type',
-                        ['document_type' => $translatedType]
+                        [
+                            'document_type' => dictionary()->basics()
+                                ->byName('DOCUMENT_TYPE', false)
+                                ->asCodeDescription()
+                                ->get($document['type'])
+                        ]
                     );
                 }
             }
@@ -1050,8 +1053,9 @@ class PersonForm extends BaseForm
         $invalidTypes = array_diff($submittedTypes, $foreignTypes);
 
         if (!empty($invalidTypes)) {
+            $documentTypes = dictionary()->basics()->byName('DOCUMENT_TYPE', false)->asCodeDescription();
             $translateTypes = static fn (array $types): string => implode(', ', array_map(
-                static fn (string $type): string => __('patients.documents.' . $type) ?: $type,
+                static fn (string $type): ?string => $documentTypes->get($type),
                 $types
             ));
 
@@ -1086,20 +1090,25 @@ class PersonForm extends BaseForm
 
     /**
      * The emergency contact name fields accept both Latin and Cyrillic letters when the person carries a foreign
-     * identity document, and Cyrillic-only otherwise.
+     * identity document, and Cyrillic-only otherwise. In both cases a name can't end with a special character or
+     * repeat one twice in a row.
      *
      * @param  array  $rules
      * @return void
      */
     private function addEmergencyContactNameValidation(array &$rules): void
     {
-        $nameRule = $this->hasForeignDocument()
-            ? 'regex:/^[A-Za-zА-ЩЬЮЯҐЄІЇа-щьюяґєії\s\.\-\/\']+$/u'
-            : new NameFields();
+        $nameRules = [
+            $this->hasForeignDocument()
+                ? 'regex:/^[A-Za-zА-ЩЬЮЯҐЄІЇа-щьюяґєії\s\.\-\/\']+$/u'
+                : 'regex:/^[А-ЩЬЮЯҐЄІЇа-щьюяґєії\s\.\-\/\']+$/u',
+            'not_regex:/[\s\-\/\']$/u',
+            'not_regex:/([\s\.\-\/\'])\1/u'
+        ];
 
-        $rules['person.emergencyContact.firstName'][] = $nameRule;
-        $rules['person.emergencyContact.lastName'][] = $nameRule;
-        $rules['person.emergencyContact.secondName'][] = $nameRule;
+        array_push($rules['person.emergencyContact.firstName'], ...$nameRules);
+        array_push($rules['person.emergencyContact.lastName'], ...$nameRules);
+        array_push($rules['person.emergencyContact.secondName'], ...$nameRules);
     }
 
     /**
@@ -1264,6 +1273,7 @@ class PersonForm extends BaseForm
         $personRegistrationDocumentTypes = config('ehealth.person_registration_document_types');
         $selfAuthAgeDocumentTypes = config('ehealth.self_auth_age_document_types');
         $noSelfAuthAgeDocumentTypes = config('ehealth.no_self_auth_age_document_types');
+        $documentTypes = dictionary()->basics()->byName('DOCUMENT_TYPE', false)->asCodeDescription();
 
         // Check submitted person document types exist in PERSON_REGISTRATION_DOCUMENT_TYPES config parameter
         // that contains values from DOCUMENT_TYPE dictionary
@@ -1271,11 +1281,10 @@ class PersonForm extends BaseForm
 
         foreach ($this->person['documents'] as $document) {
             if (!in_array($document['type'], (array)$allAllowedTypes, true)) {
-                $documentTypeName = __('patients.documents.' . $document['type']) ?: $document['type'];
                 throw ValidationException::withMessages([
                     'person.documents' => __(
                         'validation.custom.person.document_type_not_allowed',
-                        ['document_type' => $documentTypeName]
+                        ['document_type' => $documentTypes->get($document['type'])]
                     )
                 ]);
             }
@@ -1287,11 +1296,10 @@ class PersonForm extends BaseForm
             || $this->personAge > config('ehealth.person_full_legal_capacity_age')) {
             foreach ($this->person['documents'] as $document) {
                 if (in_array($document['type'], $personLegalCapacityDocumentTypes, true)) {
-                    $documentTypeName = __('patients.documents.' . $document['type']) ?: $document['type'];
                     throw ValidationException::withMessages([
                         'person.documents' => __(
                             'validation.custom.person.document_type_not_allowed_for_person',
-                            ['document_type' => $documentTypeName]
+                            ['document_type' => $documentTypes->get($document['type'])]
                         )
                     ]);
                 }
@@ -1342,7 +1350,6 @@ class PersonForm extends BaseForm
             $invalidTypes = array_diff($submittedTypes, $noSelfAuthAgeDocumentTypes);
 
             if (!empty($invalidTypes)) {
-                $documentTypes = dictionary()->basics()->byName('DOCUMENT_TYPE')->asCodeDescription();
                 $allowedTypesList = implode(', ', array_map(
                     static fn (string $type): ?string => $documentTypes->get($type),
                     $noSelfAuthAgeDocumentTypes
@@ -1362,10 +1369,10 @@ class PersonForm extends BaseForm
             $hasSelfAuthType = (bool)array_intersect($submittedTypes, $selfAuthAgeDocumentTypes);
 
             if (!$hasSelfAuthType) {
-                $translatedTypes = array_map(static function ($type) {
-                    return __('patients.documents.' . $type) ?: $type;
-                }, $selfAuthAgeDocumentTypes);
-                $allowedTypesList = implode(', ', $translatedTypes);
+                $allowedTypesList = implode(', ', array_map(
+                    static fn (string $type): ?string => $documentTypes->get($type),
+                    $selfAuthAgeDocumentTypes
+                ));
 
                 throw ValidationException::withMessages([
                     'person.documents' => __(

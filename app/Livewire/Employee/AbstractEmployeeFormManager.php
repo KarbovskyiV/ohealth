@@ -811,10 +811,7 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
                 return $fieldLabel;
             }
 
-            $documentLabel = __('patients.documents.' . $documentType);
-            if ($documentLabel === 'patients.documents.' . $documentType) {
-                $documentLabel = $documentType;
-            }
+            $documentLabel = dictionary()->basics()->byName('DOCUMENT_TYPE', false)->asCodeDescription()->get($documentType);
 
             return "{$fieldLabel} ({$documentLabel})";
         }
