@@ -200,7 +200,7 @@
                 >
                     <div class="flex items-center gap-2">
                         @icon('alert-circle', 'w-5 h-5 text-red-700 dark:text-red-400')
-                        <p class="font-semibold text-red-700 dark:text-red-400">{{ $invalidPersonReason }}</p>
+                        <p class="font-semibold text-red-700 dark:text-red-400" x-text="$wire.invalidPersonReason"></p>
                     </div>
                 </div>
             </fieldset>

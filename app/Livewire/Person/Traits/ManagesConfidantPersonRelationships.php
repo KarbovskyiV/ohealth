@@ -16,12 +16,15 @@ use App\Exceptions\EHealth\EHealthException;
 use App\Models\ConfidantPersonRelationshipRequest;
 use App\Models\Person\Person;
 use App\Models\Relations\ConfidantPerson;
+use App\Models\Relations\Document;
+use App\Models\Relations\Phone;
 use App\Repositories\Repository;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -127,7 +130,7 @@ trait ManagesConfidantPersonRelationships
 
         try {
             $validated = $this->validate(
-                $this->form->rulesForCreateNewConfidantPersonRelationshipRequest(),
+                $this->form->rulesForCreateNewConfidantPersonRelationshipRequest($this->hasLegalCapacityDocument()),
                 ['documentsRelationship.*.activeTo.after' => __('validation.custom.person.expiration_date_in_future')]
             );
         } catch (ValidationException $exception) {
@@ -302,8 +305,8 @@ trait ManagesConfidantPersonRelationships
                 $this->completeConfidantPersonRelationshipRequest();
                 $this->reloadConfidantPersons();
 
-                // An ended relationship is reported by the modal that also carries what it means for the
-                // patient, so only a new one needs a message of its own
+                // An ended relationship is reported by the modal that also carries what it means for the patient,
+                // so only a new one needs a message of its own
                 if ($startsRelationship) {
                     Session::flash('success', __('patients.messages.new_confidant_person_added'));
                 }
@@ -350,7 +353,7 @@ trait ManagesConfidantPersonRelationships
             ])
             ->firstOrFail();
 
-        $this->form->person['confidantPersons'] = Arr::toCamelCase($person->confidantPersons->toArray());
+        $this->form->person['confidantPersons'] = $this->loadConfidantPersons($person);
     }
 
     /**
@@ -480,6 +483,57 @@ trait ManagesConfidantPersonRelationships
             ->toArray();
 
         return $this->convertRequestStatusesToEnums($requests);
+    }
+
+    /**
+     * Get the confidant persons of the patient with only the data that is shown of them, the identifiers masked the
+     * way the registry returns them, only the last two characters stay visible, since the whole list reaches the
+     * browser. The relationship documents are included only when the caller has loaded them.
+     *
+     * @param  Person  $person
+     * @return array
+     */
+    protected function loadConfidantPersons(Person $person): array
+    {
+        return $person->confidantPersons
+            ->map(static function (ConfidantPerson $relationship): array {
+                $confidant = $relationship->person;
+
+                return [
+                    'uuid' => $relationship->uuid,
+                    'isActive' => $relationship->isActive,
+                    'activeTo' => $relationship->activeTo,
+                    'documentsRelationship' => $relationship->relationLoaded('documentsRelationship')
+                        ? $relationship->documentsRelationship
+                            ->map(static fn (Document $document): array => [
+                                'type' => $document->type,
+                                'number' => Str::mask($document->number, '*', 0, -2)
+                            ])
+                            ->all()
+                        : [],
+                    'person' => [
+                        'uuid' => $confidant->uuid,
+                        'name' => $confidant->fullName,
+                        'names' => Arr::toCamelCase($confidant->names->toArray()),
+                        'gender' => $confidant->gender,
+                        'taxId' => $confidant->taxId === null ? null : Str::mask($confidant->taxId, '*', 0, -2),
+                        'unzr' => $confidant->unzr === null ? null : Str::mask($confidant->unzr, '*', 0, -2),
+                        'documents' => $confidant->documents
+                            ->map(static fn (Document $document): array => [
+                                'type' => $document->type,
+                                'number' => Str::mask($document->number, '*', 0, -2)
+                            ])
+                            ->all(),
+                        'phones' => $confidant->phones
+                            ->map(static fn (Phone $phone): array => [
+                                'type' => $phone->type,
+                                'number' => $phone->number
+                            ])
+                            ->all()
+                    ]
+                ];
+            })
+            ->all();
     }
 
     private function convertRequestStatusesToEnums(array $requests): array

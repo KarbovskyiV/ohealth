@@ -63,13 +63,12 @@
             <input
                 wire:model="form.person.email"
                 type="email"
-                name="email"
-                id="email"
+                id="personEmail"
                 class="input peer @error('form.person.email') input-error @enderror"
                 placeholder=" "
-                autocomplete="off"
+                autocomplete="patient-email"
             />
-            <label for="email" class="label"> {{ __('forms.email') }} </label>
+            <label for="personEmail" class="label"> {{ __('forms.email') }} </label>
 
             @error('form.person.email')
                 <p class="text-error">{{ $message }}</p>
