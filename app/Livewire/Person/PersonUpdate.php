@@ -161,6 +161,7 @@ class PersonUpdate extends PersonComponent
                 'confidantPersons.person.documents'
             ])->toArray()
         );
+        $this->form->person['confidantPersons'] = $this->loadConfidantPersons($person);
 
         $uaOnlyTypes = config('ehealth.document_types_issuing_country_ua_only');
 

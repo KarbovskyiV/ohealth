@@ -14,6 +14,8 @@ use App\Traits\FormTrait;
 use App\Traits\HasApproval;
 use App\Models\Person\Person;
 use Livewire\WithFileUploads;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Computed;
 use App\Enums\Person\AuthStep;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\Repository;
@@ -148,6 +150,26 @@ class PatientData extends BasePatientComponent
      */
     public array $forbiddenGroups = [];
 
+    /**
+     * Whether the documents of the patient prove their own legal capacity, kept apart from the documents themselves
+     * since those are not sent to a user who may not view the passport data.
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $holdsLegalCapacityDocument = false;
+
+    /**
+     * Whether the user may see the personal data of the patient stored locally.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function canViewPersonalData(): bool
+    {
+        return Auth::user()->can('viewPersonalData', $this->patient());
+    }
+
     protected function initializeComponent(): void
     {
         $this->forbiddenGroups = dictionary()->forbiddenGroups()->toArray();
@@ -155,20 +177,35 @@ class PatientData extends BasePatientComponent
 
         // The patient and its names are already read by the parent, only the rest of the card is missing
         $patient = $this->patient()->load([
-            'addresses',
             'documents',
-            'phones',
             'authenticationMethods',
             'confidantPersons.person.names',
             'confidantPersons.person.documents',
             'confidantPersons.person.phones',
-            'confidantPersons.documentsRelationship'
+            'confidantPersons.documentsRelationship',
+            ...($this->canViewPersonalData ? ['addresses', 'phones'] : [])
         ]);
 
         $this->firstName = $patient->primaryName?->firstName ?? '';
         $this->lastName = $patient->primaryName?->lastName ?? '';
-        $this->phones = $patient->phones->toArray();
         $this->form->person = Arr::toCamelCase($patient->toArray());
+        $this->form->person['confidantPersons'] = $this->loadConfidantPersons($patient);
+        $this->holdsLegalCapacityDocument = $this->form->hasLegalCapacityDocument();
+
+        // Everything in the form reaches the browser, so hiding the sections alone would not keep the data from it
+        if ($this->canViewPersonalData) {
+            $this->phones = $patient->phones->toArray();
+        } else {
+            $this->form->person = Arr::only($this->form->person, [
+                'names',
+                'birthDate',
+                'birthCountry',
+                'birthSettlement',
+                'gender',
+                'confidantPersons'
+            ]);
+        }
+
         $this->confidantPersonRelationshipRequests = $this->loadConfidantPersonRelationshipRequests($patient);
         $this->form->uploadedDocuments = [];
         $this->loadAuthenticationMethods($patient);
@@ -192,38 +229,13 @@ class PatientData extends BasePatientComponent
     }
 
     /**
-     * Upload the scanned copies eHealth asked for and report whether every one of them reached the storage.
+     * Whether the documents of the patient prove their own legal capacity.
      *
      * @return bool
      */
-    protected function uploadDocuments(): bool
+    public function hasLegalCapacityDocument(): bool
     {
-        if (count($this->form->uploadedDocuments) !== count($this->uploadedDocuments)) {
-            Session::flash('error', __('patients.messages.upload_all_files'));
-
-            return false;
-        }
-
-        foreach ($this->form->uploadedDocuments as $key => $document) {
-            try {
-                $mimeType = $document->getMimeType();
-                $response = Http::withHeaders(['Content-Type' => $mimeType])
-                    ->withBody(file_get_contents($document->getRealPath()), $mimeType)
-                    ->put(trim($this->uploadedDocuments[$key]['url']));
-
-                $this->uploadedFiles[$key] = $response->successful();
-            } catch (Throwable) {
-                $this->uploadedFiles[$key] = false;
-            }
-        }
-
-        if (in_array(false, $this->uploadedFiles, true)) {
-            Session::flash('error', __('messages.database_error'));
-
-            return false;
-        }
-
-        return true;
+        return $this->holdsLegalCapacityDocument;
     }
 
     /**
@@ -367,6 +379,41 @@ class PatientData extends BasePatientComponent
         } else {
             Session::flash('error', __('patients.errors.approval_verification_failed'));
         }
+    }
+
+    /**
+     * Upload the scanned copies eHealth asked for and report whether every one of them reached the storage.
+     *
+     * @return bool
+     */
+    protected function uploadDocuments(): bool
+    {
+        if (count($this->form->uploadedDocuments) !== count($this->uploadedDocuments)) {
+            Session::flash('error', __('patients.messages.upload_all_files'));
+
+            return false;
+        }
+
+        foreach ($this->form->uploadedDocuments as $key => $document) {
+            try {
+                $mimeType = $document->getMimeType();
+                $response = Http::withHeaders(['Content-Type' => $mimeType])
+                    ->withBody(file_get_contents($document->getRealPath()), $mimeType)
+                    ->put(trim($this->uploadedDocuments[$key]['url']));
+
+                $this->uploadedFiles[$key] = $response->successful();
+            } catch (Throwable) {
+                $this->uploadedFiles[$key] = false;
+            }
+        }
+
+        if (in_array(false, $this->uploadedFiles, true)) {
+            Session::flash('error', __('messages.database_error'));
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
