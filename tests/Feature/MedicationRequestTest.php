@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Classes\eHealth\Api\MedicationRequest;
+use App\Classes\eHealth\Api\Patient\MedicationRequest as MedicationRequestApi;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\User;
 use App\Services\MedicalEvents\MedicationRequestLifecycleService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
+use Tests\Concerns\MocksBasicDictionaries;
 use Tests\TestCase;
 use Mockery;
 
 class MedicationRequestTest extends TestCase
 {
     use DatabaseTransactions;
+    use MocksBasicDictionaries;
 
     protected User $user;
     protected LegalEntity $legalEntity;
@@ -37,6 +41,7 @@ class MedicationRequestTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->mockBasicDictionaries();
 
         $party = \App\Models\Relations\Party::create([
             'uuid' => (string) \Illuminate\Support\Str::uuid(),
@@ -81,24 +86,39 @@ class MedicationRequestTest extends TestCase
         $this->user->employees()->attach($this->employee->id);
     }
 
-    public function test_it_can_prequalify_medication_request()
+    public function test_it_can_prequalify_medication_request(): void
     {
-        $mockResponse = [
-            'data' => [
-                ['status' => 'valid']
-            ]
-        ];
+        Http::fake([
+            '*' => Http::response(['data' => [['status' => 'valid']]], 200),
+        ]);
+        $this->bindFakedMedicationRequestClient();
 
-        $mockApi = Mockery::mock('alias:' . MedicationRequest::class);
-        $mockApi->shouldReceive('preQualify')
-            ->once()
-            ->with(['person_id' => 'patient-123'])
-            ->andReturn($mockResponse);
+        $result = app(MedicationRequestLifecycleService::class)->preQualify([
+            'person_id' => 'patient-123',
+        ]);
 
-        $service = app(MedicationRequestLifecycleService::class);
-        $result = $service->preQualify(['person_id' => 'patient-123']);
+        $this->assertSame('valid', $result[0]['status']);
+        Http::assertSent(static function (Request $request): bool {
+            return $request->method() === 'POST'
+                && str_contains($request->url(), '/api/medication_request_requests/prequalify')
+                && ($request->data()['person_id'] ?? null) === 'patient-123';
+        });
+    }
 
-        $this->assertEquals('valid', $result[0]['status']);
+    /**
+     * Http::fake() stubs live on the Factory. The eHealth client is a PendingRequest
+     * subclass and only sees those stubs when they are copied onto the instance.
+     */
+    private function bindFakedMedicationRequestClient(): void
+    {
+        $factory = Http::getFacadeRoot();
+        $api = new MedicationRequestApi($factory);
+        $stubs = (function () {
+            return $this->stubCallbacks;
+        })->call($factory);
+        $api->stub($stubs);
+
+        $this->app->instance(MedicationRequestApi::class, $api);
     }
 
     public function test_medication_request_index_component_renders()
@@ -107,7 +127,7 @@ class MedicationRequestTest extends TestCase
 
         Livewire::test(\App\Livewire\MedicationRequest\MedicationRequestIndex::class, ['legalEntity' => $this->legalEntity])
             ->assertStatus(200)
-            ->assertSee('Е-Рецепти');
+            ->assertSee('Електронні рецепти');
     }
 
     public function test_medication_request_form_component_prequalify()
