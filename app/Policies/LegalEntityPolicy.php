@@ -25,9 +25,10 @@ class LegalEntityPolicy
             return Response::denyWithStatus(404);
         }
 
-        $legalEntitiesIds = cache()->memo()->remember(
+        // Keep access checks fresh between requests after employee synchronization.
+        $legalEntitiesIds = cache()->store('array')->remember(
             "user_le_ids:$user->id",
-            now()->addMinutes(5),
+            null,
             fn () => $user->party?->employees()->pluck('legal_entity_id')->toArray() ?? []
         );
 
