@@ -20,6 +20,7 @@ use App\Models\MedicalEvents\Sql\Medications\MedicationRequestRequest;
 use App\Models\MedicalEvents\Sql\Observation;
 use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use App\Services\Dictionary\DictionaryManager;
+use App\Services\Dictionary\MedicationProgramPicker;
 use App\Services\MedicalEvents\CarePlanActivityValidationService;
 use App\Services\MedicalEvents\CarePlanLifecycleGateService;
 use App\Services\MedicalEvents\DeviceProgramParticipationGuard;
@@ -961,24 +962,7 @@ abstract class CarePlanComponent extends Component
      */
     protected function filterMedicationPrograms(Collection $programs): Collection
     {
-        $user = Auth::user();
-        if (!$user) {
-            return $programs->where('is_active', '=', true);
-        }
-
-        $mainSpeciality = $user->getMainSpeciality(legalEntity());
-
-        $filtered = $programs->where('is_active', '=', true);
-
-        if ($user->hasAllowedRole(Role::SPECIALIST) || $user->hasAllowedRole(Role::DOCTOR)) {
-            $filtered = $filtered->filter(function (array $program) use ($mainSpeciality): bool {
-                $allowedSpecialities = Arr::get($program, 'medical_program_settings.speciality_types_allowed', []);
-
-                return $mainSpeciality->intersect($allowedSpecialities)->isNotEmpty();
-            });
-        }
-
-        return $filtered;
+        return MedicationProgramPicker::forCurrentUser($programs);
     }
 
     /**

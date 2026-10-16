@@ -45,7 +45,7 @@
                         x-data="{
                             showReferrals: false,
                             referralNumber: @js($form->encounter['referralNumber'] ?? ''),
-                            referrals: @js($availableReferrals),
+                            referrals: $wire.entangle('availableReferrals'),
                             get filteredReferrals() {
                                 const value = this.referralNumber.replaceAll('-', '').toUpperCase();
 
@@ -65,6 +65,7 @@
                                 $wire.selectElectronicReferral(referral.id);
                             }
                         }"
+                        x-init="$wire.loadAvailableReferrals()"
                         @click.outside="showReferrals = false"
                     >
                         <div class="relative">

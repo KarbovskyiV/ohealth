@@ -42,7 +42,12 @@
         <div class="form-group group">
             <div class="flex items-start pt-[10px]">
                 <a
-                    @click.prevent="modalClinicalImpression.codeCode && (openModal = true)"
+                    @click.prevent="
+                        if (modalClinicalImpression.codeCode) {
+                            await $wire.loadClinicalImpressionRuleDetails();
+                            openModal = true;
+                        }
+                    "
                     class="rule-engine-rules default-p"
                 >
                     {{ __('clinical-impressions.set_of_rule_engines') }}

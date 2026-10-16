@@ -437,6 +437,10 @@ function initThemeToggle() {
     }
 }
 
+document.addEventListener('livewire:navigating', (event) => {
+    event.detail.onSwap(initThemeToggle);
+});
+
 document.addEventListener('livewire:navigated', () => {
     initThemeToggle();
 });
