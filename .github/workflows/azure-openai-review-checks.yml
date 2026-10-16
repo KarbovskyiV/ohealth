@@ -3,14 +3,18 @@ name: Azure review script checks
 on:
   pull_request:
     paths:
-      - .github/scripts/azure-openai-review.php
-      - .github/tests/azure-openai-review-test.php
+      - .github/scripts/*.php
+      - .github/tests/*.php
+      - docs/technical-requirements/**
+      - scripts/requirements/**
       - .github/workflows/azure-openai-review*.yml
   push:
     branches: [main]
     paths:
-      - .github/scripts/azure-openai-review.php
-      - .github/tests/azure-openai-review-test.php
+      - .github/scripts/*.php
+      - .github/tests/*.php
+      - docs/technical-requirements/**
+      - scripts/requirements/**
       - .github/workflows/azure-openai-review*.yml
 
 permissions:
@@ -31,5 +35,10 @@ jobs:
           php -r 'exit(extension_loaded("curl") && extension_loaded("mbstring") ? 0 : 1);'
           php -l .github/scripts/azure-openai-review.php
           php -l .github/tests/azure-openai-review-test.php
+          php -l .github/scripts/azure-ci-gate.php
+          php -l .github/scripts/azure-requirements-review.php
       - name: Verify review behavior without network access
-        run: php .github/tests/azure-openai-review-test.php
+        run: |
+          php .github/tests/azure-openai-review-test.php
+          php .github/tests/azure-ci-gate-test.php
+          php .github/tests/azure-requirements-review-test.php
