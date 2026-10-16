@@ -1,10 +1,7 @@
 name: Azure OpenAI PR review
-run-name: 'Azure review · PR #${{ inputs.pull_request_number }} · CI ${{ github.event.workflow_run.id }}'
+run-name: 'Azure review · PR #${{ inputs.pull_request_number }}'
 
 on:
-  workflow_run:
-    workflows: [Domain tests]
-    types: [completed]
   workflow_dispatch:
     inputs:
       pull_request_number:
@@ -19,35 +16,10 @@ on:
 permissions: {}
 
 concurrency:
-  group: azure-review-${{ github.event_name }}-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch || inputs.pull_request_number }}
+  group: azure-review-pr-${{ inputs.pull_request_number }}
   cancel-in-progress: true
 
 jobs:
-  dispatch-review:
-    # Only successful, current PR CI can queue a main-branch run without Azure access.
-    if: >-
-      github.repository == 'openhealths/nationHealth' && github.ref == 'refs/heads/main' &&
-      github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      actions: write
-      contents: read
-      pull-requests: read
-    steps:
-      - name: Load the trusted CI gate from main
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-          sparse-checkout: .github/scripts
-      - name: Verify CI and queue trusted main review
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          CI_RUN_ID: ${{ github.event.workflow_run.id }}
-        run: php .github/scripts/azure-ci-gate.php --queue
-
   review:
     # Only trusted main code runs with Azure credentials. Fork code is fetched as JSON patches.
     if: >-
@@ -58,6 +30,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: read
       checks: write
       id-token: write
       actions: read

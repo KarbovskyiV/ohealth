@@ -65,3 +65,22 @@ try {
     gateCheck(str_contains($error->getMessage(), 'needs successful'), 'Wrong failure');
 }
 echo "CI provenance, required jobs, sequencing and latest-attempt checks passed.\n";
+$issueHandler = static function ($method, $url, $payload) use ($handler): array {
+    if ($url === 'https://api.github.com/graphql') {
+        return ['data' => ['repository' => ['issue' => ['closedByPullRequestsReferences' => [
+            'nodes' => [['number' => 7, 'repository' => ['nameWithOwner' => REVIEW_REPOSITORY]]],
+            'pageInfo' => ['hasNextPage' => false],
+        ]]]]];
+    }
+    return $handler($method, $url, $payload);
+};
+gateCheck(queueIssueReview(963, $issueHandler) === [7], 'Issue change did not queue linked green PR');
+gateCheck(queueIssueReview(963, static function ($method, $url, $payload) use ($issueHandler, $latestFailure): array {
+    return str_contains($url, '/domain-tests.yml/runs?') ? ['workflow_runs' => [$latestFailure]] : $issueHandler($method, $url, $payload);
+}) === [], 'Issue edit bypassed failed CI');
+foreach (['draft' => true, 'state' => 'closed', 'author_association' => 'CONTRIBUTOR', 'base' => ['ref' => 'develop']] as $field => $value) {
+    gateCheck(queueIssueReview(963, static function ($method, $url, $payload) use ($issueHandler, $pr, $field, $value): array {
+        return str_contains($url, '/pulls/7') ? array_replace($pr, [$field => $value]) : $issueHandler($method, $url, $payload);
+    }) === [], 'Issue edit queued an ineligible PR: '.$field);
+}
+echo "Issue edits preserve CI and trusted PR gates.\n";

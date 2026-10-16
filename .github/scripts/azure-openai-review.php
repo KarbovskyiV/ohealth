@@ -17,7 +17,8 @@ function reviewEnv(string $name): string
 
 function reviewRequest(string $method, string $url, ?array $payload = null): array
 {
-    $isGitHub = str_starts_with($url, 'https://api.github.com/repos/'.REVIEW_REPOSITORY.'/');
+    $isGitHub = str_starts_with($url, 'https://api.github.com/repos/'.REVIEW_REPOSITORY.'/')
+        || $url === 'https://api.github.com/graphql';
     if ($isGitHub) {
         $token = reviewEnv('GITHUB_TOKEN');
     } else {

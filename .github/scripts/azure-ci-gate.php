@@ -77,6 +77,44 @@ function queueAzureReview(array $run, callable $request): array
     return $queued;
 }
 
+function queueIssueReview(int $number, callable $request): array
+{
+    if ($number < 1) {
+        throw new RuntimeException('Invalid issue number.');
+    }
+    $result = $request('POST', 'https://api.github.com/graphql', [
+        'query' => 'query($number:Int!){repository(owner:"openhealths",name:"nationHealth"){issue(number:$number){closedByPullRequestsReferences(first:20){nodes{number repository{nameWithOwner}} pageInfo{hasNextPage}}}}}',
+        'variables' => ['number' => $number],
+    ]);
+    $connection = $result['data']['repository']['issue']['closedByPullRequestsReferences'] ?? null;
+    if (!empty($result['errors']) || !is_array($connection) || ($connection['pageInfo']['hasNextPage'] ?? true)) {
+        throw new RuntimeException('Issue-linked PRs could not be read completely.');
+    }
+    $api = 'https://api.github.com/repos/'.REVIEW_REPOSITORY;
+    $queued = [];
+    foreach ($connection['nodes'] as $node) {
+        if (($node['repository']['nameWithOwner'] ?? '') !== REVIEW_REPOSITORY) {
+            continue;
+        }
+        $pr = $request('GET', "$api/pulls/".$node['number'], null);
+        if ($pr['state'] !== 'open' || $pr['draft'] || $pr['base']['ref'] !== 'main'
+            || !in_array($pr['author_association'] ?? '', ['OWNER', 'MEMBER', 'COLLABORATOR'], true)) {
+            continue;
+        }
+        $run = azureCiLatest($pr, $request, false);
+        if (!azureCiJobs($run, $pr['head']['sha'], $request)
+            || ($pr['head']['repo']['full_name'] ?? '') !== ($run['head_repository']['full_name'] ?? '')) {
+            continue;
+        }
+        $request('POST', "$api/actions/workflows/azure-openai-review.yml/dispatches", [
+            'ref' => 'main', 'inputs' => ['pull_request_number' => (string) $pr['number'], 'expected_head_sha' => $pr['head']['sha']],
+        ]);
+        $queued[] = $pr['number'];
+    }
+
+    return $queued;
+}
+
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
     try {
         if (reviewEnv('GITHUB_REPOSITORY') !== REVIEW_REPOSITORY || reviewEnv('GITHUB_REF') !== 'refs/heads/main') {
@@ -89,6 +127,12 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
             }
             $run = reviewRequest('GET', 'https://api.github.com/repos/'.REVIEW_REPOSITORY.'/actions/runs/'.$id);
             echo 'Queued reviews: '.count(queueAzureReview($run, 'reviewRequest')).".\n";
+        } elseif (($_SERVER['argv'][1] ?? '') === '--issue') {
+            $id = reviewEnv('ISSUE_NUMBER');
+            if (!preg_match('/^[1-9]\d{0,8}$/', $id)) {
+                throw new RuntimeException('Invalid issue number.');
+            }
+            echo 'Queued issue reviews: '.count(queueIssueReview((int) $id, 'reviewRequest')).".\n";
         } else {
             [$number, $api] = reviewContext();
             $pr = reviewRequest('GET', "$api/pulls/$number");
