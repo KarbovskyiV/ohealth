@@ -19,7 +19,7 @@
                   fullLegalCapacityAge: {{ config('ehealth.person_full_legal_capacity_age') }},
                   {{-- Documents proving legal capacity are accepted only for a minor who is old enough to register on their own --}}
                   get isLegalCapacityAge() {
-                      const [day, month, year] = ($wire.form.person.birthDate ?? '').split('.');
+                      const [day, month, year] = ($wire.form.person?.birthDate ?? '').split('.');
 
                       if (! day || ! month || year?.length !== 4) {
                           return false;

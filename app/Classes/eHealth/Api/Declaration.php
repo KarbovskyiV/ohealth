@@ -214,7 +214,7 @@ class Declaration extends Request
 
             'person.emergency_contact' => 'nullable|array',
             'person.emergency_contact.first_name' => 'required_with:person.emergency_contact|string',
-            'person.emergency_contact.last_name' => 'required_with:person.emergency_contact|string',
+            'person.emergency_contact.last_name' => 'nullable|string',
             'person.emergency_contact.second_name' => 'nullable|string',
             'person.emergency_contact.phones' => 'required_with:person.emergency_contact|array',
             'person.emergency_contact.phones.*.type' => 'required_with:person.emergency_contact.phones|string',

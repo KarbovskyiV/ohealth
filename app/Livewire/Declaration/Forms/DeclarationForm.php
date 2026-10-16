@@ -168,8 +168,10 @@ class DeclarationForm extends BaseForm
 
             if (!$patient->documents()->whereIn('type', $allowedTypes)->exists()) {
                 $fail(__('declarations.validation.document_type_not_allowed', [
-                    'types' => collect($allowedTypes)
-                        ->map(static fn (string $type): string => __("patients.documents.$type"))
+                    'types' => dictionary()->basics()
+                        ->byName('DOCUMENT_TYPE', false)
+                        ->asCodeDescription()
+                        ->only($allowedTypes)
                         ->implode(', ')
                 ]));
 
