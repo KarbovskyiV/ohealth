@@ -18,6 +18,7 @@ use App\Models\Employee\EmployeeRequest;
 use App\Models\LegalEntity;
 use App\Models\Relations\Party;
 use App\Models\Revision;
+use App\Models\Role as ModelsRole;
 use App\Models\User;
 use App\Services\Employee\EmployeeRequestMatcher;
 use App\Services\Employee\EmployeeRequestProcessor;
@@ -195,6 +196,143 @@ class EmployeeRequestAcceptedRevisionScenariosTest extends TestCase
         }
 
         $processor->processBatch($remoteBatch, $legalEntity);
+    }
+
+    /** @return array{LegalEntity, Employee, EmployeeRequest, EmployeeRequest} */
+    private function makeBatchEditPair(): array
+    {
+        $legalEntity = $this->makeLegalEntity();
+        $party = $this->makeParty();
+        $user = $this->makeUser($party);
+        $employee = $this->makeEmployee($legalEntity, $party, $user);
+        setPermissionsTeamId($legalEntity->id);
+        ModelsRole::findOrCreate(Role::DOCTOR->value, 'web');
+
+        $older = $this->makeRequestWithRevision(
+            $legalEntity,
+            partyOverrides: ['first_name' => 'Старий'],
+            requestOverrides: ['employee_id' => $employee->id],
+            createdAt: now()->subDay()->toDateTimeString(),
+        );
+        $newer = $this->makeRequestWithRevision(
+            $legalEntity,
+            partyOverrides: [
+                'first_name' => 'Новий',
+                'phones' => [['type' => 'MOBILE', 'number' => '+380509999999']],
+                'documents' => [['type' => 'PASSPORT', 'number' => 'BB222222']],
+            ],
+            requestOverrides: ['employee_id' => $employee->id],
+            createdAt: now()->toDateTimeString(),
+        );
+
+        return [$legalEntity, $employee, $older, $newer];
+    }
+
+    #[Test]
+    public function batchAppliesLatestContentAndClosesOlderEdits(): void
+    {
+        [$legalEntity, $employee, $older, $newer] = $this->makeBatchEditPair();
+        $unlisted = $this->makeRequestWithRevision(
+            $legalEntity,
+            requestOverrides: ['employee_id' => $employee->id, 'status' => RequestStatus::SIGNED],
+            createdAt: now()->subDays(2)->toDateTimeString(),
+        );
+
+        app(EmployeeRequestProcessor::class)->processBatch([
+            ['uuid' => $older->uuid, 'status' => 'APPROVED', 'employee_id' => $employee->uuid],
+            ['uuid' => $newer->uuid, 'status' => 'APPROVED', 'employee_id' => $employee->uuid],
+        ], $legalEntity);
+
+        $this->assertSame('Новий', $employee->party->fresh()->firstName);
+        $this->assertSame(['+380509999999'], $employee->party->phones()->pluck('number')->all());
+        $this->assertSame(['BB222222'], $employee->party->documents()->pluck('number')->all());
+        $this->assertSame(RequestStatus::APPROVED, $newer->fresh()->status);
+        $this->assertSame(RevisionStatus::APPLIED, $newer->revision->fresh()->status);
+        $this->assertSame(RequestStatus::APPROVED, $older->fresh()->status);
+        $this->assertSame(RevisionStatus::OUTDATED, $older->revision->fresh()->status);
+        $this->assertSame(RequestStatus::EXPIRED, $unlisted->fresh()->status);
+        $this->assertSame(RevisionStatus::OUTDATED, $unlisted->revision->fresh()->status);
+    }
+
+    #[Test]
+    public function failedLatestApplyLeavesBothEditsPendingForRetry(): void
+    {
+        [$legalEntity, $employee, $older, $newer] = $this->makeBatchEditPair();
+        $validRevision = $newer->revision->data;
+        $invalidRevision = $validRevision;
+        unset($invalidRevision['party']['tax_id']);
+        $newer->revision->update(['data' => $invalidRevision]);
+        $otherParty = $this->makeParty(['tax_id' => '0987654321']);
+        $otherUser = $this->makeUser($otherParty, 'other-worker@example.com');
+        $otherEmployee = $this->makeEmployee($legalEntity, $otherParty, $otherUser);
+        $otherRequest = $this->makeRequestWithRevision(
+            $legalEntity,
+            partyOverrides: ['first_name' => 'Інший', 'tax_id' => '0987654321'],
+            requestOverrides: ['employee_id' => $otherEmployee->id],
+        );
+        $batch = [
+            ['uuid' => $older->uuid, 'status' => 'APPROVED', 'employee_id' => $employee->uuid],
+            ['uuid' => $newer->uuid, 'status' => 'APPROVED', 'employee_id' => $employee->uuid],
+            ['uuid' => $otherRequest->uuid, 'status' => 'APPROVED', 'employee_id' => $otherEmployee->uuid],
+        ];
+        $processor = app(EmployeeRequestProcessor::class);
+
+        $processor->processBatch($batch, $legalEntity);
+
+        foreach ([$older, $newer] as $request) {
+            $this->assertSame(RequestStatus::NEW, $request->fresh()->status);
+            $this->assertNull($request->fresh()->appliedAt);
+            $this->assertSame(RevisionStatus::PENDING, $request->revision->fresh()->status);
+        }
+        $this->assertSame('Іван', $employee->party->fresh()->firstName);
+        $this->assertSame('Інший', $otherParty->fresh()->firstName);
+        $this->assertSame(RequestStatus::APPROVED, $otherRequest->fresh()->status);
+        $this->assertSame(RevisionStatus::APPLIED, $otherRequest->revision->fresh()->status);
+
+        $newer->revision->update(['data' => $validRevision]);
+        $processor->processBatch($batch, $legalEntity);
+
+        $this->assertSame('Новий', $employee->party->fresh()->firstName);
+        $this->assertSame(RequestStatus::APPROVED, $newer->fresh()->status);
+        $this->assertSame(RevisionStatus::APPLIED, $newer->revision->fresh()->status);
+        $this->assertSame(RequestStatus::APPROVED, $older->fresh()->status);
+        $this->assertSame(RevisionStatus::OUTDATED, $older->revision->fresh()->status);
+    }
+
+    #[Test]
+    public function supersededCloseFailureRollsBackAppliedContentAndBothRequests(): void
+    {
+        [$legalEntity, $employee, $older, $newer] = $this->makeBatchEditPair();
+        $dispatcher = EmployeeRequest::getEventDispatcher();
+        EmployeeRequest::setEventDispatcher(clone $dispatcher);
+        $closeAttemptedAfterApply = false;
+
+        try {
+            EmployeeRequest::updating(function (EmployeeRequest $request) use ($older, $newer, &$closeAttemptedAfterApply): void {
+                if ($request->id === $older->id && $request->status === RequestStatus::APPROVED) {
+                    $closeAttemptedAfterApply = $newer->fresh()->status === RequestStatus::APPROVED;
+
+                    throw new \RuntimeException('Simulated superseded request write failure.');
+                }
+            });
+
+            app(EmployeeRequestProcessor::class)->processBatch([
+                ['uuid' => $older->uuid, 'status' => 'APPROVED', 'employee_id' => $employee->uuid],
+                ['uuid' => $newer->uuid, 'status' => 'APPROVED', 'employee_id' => $employee->uuid],
+            ], $legalEntity);
+        } finally {
+            EmployeeRequest::setEventDispatcher($dispatcher);
+        }
+
+        $this->assertTrue($closeAttemptedAfterApply);
+        $this->assertSame('Іван', $employee->party->fresh()->firstName);
+        $this->assertSame([], $employee->party->phones()->pluck('number')->all());
+        $this->assertSame([], $employee->party->documents()->pluck('number')->all());
+        foreach ([$older, $newer] as $request) {
+            $this->assertSame(RequestStatus::NEW, $request->fresh()->status);
+            $this->assertNull($request->fresh()->appliedAt);
+            $this->assertSame(RevisionStatus::PENDING, $request->revision->fresh()->status);
+        }
     }
 
     #[Test]
@@ -459,12 +597,18 @@ class EmployeeRequestAcceptedRevisionScenariosTest extends TestCase
         $party = $this->makeParty();
         $user = $this->makeUser($party);
         $employee = $this->makeEmployee($legalEntity, $party, $user);
+        $appliedCreatedAt = now()->toDateTimeString();
 
         $olderPending = $this->makeRequestWithRevision(
             $legalEntity,
             partyOverrides: ['first_name' => 'Вчора'],
             requestOverrides: ['employee_id' => $employee->id, 'email' => $user->email],
             createdAt: now()->subDay()->toDateTimeString(),
+        );
+        $sameTimestampOlder = $this->makeRequestWithRevision(
+            $legalEntity,
+            requestOverrides: ['employee_id' => $employee->id],
+            createdAt: $appliedCreatedAt,
         );
         $applied = $this->makeRequestWithRevision(
             $legalEntity,
@@ -475,9 +619,36 @@ class EmployeeRequestAcceptedRevisionScenariosTest extends TestCase
                 'status' => RequestStatus::APPROVED,
                 'applied_at' => now(),
             ],
-            createdAt: now()->toDateTimeString(),
+            createdAt: $appliedCreatedAt,
         );
         $applied->revision?->update(['status' => RevisionStatus::APPLIED]);
+
+        $sameTimestampNewer = $this->makeRequestWithRevision(
+            $legalEntity,
+            requestOverrides: ['employee_id' => $employee->id],
+            createdAt: $appliedCreatedAt,
+        );
+        $newerPending = $this->makeRequestWithRevision(
+            $legalEntity,
+            requestOverrides: ['employee_id' => $employee->id],
+            createdAt: now()->addDay()->toDateTimeString(),
+        );
+        $foreignRequest = $this->makeRequestWithRevision(
+            $this->makeLegalEntity(),
+            requestOverrides: ['employee_id' => $employee->id],
+            createdAt: now()->subDay()->toDateTimeString(),
+        );
+        $otherEmployee = $this->makeEmployee($legalEntity, $party, $user);
+        $otherRequest = $this->makeRequestWithRevision(
+            $legalEntity,
+            requestOverrides: ['employee_id' => $otherEmployee->id],
+            createdAt: now()->subDay()->toDateTimeString(),
+        );
+        $draft = $this->makeRequestWithRevision(
+            $legalEntity,
+            requestOverrides: ['employee_id' => $employee->id, 'uuid' => null],
+            createdAt: now()->subDay()->toDateTimeString(),
+        );
 
         app(EmployeeRequestProcessor::class)->markOlderPendingEditsSuperseded($applied);
 
@@ -485,6 +656,13 @@ class EmployeeRequestAcceptedRevisionScenariosTest extends TestCase
         $this->assertSame(RequestStatus::EXPIRED, $olderFresh->status);
         $this->assertNotNull($olderFresh->appliedAt);
         $this->assertSame(RevisionStatus::OUTDATED, $olderFresh->revision->status);
+        $this->assertSame(RequestStatus::EXPIRED, $sameTimestampOlder->fresh()->status);
+        $this->assertSame(RevisionStatus::OUTDATED, $sameTimestampOlder->revision->fresh()->status);
+        foreach ([$sameTimestampNewer, $newerPending, $foreignRequest, $otherRequest, $draft] as $untouched) {
+            $this->assertSame(RequestStatus::NEW, $untouched->fresh()->status);
+            $this->assertNull($untouched->fresh()->appliedAt);
+            $this->assertSame(RevisionStatus::PENDING, $untouched->revision->fresh()->status);
+        }
     }
 
     #[Test]

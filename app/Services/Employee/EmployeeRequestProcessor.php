@@ -318,9 +318,9 @@ class EmployeeRequestProcessor
             ->pendingEhealth()
             ->whereNotNull('uuid')
             ->where(function ($query) use ($applied): void {
-                $query->where('created_at', '<', $applied->created_at)
+                $query->where('created_at', '<', $applied->createdAt)
                     ->orWhere(function ($inner) use ($applied): void {
-                        $inner->where('created_at', $applied->created_at)
+                        $inner->where('created_at', $applied->createdAt)
                             ->where('id', '<', $applied->id);
                     });
             })
@@ -368,7 +368,7 @@ class EmployeeRequestProcessor
     {
         $sorted = $approvedRequests
             ->sortBy(fn (EmployeeRequest $request): array => [
-                $request->created_at?->timestamp ?? 0,
+                $request->createdAt?->timestamp ?? 0,
                 $request->id,
             ])
             ->values();
@@ -472,24 +472,27 @@ class EmployeeRequestProcessor
         }
 
         $partition = $this->partitionLatestApprovedPerEmployee($approvedLocals);
-
-        foreach ($partition['superseded'] as $supersededRequest) {
-            try {
-                // Remote APPROVED but superseded by a newer edit for the same employee — close without applying content.
-                $supersededRequest->update([
-                    'status' => LocalStatus::APPROVED,
-                    'applied_at' => now(),
-                ]);
-                $supersededRequest->revision?->update(['status' => RevisionStatus::OUTDATED]);
-            } catch (\Throwable) {
-                // Soft-fail: newer apply still proceeds; older row can be cleaned on next sync.
-            }
-        }
+        $supersededByEmployee = $partition['superseded']->groupBy('employeeId');
 
         foreach ($partition['apply'] as $localRequest) {
             try {
                 $remoteRequestData = $eHealthRequests->get($localRequest->uuid);
-                $this->applyApprovedRequest($localRequest, $remoteRequestData);
+                // Capture the group before applying: a create request can acquire employeeId during apply.
+                $supersededRequests = $supersededByEmployee->get($localRequest->employeeId, collect());
+
+                DB::transaction(function () use ($localRequest, $remoteRequestData, $supersededRequests): void {
+                    $this->applyApprovedRequest($localRequest, $remoteRequestData);
+
+                    // Close remote APPROVED edits only after their replacement has applied successfully.
+                    // A failure here must also roll back the employee content and latest request status.
+                    foreach ($supersededRequests as $supersededRequest) {
+                        $supersededRequest->update([
+                            'status' => LocalStatus::APPROVED,
+                            'applied_at' => now(),
+                        ]);
+                        $supersededRequest->revision?->update(['status' => RevisionStatus::OUTDATED]);
+                    }
+                });
             } catch (\Throwable $e) {
                 Log::error(
                     "[EmployeeRequestProcessor] Failed to process request ID {$localRequest->id}: ".$e->getMessage(),

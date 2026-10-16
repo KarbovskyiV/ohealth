@@ -21,16 +21,16 @@ class EmployeeRequestProcessorLatestApprovedTest extends TestCase
             'status' => RequestStatus::NEW,
             'employee_id' => 10,
         ]);
-        $older->id = 1;
-        $older->created_at = now()->subDay();
+        $older->id = 2;
+        $older->createdAt = now()->subDay();
 
         $newer = new EmployeeRequest([
             'uuid' => (string) Str::uuid(),
             'status' => RequestStatus::NEW,
             'employee_id' => 10,
         ]);
-        $newer->id = 2;
-        $newer->created_at = now();
+        $newer->id = 1;
+        $newer->createdAt = now();
 
         $otherEmployee = new EmployeeRequest([
             'uuid' => (string) Str::uuid(),
@@ -38,14 +38,32 @@ class EmployeeRequestProcessorLatestApprovedTest extends TestCase
             'employee_id' => 99,
         ]);
         $otherEmployee->id = 3;
-        $otherEmployee->created_at = now();
+        $otherEmployee->createdAt = now();
 
         $processor = app(EmployeeRequestProcessor::class);
         $partition = $processor->partitionLatestApprovedPerEmployee(
             collect([$older, $newer, $otherEmployee])
         );
 
-        $this->assertSame([2, 3], $partition['apply']->pluck('id')->sort()->values()->all());
+        $this->assertSame([1, 3], $partition['apply']->pluck('id')->sort()->values()->all());
+        $this->assertSame([2], $partition['superseded']->pluck('id')->all());
+    }
+
+    #[Test]
+    public function partitionUsesIdToBreakTimestampTies(): void
+    {
+        $older = new EmployeeRequest(['employee_id' => 10]);
+        $older->id = 1;
+        $older->createdAt = '2026-10-15 12:00:00';
+
+        $newer = new EmployeeRequest(['employee_id' => 10]);
+        $newer->id = 2;
+        $newer->createdAt = $older->createdAt;
+
+        $partition = app(EmployeeRequestProcessor::class)
+            ->partitionLatestApprovedPerEmployee(collect([$newer, $older]));
+
+        $this->assertSame([2], $partition['apply']->pluck('id')->all());
         $this->assertSame([1], $partition['superseded']->pluck('id')->all());
     }
 
@@ -58,7 +76,7 @@ class EmployeeRequestProcessorLatestApprovedTest extends TestCase
             'employee_id' => null,
         ]);
         $createA->id = 10;
-        $createA->created_at = now()->subHour();
+        $createA->createdAt = now()->subHour();
 
         $createB = new EmployeeRequest([
             'uuid' => (string) Str::uuid(),
@@ -66,7 +84,7 @@ class EmployeeRequestProcessorLatestApprovedTest extends TestCase
             'employee_id' => null,
         ]);
         $createB->id = 11;
-        $createB->created_at = now();
+        $createB->createdAt = now();
 
         $processor = app(EmployeeRequestProcessor::class);
         $partition = $processor->partitionLatestApprovedPerEmployee(
