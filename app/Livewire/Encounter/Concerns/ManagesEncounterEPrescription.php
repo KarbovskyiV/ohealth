@@ -10,6 +10,7 @@ use App\Enums\Person\EncounterStatus;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\Person\Person;
+use App\Services\Dictionary\MedicationProgramPicker;
 use App\Services\MedicalEvents\MedicalRequestOwnership;
 use App\Services\MedicalEvents\MedicationRequestLifecycleService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -119,13 +120,7 @@ trait ManagesEncounterEPrescription
 
     public function searchEncounterEPrescriptionMedications(): void
     {
-        $selectedProgramId = (string) ($this->encounterEPrescriptionForm['program_id'] ?? '');
-        if ($selectedProgramId === '') {
-            $this->encounterEPrescriptionSearchResults = [];
-            $this->encounterEPrescriptionWarningMessage = __('Спочатку оберіть медичну програму.');
-
-            return;
-        }
+        $selectedProgramId = MedicationProgramPicker::resolve($this->encounterEPrescriptionForm['program_id'] ?? null);
 
         $query = trim($this->encounterEPrescriptionSearchQuery);
         if (mb_strlen($query) < 3) {
@@ -216,7 +211,7 @@ trait ManagesEncounterEPrescription
 
         $this->validate([
             'encounterEPrescriptionForm.medication_id' => 'required|string|uuid',
-            'encounterEPrescriptionForm.program_id' => 'required|string|uuid',
+            'encounterEPrescriptionForm.program_id' => 'nullable|string|uuid',
             'encounterEPrescriptionForm.category' => 'required|string',
             'encounterEPrescriptionForm.medication_qty' => 'required|numeric|min:0.01',
             'encounterEPrescriptionForm.signature_text' => 'required|string|min:1',
@@ -255,6 +250,7 @@ trait ManagesEncounterEPrescription
             );
 
             $formData = $this->encounterEPrescriptionForm;
+            $formData['program_id'] = MedicationProgramPicker::resolve($formData['program_id'] ?? null);
 
             $this->encounterEPrescriptionRequestIdToSign = app(MedicationRequestLifecycleService::class)
                 ->createEncounterDraft($encounter, $formData, $employeeContext);
@@ -397,16 +393,27 @@ trait ManagesEncounterEPrescription
 
     protected function loadEncounterEPrescriptionPrograms(): void
     {
-        $this->encounterEPrescriptionPrograms = dictionary()->medicalPrograms()
-            ->where('is_active', true)
-            ->where('type', MedicalProgramType::MEDICATION->value)
-            ->map(static fn (array $program): array => [
-                'id' => (string) ($program['id'] ?? ''),
-                'name' => (string) ($program['name'] ?? ''),
-            ])
-            ->filter(static fn (array $program): bool => $program['id'] !== '' && $program['name'] !== '')
-            ->values()
-            ->all();
+        try {
+            $programs = dictionary()->medicalPrograms()
+                ->filter(static fn (array $program): bool => strtoupper((string) ($program['type'] ?? '')) === MedicalProgramType::MEDICATION->value);
+
+            $this->encounterEPrescriptionPrograms = MedicationProgramPicker::forCurrentUser($programs)
+                ->reject(static fn (array $program): bool => ($program['id'] ?? '') === MedicationProgramPicker::DEFAULT_ID)
+                ->filter(static fn (array $program): bool => ($program['medication_request_allowed'] ?? true) !== false
+                    && !data_get($program, 'medical_program_settings.care_plan_required', false))
+                ->map(static fn (array $program): array => [
+                    'id' => (string) ($program['id'] ?? ''),
+                    'name' => (string) ($program['name'] ?? ''),
+                ])
+                ->filter(static fn (array $program): bool => $program['id'] !== '' && $program['name'] !== '')
+                ->values()
+                ->all();
+        } catch (Throwable $exception) {
+            Log::warning('EncounterEdit: failed to load medical programs for standalone eRx', [
+                'exceptionType' => $exception::class,
+            ]);
+            $this->encounterEPrescriptionPrograms = [];
+        }
     }
 
     protected function resolveEncounterMedicationPackageStep(?array $medication): float

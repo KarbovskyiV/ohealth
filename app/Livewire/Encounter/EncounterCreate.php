@@ -73,8 +73,6 @@ class EncounterCreate extends EncounterComponent
         };
 
         $this->setDefaultDate();
-
-        $this->loadAvailableReferrals();
     }
 
     /**

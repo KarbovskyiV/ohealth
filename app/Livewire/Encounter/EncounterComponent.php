@@ -526,6 +526,13 @@ class EncounterComponent extends Component
 
     public function boot(): void
     {
+        $this->legalEntityType = legalEntity()->type->name;
+        $this->encounterWriterEmployee = Auth::user()->getEncounterWriterEmployee();
+        $this->employeeType = $this->encounterWriterEmployee?->employeeType;
+    }
+
+    protected function initializeEncounterDictionaries(): void
+    {
         $icd10Cache = $this->dictionaries['eHealth/ICD10_AM/condition_codes'] ?? [];
 
         $observationConfigRepository = Repository::observationConfig();
@@ -557,10 +564,6 @@ class EncounterComponent extends Component
             ])
             ->toArray();
 
-        $this->legalEntityType = legalEntity()->type->name;
-        $this->encounterWriterEmployee = Auth::user()->getEncounterWriterEmployee();
-        $this->employeeType = $this->encounterWriterEmployee?->employeeType;
-
         $this->adjustEpisodeTypes();
         $this->adjustEncounterClasses();
         $this->adjustEncounterTypes();
@@ -569,7 +572,7 @@ class EncounterComponent extends Component
     /**
      * Load available patient referrals from the local database.
      */
-    protected function loadAvailableReferrals(): void
+    public function loadAvailableReferrals(): void
     {
         if ($this->referralsLoaded) {
             return;
@@ -800,6 +803,8 @@ class EncounterComponent extends Component
      */
     protected function initializeComponent(bool $loadEpisodes = true): void
     {
+        $this->initializeEncounterDictionaries();
+
         $encounterWriterEmployee = $this->encounterWriterEmployee;
 
         // Used by Alpine co-author rows (diagnosis performer); empty name falls back to raw UUID in UI
@@ -1413,10 +1418,19 @@ class EncounterComponent extends Component
         }
     }
 
+    public function loadClinicalImpressionRuleDetails(): void
+    {
+        if (!empty($this->dictionaries['custom/rule_engine_rule_list'])) {
+            return;
+        }
+
+        $ruleEngineRules = dictionary()->ruleEngineRules();
+        $this->dictionaries['custom/rule_engine_rule_list'] = $ruleEngineRules->ruleList();
+        $this->dictionaries['custom/rule_engine_details'] = $ruleEngineRules->details();
+    }
+
     /**
      * Load dictionaries that are not part of the standard eHealth basic dictionary list.
-     *
-     * @return void
      */
     protected function loadCustomDictionaries(): void
     {
@@ -1430,9 +1444,8 @@ class EncounterComponent extends Component
             ->toArray();
         $this->dictionaries['custom/services'] = dictionary()->services()->flattened()->toArray();
 
-        $ruleEngineRules = dictionary()->ruleEngineRules();
-        $this->dictionaries['custom/rule_engine_rule_list'] = $ruleEngineRules->ruleList();
-        $this->dictionaries['custom/rule_engine_details'] = $ruleEngineRules->details();
+        $this->dictionaries['custom/rule_engine_rule_list'] = [];
+        $this->dictionaries['custom/rule_engine_details'] = [];
 
         $this->dictionaries['custom/device_definitions'] = dictionary()->deviceDefinitions()
             ->map(static fn (array $deviceDefinition): array => [

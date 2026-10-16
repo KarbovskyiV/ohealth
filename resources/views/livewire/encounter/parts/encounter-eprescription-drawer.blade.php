@@ -12,10 +12,16 @@
     >
         <h2 class="mb-6 text-2xl font-bold text-gray-900 dark:text-white">Електронний рецепт без плану лікування</h2>
         <p class="mb-6 text-sm text-gray-600 dark:text-gray-300">
-            Взаємодія №{{ $encounterUuid ?? $encounterId }} · ТВ 3.9.3.3
+            Взаємодія №{{ $encounterUuid ?? $encounterId }}
         </p>
 
         <form wire:submit.prevent="validateEncounterEPrescription" class="mx-auto max-w-3xl space-y-6">
+            @if ($encounterEPrescriptionWarningMessage !== '')
+                <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                    {{ $encounterEPrescriptionWarningMessage }}
+                </div>
+            @endif
+
             <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                 <h3 class="mb-4 text-lg font-semibold">Лікарський засіб</h3>
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -28,11 +34,16 @@
                             class="input-select peer w-full"
                             wire:model.live="encounterEPrescriptionForm.program_id"
                         >
-                            <option value="">Оберіть програму</option>
+                            <option value="">{{ __('care-plan.prescription_medication') }}</option>
                             @foreach ($encounterEPrescriptionPrograms as $program)
                                 <option value="{{ $program['id'] }}">{{ $program['name'] }}</option>
                             @endforeach
                         </select>
+                        @if ($encounterEPrescriptionPrograms === [])
+                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                {{ __('encounters.messages.medication_programs_unavailable') }}
+                            </p>
+                        @endif
                         @error('encounterEPrescriptionForm.program_id')
                             <p class="text-error">{{ $message }}</p>
                         @enderror
@@ -49,20 +60,15 @@
                                 placeholder="Введіть щонайменше 3 символи та натисніть Enter"
                                 wire:model="encounterEPrescriptionSearchQuery"
                                 wire:keydown.enter.prevent="searchEncounterEPrescriptionMedications"
-                                @disabled(($encounterEPrescriptionForm['program_id'] ?? '') === '')
                             />
                             <button
                                 type="button"
                                 class="button-primary"
                                 wire:click="searchEncounterEPrescriptionMedications"
-                                @disabled(($encounterEPrescriptionForm['program_id'] ?? '') === '')
                             >
                                 Пошук
                             </button>
                         </div>
-                        @if (($encounterEPrescriptionForm['program_id'] ?? '') === '')
-                            <p class="mt-1 text-xs text-gray-500">Спочатку оберіть медичну програму.</p>
-                        @endif
                     </div>
                     @if ($encounterEPrescriptionSearchResults !== [])
                         <div class="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 md:col-span-2 dark:border-gray-600 dark:bg-gray-900/40">
@@ -228,12 +234,6 @@
                     @enderror
                 </div>
             </div>
-
-            @if ($encounterEPrescriptionWarningMessage !== '')
-                <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
-                    {{ $encounterEPrescriptionWarningMessage }}
-                </div>
-            @endif
 
             <div class="flex justify-end gap-3">
                 <button type="button" class="button-minor" wire:click="closeEncounterEPrescriptionDrawer">

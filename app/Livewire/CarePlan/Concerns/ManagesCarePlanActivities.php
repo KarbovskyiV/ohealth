@@ -11,6 +11,7 @@ use App\Repositories\CarePlanActivityRepository;
 use App\Repositories\CarePlanRepository;
 use App\Services\Dictionary\Collections\BasicDictionaryCollection;
 use App\Services\Dictionary\ServiceSearch;
+use App\Services\Dictionary\MedicationProgramPicker;
 use App\Services\MedicalEvents\CarePlanActivityValidationService;
 use App\Services\MedicalEvents\CarePlanLifecycleService;
 use App\Services\MedicalEvents\DeviceProgramParticipationGuard;
@@ -27,8 +28,6 @@ use UnitEnum;
 
 trait ManagesCarePlanActivities
 {
-    protected const DEFAULT_MEDICATION_PROGRAM_ID = '1318eabc-1a1a-42f6-8450-61e11c19eede';
-
     public bool $confirmingActivityDeletion = false;
 
     #[Locked]
@@ -1338,11 +1337,7 @@ trait ManagesCarePlanActivities
 
     protected function resolveMedicationProgramId(): ?string
     {
-        if (filled($this->selectedProgram)) {
-            return $this->selectedProgram;
-        }
-
-        return self::DEFAULT_MEDICATION_PROGRAM_ID;
+        return MedicationProgramPicker::resolve($this->selectedProgram);
     }
 
     protected function resolveDeviceProgramId(): ?string

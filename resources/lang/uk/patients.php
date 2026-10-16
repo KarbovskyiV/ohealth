@@ -45,6 +45,9 @@ return [
         'secondary' => 'Не основний'
     ],
     'authentication_method' => [
+        'otp' => 'Через СМС',
+        'offline' => 'За документами',
+        'third_person' => 'Через законного представника',
         'na' => 'відсутній'
     ],
     'documents' => [
