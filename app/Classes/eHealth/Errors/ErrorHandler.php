@@ -16,16 +16,31 @@ class ErrorHandler
                 $entryType = $invalidEntry['entry_type'] ?? 'Unknown';
                 $rules = $invalidEntry['rules'] ?? [];
                 foreach ($rules as $rule) {
+                    if (!isset($rule['description']) && isset($error['error']['message'])) {
+                        continue;
+                    }
+
                     $description = $rule['description'] ?? 'No description';
                     $errorMessages[] = "Error in entry '{$entry}' (Type: {$entryType}): {$description}";
                 }
             }
-        } else if (isset($error['error']['message'])) {
-            $errorMessages[] = $error['error']['message'] ?? 'Error has no description';
-        } else {
-            $errorMessages[] = "No valid error information provided.";
+        }
+
+        if ($errorMessages === []) {
+            $message = $error['error']['message'] ?? 'No valid error information provided.';
+
+            $errorMessages[] = $this->translateMessage($message);
         }
 
         return (['errors' => $errorMessages]);
+    }
+
+    private function translateMessage(string $message): string
+    {
+        $translations = [
+            'Does not match the signer last name' => 'errors.ehealth.messages.signer_last_name_mismatch',
+        ];
+
+        return isset($translations[$message]) ? __($translations[$message]) : $message;
     }
 }
