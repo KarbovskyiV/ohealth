@@ -737,7 +737,6 @@ class CarePlanCreate extends BasePatientComponent
         }
 
         $this->availableEncounters = Encounter::where('person_id', $this->personId)
-            ->whereNotNull('ehealth_inserted_at')
             ->where('status', 'finished')
             ->orderBy('ehealth_inserted_at', 'desc')
             ->get(['id', 'uuid', 'status', 'ehealth_inserted_at'])
