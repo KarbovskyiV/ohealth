@@ -21,6 +21,18 @@ use Illuminate\Database\Eloquent\Builder;
 class EncounterPolicy
 {
     /**
+     * Determine whether the user can view the list of encounters.
+     */
+    public function viewAny(User $user): Response
+    {
+        if ($user->cannot('encounter:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Determine whether the user can view the encounter of the patient: one of the encounters the user may read,
      * one based on a care plan with an approval on it or managed by the current legal entity, or a draft performed
      * by an employee of the current legal entity, which exists here only and is not known to eHealth yet.

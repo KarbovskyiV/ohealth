@@ -21,7 +21,7 @@
         parentOptions() {
             const packageDevices = this.devices
                 .filter((device) => device.uuid !== this.modalDevice.uuid && device.names?.[0]?.value)
-                .map((device) => ({ uuid: device.uuid, name: device.names[0].value }));
+                .map((device) => ({ uuid: device.uuid, name: device.names[0].value, status: device.status }));
             const packageDeviceIds = packageDevices.map((device) => device.uuid);
 
             return [
@@ -30,7 +30,7 @@
                     (device) =>
                         device.uuid !== this.modalDevice.uuid && ! packageDeviceIds.includes(device.uuid),
                 ),
-            ];
+            ].filter((device) => device.status === 'active');
         },
 
         definitionsForSelectedType() {

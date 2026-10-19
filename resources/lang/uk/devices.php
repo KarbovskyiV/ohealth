@@ -91,7 +91,9 @@ return [
         'type_not_allowed' => 'Обраний тип медичного виробу недоступний',
         'property_value_required' => 'Для характеристики медичного виробу №:position треба вказати значення',
         'property_single_value' => 'Для характеристики медичного виробу №:position можна вказати лише одне значення',
-        'definition_type_mismatch' => 'Тип медичного виробу не збігається з типом обраного виробу з довідника'
+        'definition_type_mismatch' => 'Тип медичного виробу не збігається з типом обраного виробу з довідника',
+        'parent_not_found' => 'Обраний батьківський медичний виріб не знайдено серед виробів пацієнта',
+        'parent_not_active' => 'Батьківський медичний виріб має бути в статусі «Активний»'
     ],
 
     // Number of the record every :attribute of a validation message carries

@@ -245,7 +245,31 @@ class DeviceForm extends Form
                     }
                 }
             ],
-            'devices.*.parentId' => ['nullable', 'uuid'],
+            'devices.*.parentId' => [
+                'nullable',
+                'uuid',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    // A device cannot be its own parent
+                    if ($value === ($this->devices[(int) explode('.', $attribute)[1]]['uuid'] ?? '')) {
+                        $fail(__('devices.validation.parent_not_found'));
+
+                        return;
+                    }
+
+                    $parent = collect($this->devices)->firstWhere('uuid', $value)
+                        ?? collect($this->component->patientDevices)->firstWhere('uuid', $value);
+
+                    if ($parent === null) {
+                        $fail(__('devices.validation.parent_not_found'));
+
+                        return;
+                    }
+
+                    if ($parent['status'] !== DeviceStatus::ACTIVE->value) {
+                        $fail(__('devices.validation.parent_not_active'));
+                    }
+                }
+            ],
             'devices.*.identifiers' => ['nullable', 'array'],
             // The form always shows one identifier row, so a row left empty is no identifier at all
             'devices.*.identifiers.*.code' => Rule::forEach(function (mixed $value, string $attribute): array {

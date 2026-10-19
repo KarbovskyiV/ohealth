@@ -18,6 +18,18 @@ use Illuminate\Database\Eloquent\Builder;
 class ProcedurePolicy
 {
     /**
+     * Determine whether the user can view the list of procedures.
+     */
+    public function viewAny(User $user): Response
+    {
+        if ($user->cannot('procedure:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Determine whether the user can view the procedure.
      */
     public function view(User $user, Procedure $procedure): Response

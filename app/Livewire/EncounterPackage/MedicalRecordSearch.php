@@ -6,6 +6,7 @@ namespace App\Livewire\EncounterPackage;
 
 use App\Classes\eHealth\EHealth;
 use App\Enums\MedicalEvents\RecordType;
+use App\Enums\Person\ConditionVerificationStatus;
 use App\Enums\Person\ObservationStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
@@ -230,7 +231,9 @@ class MedicalRecordSearch extends Component
 
         try {
             $records = $recordType === RecordType::CONDITION
-                ? EHealth::condition()->getBySearchParams($this->patientUuid, $params)->validate()
+                ? collect(EHealth::condition()->getBySearchParams($this->patientUuid, $params)->validate())
+                    ->reject(static fn (array $condition): bool => data_get($condition, 'verification_status') === ConditionVerificationStatus::ENTERED_IN_ERROR->value)
+                    ->all()
                 : collect(EHealth::observation()->getBySearchParams($this->patientUuid, $params)->validate())
                     ->reject(static fn (array $observation): bool => data_get($observation, 'status') === ObservationStatus::ENTERED_IN_ERROR->value)
                     ->all();

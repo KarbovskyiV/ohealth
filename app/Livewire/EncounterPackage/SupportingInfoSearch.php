@@ -6,6 +6,8 @@ namespace App\Livewire\EncounterPackage;
 
 use App\Classes\eHealth\EHealth;
 use App\Enums\MedicalEvents\RecordType;
+use App\Enums\Person\ConditionVerificationStatus;
+use App\Enums\Person\DiagnosticReportStatus;
 use App\Enums\Person\ObservationStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
@@ -165,7 +167,7 @@ class SupportingInfoSearch extends Component
             return;
         }
 
-        $episodeId = $this->withEpisodeFilter ? ($this->filterEpisodeId ?: null) : null;
+        $episodeId = $this->withEpisodeFilter && $this->filterEpisodeId !== '' ? $this->filterEpisodeId : null;
 
         if ($recordType === RecordType::EPISODE) {
             $this->records = $this->episodeRecords($episodeId);
@@ -291,7 +293,7 @@ class SupportingInfoSearch extends Component
     }
 
     /**
-     * Diagnostic reports of the patient.
+     * Diagnostic reports of the patient, except those entered in error.
      *
      * @param  array  $params
      * @return array
@@ -300,6 +302,7 @@ class SupportingInfoSearch extends Component
     private function diagnosticReportRecords(array $params): array
     {
         return collect(EHealth::diagnosticReport()->getBySearchParams($this->patientUuid, $params)->validate())
+            ->reject(static fn (array $report): bool => data_get($report, 'status') === DiagnosticReportStatus::ENTERED_IN_ERROR->value)
             ->map(static fn (array $report): array => [
                 'uuid' => data_get($report, 'uuid'),
                 'ehealthInsertedAt' => convertToAppDateFormat(data_get($report, 'ehealth_inserted_at')),
@@ -311,7 +314,7 @@ class SupportingInfoSearch extends Component
     }
 
     /**
-     * Conditions of the patient.
+     * Conditions of the patient, except those entered in error.
      *
      * @param  array  $params
      * @return array
@@ -320,6 +323,7 @@ class SupportingInfoSearch extends Component
     private function conditionRecords(array $params): array
     {
         return collect(EHealth::condition()->getBySearchParams($this->patientUuid, $params)->validate())
+            ->reject(static fn (array $condition): bool => data_get($condition, 'verification_status') === ConditionVerificationStatus::ENTERED_IN_ERROR->value)
             ->map(static fn (array $condition): array => [
                 'uuid' => data_get($condition, 'uuid'),
                 'ehealthInsertedAt' => convertToAppDateFormat(data_get($condition, 'ehealth_inserted_at')),
