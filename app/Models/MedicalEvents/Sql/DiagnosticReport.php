@@ -9,8 +9,10 @@ use App\Casts\EHealthTimestampCast;
 use App\Contracts\SubmittedToEHealth;
 use App\Enums\Person\DiagnosticReportStatus;
 use App\Models\EhealthLink;
+use App\Models\LegalEntity;
 use App\Models\Person\Person;
 use App\Models\Preperson;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -337,7 +339,10 @@ class DiagnosticReport extends Model implements SubmittedToEHealth
                         Encounter::forLegalEntity($patient)->pluck('uuid')
                     )
                 )
-                ->orWhere(static fn (Builder $managed): Builder => $managed->managedByLegalEntity())
+                ->orWhereHas(
+                    'managingOrganization',
+                    static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
+                )
         );
     }
 
@@ -407,12 +412,60 @@ class DiagnosticReport extends Model implements SubmittedToEHealth
     }
 
     /**
+     * Filter the patient's diagnostic reports based on a referral issued under a care plan one of the user's employees
+     * has an active read approval on.
+     *
+     * ABAC rule 14.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  User  $user
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function basedOnApprovedCarePlan(
+        Builder $query,
+        Person|Preperson $patient,
+        User $user,
+        LegalEntity $legalEntity
+    ): Builder {
+        return $query->forPatient($patient)->whereHas(
+            'basedOn',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnApprovedCarePlan($patient, $user, $legalEntity)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's diagnostic reports based on a referral issued under a care plan managed by the current
+     * legal entity.
+     *
+     * ABAC rule 17.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function basedOnCarePlanOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'basedOn',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnCarePlanOfLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
      * Diagnostic reports of the patient the user may read: with access to all the patient's data (an active
      * declaration or approval) all of them, including the ones of the persons and prepersons merged into a person,
      * otherwise only the patient's own ones of the current legal entity, originated by its episode or created within
      * an encounter originated by its episode.
-     *
-     * ABAC rule 1.
      *
      * @param  Builder  $query
      * @param  Person|Preperson  $patient

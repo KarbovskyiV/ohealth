@@ -7,18 +7,17 @@
                 {{ __('medical-events.performer_employee') }}
             </label>
             <select
-                    x-model="modalClinicalImpression.assessorEmployeeId"
-                    id="clinicalImpressionAssessorEmployee"
-                    class="input-select peer"
-                    required
+                x-model="modalClinicalImpression.assessorEmployeeId"
+                id="clinicalImpressionAssessorEmployee"
+                class="input-select peer"
+                required
             >
                 <option value="" selected>
                     {{ __('forms.select') }} {{ mb_strtolower(__('medical-events.performer_employee')) }} *
                 </option>
-                @foreach ($employees as $employee)
+                @foreach ($assessorEmployees as $employee)
                     <option value="{{ $employee['uuid'] }}">
-                        {{ $employee['name'] }}
-                        — {{ $this->dictionaries['POSITION'][$employee['position']] ?? $employee['position'] }}
+                        {{ $employee['name'] }} — {{ $this->dictionaries['POSITION'][$employee['position']] ?? $employee['position'] }}
                     </option>
                 @endforeach
             </select>
@@ -59,25 +58,25 @@
         <template x-teleport="body">
             {{-- This moves the modal at the end of the body tag --}}
             <div
-                    x-show="openModal"
-                    style="display: none"
-                    @keydown.escape.prevent.stop="openModal = false"
-                    role="dialog"
-                    aria-modal="true"
-                    x-id="['modal-title']"
-                    :aria-labelledby="$id('modal-title')"
-                    {{-- This associates the modal with unique ID --}}
-                    class="modal"
+                x-show="openModal"
+                style="display: none"
+                @keydown.escape.prevent.stop="openModal = false"
+                role="dialog"
+                aria-modal="true"
+                x-id="['modal-title']"
+                :aria-labelledby="$id('modal-title')"
+                {{-- This associates the modal with unique ID --}}
+                class="modal"
             >
                 {{-- Overlay --}}
                 <div x-show="openModal" x-transition.opacity class="fixed inset-0 bg-black/25"></div>
 
                 {{-- Panel --}}
                 <div
-                        x-show="openModal"
-                        x-transition
-                        @click="openModal = false"
-                        class="relative flex min-h-screen items-center justify-center p-4"
+                    x-show="openModal"
+                    x-transition
+                    @click="openModal = false"
+                    class="relative flex min-h-screen items-center justify-center p-4"
                 >
                     <div @click.stop x-trap.noscroll.inert="openModal" class="modal-content h-fit w-full lg:max-w-5xl">
                         {{-- Title --}}
@@ -91,13 +90,13 @@
                                 <p class="default-p">{{ __('forms.details') }}:</p>
                                 <div class="space-y-2 rounded-md border-2 border-dashed border-white dark:border-white">
                                     <template
-                                            x-for="
+                                        x-for="
                                             (detail, index) in
                                             $wire.dictionaries['custom/rule_engine_details'][
                                                 modalClinicalImpression.codeCode
                                             ]?.items
                                         "
-                                            :key="index"
+                                        :key="index"
                                     >
                                         <p class="default-p" x-text="detail.value.string"></p>
                                     </template>
@@ -121,13 +120,13 @@
     <div class="form-row-modal">
         <div class="form-group group">
             <input
-                    x-model="modalClinicalImpression.description"
-                    type="text"
-                    name="description"
-                    id="description"
-                    class="input peer"
-                    placeholder=" "
-                    autocomplete="off"
+                x-model="modalClinicalImpression.description"
+                type="text"
+                name="description"
+                id="description"
+                class="input peer"
+                placeholder=" "
+                autocomplete="off"
             />
             <label for="description" class="label"> {{ __('clinical-impressions.description') }} </label>
         </div>

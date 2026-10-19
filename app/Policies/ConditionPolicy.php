@@ -15,6 +15,18 @@ use Illuminate\Auth\Access\Response;
 class ConditionPolicy
 {
     /**
+     * Determine whether the user can view the list of conditions.
+     */
+    public function viewAny(User $user): Response
+    {
+        if ($user->cannot('condition:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Determine whether the user can view the condition of the patient: one of the conditions the user may read.
      */
     public function view(User $user, Condition $condition, Person|Preperson $patient): Response

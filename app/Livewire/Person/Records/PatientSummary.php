@@ -800,10 +800,14 @@ class PatientSummary extends BasePatientComponent
 
     public function getProcedures(): void
     {
+        // Short procedures are open by a declaration (rule 1) or by the managing organization (rule 2) only
+        $procedures = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? Procedure::readableFor($this->patient(), true)
+            : Procedure::forLegalEntity($this->patient());
+
         $this->setPaginatedRecords(
             'procedures',
-            Procedure::forPatient($this->patient())
-                ->whereNot('status', ProcedureStatus::DRAFT)
+            $procedures->whereNot('status', ProcedureStatus::DRAFT)
                 ->notInDraftEncounter($this->patient())
                 ->allowedForSummary()
                 ->withAllRelations(),

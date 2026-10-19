@@ -7,7 +7,6 @@ namespace App\Models\MedicalEvents\Sql;
 use App\Casts\EHealthTimestampCast;
 use App\Contracts\SubmittedToEHealth;
 use App\Enums\Person\EncounterStatus;
-use App\Models\CarePlan;
 use App\Models\EhealthLink;
 use App\Models\LegalEntity;
 use App\Models\Person\Person;
@@ -342,22 +341,12 @@ class Encounter extends Model implements SubmittedToEHealth
         User $user,
         LegalEntity $legalEntity
     ): Builder {
-        if ($patient instanceof Preperson) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        $carePlanIds = CarePlan::wherePersonId($patient->id)
-            ->whereKey(Approval::carePlanAccessGrantedTo($user, $legalEntity)->pluck('approvable_id'))
-            ->pluck('uuid');
-
-        $referralIds = ServiceRequestRequest::whereHas(
-            'basedOn',
-            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $carePlanIds)
-        )->pluck('uuid');
-
         return $query->forPatient($patient)->whereHas(
             'incomingReferral',
-            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $referralIds)
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnApprovedCarePlan($patient, $user, $legalEntity)->pluck('uuid')
+            )
         );
     }
 
@@ -373,25 +362,12 @@ class Encounter extends Model implements SubmittedToEHealth
     #[Scope]
     protected function basedOnCarePlanOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
     {
-        if ($patient instanceof Preperson) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        $carePlanIds = CarePlan::wherePersonId($patient->id)
-            ->whereHas(
-                'managingOrganization',
-                static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
-            )
-            ->pluck('uuid');
-
-        $referralIds = ServiceRequestRequest::whereHas(
-            'basedOn',
-            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $carePlanIds)
-        )->pluck('uuid');
-
         return $query->forPatient($patient)->whereHas(
             'incomingReferral',
-            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $referralIds)
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnCarePlanOfLegalEntity($patient)->pluck('uuid')
+            )
         );
     }
 

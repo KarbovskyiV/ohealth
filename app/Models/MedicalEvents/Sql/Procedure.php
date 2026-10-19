@@ -8,8 +8,10 @@ use App\Enums\Person\EncounterStatus;
 use App\Casts\EHealthTimestampCast;
 use App\Contracts\SubmittedToEHealth;
 use App\Models\EhealthLink;
+use App\Models\LegalEntity;
 use App\Models\Person\Person;
 use App\Models\Preperson;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -282,6 +284,167 @@ class Procedure extends Model implements SubmittedToEHealth
                 'value',
                 Encounter::forPatient($patient)->whereStatus(EncounterStatus::DRAFT)->pluck('uuid')
             )
+        );
+    }
+
+    /**
+     * Filter the patient's procedures managed by the current legal entity.
+     *
+     * ABAC rule 2.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function forLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'managingOrganization',
+            static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
+        );
+    }
+
+    /**
+     * Filter the patient's procedures created within an encounter whose episode is managed by the current legal entity.
+     *
+     * ABAC rule 3.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEpisodeOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::inEpisodeOfLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's procedures originated by an episode managed by the current legal entity.
+     *
+     * ABAC rule 6.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function originatedInLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'originEpisode',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Episode::forPatient($patient)->managedByLegalEntity()->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's procedures created within an encounter originated by an episode managed by the current
+     * legal entity.
+     *
+     * ABAC rule 8.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEncounterOriginatedInLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::originatedInLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's procedures based on a referral issued under a care plan one of the user's employees has an
+     * active read approval on.
+     *
+     * ABAC rule 14.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  User  $user
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function basedOnApprovedCarePlan(
+        Builder $query,
+        Person|Preperson $patient,
+        User $user,
+        LegalEntity $legalEntity
+    ): Builder {
+        return $query->forPatient($patient)->whereHas(
+            'basedOn',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnApprovedCarePlan($patient, $user, $legalEntity)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's procedures based on a referral issued under a care plan managed by the current legal entity.
+     *
+     * ABAC rule 17.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function basedOnCarePlanOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'basedOn',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnCarePlanOfLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Procedures of the patient the user may read: with access to all the patient's data (an active declaration or
+     * approval) all of them, including the ones of the persons and prepersons merged into a person, otherwise only the
+     * patient's own ones managed by the current legal entity, created within an encounter of its episode, originated by
+     * its episode or created within an encounter originated by its episode.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  bool  $hasPatientAccess
+     * @return Builder
+     */
+    #[Scope]
+    protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
+    {
+        if ($hasPatientAccess) {
+            return $patient instanceof Person
+                ? $patient->filterRecordsWithMerged($query)
+                : $query->forPatient($patient);
+        }
+
+        return $query->where(
+            static fn (Builder $procedure): Builder => $procedure->forLegalEntity($patient)
+                ->orWhere(static fn (Builder $inEpisode): Builder => $inEpisode->inEpisodeOfLegalEntity($patient))
+                ->orWhere(static fn (Builder $originated): Builder => $originated->originatedInLegalEntity($patient))
+                ->orWhere(
+                    static fn (Builder $originated): Builder => $originated->inEncounterOriginatedInLegalEntity($patient)
+                )
         );
     }
 

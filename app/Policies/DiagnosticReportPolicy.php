@@ -20,8 +20,21 @@ use Illuminate\Auth\Access\Response;
 class DiagnosticReportPolicy
 {
     /**
+     * Determine whether the user can view the list of diagnostic reports.
+     */
+    public function viewAny(User $user): Response
+    {
+        if ($user->cannot('diagnostic_report:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Determine whether the user can view the diagnostic report of the patient: one of the reports the user may read,
-     * or the patient's report with an approval on it, whichever legal entity manages it.
+     * the patient's report with an approval on it, whichever legal entity manages it, or the report based on a care
+     * plan the user has an approval on or the current legal entity manages.
      */
     public function view(User $user, DiagnosticReport $diagnosticReport, Person|Preperson $patient): Response
     {
@@ -34,7 +47,9 @@ class DiagnosticReportPolicy
 
         $isReadable = DiagnosticReport::readableFor($patient, $hasPatientAccess)->whereKey($diagnosticReport->id)->exists()
             || (Approval::resourceAccessGrantedTo($user, $diagnosticReport, legalEntity())->exists()
-                && DiagnosticReport::forPatient($patient)->whereKey($diagnosticReport->id)->exists());
+                && DiagnosticReport::forPatient($patient)->whereKey($diagnosticReport->id)->exists())
+            || DiagnosticReport::basedOnApprovedCarePlan($patient, $user, legalEntity())->whereKey($diagnosticReport->id)->exists()
+            || DiagnosticReport::basedOnCarePlanOfLegalEntity($patient)->whereKey($diagnosticReport->id)->exists();
 
         return $isReadable ? Response::allow() : Response::denyWithStatus(404);
     }

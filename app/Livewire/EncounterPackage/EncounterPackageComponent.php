@@ -13,6 +13,7 @@ use App\Enums\Person\ImmunizationStatus;
 use App\Enums\Person\DeviceRequestStatus;
 use App\Enums\Person\ServiceRequestStatus;
 use App\Enums\Status;
+use App\Enums\User\Role;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\RemoteEHealthLinksProcessing;
@@ -382,6 +383,13 @@ class EncounterPackageComponent extends Component
      * @var array
      */
     public array $procedureEmployees = [];
+
+    /**
+     * List of employees available as clinical impression assessors.
+     *
+     * @var array
+     */
+    public array $assessorEmployees = [];
 
     /**
      * Code of the primary diagnosis the selected episode carries at the moment,
@@ -833,6 +841,15 @@ class EncounterPackageComponent extends Component
             ->get();
 
         $this->employees = $employees->whereIn('employeeType', $participantEmployeeTypes)
+            ->map(static fn (Employee $employee): array => [
+                'uuid' => $employee->uuid,
+                'name' => $employee->fullName,
+                'position' => $employee->position
+            ])
+            ->values()
+            ->toArray();
+
+        $this->assessorEmployees = $employees->whereIn('employeeType', [Role::DOCTOR->value, Role::SPECIALIST->value, Role::ASSISTANT->value])
             ->map(static fn (Employee $employee): array => [
                 'uuid' => $employee->uuid,
                 'name' => $employee->fullName,

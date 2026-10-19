@@ -36,15 +36,15 @@ class ProcedureEdit extends ProcedureComponent
         LegalEntity $legalEntity,
         ?Person $person = null,
         ?Preperson $preperson = null,
-        ?int $procedureId = null
+        ?Procedure $procedure = null
     ): void {
         parent::mount($legalEntity, $person, $preperson);
 
-        $this->procedureId = $procedureId;
+        $this->procedureId = $procedure->id;
 
-        $procedure = Procedure::withAllRelations()
-            ->whereKey($procedureId)
-            ->forPatient($this->patient())
+        $procedure = Procedure::readableFor($this->patient(), true)
+            ->withAllRelations()
+            ->whereKey($this->procedureId)
             ->firstOrFail();
 
         $this->procedureUuid = $procedure->uuid;

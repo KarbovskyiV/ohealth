@@ -15,6 +15,18 @@ use Illuminate\Auth\Access\Response;
 class ObservationPolicy
 {
     /**
+     * Determine whether the user can view the list of observations.
+     */
+    public function viewAny(User $user): Response
+    {
+        if ($user->cannot('observation:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Determine whether the user can view the observation of the patient: one of the observations the user may read.
      */
     public function view(User $user, Observation $observation, Person|Preperson $patient): Response

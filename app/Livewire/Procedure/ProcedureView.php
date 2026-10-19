@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Procedure;
 
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Procedure;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use Illuminate\View\View;
@@ -27,16 +28,16 @@ class ProcedureView extends ProcedureEdit
      * @param  LegalEntity  $legalEntity
      * @param  Person|null  $person
      * @param  Preperson|null  $preperson
-     * @param  int|null  $procedureId
+     * @param  Procedure|null  $procedure
      * @return void
      */
     public function mount(
         LegalEntity $legalEntity,
         ?Person $person = null,
         ?Preperson $preperson = null,
-        ?int $procedureId = null
+        ?Procedure $procedure = null
     ): void {
-        parent::mount($legalEntity, $person, $preperson, $procedureId);
+        parent::mount($legalEntity, $person, $preperson, $procedure);
 
         // The edit page leaves only a draft that is not waiting for eHealth editable
         $this->editUrl = $this->isReadonly ? null : $this->editPageUrl();
@@ -65,8 +66,8 @@ class ProcedureView extends ProcedureEdit
         return route(
             $this->prepersonId !== null ? 'prepersons.procedure.edit' : 'procedure.edit',
             $this->prepersonId !== null
-                ? [legalEntity(), 'preperson' => $this->prepersonId, 'procedureId' => $this->procedureId]
-                : [legalEntity(), 'person' => $this->personId, 'procedureId' => $this->procedureId]
+                ? [legalEntity(), 'preperson' => $this->prepersonId, 'procedure' => $this->procedureId]
+                : [legalEntity(), 'person' => $this->personId, 'procedure' => $this->procedureId]
         );
     }
 
