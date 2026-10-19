@@ -376,7 +376,7 @@ class ProcedureComponent extends Component
         if ($this->prepersonId !== null) {
             $this->redirectRoute(
                 "prepersons.procedure.$page",
-                [legalEntity(), 'preperson' => $this->prepersonId, 'procedureId' => $procedureId],
+                [legalEntity(), 'preperson' => $this->prepersonId, 'procedure' => $procedureId],
                 navigate: true
             );
 
@@ -385,7 +385,7 @@ class ProcedureComponent extends Component
 
         $this->redirectRoute(
             "procedure.$page",
-            [legalEntity(), 'person' => $this->personId, 'procedureId' => $procedureId],
+            [legalEntity(), 'person' => $this->personId, 'procedure' => $procedureId],
             navigate: true
         );
     }

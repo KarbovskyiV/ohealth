@@ -265,8 +265,6 @@ class Condition extends Model
      * approval) all of them, including the ones of the persons and prepersons merged into a person, otherwise only the patient's
      * own ones of the current legal entity or created within an encounter originated by its episode.
      *
-     * ABAC rule 1.
-     *
      * @param  Builder  $query
      * @param  Person|Preperson  $patient
      * @param  bool  $hasPatientAccess

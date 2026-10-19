@@ -8,7 +8,6 @@ use App\Enums\Person\EncounterStatus;
 use App\Casts\EHealthTimestampCast;
 use App\Contracts\SubmittedToEHealth;
 use App\Enums\Person\DiagnosticReportStatus;
-use App\Models\CarePlan;
 use App\Models\EhealthLink;
 use App\Models\LegalEntity;
 use App\Models\Person\Person;
@@ -340,7 +339,10 @@ class DiagnosticReport extends Model implements SubmittedToEHealth
                         Encounter::forLegalEntity($patient)->pluck('uuid')
                     )
                 )
-                ->orWhere(static fn (Builder $managed): Builder => $managed->managedByLegalEntity())
+                ->orWhereHas(
+                    'managingOrganization',
+                    static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
+                )
         );
     }
 
@@ -428,22 +430,12 @@ class DiagnosticReport extends Model implements SubmittedToEHealth
         User $user,
         LegalEntity $legalEntity
     ): Builder {
-        if ($patient instanceof Preperson) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        $carePlanIds = CarePlan::wherePersonId($patient->id)
-            ->whereKey(Approval::carePlanAccessGrantedTo($user, $legalEntity)->pluck('approvable_id'))
-            ->pluck('uuid');
-
-        $referralIds = ServiceRequestRequest::whereHas(
-            'basedOn',
-            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $carePlanIds)
-        )->pluck('uuid');
-
         return $query->forPatient($patient)->whereHas(
             'basedOn',
-            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $referralIds)
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnApprovedCarePlan($patient, $user, $legalEntity)->pluck('uuid')
+            )
         );
     }
 
@@ -460,25 +452,12 @@ class DiagnosticReport extends Model implements SubmittedToEHealth
     #[Scope]
     protected function basedOnCarePlanOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
     {
-        if ($patient instanceof Preperson) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        $carePlanIds = CarePlan::wherePersonId($patient->id)
-            ->whereHas(
-                'managingOrganization',
-                static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
-            )
-            ->pluck('uuid');
-
-        $referralIds = ServiceRequestRequest::whereHas(
-            'basedOn',
-            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $carePlanIds)
-        )->pluck('uuid');
-
         return $query->forPatient($patient)->whereHas(
             'basedOn',
-            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $referralIds)
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnCarePlanOfLegalEntity($patient)->pluck('uuid')
+            )
         );
     }
 
@@ -487,8 +466,6 @@ class DiagnosticReport extends Model implements SubmittedToEHealth
      * declaration or approval) all of them, including the ones of the persons and prepersons merged into a person,
      * otherwise only the patient's own ones of the current legal entity, originated by its episode or created within
      * an encounter originated by its episode.
-     *
-     * ABAC rule 1.
      *
      * @param  Builder  $query
      * @param  Person|Preperson  $patient

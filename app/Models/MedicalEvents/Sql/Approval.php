@@ -267,6 +267,35 @@ class Approval extends Model
     }
 
     /**
+     * Active verified approvals on the procedure granted to one of the user's employees in the legal entity, which
+     * open that procedure.
+     *
+     * ABAC rule 15.
+     *
+     * @param  Builder  $query
+     * @param  User  $user
+     * @param  Procedure  $procedure
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function procedureAccessGrantedTo(
+        Builder $query,
+        User $user,
+        Procedure $procedure,
+        LegalEntity $legalEntity
+    ): Builder {
+        return $query->whereHas(
+            'grantedResources.grantedTo',
+            static fn (Builder $identifier): Builder => $identifier->whereValue($procedure->uuid)
+        )
+            ->where('expires_at', '>', now())
+            ->isVerified()
+            ->whereStatus(ApprovalStatus::ACTIVE)
+            ->grantedToEmployees($user, $legalEntity);
+    }
+
+    /**
      * Filter approvals granted to one of the user's employees in the legal entity.
      *
      * @param  Builder  $query

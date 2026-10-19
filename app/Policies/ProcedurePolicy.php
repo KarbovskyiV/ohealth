@@ -8,9 +8,12 @@ use App\Enums\JobStatus;
 use App\Enums\Person\ProcedureStatus;
 use App\Enums\Status;
 use App\Enums\User\Role;
+use App\Models\Declaration;
 use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Procedure;
+use App\Models\Person\Person;
+use App\Models\Preperson;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,19 +33,26 @@ class ProcedurePolicy
     }
 
     /**
-     * Determine whether the user can view the procedure.
+     * Determine whether the user can view the procedure of the patient: one of the procedures the user may read, the
+     * patient's procedure with an approval on it, or the procedure based on a care plan the user has an approval on or
+     * the current legal entity manages.
      */
-    public function view(User $user, Procedure $procedure): Response
+    public function view(User $user, Procedure $procedure, Person|Preperson $patient): Response
     {
         if ($user->cannot('procedure:read')) {
             return Response::denyWithStatus(404);
         }
 
-        if ($procedure->managingOrganization->value !== legalEntity()->uuid) {
-            return Response::denyWithStatus(404);
-        }
+        $hasPatientAccess = Declaration::accessGrantedTo($user, $patient, legalEntity())->exists()
+            || Approval::accessGrantedTo($user, $patient, legalEntity())->exists();
 
-        return Response::allow();
+        $isReadable = Procedure::readableFor($patient, $hasPatientAccess)->whereKey($procedure->id)->exists()
+            || (Approval::procedureAccessGrantedTo($user, $procedure, legalEntity())->exists()
+                && Procedure::forPatient($patient)->whereKey($procedure->id)->exists())
+            || Procedure::basedOnApprovedCarePlan($patient, $user, legalEntity())->whereKey($procedure->id)->exists()
+            || Procedure::basedOnCarePlanOfLegalEntity($patient)->whereKey($procedure->id)->exists();
+
+        return $isReadable ? Response::allow() : Response::denyWithStatus(404);
     }
 
     /**

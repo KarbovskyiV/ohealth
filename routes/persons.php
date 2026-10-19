@@ -274,12 +274,14 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId'])
             Route::get('{person}/procedure/create', ProcedureCreate::class)
                 ->can('create', Procedure::class)
                 ->name('procedure.create');
-            Route::get('{person}/procedure/{procedureId}', ProcedureView::class)
+            Route::get('{person}/procedure/{procedure}', ProcedureView::class)
+                ->can('view', ['procedure', 'person'])
                 ->name('procedure.view')
-                ->whereNumber('procedureId');
-            Route::get('{person}/procedure/{procedureId}/edit', ProcedureEdit::class)
+                ->whereNumber('procedure');
+            Route::get('{person}/procedure/{procedure}/edit', ProcedureEdit::class)
+                ->can('view', ['procedure', 'person'])
                 ->name('procedure.edit')
-                ->whereNumber('procedureId');
+                ->whereNumber('procedure');
         });
 
         Route::get('/verifications', PatientVerifications::class)
@@ -477,12 +479,14 @@ Route::prefix('prepersons')
             ->can('view', 'preperson')
             ->can('create', Procedure::class)
             ->name('procedure.create');
-        Route::get('/{preperson}/procedure/{procedureId}', ProcedureView::class)
+        Route::get('/{preperson}/procedure/{procedure}', ProcedureView::class)
             ->can('view', 'preperson')
-            ->whereNumber('procedureId')
+            ->can('view', ['procedure', 'preperson'])
+            ->whereNumber('procedure')
             ->name('procedure.view');
-        Route::get('/{preperson}/procedure/{procedureId}/edit', ProcedureEdit::class)
+        Route::get('/{preperson}/procedure/{procedure}/edit', ProcedureEdit::class)
             ->can('view', 'preperson')
-            ->whereNumber('procedureId')
+            ->can('view', ['procedure', 'preperson'])
+            ->whereNumber('procedure')
             ->name('procedure.edit');
     });
