@@ -180,12 +180,7 @@ class PersonRequest extends Request
             // Part of the address schema for Ukrainian addresses only
             'person.addresses.*.settlement_id' => ['nullable', 'uuid'],
             'person.addresses.*.street_type' => ['nullable', new InDictionary('STREET_TYPE')],
-            'person.addresses.*.street' => [
-                'nullable',
-                'required_if:person.addresses.*.country,UA',
-                'string',
-                'max:255'
-            ],
+            'person.addresses.*.street' => ['nullable', 'string', 'max:255'],
             'person.addresses.*.building' => ['nullable', 'string', 'max:255'],
             'person.addresses.*.apartment' => ['nullable', 'string', 'max:255'],
             'person.addresses.*.zip' => ['nullable', new Zip()],

@@ -185,8 +185,6 @@ class PersonForm extends BaseForm
             'person.names' => ['required', 'array', 'min:1'],
             'person.names.*.language' => ['required', 'distinct', new InDictionary('LANGUAGE')],
             'person.names.*.noLastName' => ['required', 'boolean'],
-            'person.names.*.firstName' => ['required', 'min:1', 'max:255'],
-            'person.names.*.secondName' => ['nullable', 'min:1', 'max:255'],
             'person.birthDate' => ['required', 'date_format:' . config('app.date_format')],
             'person.birthCountry' => ['required', 'string'],
             'person.birthSettlement' => ['required', 'string'],
@@ -351,9 +349,9 @@ class PersonForm extends BaseForm
             "person.addresses.$index.type" => ['required', new InDictionary('ADDRESS_TYPE')],
             "person.addresses.$index.country" => ['required', new InDictionary('COUNTRY')],
             "person.addresses.$index.area" => [$registryField, 'string', 'max:255', $textPattern],
-            "person.addresses.$index.region" => [$registryField, 'string', 'max:255', $textPattern],
+            "person.addresses.$index.region" => ['nullable', 'string', 'max:255', $textPattern],
             "person.addresses.$index.settlement" => [$registryField, 'string', 'max:255', $textPattern],
-            "person.addresses.$index.street" => [$registryField, 'string', 'max:255', $textPattern],
+            "person.addresses.$index.street" => ['nullable', 'string', 'max:255', $textPattern],
             "person.addresses.$index.settlementId" => $isUkraineAddress
                 ? ['required', 'uuid']
                 : ['exclude'],
@@ -1083,8 +1081,8 @@ class PersonForm extends BaseForm
                 $rules["person.names.$index.lastName"][] = new NameFields($language);
             }
 
-            $rules["person.names.$index.firstName"][] = new NameFields($language);
-            $rules["person.names.$index.secondName"][] = new NameFields($language);
+            $rules["person.names.$index.firstName"] = ['required', 'min:1', 'max:255', new NameFields($language)];
+            $rules["person.names.$index.secondName"] = ['nullable', 'min:1', 'max:255', new NameFields($language)];
         }
     }
 
