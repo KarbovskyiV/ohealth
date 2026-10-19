@@ -14,11 +14,10 @@ use App\Models\LegalEntityType;
 use Livewire\Attributes\Locked;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\Repository;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Crypt;
 use App\Traits\BatchLegalEntityQueries;
+use Illuminate\Support\Facades\Validator;
 use App\Enums\LegalEntity\ConnectionStatus;
 use App\Auth\EHealth\Services\TokenStorage;
 use App\Exceptions\EHealth\EHealthResponseException;
@@ -123,13 +122,6 @@ class LegalEntityConnectionCreate extends LegalEntityConnectionComponent
             return;
         }
 
-        // Resume saving the connection already created in eHealth before accepting new creation data.
-        if (session()->has($this->pendingCreationKey())) {
-            $this->localSave();
-
-            return;
-        }
-
         $this->clientUuid = $clientUuid;
         $this->redirectUri = ConnectionApi::redirectUri();
         $this->clientName = $clientName;
@@ -148,13 +140,6 @@ class LegalEntityConnectionCreate extends LegalEntityConnectionComponent
     {
         if (Auth::user()->cannot('create', Connection::class)) {
             session()->flash('error', __('legal-entity-connection.policy.restrict.create'));
-
-            return;
-        }
-
-        // Reuse the saved eHealth response to avoid signing and creating the same connection again.
-        if (session()->has($this->pendingCreationKey())) {
-            $this->localSave();
 
             return;
         }
@@ -195,12 +180,21 @@ class LegalEntityConnectionCreate extends LegalEntityConnectionComponent
         try {
             $response = EHealth::connection()->createConnection($signedData);
 
-            $connectionData = $response->validate();
+            if (!$response->successful()) {
+                throw new EHealthResponseException($response);
+            }
         } catch (EHealthResponseException $err) {
             $code = $err->getCode();
-            $errorMessage = $err->getDetails()['error']['message'] ?? ($err->getMessage() ?? __('errors.ehealth.messages.server_error'));
+            $errorMessage = $err->response->json('error.message')
+                ?? $err->response->json('details.errorMessage')
+                ?? $err->response->json('description')
+                ?? $err->response->json('message');
 
-            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $errorMessage]);
+            Log::channel('e_health_errors')->error(self::class . ':syncConnections', ['error' => $errorMessage ?? $err->getMessage()]);
+
+            if ($code < 400 || $code === 408 || $code >= 500 || !\is_string($errorMessage) || trim($errorMessage) === '') {
+                $errorMessage = __('legal-entity-connection.creation_result_unknown');
+            }
 
             $code === 409
                 ? session()->flash('error', __('legal-entity-connection.sync.error.already_exist'))
@@ -216,85 +210,62 @@ class LegalEntityConnectionCreate extends LegalEntityConnectionComponent
         } catch (Throwable $err) {
             Log::channel('e_health_errors')->error(self::class . ':createConnection', ['error' => $err->getMessage()]);
 
-            session()->flash('error', __('errors.ehealth.messages.server_error'));
+            session()->flash('error', __('legal-entity-connection.creation_result_unknown'));
 
             return;
         }
-
-        // Retain the secret and original facility details until all local records are saved.
-        session()->put($this->pendingCreationKey(), Crypt::encrypt([
-            'connection' => $connectionData,
-            'client_type' => $this->clientType,
-            'client_name' => $this->clientName
-        ]));
-
-        // Persist the encrypted response before attempting database writes so a failure can be retried.
-        session()->save();
-
-        $this->localSave();
-    }
-
-    /**
-     * Session key for the current user's encrypted eHealth creation response and original facility details.
-     * The pending data is retained until local persistence succeeds.
-     */
-    protected function pendingCreationKey(): string
-    {
-        return 'connection_creation.' . Auth::id();
-    }
-
-    /**
-     * Save a created eHealth connection locally (without repeating its creation in eHealth for the same connection).
-     */
-    public function localSave(): void
-    {
-        if (Auth::user()->cannot('create', Connection::class)) {
-            session()->flash('error', __('legal-entity-connection.policy.restrict.create'));
-
-            return;
-        }
-
-        $pendingCreation = session()->get($this->pendingCreationKey());
-
-        if ($pendingCreation === null) {
-            return;
-        }
-
-        $this->showSignatureModal = false;
 
         try {
-            $creation = Crypt::decrypt($pendingCreation);
-            $connectionData = $creation['connection'];
+            // Save the secret before validating or synchronizing the remaining connection data. This is important to do so.
+            // This done to ensure that the client_secret is saved before any further validation or synchronization
+            // of the connection data when possible errors occurs, preventing the saving of the client secret from being bypassed.
+            $saveStep = 'validate_client_credentials';
+            $credentials = Validator::make($response->getData(), $this->form->rulesForCredentials())->validate();
 
-            $legalEntity = LegalEntity::where('uuid', $connectionData['client_uuid'])->first()
-                ?? Repository::legalEntity()->initLegalEntity($connectionData['client_uuid'], $creation['client_type'], $creation['client_name'], $connectionData['secret']);
+            $saveStep = 'find_legal_entity';
+            $legalEntity = LegalEntity::where('uuid', $credentials['client_id'])->first();
 
-            if (!$legalEntity || !Repository::legalEntity()->syncConnections([$connectionData], $legalEntity, ConnectionStatus::PENDING)) {
+            if ($legalEntity) {
+                // Refresh legal entity details on the next eHealth login after reconnecting.
+                $saveStep = 'save_client_secret_and_mark_for_refresh';
+                if (!$legalEntity->update([
+                    'client_secret' => $credentials['secret'],
+                    'status' => Status::NEW->value
+                ])) {
+                    throw new RuntimeException('Unable to save the client secret and mark the facility for a details refresh.');
+                }
+            } else {
+                $saveStep = 'create_legal_entity_with_client_secret';
+                $legalEntity = Repository::legalEntity()->initLegalEntity($credentials['client_id'], $this->clientType, $this->clientName, $credentials['secret']);
+            }
+
+            if (!$legalEntity) {
+                throw new RuntimeException('Unable to save the client secret locally.');
+            }
+
+            $saveStep = 'validate_connection_response';
+            $connectionData = $response->validate();
+
+            $saveStep = 'save_connection';
+            if (!Repository::legalEntity()->syncConnections([$connectionData], $legalEntity, ConnectionStatus::PENDING)) {
                 throw new RuntimeException('Unable to save the created connection locally.');
             }
 
+            $saveStep = 'check_saved_connection';
             $connection = Connection::whereUuid($connectionData['uuid'])->first();
 
             if (!$connection) {
                 throw new RuntimeException('Created connection was not found locally.');
             }
-
-            DB::transaction(function () use ($connectionData, $connection, $legalEntity) {
-                Repository::legalEntity()->updateLegalEntitySecret($connection->legalEntity, $connectionData['secret']);
-
-                // Refresh facility details on the next eHealth login, including after reconnecting.
-                if (!$legalEntity->update(['status' => Status::NEW->value])) {
-                    throw new RuntimeException('Unable to mark the facility for a details refresh.');
-                }
-            });
         } catch (Throwable $err) {
-            Log::error('Connection creation: local persistence failed; retry required.', [
+            Log::error('Connection creation: failed to save the eHealth connection data to the local database.', [
+                'failed_step' => $saveStep,
+                'legal_entity_uuid' => $credentials['client_id'] ?? $this->dataToSign['client_id'],
                 'connection_uuid' => $connectionData['uuid'] ?? null,
                 'exception_type' => $err::class
             ]);
 
-            // Keep the pending response in the session for another local-save attempt.
-            session()->flash('error', __('legal-entity-connection.local_save_retry_required'));
+            session()->flash('error', __('legal-entity-connection.local_save_failed'));
 
             return;
         }
@@ -303,9 +274,6 @@ class LegalEntityConnectionCreate extends LegalEntityConnectionComponent
         $this->legalEntityId = $legalEntity->id;
         $this->connection = $connection;
         $this->connectionId = $connection->id;
-
-        // Local records and the secret are saved; connection verification no longer needs the retry data.
-        session()->forget($this->pendingCreationKey());
 
         $token = app(TokenStorage::class)->getBearerToken();
 
@@ -350,8 +318,7 @@ class LegalEntityConnectionCreate extends LegalEntityConnectionComponent
     public function render()
     {
         return view('livewire.legal-entity.connection.connection-create', [
-            'connection' => $this->connection,
-            'hasPendingCreation' => session()->has($this->pendingCreationKey())
+            'connection' => $this->connection
         ]);
     }
 }

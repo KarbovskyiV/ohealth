@@ -274,8 +274,8 @@ class LegalEntityRepository
                 'consumer_uuid' => $connection['consumer_uuid'],
                 'redirect_uri' => $connection['redirect_uri'],
                 'secret' => $connection['secret'] ?? null,
-                "ehealth_inserted_at" => $connection['ehealth_inserted_at'],
-                "ehealth_updated_at" => $connection['ehealth_updated_at'],
+                "ehealth_inserted_at" => $connection['ehealth_inserted_at'] ?? null,
+                "ehealth_updated_at" => $connection['ehealth_updated_at'] ?? null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
