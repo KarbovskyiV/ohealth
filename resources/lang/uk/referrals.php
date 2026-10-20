@@ -10,6 +10,20 @@ return [
     'placeholder_status' => 'Активні, Відмінені',
     'btn_reset' => 'Скинути фільтри',
 
+    'registry' => [
+        'from' => 'З',
+        'to' => 'По',
+        'all' => 'Усі',
+        'new_request' => 'Новий (заявка)',
+        'completed' => 'Виконаний',
+        'recalled' => 'Відкликаний',
+        'hide' => 'Сховати',
+        'service_or_device' => 'Послуга / виріб',
+        'basis' => 'Основа',
+        'note' => 'Примітка',
+        'patient_instruction' => 'Інструкція пацієнту',
+    ],
+
     'table' => [
         'created_at' => 'ДАТА ТА ЧАС СТВОРЕННЯ',
         'service' => 'КОД ТА НАЗВА ПОСЛУГИ',
@@ -44,6 +58,7 @@ return [
     ],
 
     'actions' => [
+        'recall' => 'Відкликати',
         'save' => 'Зберегти',
         'create_en' => 'Створити Направлення',
         'delete_request' => 'Видалити заявку',

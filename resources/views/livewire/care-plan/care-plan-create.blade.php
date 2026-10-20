@@ -2,10 +2,10 @@
     :personId="$personId"
     :uuid="$uuid"
     :patientFullName="$patientFullName"
-    :hideNavigation="$allowsPatientChange"
+    :hideNavigation="true"
     :breadcrumbs="[
-        ['label' => __('general.home') ?? 'Головна', 'url' => route('dashboard', [legalEntity()])],
-        ['label' => $patientFullName ?? __('care-plan.patient') ?? 'Пацієнт']
+        ['label' => __('general.home'), 'url' => route('dashboard', [legalEntity()])],
+        ['label' => $patientFullName ?? __('care-plan.patient')]
     ]"
 >
     <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
@@ -27,7 +27,7 @@
                     wire:click.prevent="{{ (isset($carePlan) && $carePlan->exists) ? 'delete' : 'cancel' }}"
                     class="button-primary-outline-red px-6 py-2.5"
                 >
-                    {{ __('forms.delete') ?? 'Видалити' }}
+                    {{ __('forms.delete') }}
                 </button>
 
                 <button
@@ -36,11 +36,11 @@
                     wire:click="save"
                 >
                     @icon('archive', 'w-4 h-4')
-                    <span>{{ __('forms.save') ?? 'Зберегти' }}</span>
+                    <span>{{ __('forms.save') }}</span>
                 </button>
 
                 <button type="button" wire:click="startSigningProcess" class="button-primary px-8 py-2.5">
-                    {{ __('care-plan.create_care_plan') ?? 'Створити план лікування' }}
+                    {{ __('care-plan.create_care_plan') }}
                 </button>
             </div>
         </div>
