@@ -5,6 +5,7 @@ declare(strict_types=1);
 $uuid = 'Унікальний ідентифікатор';
 
 return [
+    'create_and_sign' => 'Створити та підписати',
     // General Actions & Navigation
     'home' => 'Головна',
     'action' => 'Дія',

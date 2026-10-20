@@ -7,6 +7,19 @@
     $title = __('encounters.label') . ' - ' . $patientName;
     $isReadonly = $this instanceof EncounterPackageEdit && $this->isReadonly;
     $canCancelRecords = $this instanceof EncounterPackageEdit && $this->canBeCancelled;
+    $incomingReferral = null;
+    if ($isReadonly && ($form->encounter['referralType'] ?? '') === 'electronic' && filled($form->encounter['referralNumber'] ?? '')) {
+        $incomingReferralNumber = $form->encounter['referralNumber'];
+        $incomingReferralRecord = collect([
+            ...$availableReferrals,
+            ...array_values($electronicReferralSearchResults),
+        ])->first(static fn (array $record): bool => in_array($incomingReferralNumber, [$record['id'] ?? '', $record['requisition'] ?? ''], true));
+        $incomingReferral = [
+            'requestNumber' => $incomingReferralNumber,
+            'itemName' => trim(($incomingReferralRecord['service']['code'] ?? '').' - '.($incomingReferralRecord['service']['name'] ?? ''), ' -') ?: '—',
+            'categoryLabel' => $incomingReferralRecord['category'] ?? '—',
+        ];
+    }
 
     $mainGroups = [
         ['id' => 'referral', 'label' => __('encounters.incoming_referral'), 'icon' => 'arrow-right', 'view' => 'livewire.encounter-package.parts.referral'],
@@ -28,7 +41,13 @@
         ['id' => 'specimens', 'label' => __('specimens.label'), 'icon' => 'sample-outline', 'view' => 'livewire.encounter-package.parts.specimens', 'holdsCancellableRecords' => true],
     ];
 
-    $footerItems = [];
+    $footerItems = isset($encounterId) ? [
+        ['id' => 'prescriptions', 'label' => __('patients.prescriptions'), 'icon' => 'pill-outline'],
+        ['id' => 'outgoing-referrals', 'label' => __('patients.referrals'), 'icon' => 'referrals'],
+        ['id' => 'medical-reports', 'label' => __('patients.medical_reports'), 'icon' => 'book-open'],
+        ['id' => 'care-plans', 'label' => __('patients.care_plans'), 'icon' => 'file-text'],
+        ['id' => 'device-requests', 'label' => __('encounters.device_requests'), 'icon' => 'equipment'],
+    ] : [];
 
     $participantEmployeeNames = collect([...$this->employees, ...$this->diagnosticReportEmployees])
         ->filter(static fn (array $employee): bool => !empty($employee['uuid']))
@@ -101,8 +120,9 @@
 
     <div class="breadcrumb-form shift-content p-4">
         @php
-            $allBlockIds = array_column(array_merge($mainGroups, $footerItems), 'id');
+            $allBlockIds = array_column($mainGroups, 'id');
             $initialActiveSections = isset($encounterId) ? [] : $allBlockIds;
+            $initialActiveSections = array_merge($initialActiveSections, array_column($footerItems, 'id'));
         @endphp
         <div
                 @scroll-to-error.window="
@@ -261,6 +281,15 @@
                     } else {
                         this.activeSections.push(id);
                     }
+                },
+                scrollToSection(id, expand = false) {
+                    if (expand && ! this.activeSections.includes(id)) {
+                        this.activeSections.push(id);
+                    }
+
+                    this.$nextTick(() => {
+                        document.getElementById('block-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
                 }
              }"
                 class="flex flex-col gap-8 lg:flex-row lg:gap-12"
@@ -308,13 +337,11 @@
                                     type="button"
                                     class="flex w-full items-center justify-between p-5 focus:outline-none"
                             >
-                                <div
-                                        class="flex items-center gap-4 text-[17px] font-semibold text-gray-900 dark:text-gray-100">
-                                    <span
-                                            class="flex h-6 w-6 shrink-0 items-center justify-center text-gray-900 dark:text-gray-100">
+                                <div class="flex min-w-0 items-center gap-4 text-left text-[17px] font-semibold text-gray-900 dark:text-gray-100">
+                                    <span class="flex h-6 w-6 shrink-0 items-center justify-center text-gray-900 dark:text-gray-100">
                                         @icon($item['icon'], 'w-6 h-6')
                                     </span>
-                                    <span class="truncate">{{ $item['label'] }}</span>
+                                    <span class="min-w-0 break-words">{{ $item['label'] }}</span>
                                 </div>
 
                                 <div
@@ -342,71 +369,8 @@
                 @endforeach
 
                 <!-- Additional Actions -->
-                @if ($this instanceof EncounterPackageEdit && $this->isFinished)
-                    <div class="mt-10 border-t border-gray-100 pt-10 dark:border-gray-700">
-                        <h3 class="mb-6 text-[17px] font-bold text-gray-900 dark:text-gray-100">
-                            {{ __('encounters.additional_actions') }}
-                        </h3>
-
-                        <div class="space-y-6">
-                            <fieldset class="fieldset-card p-5">
-                                <legend class="legend">{{ __('patients.prescriptions') }}</legend>
-                                <button
-                                        wire:click="openEncounterEPrescriptionDrawer"
-                                        type="button"
-                                        class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                                >
-                                    @icon('plus', 'w-4 h-4')
-                                    <span>{{ __('encounters.add_prescription') }}</span>
-                                </button>
-                            </fieldset>
-
-                            <fieldset class="fieldset-card p-5">
-                                <legend class="legend">{{ __('patients.referrals') }}</legend>
-                                <button
-                                        wire:click="openEncounterReferralDrawer"
-                                        type="button"
-                                        class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                                >
-                                    @icon('plus', 'w-4 h-4')
-                                    <span>{{ __('encounters.add_referral') }}</span>
-                                </button>
-                            </fieldset>
-
-                            <fieldset class="fieldset-card p-5">
-                                <legend class="legend">{{ __('patients.medical_reports') }}</legend>
-                                @if ($this instanceof EncounterPackageEdit && $this->createCompositionFromEncounterUrl)
-                                    <a
-                                            href="{{ $this->createCompositionFromEncounterUrl }}"
-                                            wire:navigate
-                                            class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                                    >
-                                        @icon('plus', 'w-4 h-4')
-                                        <span>{{ __('patients.add_medical_report') }}</span>
-                                    </a>
-                                @else
-                                    <span
-                                            class="flex cursor-not-allowed items-center gap-1.5 text-sm font-medium text-gray-400 opacity-60"
-                                            title="{{ __('compositions.errors.create_temp_disability_not_allowed') }}"
-                                    >
-                                        @icon('plus', 'w-4 h-4')
-                                        <span>{{ __('patients.add_medical_report') }}</span>
-                                    </span>
-                                @endif
-                            </fieldset>
-
-                            <fieldset class="fieldset-card p-5">
-                                <legend class="legend">{{ __('patients.care_plans') }}</legend>
-                                <a
-                                        href="{{ route('care-plans.create-by-encounter', [legalEntity(), 'encounter' => $encounterId]) }}"
-                                        class="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                                >
-                                    @icon('plus', 'w-4 h-4')
-                                    <span>{{ __('encounters.add_care_plan') }}</span>
-                                </a>
-                            </fieldset>
-                        </div>
-                    </div>
+                @if (isset($encounterId))
+                    @include('livewire.encounter-package.parts.additional-actions')
                 @endif
 
                 <!-- Actions -->
@@ -458,27 +422,45 @@
             </div>
 
             <!-- Sidebar Navigation (Right) -->
-            <div class="sticky top-24 mt-4 w-full shrink-0 space-y-6 self-start lg:mt-0 lg:w-75">
+            <nav
+                aria-label="{{ __('encounters.sections') }}"
+                class="custom-scrollbar mt-4 w-full min-w-0 shrink-0 space-y-6 self-start lg:sticky lg:top-24 lg:mt-0 lg:max-h-[calc(100dvh-7rem)] lg:w-75 lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
+            >
                 <div class="space-y-1">
                     @foreach ($mainGroups as $item)
                         <button
-                                @click="
-                                if (! activeSections.includes('{{ $item['id'] }}')) toggle('{{ $item['id'] }}');
-                                document.getElementById('block-{{ $item['id'] }}').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            "
-                                type="button"
-                                @isset($item['showWhen']) x-show="{{ $item['showWhen'] }}" x-cloak @endisset
-                                :class="activeSections.includes('{{ $item['id'] }}') ? 'summary-sidebar-btn-active' : 'summary-sidebar-btn-inactive'"
-                                class="summary-sidebar-btn w-full"
+                            @click="scrollToSection('{{ $item['id'] }}', true)"
+                            type="button"
+                            @isset($item['showWhen']) x-show="{{ $item['showWhen'] }}" x-cloak @endisset
+                            :class="activeSections.includes('{{ $item['id'] }}') ? 'summary-sidebar-btn-active' : 'summary-sidebar-btn-inactive'"
+                            class="summary-sidebar-btn w-full text-left"
                         >
                             <span class="flex h-5 w-5 shrink-0 items-center justify-center">
                                 @icon($item['icon'], 'w-5 h-5')
                             </span>
-                            <span class="truncate">{{ $item['label'] }}</span>
+                            <span class="min-w-0 whitespace-normal break-words">{{ $item['label'] }}</span>
                         </button>
                     @endforeach
                 </div>
-            </div>
+
+                @if ($footerItems)
+                    <div class="space-y-1 border-t border-gray-200 pt-4 dark:border-gray-700">
+                        @foreach ($footerItems as $item)
+                            <button
+                                @click="scrollToSection('{{ $item['id'] }}', true)"
+                                type="button"
+                                :class="activeSections.includes('{{ $item['id'] }}') ? 'summary-sidebar-btn-active' : 'summary-sidebar-btn-inactive'"
+                                class="summary-sidebar-btn w-full text-left"
+                            >
+                                <span class="flex h-5 w-5 shrink-0 items-center justify-center [&>svg]:h-full [&>svg]:w-full">
+                                    @icon($item['icon'], 'w-5 h-5')
+                                </span>
+                                <span class="min-w-0 whitespace-normal break-words">{{ $item['label'] }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
+            </nav>
         </div>
     </div>
 
