@@ -1240,7 +1240,7 @@ class CarePlanLifecycleTest extends TestCase
             ->assertSee('Accu-Chek Active тест-смужки');
     }
 
-    public function test_init_referral_form_opens_device_request_drawer_via_definition_get_by_id(): void
+    public function test_device_activity_opens_request_form_with_patient_plan_and_activity_context(): void
     {
         $this->actingAs($this->user);
 
@@ -1270,38 +1270,17 @@ class CarePlanLifecycleTest extends TestCase
             'scheduled_period_end' => now()->addDays(30),
         ]);
 
-        $activityResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $activityResponse->shouldReceive('successful')->andReturn(true);
-        $activityResponse->shouldReceive('getData')->andReturn(['id' => $activity->uuid]);
-
-        $this->mock(\App\Classes\eHealth\Api\CarePlanActivity::class, function ($mock) use ($activityResponse): void {
-            $mock->shouldReceive('getDetails')->andReturn($activityResponse);
-        });
-
-        $deviceResponse = new \App\Classes\eHealth\EHealthResponse(
-            new \GuzzleHttp\Psr7\Response(200, [], json_encode([
-                'data' => [
-                    'id' => $deviceUuid,
-                    'packaging' => [
-                        'packaging_count' => 50,
-                        'packaging_type' => 'unknown',
-                        'packaging_unit' => 'piece',
-                    ],
-                ],
-            ]))
-        );
-
-        $this->mock(\App\Classes\eHealth\Api\DeviceDefinition::class, function ($mock) use ($deviceResponse, $deviceUuid): void {
-            $mock->shouldReceive('getById')->once()->with($deviceUuid)->andReturn($deviceResponse);
-            $mock->shouldReceive('getMany')->never();
+        $this->mock(\App\Classes\eHealth\Api\CarePlanActivity::class, function ($mock) use ($activity, $carePlan): void {
+            $mock->shouldReceive('getDetails')->once()->with($this->person->uuid, $carePlan->uuid, $activity->uuid)
+                ->andReturn(new \App\Classes\eHealth\EHealthResponse(new \GuzzleHttp\Psr7\Response(200, [], json_encode(['data' => ['id' => $activity->uuid]]))));
         });
 
         Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $carePlan->fresh()])
             ->call('initReferralForm', $activity->id)
-            ->assertSet('showReferralDrawer', true)
-            ->assertSet('referralForm.kind', 'device_request')
-            ->assertSet('referralDevicePackageQty', 50)
-            ->assertSet('referralForm.quantity', 50);
+            ->assertRedirect(route('device-requests.create', [
+                'legalEntity' => legalEntity(), 'person' => $this->person,
+                'carePlan' => $carePlan->uuid, 'activity' => $activity->uuid,
+            ]));
     }
 
     /**

@@ -25,6 +25,9 @@ use App\Livewire\ContractRequest\ContractRequestIndex;
 use App\Livewire\ContractRequest\ContractRequestShow;
 use App\Models\Contracts\ContractRequest;
 use App\Livewire\Dashboard;
+use App\Livewire\DeviceRequest\DeviceRequestForm;
+use App\Livewire\DeviceRequest\DeviceRequestIndex;
+use App\Models\MedicalEvents\Sql\DeviceRequestRequest;
 use App\Livewire\Declaration\DeclarationIndex;
 use App\Livewire\Division\DivisionCreate;
 use App\Livewire\Division\DivisionEdit;
@@ -273,7 +276,10 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
 
             // --- Device Requests (Медичні Вироби) ---
             Route::prefix('device-requests')->name('device-requests.')->group(function () {
-                Route::get('/', \App\Livewire\DeviceRequest\DeviceRequestIndex::class)->name('index');
+                Route::get('/{person}/create', DeviceRequestForm::class)
+                    ->middleware('can:create,'.DeviceRequestRequest::class.',legalEntity')->name('create');
+                Route::get('/{person?}', DeviceRequestIndex::class)
+                    ->middleware('can:viewAny,'.DeviceRequestRequest::class.',legalEntity')->name('index');
             });
 
             // --- Group of Contracts (Already signed/active) ---

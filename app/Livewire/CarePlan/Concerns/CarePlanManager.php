@@ -29,6 +29,31 @@ use Throwable;
 
 trait CarePlanManager
 {
+    public function refreshDisplayedDetails(): void
+    {
+        $this->remotePlanDetails = [];
+
+        if (!Auth::user()->can('view', $this->carePlan)) {
+            return;
+        }
+
+        if (!$this->carePlan->uuid || in_array(CarePlanStatus::fromStored($this->carePlan->status), [CarePlanStatus::PENDING, CarePlanStatus::DRAFT], true)) {
+            return;
+        }
+
+        try {
+            $this->remotePlanDetails = app(CarePlanLifecycleService::class)->getDetails($this->carePlan->person->uuid, $this->carePlan->uuid);
+            foreach ($this->remotePlanDetails['category']['coding'] ?? [] as $index => $coding) {
+                if (isset($this->dictionaries['care_plan_categories'][$coding['code']])) {
+                    $this->remotePlanDetails['category']['coding'][$index]['display'] = $this->dictionaries['care_plan_categories'][$coding['code']];
+                }
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+            Session::flash('error', __('device-requests.messages.plan_details_unavailable'));
+        }
+    }
+
     public function sign(CarePlanRepository $repository, CarePlanActivityRepository $activityRepository): void
     {
         try {

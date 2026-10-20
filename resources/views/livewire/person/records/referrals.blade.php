@@ -12,6 +12,15 @@
         :key="(string) str()->uuid()"
     />
 
+    <x-slot name="headerActions">
+        @can('viewAny', [\App\Models\MedicalEvents\Sql\DeviceRequestRequest::class, legalEntity()])
+            <a
+                href="{{ route('device-requests.index', ['legalEntity' => legalEntity(), 'person' => $personId]) }}"
+                class="button-primary-outline"
+            >{{ __('device-requests.labels.registry') }}</a>
+        @endcan
+    </x-slot>
+
     <div class="breadcrumb-form shift-content p-4">
         <div class="mt-6 w-full">
             <div

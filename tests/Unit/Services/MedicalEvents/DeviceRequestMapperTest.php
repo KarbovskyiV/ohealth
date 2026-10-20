@@ -7,11 +7,68 @@ namespace Tests\Unit\Services\MedicalEvents;
 use App\Services\MedicalEvents\Mappers\DeviceRequestMapper;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class DeviceRequestMapperTest extends TestCase
 {
+    public function test_signed_request_keeps_reason_auth_method_and_parameters_without_quantity(): void
+    {
+        $requestId = (string) Str::uuid();
+        $reasonId = (string) Str::uuid();
+        $authMethodId = (string) Str::uuid();
+        $parameter = ['code' => ['coding' => [['system' => 'device_request_code_parameter', 'code' => 'brakes']]], 'value_boolean' => false];
+        $payload = (new DeviceRequestMapper())->toCreateSignedContent([
+            'uuid' => $requestId, 'device_id' => '12_18_06', 'device_code_type' => 'CLASSIFICATION_TYPE',
+            'device_code_system' => 'assistive_devices', 'quantity' => null,
+            'started_at' => today()->toDateString(), 'ended_at' => today()->addDay()->toDateString(),
+            'reason_reference' => [['type' => 'condition', 'uuid' => $reasonId]],
+            'inform_with' => $authMethodId, 'parameter' => [$parameter],
+        ], ['person_uuid' => (string) Str::uuid(), 'encounter_uuid' => (string) Str::uuid(), 'employee_uuid' => (string) Str::uuid(), 'legal_entity_uuid' => (string) Str::uuid()]);
+        $this->assertArrayNotHasKey('quantity', $payload);
+        $this->assertSame($reasonId, $payload['reason'][0]['identifier']['value']);
+        $this->assertSame($authMethodId, $payload['inform_with']);
+        $this->assertSame([$parameter], $payload['parameter']);
+        $this->assertSame('assistive_devices', $payload['code']['coding'][0]['system']);
+        $this->assertSame(today()->addDay()->endOfDay()->utc()->format('Y-m-d\TH:i:s.000\Z'), $payload['occurrence_period']['end']);
+    }
+
+    public static function occurrenceEndDates(): array
+    {
+        return [
+            'ISO calendar date UTC' => ['2026-10-21', 'UTC', '2026-10-21T23:59:59.000Z'],
+            'display calendar date UTC' => ['21.10.2026', 'UTC', '2026-10-21T23:59:59.000Z'],
+            'calendar day in Kyiv' => ['2026-10-21', 'Europe/Kyiv', '2026-10-21T20:59:59.000Z'],
+            'explicit UTC time' => ['2026-10-21T15:30:00Z', 'Europe/Kyiv', '2026-10-21T15:30:00.000Z'],
+            'explicit midnight offset' => ['2026-10-21T00:00:00+03:00', 'Europe/Kyiv', '2026-10-20T21:00:00.000Z'],
+            'explicit local time' => ['2026-10-21 15:30:00', 'Europe/Kyiv', '2026-10-21T12:30:00.000Z'],
+        ];
+    }
+
+    #[DataProvider('occurrenceEndDates')]
+    public function test_calendar_end_includes_last_day_and_explicit_time_is_preserved(string $end, string $timezone, string $expected): void
+    {
+        $previousTimezone = date_default_timezone_get();
+        date_default_timezone_set($timezone);
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-20T12:00:00Z'));
+
+        try {
+            $payload = (new DeviceRequestMapper())->toCreateSignedContent([
+                'uuid' => (string) Str::uuid(), 'device_id' => '12_18_06', 'device_code_type' => 'CLASSIFICATION_TYPE',
+                'device_code_system' => 'assistive_devices', 'quantity' => null,
+                'started_at' => '2026-10-20T12:00:00Z', 'ended_at' => $end,
+            ], ['person_uuid' => (string) Str::uuid(), 'encounter_uuid' => (string) Str::uuid(),
+                'employee_uuid' => (string) Str::uuid(), 'legal_entity_uuid' => (string) Str::uuid()]);
+
+            $this->assertSame($expected, $payload['occurrence_period']['end']);
+            $this->assertSame('2026-10-20T12:00:00.000Z', $payload['occurrence_period']['start']);
+        } finally {
+            CarbonImmutable::setTestNow();
+            date_default_timezone_set($previousTimezone);
+        }
+    }
+
     #[Test]
     public function prequalify_authored_on_is_current_utc_not_in_the_future(): void
     {
@@ -40,7 +97,7 @@ class DeviceRequestMapperTest extends TestCase
         );
 
         $authoredOn = $payload['device_request']['authored_on'];
-        $this->assertSame('2026-08-13T07:37:54.000Z', $authoredOn);
+        $this->assertSame('2026-08-13T07:38:24.000Z', $authoredOn);
 
         $occurrenceStart = CarbonImmutable::parse($payload['device_request']['occurrence_period']['start']);
         $this->assertTrue($occurrenceStart->lessThanOrEqualTo(CarbonImmutable::now('UTC')->addMinute()));

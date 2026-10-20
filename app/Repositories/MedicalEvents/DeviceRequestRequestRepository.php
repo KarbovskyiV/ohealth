@@ -8,6 +8,10 @@ use App\Enums\Person\ServiceRequestStatus;
 use App\Models\CarePlanActivity;
 use App\Models\MedicalEvents\Sql\DeviceRequestRequest;
 use App\Models\MedicalEvents\Sql\Encounter;
+use App\Models\MedicalEvents\Sql\Condition;
+use App\Models\MedicalEvents\Sql\Observation;
+use App\Models\MedicalEvents\Sql\DiagnosticReport;
+use App\Models\Person\Person;
 use App\Repositories\MedicalEvents\Concerns\ResolvesRequestFhirRefs;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Lang;
@@ -23,6 +27,46 @@ class DeviceRequestRequestRepository extends BaseRepository
     public function __construct(DeviceRequestRequest $model)
     {
         parent::__construct($model);
+    }
+
+    /** Submitted patient records that may be referenced as a prescribing reason. */
+    public function reasonOptions(Person $person): array
+    {
+        $submittedEncounters = Encounter::forPatient($person)->whereStatus('finished')->pluck('uuid');
+        $submittedReports = DiagnosticReport::forPatient($person)->whereStatus('final')->pluck('uuid');
+        $records = [
+            'condition' => Condition::forPatient($person)->notInDraftEncounter($person)
+                ->where('verification_status', '!=', 'entered_in_error')->with('code.coding'),
+            'observation' => Observation::forPatient($person)->notInDraftEncounter($person)->notInDraftDiagnosticReport($person)
+                ->whereStatus('valid')->with('code.coding'),
+            'diagnostic_report' => DiagnosticReport::forPatient($person)->whereStatus('final')->with('code'),
+        ];
+        $options = [];
+        foreach ($records as $type => $query) {
+            if ($type !== 'diagnostic_report') {
+                // Accepted encounter packages may not populate timestamps on every nested record.
+                $query->where(function ($submitted) use ($submittedEncounters, $submittedReports, $type): void {
+                    $submitted->whereNotNull('ehealth_inserted_at')->orWhereHas(
+                        'context',
+                        fn ($identifier) => $identifier->whereIn('value', $submittedEncounters)
+                    );
+                    if ($type === 'observation') {
+                        $submitted->orWhereHas('diagnosticReport', fn ($identifier) => $identifier->whereIn('value', $submittedReports));
+                    }
+                });
+            }
+            $options[$type] = $query->orderByDesc('id')->get()
+                ->mapWithKeys(function ($record) use ($type): array {
+                    $name = $type === 'diagnostic_report'
+                        ? ($record->code?->displayValue ?: $record->code?->value)
+                        : ($record->code?->text ?: $record->code?->coding->first()?->code);
+                    $date = $type === 'condition' ? $record->onsetDate : $record->issued;
+
+                    return [$record->uuid => trim(($name ?: __('device-requests.reason_types.'.$type)).' · '.formatDisplayDate($date ?: ''))];
+                })->all();
+        }
+
+        return $options;
     }
 
     /**
@@ -55,7 +99,7 @@ class DeviceRequestRequestRepository extends BaseRepository
                     'started_at' => $data['started_at'] ?? null,
                     'ended_at' => $data['ended_at'] ?? null,
                     'device_id' => $data['device_id'],
-                    'quantity' => $data['quantity'] ?? 1,
+                    'quantity' => array_key_exists('quantity', $data) ? $data['quantity'] : 1,
                     'program_id' => $data['program_id'] ?? null,
                     'intent_id' => $fhirRefs['intent_id'],
                     'category_id' => $fhirRefs['category_id'],

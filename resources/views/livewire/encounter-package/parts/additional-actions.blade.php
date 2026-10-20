@@ -12,10 +12,18 @@
         ],
         'device-requests' => [
             'label' => __('encounters.open_device_requests'),
-            'href' => route('device-requests.index', [legalEntity()]),
+            'href' => route('device-requests.index', ['legalEntity' => legalEntity(), 'person' => $personId]),
             'icon' => 'arrow-right',
         ],
     ];
+
+    if ($isReadonly && $this->isFinished && $personId !== null
+        && Auth::user()->can('create', [\App\Models\MedicalEvents\Sql\DeviceRequestRequest::class, legalEntity()])) {
+        $additionalActionLinks['device-requests'] = [
+            'label' => __('device-requests.add_request'),
+            'method' => 'openDeviceRequest',
+        ];
+    }
 
     $additionalActionRecords = $additionalActionRecords ?? [];
 @endphp
