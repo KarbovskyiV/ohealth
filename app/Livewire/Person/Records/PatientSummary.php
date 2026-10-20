@@ -415,9 +415,14 @@ class PatientSummary extends BasePatientComponent
 
     public function getClinicalImpressions(): void
     {
+        // Short clinical impressions are open by a declaration (rule 1) only
+        $clinicalImpressions = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? ClinicalImpression::readableFor($this->patient(), true)
+            : ClinicalImpression::whereRaw('1 = 0');
+
         $this->setPaginatedRecords(
             'clinicalImpressions',
-            ClinicalImpression::forPatient($this->patient())->notInDraftEncounter($this->patient())->allowedForSummary()->withAllRelations(),
+            $clinicalImpressions->notInDraftEncounter($this->patient())->allowedForSummary()->withAllRelations(),
             'clinicalImpressions'
         );
     }

@@ -78,6 +78,12 @@ class EHealthResponseException extends EHealthException
             $message = __('errors.ehealth.messages.invalid_verification_code');
         }
 
+        if ($flashMessage === null
+            && $this->response->status() === 403
+            && $this->response->json('error.message') === 'Access denied') {
+            $message = __('errors.ehealth.messages.access_denied');
+        }
+
         Session::flash('error', $message);
     }
 
