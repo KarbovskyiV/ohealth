@@ -27,12 +27,15 @@ class DeviceSync extends EHealthJob
     protected ?int $personId = null;
     protected ?int $prepersonId = null;
 
+    protected bool $hasPatientAccess = false;
+
     public function handle(): void
     {
         // Get patient info from batch options
         $this->patientUuid = $this->batch()->options['patient_uuid'] ?? null;
         $this->personId = $this->batch()->options['person_id'] ?? null;
         $this->prepersonId = $this->batch()->options['preperson_id'] ?? null;
+        $this->hasPatientAccess = $this->batch()->options['has_patient_access'] ?? false;
 
         parent::handle();
     }
@@ -44,10 +47,10 @@ class DeviceSync extends EHealthJob
     {
         return EHealth::device()
             ->withToken($token)
-            ->getBySearchParams($this->patientUuid, [
-                'recorder_legal_entity_id' => $this->legalEntity->uuid,
+            ->getBySearchParams($this->patientUuid, array_filter([
+                'recorder_legal_entity_id' => $this->hasPatientAccess ? null : $this->legalEntity->uuid,
                 'page' => $this->page
-            ]);
+            ]));
     }
 
     /**

@@ -7,6 +7,7 @@ namespace App\Models\MedicalEvents\Sql;
 use App\Enums\Person\EncounterStatus;
 use App\Casts\EHealthTimestampCast;
 use App\Enums\Device\Status;
+use App\Models\Employee\Employee;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use Eloquence\Behaviours\HasCamelCasing;
@@ -194,6 +195,74 @@ class Device extends Model
         return $patient instanceof Preperson
             ? $query->wherePrepersonId($patient->id)
             : $query->wherePersonId($patient->id);
+    }
+
+    /**
+     * Filter the patient's devices recorded in the current legal entity. The record does not carry the legal entity
+     * itself, so it is recognised by the recorder, who is an employee of that legal entity.
+     *
+     * ABAC rule 2.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function forLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'recorder',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Employee::whereLegalEntityId(legalEntity()->id)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's devices recorded within an encounter whose episode is managed by the current legal entity.
+     *
+     * ABAC rule 3.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEpisodeOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'context',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::inEpisodeOfLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Devices of the patient the user may read: with access to all the patient's devices (an active declaration or
+     * approval) all of them, including the ones of the persons and prepersons merged into a person, otherwise only the
+     * patient's own ones recorded in the current legal entity or within an encounter of its episode.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  bool  $hasPatientAccess
+     * @return Builder
+     */
+    #[Scope]
+    protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
+    {
+        if ($hasPatientAccess) {
+            return $patient instanceof Person
+                ? $patient->filterRecordsWithMerged($query)
+                : $query->forPatient($patient);
+        }
+
+        return $query->where(
+            static fn (Builder $device): Builder => $device->forLegalEntity($patient)
+                ->orWhere(static fn (Builder $inEpisode): Builder => $inEpisode->inEpisodeOfLegalEntity($patient))
+        );
     }
 
     /**

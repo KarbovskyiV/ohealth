@@ -69,6 +69,19 @@ trait HandlesSyncBatch
     }
 
     /**
+     * Whether the user has access to all the patient's records being synced: an active declaration (ABAC rule 1) or an
+     * active approval on the patient's data (ABAC rule 4). Override when another rule opens all the records of the type.
+     *
+     * @param  User  $user
+     * @return bool
+     */
+    protected function hasPatientAccessForSync(User $user): bool
+    {
+        return Declaration::accessGrantedTo($user, $this->patient(), legalEntity())->exists()
+            || Approval::accessGrantedTo($user, $this->patient(), legalEntity())->exists();
+    }
+
+    /**
      * Returns the language file holding the sync messages for the given entity type.
      *
      * @param  string  $entityType
@@ -220,8 +233,7 @@ trait HandlesSyncBatch
         $entityConstant = $this->getEntityConstant($entityType);
 
         // Decided once for the whole batch, so every page is fetched with the same filter
-        $hasPatientAccess = Declaration::accessGrantedTo($user, $this->patient(), legalEntity())->exists()
-            || Approval::accessGrantedTo($user, $this->patient(), legalEntity())->exists();
+        $hasPatientAccess = $this->hasPatientAccessForSync($user);
 
         Bus::batch([new $jobClass(legalEntity(), page: 2)])
             ->withOption('legal_entity_id', legalEntity()->id)
