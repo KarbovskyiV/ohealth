@@ -71,6 +71,14 @@ class ConnectionForm extends Form
         ];
     }
 
+    public function rulesForCredentials(): array
+    {
+        return [
+            'client_id' => ['required', 'uuid'],
+            'secret' => ['required', 'string']
+        ];
+    }
+
     /**
      * Stores the uploaded key container's original filename for display purposes.
      * (Livewire lifecycle hook, auto-invoked when `keyContainerUpload` is updated)

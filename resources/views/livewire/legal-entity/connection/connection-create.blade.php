@@ -17,17 +17,7 @@
     </x-header-navigation>
 
     <div>
-        @if($hasPendingCreation)
-            <p class="mt-6">{{ __('legal-entity-connection.local_save_retry_required') }}</p>
-            <button type="button"
-                    wire:click="localSave"
-                    wire:loading.attr="disabled"
-                    class="button-primary mt-6"
-            >
-                {{ __('legal-entity-connection.btn_retry_local_save') }}
-            </button>
-        </div>
-        @elseif(!$connection)
+        @if(!$connection)
             <x-slot name="title">
                 <span class="text-xl font-semibold">{{ __('legal-entity-connection.btn_grant_access') }}</span>
             </x-slot>
