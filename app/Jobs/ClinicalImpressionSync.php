@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Core\EHealthJob;
+use App\Core\PatientEHealthJob;
 use App\Models\LegalEntity;
-use App\Models\Person\Person;
-use App\Models\Preperson;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\MedicalEvents\Repository;
 use GuzzleHttp\Promise\PromiseInterface;
@@ -15,27 +14,13 @@ use App\Classes\eHealth\EHealthResponse;
 use Illuminate\Queue\Middleware\RateLimited;
 use Throwable;
 
-class ClinicalImpressionSync extends EHealthJob
+class ClinicalImpressionSync extends PatientEHealthJob
 {
     public const string BATCH_NAME = 'ClinicalImpressionSync';
 
     public const string SCOPE_REQUIRED = 'patient_summary:read';
 
     public const string ENTITY = LegalEntity::ENTITY_CLINICAL_IMPRESSION;
-
-    protected ?string $patientUuid = null;
-    protected ?int $personId = null;
-    protected ?int $prepersonId = null;
-
-    public function handle(): void
-    {
-        // Get patient info from batch options
-        $this->patientUuid = $this->batch()->options['patient_uuid'] ?? null;
-        $this->personId = $this->batch()->options['person_id'] ?? null;
-        $this->prepersonId = $this->batch()->options['preperson_id'] ?? null;
-
-        parent::handle();
-    }
 
     /**
      * {@inheritDoc}
@@ -60,11 +45,7 @@ class ClinicalImpressionSync extends EHealthJob
             return;
         }
 
-        $patient = $this->prepersonId !== null
-            ? Preperson::findOrFail($this->prepersonId)
-            : Person::findOrFail($this->personId);
-
-        Repository::clinicalImpression()->sync($patient, $validatedData);
+        Repository::clinicalImpression()->sync($this->patient(), $validatedData);
     }
 
     /**

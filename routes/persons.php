@@ -94,13 +94,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId'])
+Route::prefix('persons')->whereNumber('person')
     ->group(static function () {
         Route::name('persons.')->group(static function () {
             Route::get('/', PersonIndex::class)->can('viewAny', Person::class)->name('index');
             Route::get('/create', PersonCreate::class)->can('create', PersonRequest::class)->name('create');
             Route::get('/edit/{personRequest}', PersonRequestEdit::class)
                 ->can('create', PersonRequest::class)
+                ->whereNumber('personRequest')
                 ->name('edit');
             Route::get('/update/{person}', PersonUpdate::class)->can('create', PersonRequest::class)->name('update');
 
@@ -201,8 +202,8 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId'])
                 Route::get('/device-dispenses', DeviceDispenses::class)
                     ->can('viewAny', DeviceDispense::class)
                     ->name('device-dispenses');
-                Route::get('/device-dispenses/{deviceDispense:id}', DeviceDispenseView::class)
-                    ->can('view', DeviceDispense::class)
+                Route::get('/device-dispenses/{deviceDispense}', DeviceDispenseView::class)
+                    ->can('view', ['deviceDispense', 'person'])
                     ->whereNumber('deviceDispense')
                     ->name('device-dispenses.view');
                 Route::get('/detected-issues', DetectedIssueIndex::class)
@@ -231,12 +232,11 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId'])
                 ->whereNumber('declaration');
             Route::get('/{person}/declaration/create', DeclarationCreate::class)
                 ->name('create')
-                ->can('create', DeclarationRequest::class)
-                ->whereNumber('person');
+                ->can('create', DeclarationRequest::class);
             Route::get('/{person}/declaration/{declarationRequest}', DeclarationEdit::class)
                 ->name('edit')
                 ->can('update', 'declarationRequest')
-                ->whereNumber(['person', 'declarationRequest']);
+                ->whereNumber('declarationRequest');
         });
 
         Route::prefix('{person}')->name('encounter.')->group(function () {
@@ -256,9 +256,10 @@ Route::prefix('persons')->whereNumber(['person', 'personRequest', 'personId'])
 
         Route::get('/{personId}/care-plan/create', CarePlanCreate::class)
             ->can('create', CarePlan::class)
+            ->whereNumber('personId')
             ->name('care-plan.create');
 
-        Route::prefix('{person}')->whereNumber('person')->group(static function () {
+        Route::prefix('{person}')->group(static function () {
             Route::get('/diagnostic-report/create', DiagnosticReportCreate::class)
                 ->can('create', DiagnosticReport::class)
                 ->name('diagnostic-report.create');
@@ -388,8 +389,8 @@ Route::prefix('prepersons')
             Route::get('/device-dispenses', DeviceDispenses::class)
                 ->can('viewAny', DeviceDispense::class)
                 ->name('device-dispenses');
-            Route::get('/device-dispenses/{deviceDispense:id}', DeviceDispenseView::class)
-                ->can('view', DeviceDispense::class)
+            Route::get('/device-dispenses/{deviceDispense}', DeviceDispenseView::class)
+                ->can('view', ['deviceDispense', 'preperson'])
                 ->whereNumber('deviceDispense')
                 ->name('device-dispenses.view');
             Route::get('/detected-issues', DetectedIssueIndex::class)

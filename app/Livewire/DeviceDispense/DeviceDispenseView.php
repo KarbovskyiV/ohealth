@@ -64,7 +64,7 @@ class DeviceDispenseView extends BasePatientComponent
 
         $this->deviceDispense();
     }
-    
+
     /**
      * Load dictionaries that are not part of the standard basic dictionary list.
      *
@@ -85,13 +85,14 @@ class DeviceDispenseView extends BasePatientComponent
     }
 
     /**
-     * Resolve the device dispense being displayed for the current patient.
+     * Resolve the device dispense being displayed, scoped to the patient and the persons merged into it so that a
+     * record belonging to somebody else is not reachable by its ID.
      *
      * @return DeviceDispense
      */
     protected function deviceDispense(): DeviceDispense
     {
-        return $this->deviceDispenseModel ??= DeviceDispense::forPatient($this->patient())
+        return $this->deviceDispenseModel ??= DeviceDispense::readableFor($this->patient(), true)
             ->withAllRelations()
             ->whereId($this->deviceDispenseId)
             ->firstOrFail();

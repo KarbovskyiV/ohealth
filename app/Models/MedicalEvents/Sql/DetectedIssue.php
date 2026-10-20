@@ -185,7 +185,8 @@ class DetectedIssue extends Model
     }
 
     /**
-     * Leave out the records of an encounter package eHealth has not accepted yet, which is still a draft.
+     * Leave out the records of an encounter package eHealth has not accepted yet, which is still a draft, including the
+     * draft encounters of the persons and prepersons merged into a person.
      *
      * @param  Builder  $query
      * @param  Person|Preperson  $patient
@@ -198,7 +199,7 @@ class DetectedIssue extends Model
             'encounter',
             static fn (Builder $identifier): Builder => $identifier->whereIn(
                 'value',
-                Encounter::forPatient($patient)->whereStatus(EncounterStatus::DRAFT)->pluck('uuid')
+                Encounter::readableFor($patient, true)->whereStatus(EncounterStatus::DRAFT)->pluck('uuid')
             )
         );
     }

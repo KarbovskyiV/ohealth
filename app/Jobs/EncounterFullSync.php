@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Core\EHealthJob;
+use App\Core\PatientEHealthJob;
 use App\Models\LegalEntity;
-use App\Models\Person\Person;
-use App\Models\Preperson;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\MedicalEvents\Repository;
 use GuzzleHttp\Promise\PromiseInterface;
@@ -15,32 +14,13 @@ use App\Classes\eHealth\EHealthResponse;
 use Illuminate\Queue\Middleware\RateLimited;
 use Throwable;
 
-class EncounterFullSync extends EHealthJob
+class EncounterFullSync extends PatientEHealthJob
 {
     public const string BATCH_NAME = 'EncounterFullSync';
 
     public const string SCOPE_REQUIRED = 'encounter:read';
 
     public const string ENTITY = LegalEntity::ENTITY_ENCOUNTER;
-
-    protected ?string $patientUuid = null;
-    protected ?int $personId = null;
-    protected ?int $prepersonId = null;
-    protected Person|Preperson $patient;
-    protected bool $hasPatientAccess = false;
-
-    public function handle(): void
-    {
-        $this->patientUuid = $this->batch()->options['patient_uuid'] ?? null;
-        $this->personId = $this->batch()->options['person_id'] ?? null;
-        $this->prepersonId = $this->batch()->options['preperson_id'] ?? null;
-        $this->hasPatientAccess = $this->batch()->options['has_patient_access'] ?? false;
-        $this->patient = $this->prepersonId !== null
-            ? Preperson::findOrFail($this->prepersonId)
-            : Person::findOrFail($this->personId);
-
-        parent::handle();
-    }
 
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse
     {
@@ -63,7 +43,7 @@ class EncounterFullSync extends EHealthJob
             return;
         }
 
-        Repository::encounter()->sync($this->patient, $validatedData);
+        Repository::encounter()->sync($this->patient(), $validatedData);
     }
 
     protected function getNextEntityJob(): ?EHealthJob

@@ -7,8 +7,10 @@ namespace App\Models\MedicalEvents\Sql;
 use App\Enums\Person\EncounterStatus;
 use App\Casts\EHealthTimestampCast;
 use App\Enums\DeviceDispense\Status;
+use App\Models\LegalEntity;
 use App\Models\Person\Person;
 use App\Models\Preperson;
+use App\Models\User;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
@@ -157,7 +159,139 @@ class DeviceDispense extends Model
     }
 
     /**
-     * Leave out the records of an encounter package eHealth has not accepted yet, which is still a draft.
+     * Filter the patient's device dispenses performed by the current legal entity.
+     *
+     * ABAC rule 2.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function forLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'performerLegalEntity',
+            static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
+        );
+    }
+
+    /**
+     * Filter the patient's device dispenses made in the context of an episode managed by the current legal entity.
+     *
+     * ABAC rule 3.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEpisodeOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereIn(
+            'context_episode_id',
+            Episode::forPatient($patient)->managedByLegalEntity()->pluck('uuid')
+        );
+    }
+
+    /**
+     * Filter the patient's device dispenses originated by an episode managed by the current legal entity.
+     *
+     * ABAC rule 6.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function originatedInLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereIn(
+            'origin_episode_id',
+            Episode::forPatient($patient)->managedByLegalEntity()->pluck('uuid')
+        );
+    }
+
+    /**
+     * Filter the patient's device dispenses based on a device request issued under a care plan one of the user's
+     * employees has an active read approval on.
+     *
+     * ABAC rule 14.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  User  $user
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function basedOnApprovedCarePlan(
+        Builder $query,
+        Person|Preperson $patient,
+        User $user,
+        LegalEntity $legalEntity
+    ): Builder {
+        return $query->forPatient($patient)->whereHas(
+            'basedOn',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                DeviceRequestRequest::basedOnApprovedCarePlan($patient, $user, $legalEntity)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's device dispenses based on a device request issued under a care plan managed by the current
+     * legal entity.
+     *
+     * ABAC rule 17.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function basedOnCarePlanOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'basedOn',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                DeviceRequestRequest::basedOnCarePlanOfLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Device dispenses of the patient the user may read: with access to all the patient's data (an active declaration
+     * or approval) all of them, including the ones of the persons and prepersons merged into a person, otherwise only
+     * the patient's own ones performed by the current legal entity, made in the context of its episode or originated by
+     * its episode.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  bool  $hasPatientAccess
+     * @return Builder
+     */
+    #[Scope]
+    protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
+    {
+        if ($hasPatientAccess) {
+            return $patient instanceof Person
+                ? $patient->filterRecordsWithMerged($query)
+                : $query->forPatient($patient);
+        }
+
+        return $query->where(
+            static fn (Builder $dispense): Builder => $dispense->forLegalEntity($patient)
+                ->orWhere(static fn (Builder $inEpisode): Builder => $inEpisode->inEpisodeOfLegalEntity($patient))
+                ->orWhere(static fn (Builder $originated): Builder => $originated->originatedInLegalEntity($patient))
+        );
+    }
+
+    /**
+     * Leave out the records of an encounter package eHealth has not accepted yet, which is still a draft, including the
+     * draft encounters of the persons and prepersons merged into a person.
      *
      * @param  Builder  $query
      * @param  Person|Preperson  $patient
@@ -170,7 +304,7 @@ class DeviceDispense extends Model
             'encounter',
             static fn (Builder $identifier): Builder => $identifier->whereIn(
                 'value',
-                Encounter::forPatient($patient)->whereStatus(EncounterStatus::DRAFT)->pluck('uuid')
+                Encounter::readableFor($patient, true)->whereStatus(EncounterStatus::DRAFT)->pluck('uuid')
             )
         );
     }

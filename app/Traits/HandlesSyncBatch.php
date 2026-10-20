@@ -235,6 +235,10 @@ trait HandlesSyncBatch
         // Decided once for the whole batch, so every page is fetched with the same filter
         $hasPatientAccess = $this->hasPatientAccessForSync($user);
 
+        // The callbacks are stored with the batch and restored on every read of it, so they keep only plain values
+        $userId = $user->id;
+        $patientUuid = $this->uuid;
+
         Bus::batch([new $jobClass(legalEntity(), page: 2)])
             ->withOption('legal_entity_id', legalEntity()->id)
             ->withOption('token', Crypt::encryptString($token))
@@ -243,14 +247,14 @@ trait HandlesSyncBatch
             ->withOption('person_id', $this->personId)
             ->withOption('preperson_id', $this->prepersonId)
             ->withOption('has_patient_access', $hasPatientAccess)
-            ->then(fn () => $user->notify(new SyncNotification($entityType, 'completed')))
-            ->catch(function (Batch $batch, Throwable $exception) use ($user, $entityType) {
+            ->then(static fn () => User::find($userId)?->notify(new SyncNotification($entityType, 'completed')))
+            ->catch(static function (Batch $batch, Throwable $exception) use ($userId, $entityType, $patientUuid): void {
                 Log::error(ucfirst($entityType) . ' sync batch failed.', [
                     'batch_id' => $batch->id,
-                    'patient_uuid' => $this->uuid,
-                    'exception' => $exception,
+                    'patient_uuid' => $patientUuid,
+                    'exception' => $exception
                 ]);
-                $user->notify(new SyncNotification($entityType, 'failed'));
+                User::find($userId)?->notify(new SyncNotification($entityType, 'failed'));
             })
             ->onQueue('sync')
             ->name($batchName . '_' . $this->uuid)
