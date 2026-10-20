@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use App\Livewire\CarePlan\CarePlanComponent;
 use App\Livewire\CarePlan\Concerns\ManagesCarePlanActivities;
-use App\Livewire\Encounter\Concerns\ManagesEncounterEPrescription;
+use App\Livewire\EncounterPackage\Concerns\ManagesEncounterEPrescription;
 use App\Services\Dictionary\DictionaryManager;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Support\Facades\Http;
@@ -207,7 +207,7 @@ class MedicationProgramFlowComparisonTest extends TestCase
 
     public function test_drawer_offers_the_default_and_keeps_search_enabled_when_the_program_dictionary_is_empty(): void
     {
-        $html = view('livewire.encounter.parts.encounter-eprescription-drawer', [
+        $html = view('livewire.encounter-package.parts.encounter-eprescription-drawer', [
             'showEncounterEPrescriptionDrawer' => true,
             'encounterUuid' => 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
             'encounterId' => 21,
