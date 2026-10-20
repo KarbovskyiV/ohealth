@@ -46,32 +46,64 @@ function azureCiLatest(array $pr, callable $request, bool $requireSuccess = true
     return $run;
 }
 
-function queueAzureReview(array $run, callable $request): array
+function queueAzureReview(array $run, callable $request, ?callable $log = null): array
 {
+    $log ??= static function (string $message): void {};
     $sha = $run['head_sha'] ?? '';
     if (!preg_match('/^[a-f0-9]{40}$/', $sha) || !azureCiJobs($run, $sha, $request)) {
+        $log('No review queued: run is not successful PR CI with all required jobs.');
         return [];
     }
     $api = 'https://api.github.com/repos/'.REVIEW_REPOSITORY;
+    $source = $run['head_repository']['full_name'] ?? '';
+    $branch = $run['head_branch'] ?? '';
+    if ($source === '' || $branch === '') {
+        $log('No review queued: CI source repository or branch is unavailable.');
+        return [];
+    }
+    // Fork heads can have empty run.pull_requests AND /commits/{sha}/pulls.
+    // Discover PRs directly, then re-read and validate before dispatching.
+    $candidates = [];
+    for ($page = 1; $page <= 30; $page++) {
+        $batch = $request('GET', "$api/pulls?state=open&base=main&per_page=100&page=$page", null);
+        foreach ($batch as $candidate) {
+            if (($candidate['head']['sha'] ?? '') === $sha
+                && ($candidate['head']['repo']['full_name'] ?? '') === $source
+                && ($candidate['head']['ref'] ?? '') === $branch) {
+                $candidates[$candidate['number']] = $candidate;
+            }
+        }
+        if (count($batch) < 100) {
+            break;
+        }
+        if ($page === 30) {
+            throw new RuntimeException('Open PR discovery exceeded the pagination budget; no reviews dispatched.');
+        }
+    }
+    $log('Matching open PRs: '.count($candidates).'.');
     $queued = [];
-    foreach (reviewPages("$api/commits/$sha/pulls", $request) as $candidate) {
+    foreach ($candidates as $candidate) {
         $number = $candidate['number'];
         $pr = $request('GET', "$api/pulls/$number", null);
         if ($pr['state'] !== 'open' || $pr['draft'] || $pr['base']['ref'] !== 'main'
             || $pr['head']['sha'] !== $sha
-            || ($pr['head']['repo']['full_name'] ?? '') !== ($run['head_repository']['full_name'] ?? '')
+            || ($pr['head']['repo']['full_name'] ?? '') !== $source
+            || ($pr['head']['ref'] ?? '') !== $branch
             || !in_array($pr['author_association'] ?? '', ['OWNER', 'MEMBER', 'COLLABORATOR'], true)) {
+            $log("PR #$number not queued: draft, closed, untrusted author, or base/head/source changed.");
             continue;
         }
         $latest = azureCiLatest($pr, $request, false);
         if (($latest['id'] ?? null) !== $run['id'] || ($latest['run_attempt'] ?? 1) !== ($run['run_attempt'] ?? 1)
             || !azureCiJobs($latest, $sha, $request)) {
+            $log("PR #$number not queued: this run is superseded or its latest CI is not successful.");
             continue;
         }
         $request('POST', "$api/actions/workflows/azure-openai-review.yml/dispatches", [
             'ref' => 'main', 'inputs' => ['pull_request_number' => (string) $number, 'expected_head_sha' => $sha],
         ]);
         $queued[] = $number;
+        $log("PR #$number queued for trusted main review.");
     }
 
     return $queued;
@@ -126,7 +158,10 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
                 throw new RuntimeException('Invalid CI run ID.');
             }
             $run = reviewRequest('GET', 'https://api.github.com/repos/'.REVIEW_REPOSITORY.'/actions/runs/'.$id);
-            echo 'Queued reviews: '.count(queueAzureReview($run, 'reviewRequest')).".\n";
+            $queued = queueAzureReview($run, 'reviewRequest', static function (string $message): void {
+                echo $message."\n";
+            });
+            echo 'Queued reviews: '.count($queued).".\n";
         } elseif (($_SERVER['argv'][1] ?? '') === '--issue') {
             $id = reviewEnv('ISSUE_NUMBER');
             if (!preg_match('/^[1-9]\d{0,8}$/', $id)) {
