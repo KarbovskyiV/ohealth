@@ -36,6 +36,8 @@ use App\Models\MedicalEvents\Sql\Composition;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use RuntimeException;
+use App\Services\MedicalEvents\DeviceRequestLifecycleService;
+use App\Models\MedicalEvents\Sql\DeviceRequestRequest;
 use Throwable;
 
 class EncounterPackageEdit extends EncounterPackageComponent
@@ -146,6 +148,21 @@ class EncounterPackageEdit extends EncounterPackageComponent
             legalEntity(),
             'person' => $this->personId,
         ]).'?'.$query;
+    }
+
+    public function openDeviceRequest(): void
+    {
+        abort_unless($this->personId !== null, 403);
+        abort_unless(Auth::user()->can('create', [DeviceRequestRequest::class, legalEntity()]), 403);
+        try {
+            $service = app(DeviceRequestLifecycleService::class);
+            $employee = $service->authorizeAction(legalEntity(), 'device_request:write');
+            $person = $this->patient();
+            $service->encounter($person, $employee, $this->encounterUuid);
+            $this->redirectRoute('device-requests.create', ['legalEntity' => legalEntity(), 'person' => $person, 'encounter' => $this->encounterId]);
+        } catch (ValidationException $exception) {
+            Session::flash('error', $exception->validator->errors()->first());
+        }
     }
 
     public function mount(LegalEntity $legalEntity, Encounter $encounter, ?Person $person = null, ?Preperson $preperson = null): void
@@ -517,8 +534,8 @@ class EncounterPackageEdit extends EncounterPackageComponent
         $this->redirectRoute(
             $this->prepersonId !== null ? 'prepersons.encounter.view' : 'encounter.view',
             $this->prepersonId !== null
-                ? [legalEntity(), 'preperson' => $this->prepersonId, 'encounter' =>$this->encounterId]
-                : [legalEntity(), 'person' => $this->personId, 'encounter' =>$this->encounterId],
+                ? [legalEntity(), 'preperson' => $this->prepersonId, 'encounter' => $this->encounterId]
+                : [legalEntity(), 'person' => $this->personId, 'encounter' => $this->encounterId],
             navigate: true
         );
     }
@@ -646,7 +663,7 @@ class EncounterPackageEdit extends EncounterPackageComponent
             $this->redirectRoute(
                 $this->prepersonId !== null ? 'prepersons.encounter.view' : 'encounter.view',
                 $this->prepersonId !== null
-                    ? [legalEntity(), 'preperson' => $this->prepersonId, 'encounter' =>$this->encounterId]
+                    ? [legalEntity(), 'preperson' => $this->prepersonId, 'encounter' => $this->encounterId]
                     : [legalEntity(), $this->personId, $this->encounterId],
                 navigate: true
             );

@@ -14,6 +14,11 @@ use Throwable;
 
 class PersonRepository
 {
+    public function getById(int $personId): Person
+    {
+        return Person::findOrFail($personId);
+    }
+
     /**
      * Response keys that are stored through relations, so they must never reach the person attributes.
      */

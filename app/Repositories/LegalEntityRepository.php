@@ -30,6 +30,11 @@ class LegalEntityRepository
 {
     use LogsExceptions;
 
+    public function getById(int $legalEntityId): LegalEntityModel
+    {
+        return LegalEntityModel::findOrFail($legalEntityId);
+    }
+
     /**
      * Initialize a legal entity with its initial connection data.
      *

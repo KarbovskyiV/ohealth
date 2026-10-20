@@ -8,6 +8,7 @@ use Log;
 use Throwable;
 use App\Core\Arr;
 use App\Models\LegalEntity;
+use App\Models\User;
 use App\Models\Relations\Party;
 use App\Models\Employee\Employee;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,11 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 
 readonly class EmployeeRepository
 {
+    public function activeForLegalEntity(User $user, LegalEntity $legalEntity, array $employeeTypes): ?Employee
+    {
+        return $user->employees()->whereLegalEntityId($legalEntity->id)->active()->whereIn('employee_type', $employeeTypes)->first();
+    }
+
     /**
      * Creates a new EmployeeRequest draft from prepared data.
      * This is a universal method that only handles database persistence.
