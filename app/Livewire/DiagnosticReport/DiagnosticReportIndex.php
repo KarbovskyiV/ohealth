@@ -64,6 +64,8 @@ class DiagnosticReportIndex extends BasePatientComponent
 
     public array $specimens = [];
 
+    public array $managingOrganizations = [];
+
     public string $filterCategory = '';
 
     public string $filterCode = '';
@@ -77,6 +79,8 @@ class DiagnosticReportIndex extends BasePatientComponent
     public string $filterBasedOn = '';
 
     public string $filterSpecimenId = '';
+
+    public string $filterManagingOrganizationId = '';
 
     public string $filterIssuedFrom = '';
 
@@ -183,6 +187,7 @@ class DiagnosticReportIndex extends BasePatientComponent
             'filterIssuedTo',
             'filterBasedOn',
             'filterSpecimenId',
+            'filterManagingOrganizationId',
             'isSearching'
         ]);
 
@@ -616,6 +621,8 @@ class DiagnosticReportIndex extends BasePatientComponent
         $this->encounters = Repository::encounter()->getByPersonId($this->patient());
 
         $this->loadBasedOnRequestsFromDb();
+
+        $this->managingOrganizations = LegalEntity::get()->map->only(['uuid', 'name'])->toArray();
     }
 
     /**
@@ -677,6 +684,8 @@ class DiagnosticReportIndex extends BasePatientComponent
 
     private function buildSearchParams(): array
     {
+        $managingOrganizationId = $this->hasPatientAccess ? null : legalEntity()->uuid;
+
         return array_filter([
             'code' => $this->filterCode ?: null,
             'encounter_id' => $this->filterEncounterId ?: null,
@@ -685,7 +694,7 @@ class DiagnosticReportIndex extends BasePatientComponent
             'issued_from' => $this->filterIssuedFrom ?: null,
             'issued_to' => $this->filterIssuedTo ?: null,
             'based_on' => $this->filterBasedOn ?: null,
-            'managing_organization_id' => $this->hasPatientAccess ? null : legalEntity()->uuid,
+            'managing_organization_id' => $this->filterManagingOrganizationId ?: $managingOrganizationId,
             'specimen_id' => $this->filterSpecimenId ?: null,
             'page' => $this->getPage(),
             'page_size' => config('pagination.per_page')
@@ -704,6 +713,7 @@ class DiagnosticReportIndex extends BasePatientComponent
             'filterIssuedTo' => ['nullable', 'date_format:' . config('app.date_format')],
             'filterBasedOn' => ['nullable', 'uuid'],
             'filterSpecimenId' => ['nullable', 'uuid'],
+            'filterManagingOrganizationId' => ['nullable', 'uuid'],
         ];
     }
 

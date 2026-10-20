@@ -48,6 +48,12 @@ return [
         'sync_background_dispatch_error' => 'Помилка запуску фонової синхронізації клінічних оцінок'
     ],
 
+    // Denials of an action the user has no access to
+    'policy' => [
+        'sync' => 'Синхронізація клінічних оцінок доступна лише за наявності декларації або дозволу на дані пацієнта.',
+        'search' => 'Пошук клінічних оцінок доступний лише за наявності декларації або дозволу на дані пацієнта.'
+    ],
+
     // Number of the record every :attribute of a validation message carries
     'position' => 'клінічна оцінка №:position',
 

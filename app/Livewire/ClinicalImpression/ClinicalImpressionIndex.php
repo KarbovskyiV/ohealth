@@ -10,10 +10,12 @@ use App\Enums\ClinicalImpression\Status;
 use App\Enums\JobStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
-use App\Jobs\ClinicalImpressionSync;
+use App\Jobs\ClinicalImpressionFullSync;
 use App\Livewire\EncounterPackage\Forms\EncounterCancellationForm;
 use App\Livewire\Person\Records\BasePatientComponent;
+use App\Models\Declaration;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\ClinicalImpression;
 use App\Repositories\MedicalEvents\Repository;
 use App\Rules\InDictionary;
@@ -22,6 +24,7 @@ use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -74,12 +77,12 @@ class ClinicalImpressionIndex extends BasePatientComponent
 
     protected function getBatchName(string $entityType): string
     {
-        return ClinicalImpressionSync::BATCH_NAME;
+        return ClinicalImpressionFullSync::BATCH_NAME;
     }
 
     protected function getJobClass(string $entityType): string
     {
-        return ClinicalImpressionSync::class;
+        return ClinicalImpressionFullSync::class;
     }
 
     protected function getEntityConstant(string $entityType): string
@@ -100,6 +103,19 @@ class ClinicalImpressionIndex extends BasePatientComponent
     }
 
     /**
+     * Whether the user has access to all the patient's clinical impressions: an active declaration (ABAC rule 1) or an
+     * active approval on the patient's data (ABAC rule 4).
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function hasPatientAccess(): bool
+    {
+        return Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            || Approval::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists();
+    }
+
+    /**
      * Paginator switching between local (synced) and eHealth search results.
      *
      * @return LengthAwarePaginator
@@ -114,6 +130,13 @@ class ClinicalImpressionIndex extends BasePatientComponent
 
     public function search(): void
     {
+        // eHealth searches the clinical impressions only with access to all the patient's data
+        if (!$this->hasPatientAccess) {
+            Session::flash('error', __('clinical-impressions.policy.search'));
+
+            return;
+        }
+
         $this->validate($this->filterValidationRules());
 
         $this->isSearching = true;
@@ -122,6 +145,13 @@ class ClinicalImpressionIndex extends BasePatientComponent
 
     public function sync(): void
     {
+        // eHealth returns the clinical impressions only with access to all the patient's data
+        if (!$this->hasPatientAccess) {
+            Session::flash('error', __('clinical-impressions.policy.sync'));
+
+            return;
+        }
+
         if ($this->cannotStartSync('clinical_impression')) {
             return;
         }
@@ -133,10 +163,7 @@ class ClinicalImpressionIndex extends BasePatientComponent
         }
 
         try {
-            $response = EHealth::clinicalImpression()->getBySearchParams(
-                $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
-            );
+            $response = EHealth::clinicalImpression()->getBySearchParams($this->uuid);
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing clinical impressions');
 
@@ -193,7 +220,7 @@ class ClinicalImpressionIndex extends BasePatientComponent
      */
     protected function paginateLocalClinicalImpressions(): LengthAwarePaginator
     {
-        $paginator = ClinicalImpression::forPatient($this->patient())
+        $paginator = ClinicalImpression::readableFor($this->patient(), $this->hasPatientAccess)
             ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()

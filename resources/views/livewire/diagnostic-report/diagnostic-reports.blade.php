@@ -232,6 +232,16 @@
                         :label="__('diagnostic-reports.encounter_id')"
                     />
                 </div>
+
+                <div class="form-row-3 mb-9">
+                    <x-forms.combobox
+                        :options="$managingOrganizations"
+                        bind="filterManagingOrganizationId"
+                        bindValue="uuid"
+                        bindParam="name"
+                        :label="__('diagnostic-reports.managing_organization_id')"
+                    />
+                </div>
             </div>
 
             <div class="space-y-4">

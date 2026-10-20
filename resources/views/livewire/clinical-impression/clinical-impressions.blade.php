@@ -344,7 +344,7 @@
                                                 }
                                             }
                                         @endphp
-                                        {{ $episodeValue ?: data_get($clinicalImpression, 'uuid', '-') }}
+                                        {{ $episodeValue ?: '-' }}
                                     </div>
                                 </div>
                             </div>

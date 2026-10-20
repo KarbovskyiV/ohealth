@@ -32,6 +32,7 @@ return [
     'context_episode_id' => 'ID контекстного епізоду',
     'origin_episode_id' => 'ID первинного епізоду',
     'specimen_id' => 'ID зразка',
+    'managing_organization_id' => 'НМП',
     'specimens' => 'Зразки біоматеріалу',
     'select_specimen' => 'Обрати зразок',
     'add_specimen' => 'Додати зразок біологічного матеріалу',

@@ -137,6 +137,50 @@ class ClinicalImpression extends Model
     }
 
     /**
+     * Filter the patient's clinical impressions created within an encounter whose episode is managed by the current
+     * legal entity.
+     *
+     * ABAC rule 3.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEpisodeOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::inEpisodeOfLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Clinical impressions of the patient the user may read: with access to all the patient's data (an active
+     * declaration or approval) all of them, including the ones of the persons and prepersons merged into a person,
+     * otherwise only the patient's own ones created within an encounter of an episode of the current legal entity.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  bool  $hasPatientAccess
+     * @return Builder
+     */
+    #[Scope]
+    protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
+    {
+        if ($hasPatientAccess) {
+            return $patient instanceof Person
+                ? $patient->filterRecordsWithMerged($query)
+                : $query->forPatient($patient);
+        }
+
+        return $query->inEpisodeOfLegalEntity($patient);
+    }
+
+    /**
      * Limit clinical impressions to the patient category codes allowed in the patient summary.
      *
      * @param  Builder  $query

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Jobs\ClinicalImpressionFullSync;
 use App\Jobs\ClinicalImpressionSync;
 use App\Jobs\ConditionSync;
 use App\Jobs\DetectedIssueSync;
@@ -153,7 +154,7 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for(
             'ehealth-clinical-impression-get',
-            static fn (ClinicalImpressionSync $job) => Limit::perMinute(config('ehealth.rate_limit.clinical_impression'))->by($job->user->id)
+            static fn (ClinicalImpressionFullSync|ClinicalImpressionSync $job) => Limit::perMinute(config('ehealth.rate_limit.clinical_impression'))->by($job->user->id)
         );
 
         RateLimiter::for(
