@@ -14,7 +14,6 @@ use App\Jobs\ConnectionSync;
 use App\Jobs\LegalEntitySync;
 use App\Jobs\DeclarationsSync;
 use App\Jobs\EmployeeRoleSync;
-use App\Enums\LegalEntity\States;
 use App\Jobs\PartyVerificationSync;
 use App\Jobs\EmployeeRequestsSyncAll;
 use App\Services\Party\PartyVerificationBulkAccess;
@@ -40,7 +39,7 @@ class FirstLoginSyncChain
             isFirstLogin: true
         );
 
-        if ($legalEntityType !== LegalEntity::TYPE_PHARMACY && $legalEntity->status !== States::REORGANIZED->value) {
+        if (\in_array(EquipmentSync::SCOPE_REQUIRED, $scopes, true)) {
             $nextJob = new EquipmentSync(
                 legalEntity: $legalEntity,
                 nextEntity: $nextJob,
