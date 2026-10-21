@@ -185,6 +185,14 @@ class EncounterPackageComponent extends Component
     public array $encounterClassTypes = [];
 
     /**
+     * Interaction classes allowed for each episode type, used to filter the episode lists on the client.
+     *
+     * @var array
+     */
+    #[Locked]
+    public array $episodeTypeClasses = [];
+
+    /**
      * Full name of employee.
      *
      * @var string
@@ -239,7 +247,8 @@ class EncounterPackageComponent extends Component
      *
      * @var string|null
      */
-    protected ?string $employeeType = null;
+    #[Locked]
+    public ?string $employeeType = null;
 
     /**
      * Found the ICD-10 code and description.
@@ -1349,6 +1358,9 @@ class EncounterPackageComponent extends Component
         );
 
         $this->adjustDictionary('eHealth/episode_types', $keys);
+
+        // The whole map is kept, as the existing episodes may be of a type the user cannot open themselves
+        $this->episodeTypeClasses = config('ehealth.episode_type_encounter_classes', []);
     }
 
     /**
