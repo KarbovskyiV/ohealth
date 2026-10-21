@@ -122,6 +122,9 @@ class ConfidantPersonSync extends EHealthJob
     protected function getPersonSearchData(): array
     {
         $primaryName = $this->person->primaryName;
+        $phoneNumber = $this->person->phones->pluck('number')->first(
+            static fn (?string $number): bool => preg_match('/^\+[0-9]{11,12}$/D', $number ?? '') === 1
+        );
 
         return [
             'language' => $primaryName->language,
@@ -132,7 +135,7 @@ class ConfidantPersonSync extends EHealthJob
             'no_last_name' => blank($primaryName->lastName),
             'birth_date' => convertToYmd($this->person->birthDate),
             'tax_id' => $this->person->taxId ?? null,
-            'phone_number' => $this->person->phones->first()?->number ?? null,
+            'phone_number' => $phoneNumber,
         ];
     }
 

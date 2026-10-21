@@ -14,7 +14,7 @@ class DeclarationPolicy
 {
     /**
      * Deny every ability when the current legal entity is not eligible to operate with declarations.
-     * The legal entity must be active and have a type allowed for declaration requests.
+     * The legal entity must be active or reorganized and have a type allowed for declaration requests.
      *
      * @param  User  $user
      * @param  string  $ability
@@ -49,7 +49,7 @@ class DeclarationPolicy
     /**
      * Determine whether the user can view declaration.
      *
-     * A doctor sees the declarations of every doctor of their legal entity, the deactivated ones included.
+     * Owners, administrators and doctors see all declarations of their legal entity, regardless of status.
      */
     public function view(User $user, Declaration $declaration): Response
     {
@@ -63,8 +63,15 @@ class DeclarationPolicy
             return Response::allow();
         }
 
-        // Can only view their own
+        // Outside the current legal entity, only their own declarations from a connected legator are accessible.
         return $user->party->employees->contains('id', $declaration->employeeId)
+            && (
+                $declaration->legalEntityId === legalEntity()->id
+                || $declaration->reorganizedEmployeeDeclaration()
+                    ->hasConnectionTo(legalEntity())
+                    ->where('party_id', $user->partyId)
+                    ->exists()
+            )
             ? Response::allow()
             : Response::denyWithStatus(404);
     }
