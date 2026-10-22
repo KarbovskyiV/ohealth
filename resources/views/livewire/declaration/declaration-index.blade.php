@@ -68,7 +68,7 @@
 
                     {{-- Show additional filters --}}
                     <div x-show="showFilter" x-cloak x-transition class="mt-8" x-data="{ openType: false }">
-                        @if (Auth::user()->hasAllowedRole(Role::OWNER))
+                        @if (Auth::user()->hasAllowedRole([Role::OWNER, Role::REORGANIZATION_OWNER, Role::ADMIN]))
                             @include('livewire.declaration.parts.owner-filters')
                         @else
                             @include('livewire.declaration.parts.basic-filters')
@@ -157,10 +157,10 @@
                                     >
                                         @if (
                                             $declaration->status === Status::REJECTED ||
-                                                                                    $declaration->status === Status::TERMINATED ||
-                                                                                    $declaration->status === Status::CLOSED ||
-                                                                                    ($declaration->type === 'declaration' && !$declaration->reorganizedEmployeeDeclaration)
-)
+                                            $declaration->status === Status::TERMINATED ||
+                                            $declaration->status === Status::CLOSED ||
+                                            ($declaration->type === 'declaration' && (!$hasLegators || !$declaration->reorganizedEmployeeDeclaration))
+                                        )
                                             @can('view', $declaration)
                                                 <a
                                                     href="{{ route('declaration.view', [legalEntity(), $declaration->id]) }}"

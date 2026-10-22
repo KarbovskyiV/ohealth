@@ -278,7 +278,7 @@ class DeclarationIndex extends Component
     #[Computed]
     public function patientRequestsCount(): int
     {
-        if (Auth::user()->hasAllowedRole([Role::OWNER, Role::ADMIN])) {
+        if (Auth::user()->hasAllowedRole([Role::OWNER, Role::REORGANIZATION_OWNER, Role::ADMIN])) {
             return 0;
         }
 
@@ -324,7 +324,7 @@ class DeclarationIndex extends Component
                 'person.names'
             ])
                 ->when(
-                    !$user->hasAllowedRole([Role::OWNER, Role::ADMIN]),
+                    !$user->hasAllowedRole([Role::OWNER, Role::REORGANIZATION_OWNER, Role::ADMIN]),
                     fn (Builder $query) => $query->forEmployees($employeePool),
                     fn (Builder $query) => $query->filterByLegalEntityId(legalEntity()->id)
                         ->when(
@@ -336,8 +336,8 @@ class DeclarationIndex extends Component
                 ->each->setAttribute('type', 'declaration');
         }
 
-        // Don't show declaration requests for OWNER and ADMIN
-        if (!$user->hasAllowedRole([Role::OWNER, Role::ADMIN]) && $user->can('viewAny', DeclarationRequest::class)) {
+        // Don't show declaration requests for owners and administrators
+        if (!$user->hasAllowedRole([Role::OWNER, Role::REORGANIZATION_OWNER, Role::ADMIN]) && $user->can('viewAny', DeclarationRequest::class)) {
             $declarationRequests = DeclarationRequest::with([
                 'person:id,birth_date',
                 'person.names'
