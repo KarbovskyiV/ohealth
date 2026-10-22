@@ -240,7 +240,13 @@ class PersonForm extends BaseForm
             ],
             'person.preferredWayCommunication' => ['nullable', Rule::in(['email', 'phone'])],
 
-            'person.phones.*.type' => ['nullable', 'string', 'distinct', 'required_with:person.phones.*.number'],
+            'person.phones.*.type' => [
+                'nullable',
+                'string',
+                'distinct',
+                'required_with:person.phones.*.number',
+                new InDictionary('PHONE_TYPE')
+            ],
             'person.phones.*.number' => [
                 'nullable',
                 'string',
@@ -281,7 +287,7 @@ class PersonForm extends BaseForm
             'person.emergencyContact.firstName' => ['required', 'min:1', 'max:255'],
             'person.emergencyContact.lastName' => ['nullable', 'min:1', 'max:255'],
             'person.emergencyContact.secondName' => ['nullable', 'min:1', 'max:255'],
-            'person.emergencyContact.phones.*.type' => ['required', 'string', 'distinct'],
+            'person.emergencyContact.phones.*.type' => ['required', 'string', 'distinct', new InDictionary('PHONE_TYPE')],
             'person.emergencyContact.phones.*.number' => ['required', 'string', 'regex:/^\+[0-9]{11,12}$/', 'distinct'],
 
             'processDisclosureDataConsent' => ['required', 'boolean:strict', Rule::in([true])],
@@ -497,16 +503,17 @@ class PersonForm extends BaseForm
 
     /**
      * Reason the found person cannot become the legal representative of the patient, or null when they can.
-     * Besides the age and the relationships of the patient, the person has to be verified, must not be represented
-     * by someone themselves and needs an active SMS authentication method.
+     * Besides the age and the relationships of the patient, the person must not be represented by someone
+     * themselves and needs an active SMS authentication method.
      *
      * @param  array  $personData  The found person as the search returns it
+     * @param  bool  $requiresVerification  Whether the person also has to be verified, which only the registration of a patient through them demands
      * @return string|null
      * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
      */
-    public function confidantRejectionReason(array $personData): ?string
+    public function confidantRejectionReason(array $personData, bool $requiresVerification = true): ?string
     {
-        if (CarbonImmutable::parse($personData['birthDate'])->age < config('ehealth.person_full_legal_capacity_age')) {
+        if (CarbonImmutable::parse($personData['birthDate'])->age < config('ehealth.no_self_registration_age')) {
             return __('patients.age_insufficient_for_confidant_person');
         }
 
@@ -514,13 +521,15 @@ class PersonForm extends BaseForm
             return __('patients.confidant_person_already_represents_patient');
         }
 
-        $verificationStatus = EHealth::person()->getPersonVerificationDetails($personData['id'])
-            ->validate()['verification_status'];
+        if ($requiresVerification) {
+            $verificationStatus = EHealth::person()->getPersonVerificationDetails($personData['id'])
+                ->validate()['verification_status'];
 
-        if ($verificationStatus !== VerificationStatus::VERIFIED->value) {
-            return __('patients.confidant_person_not_verified', [
-                'status' => VerificationStatus::from($verificationStatus)->label()
-            ]);
+            if ($verificationStatus !== VerificationStatus::VERIFIED->value) {
+                return __('patients.confidant_person_not_verified', [
+                    'status' => VerificationStatus::from($verificationStatus)->label()
+                ]);
+            }
         }
 
         if (Person::isRepresentedByConfidant(

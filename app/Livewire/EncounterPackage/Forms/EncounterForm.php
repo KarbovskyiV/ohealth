@@ -290,7 +290,7 @@ class EncounterForm extends BaseForm
     {
         return Rule::in(array_intersect(
             config('ehealth.legal_entity_episode_types')[legalEntity()->type->name],
-            config('ehealth.employee_episode_types')[Auth::user()->getEncounterWriterEmployee()->employeeType]
+            config('ehealth.employee_episode_types')[$this->component->employeeType]
         ));
     }
 

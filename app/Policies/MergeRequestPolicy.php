@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\User\Role;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -15,7 +16,8 @@ class MergeRequestPolicy
      */
     public function create(User $user): Response
     {
-        if ($user->cannot('merge_request:write')) {
+        // The scope alone is held by more roles than may merge the records of a patient
+        if ($user->cannot('merge_request:write') || !$user->hasAllowedRole([Role::SPECIALIST])) {
             return Response::denyWithStatus(404);
         }
 

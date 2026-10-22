@@ -51,14 +51,11 @@
         @enderror
 
         <div class="mt-8 flex items-center justify-start gap-4">
-            <button type="button" @click="show = false" class="button-minor min-w-30">{{ __('forms.cancel') }}</button>
+            <button type="button" @click="show = false" class="button-minor min-w-30 justify-center">
+                {{ __('forms.cancel') }}
+            </button>
 
-            <button
-                type="button"
-                wire:click="process"
-                wire:loading.attr="disabled"
-                class="button-primary min-w-30"
-            >
+            <button type="button" wire:click="process" wire:loading.attr="disabled" class="button-primary min-w-30">
                 <span wire:loading.remove wire:target="process"> {{ __('forms.confirm') }} </span>
                 <span wire:loading wire:target="process"> ... </span>
             </button>

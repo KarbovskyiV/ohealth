@@ -67,7 +67,7 @@
             </dl>
 
             <div class="mt-8">
-                <button type="button" @click="show = false" class="button-minor min-w-30">
+                <button type="button" @click="show = false" class="button-minor min-w-30 justify-center">
                     {{ __('forms.close') }}
                 </button>
             </div>

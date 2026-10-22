@@ -561,7 +561,7 @@ return [
 
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583402009/Medical+Events+Dictionaries+and+configurations#episode_type_%3CeHealth%2Fepisode_types%3E_encounter_classes--dynamic-configuration-for-episode-types
     'episode_type_encounter_classes' => [
-        'TREATMENT' => ['AMD', 'PHC', 'INPATIENT'],
+        'TREATMENT' => ['AMB', 'PHC', 'INPATIENT'],
         'PREVENTION' => ['PHC', 'INPATIENT', 'AMB'],
         'DG' => ['AMB', 'INPATIENT'],
         'REHAB' => ['AMB', 'INPATIENT'],

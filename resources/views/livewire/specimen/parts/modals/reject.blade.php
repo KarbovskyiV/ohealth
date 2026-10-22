@@ -20,7 +20,9 @@
         </div>
 
         <div class="mt-8 flex items-center justify-start gap-4">
-            <button type="button" @click="show = false" class="button-minor min-w-30">{{ __('forms.cancel') }}</button>
+            <button type="button" @click="show = false" class="button-minor min-w-30 justify-center">
+                {{ __('forms.cancel') }}
+            </button>
 
             <button type="button" wire:click="reject" wire:loading.attr="disabled" class="button-danger min-w-30">
                 <span wire:loading.remove wire:target="reject"> {{ __('specimens.reject') }} </span>

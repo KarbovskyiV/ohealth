@@ -5,6 +5,13 @@
 <div
     class="p-4 sm:p-8"
     id="patient-data-section"
+    x-data="{
+        isEpisodeTypeAllowed(episodeTypeCode, classCode = $wire.form.encounter.classCode) {
+            return (
+                ! classCode || ! episodeTypeCode || ($wire.episodeTypeClasses[episodeTypeCode] ?? []).includes(classCode)
+            );
+        },
+    }"
     @if ($this->prepersonId && !$this->isDischarge && !$this->isHospitalizationRefusal)
         x-init="$wire.set('form.encounter.typeCode', 'patient_identity')"
     @endif
@@ -25,12 +32,27 @@
                     $wire.set('form.encounter.typeCode', '', false);
                 }
             },
+
+            syncEpisodeWithClass(classCode) {
+                if (! this.isEpisodeTypeAllowed($wire.form.episode.typeCode, classCode)) {
+                    $wire.set('form.episode.typeCode', '', false);
+                }
+
+                const episode = $wire.episodes.find((item) => item.uuid === $wire.form.episode.id);
+
+                if (episode && ! this.isEpisodeTypeAllowed(episode.type?.code, classCode)) {
+                    $wire.set('form.episode.id', '', false);
+                }
+            },
         }"
     >
         <div class="form-group group">
             <select
                 wire:model="form.encounter.classCode"
-                @change="syncTypeWithClass($event.target.value)"
+                @change="
+                    syncTypeWithClass($event.target.value);
+                    syncEpisodeWithClass($event.target.value);
+                "
                 id="interactionClass"
                 class="input-select peer @error('form.encounter.classCode') input-error @enderror"
                 required
@@ -157,7 +179,13 @@
                     >
                         <option value="" selected>{{ __('forms.select') }}</option>
                         @foreach ($this->dictionaries['eHealth/episode_types'] as $key => $episodeType)
-                            <option value="{{ $key }}">{{ $episodeType }}</option>
+                            <option
+                                value="{{ $key }}"
+                                x-show="isEpisodeTypeAllowed($el.value)"
+                                :disabled="! isEpisodeTypeAllowed($el.value)"
+                            >
+                                {{ $episodeType }}
+                            </option>
                         @endforeach
                     </select>
                     <label for="episodeType" class="label required"> {{ __('encounters.episode_type') }} </label>
@@ -180,7 +208,14 @@
                     >
                         <option value="" selected>{{ __('forms.select') }}</option>
                         @foreach ($episodes as $key => $episode)
-                            <option value="{{ $episode['uuid'] }}">{{ $episode['name'] }}</option>
+                            <option
+                                value="{{ $episode['uuid'] }}"
+                                data-episode-type="{{ data_get($episode, 'type.code') }}"
+                                x-show="isEpisodeTypeAllowed($el.dataset.episodeType)"
+                                :disabled="! isEpisodeTypeAllowed($el.dataset.episodeType)"
+                            >
+                                {{ $episode['name'] }}
+                            </option>
                         @endforeach
                     </select>
                     <label for="existingEpisodeId" class="label required">

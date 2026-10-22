@@ -39,7 +39,8 @@ trait ManagesConfidantPersonRelationships
         $this->selectedConfidantPersonId = null;
 
         try {
-            $this->invalidPersonReason = $this->form->confidantRejectionReason($personData);
+            // A relationship with an already registered patient does not need the person to be verified
+            $this->invalidPersonReason = $this->form->confidantRejectionReason($personData, requiresVerification: false);
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when checking the chosen person as a confidant');
 
@@ -527,7 +528,7 @@ trait ManagesConfidantPersonRelationships
                         'phones' => $confidant->phones
                             ->map(static fn (Phone $phone): array => [
                                 'type' => $phone->type,
-                                'number' => $phone->number
+                                'number' => Str::mask($phone->number, '*', 0, -2)
                             ])
                             ->all()
                     ]
