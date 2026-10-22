@@ -10,9 +10,9 @@
         >
             <x-slot name="title">{{ __('encounters.referral_drawer.title') }}</x-slot>
         <form wire:submit.prevent="validateEncounterReferral" class="space-y-6">
-            <fieldset class="fieldset">
+            <fieldset class="fieldset-card p-6 sm:p-8">
                 <legend class="legend">{{ __('encounters.service') }}</legend>
-                <div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div class="form-group group md:col-span-2">
                         <label for="encounterReferralServiceSearch" class="label required">
                             {{ __('encounters.service') }}
@@ -171,7 +171,7 @@
                 </div>
             </fieldset>
 
-            <fieldset class="fieldset">
+            <fieldset class="fieldset-card p-6 sm:p-8">
                 <legend class="legend">{{ __('encounters.referral_drawer.validity_and_quantity') }}</legend>
                 <div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-3">
                     <div class="form-group group">
@@ -206,7 +206,7 @@
                         />
                     </div>
                 </div>
-                <div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div class="form-group group">
                         <label for="encounterReferralPriority" class="label required">{{ __('encounters.priority') }}</label>
                         <select
@@ -223,9 +223,9 @@
                 </div>
             </fieldset>
 
-            <fieldset class="fieldset">
+            <fieldset class="fieldset-card p-6 sm:p-8">
                 <legend class="legend">{{ __('encounters.referral_drawer.additional') }}</legend>
-                <div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div class="form-group group">
                         <label for="encounterReferralInformWith" class="label">{{ __('forms.auth_method') }}</label>
                         <select
