@@ -133,9 +133,6 @@
                                         {{ $this->dictionaries['LANGUAGE'][$person->primaryName->language] }}
                                     </span>
                                 @endif
-                                <span class="{{ VerificationStatus::from($verification['verificationStatus'])->color() }} inline-flex items-center rounded px-2 py-0.5 text-xs font-normal">
-                                    {{ VerificationStatus::from($verification['verificationStatus'])->label() }}
-                                </span>
                             </span>
                         </legend>
 

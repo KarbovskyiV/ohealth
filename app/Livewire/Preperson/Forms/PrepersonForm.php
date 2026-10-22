@@ -41,22 +41,20 @@ class PrepersonForm extends BaseForm
             || $this->reasonContext['reason'] === Reason::NEWBORN_WITHOUT_CERTIFICATE->value;
 
         return [
-            'person.firstName' => ['nullable', 'min:3', new NameFields()],
-            'person.lastName' => ['nullable', 'min:3', new NameFields()],
-            'person.secondName' => ['nullable', 'min:3', new NameFields()],
+            'person.firstName' => ['nullable', new NameFields()],
+            'person.lastName' => ['nullable', new NameFields()],
+            'person.secondName' => ['nullable', new NameFields()],
             'person.birthDate' => ['nullable', 'date_format:' . config('app.date_format'), 'before_or_equal:today'],
             'person.gender' => ['required', 'string', new InDictionary('GENDER')],
             'person.emergencyContact.firstName' => [
                 Rule::requiredIf($emergencyContactRequired),
-                'min:3',
                 new NameFields()
             ],
             'person.emergencyContact.lastName' => [
                 Rule::requiredIf($emergencyContactRequired),
-                'min:3',
                 new NameFields()
             ],
-            'person.emergencyContact.secondName' => ['nullable', 'min:3', new NameFields()],
+            'person.emergencyContact.secondName' => ['nullable', new NameFields()],
             'person.emergencyContact.phones.*.type' => [
                 'nullable',
                 Rule::requiredIf($emergencyContactRequired),
@@ -71,30 +69,17 @@ class PrepersonForm extends BaseForm
                 'distinct'
             ],
 
-            'reasonContext.reason' => [
-                'nullable',
-                Rule::when(
-                    filled($this->reasonContext['reason']),
-                    [Rule::enum(Reason::class)]
-                )
-            ],
+            // The note eHealth receives is built from the reason, so it is always filled in
+            'reasonContext.reason' => ['required', Rule::enum(Reason::class)],
             'reasonContext.ambulanceCardNumber' => [
                 'nullable',
                 'required_if:reasonContext.reason,' . Reason::EMERGENCY_HOSPITALIZATION->value,
                 'string',
                 'max:255'
             ],
-            'reasonContext.policeReportId' => [
-                'nullable',
-                'required_if:reasonContext.reason,' . Reason::POLICE_HOSPITALIZATION->value,
-                'string',
-                'max:255'
-            ],
-            'reasonContext.policeReportDate' => [
-                'nullable',
-                'required_if:reasonContext.reason,' . Reason::POLICE_HOSPITALIZATION->value,
-                'date_format:' . config('app.date_format')
-            ],
+            // Filled in only when the police has actually been appealed to
+            'reasonContext.policeReportId' => ['nullable', 'string', 'max:255'],
+            'reasonContext.policeReportDate' => ['nullable', 'date_format:' . config('app.date_format')],
             'reasonContext.childBirthTime' => [
                 'nullable',
                 'required_if:reasonContext.reason,' . Reason::NEWBORN_WITHOUT_CERTIFICATE->value,
@@ -121,22 +106,20 @@ class PrepersonForm extends BaseForm
             || ($this->reasonContext['reason'] ?? null) === Reason::NEWBORN_WITHOUT_CERTIFICATE->value;
 
         return [
-            'person.firstName' => ['nullable', 'min:3', new NameFields()],
-            'person.lastName' => ['nullable', 'min:3', new NameFields()],
-            'person.secondName' => ['nullable', 'min:3', new NameFields()],
+            'person.firstName' => ['nullable', new NameFields()],
+            'person.lastName' => ['nullable', new NameFields()],
+            'person.secondName' => ['nullable', new NameFields()],
             'person.birthDate' => ['nullable', 'date_format:' . config('app.date_format'), 'before_or_equal:today'],
             'person.gender' => ['required', 'string', new InDictionary('GENDER')],
             'person.emergencyContact.firstName' => [
                 Rule::requiredIf($emergencyContactRequired),
-                'min:3',
                 new NameFields()
             ],
             'person.emergencyContact.lastName' => [
                 Rule::requiredIf($emergencyContactRequired),
-                'min:3',
                 new NameFields()
             ],
-            'person.emergencyContact.secondName' => ['nullable', 'min:3', new NameFields()],
+            'person.emergencyContact.secondName' => ['nullable', new NameFields()],
             'person.emergencyContact.phones.*.type' => [
                 'nullable',
                 Rule::requiredIf($emergencyContactRequired),
@@ -197,10 +180,15 @@ class PrepersonForm extends BaseForm
             Reason::EMERGENCY_HOSPITALIZATION => __('preperson.notes.ambulance', [
                 'number' => $this->reasonContext['ambulanceCardNumber']
             ]),
-            Reason::POLICE_HOSPITALIZATION => __('preperson.notes.police', [
-                'id' => $this->reasonContext['policeReportId'],
-                'date' => $this->reasonContext['policeReportDate']
-            ]),
+            // Without an appeal to the police the reason itself is the note
+            Reason::POLICE_HOSPITALIZATION => implode('; ', array_filter([
+                filled($this->reasonContext['policeReportId'])
+                    ? __('preperson.notes.police_report_id', ['id' => $this->reasonContext['policeReportId']])
+                    : null,
+                filled($this->reasonContext['policeReportDate'])
+                    ? __('preperson.notes.police_report_date', ['date' => $this->reasonContext['policeReportDate']])
+                    : null
+            ])) ?: $reason->label(),
             Reason::NEWBORN_WITHOUT_CERTIFICATE => __('preperson.notes.newborn', [
                 'time' => $this->reasonContext['childBirthTime']
             ]),
