@@ -7,10 +7,12 @@ namespace App\Livewire\EncounterPackage\Forms;
 use App\Enums\Status;
 use App\Enums\User\Role;
 use App\Models\Employee\Employee;
+use App\Models\MedicalEvents\Sql\ClinicalImpression;
 use App\Rules\AfterOrEqualDateTime;
 use App\Rules\InDictionary;
 use App\Rules\PastDateTime;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 
@@ -56,7 +58,11 @@ class ClinicalImpressionForm extends Form
     protected function rules(): array
     {
         return [
-            'clinicalImpressions' => ['nullable', 'array'],
+            'clinicalImpressions' => [
+                'nullable',
+                'array',
+                Rule::prohibitedIf(static fn (): bool => Auth::user()->cannot('create', ClinicalImpression::class))
+            ],
             // for edit page
             'clinicalImpressions.*.uuid' => ['nullable', 'uuid'],
             'clinicalImpressions.*.codeCode' => [
@@ -72,7 +78,7 @@ class ClinicalImpressionForm extends Form
                     ->where('legal_entity_id', legalEntity()->id)
                     ->where('status', Status::APPROVED->value)
                     ->where('is_active', true)
-                    ->whereIn('employee_type', [Role::DOCTOR->value, Role::SPECIALIST->value, Role::ASSISTANT->value])
+                    ->whereIn('employee_type', [Role::DOCTOR->value, Role::SPECIALIST->value])
                     ->where(static fn (Builder $query): Builder => $query->whereNull('end_date')
                         ->orWhere('end_date', '>=', today()->toDateString()))
             ],

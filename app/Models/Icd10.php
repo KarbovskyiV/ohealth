@@ -32,7 +32,7 @@ class Icd10 extends Model
     {
         $column = preg_match('/\p{Cyrillic}/u', $term) === 1 ? 'description' : 'code';
 
-        return $query->where($column, 'ILIKE', "%$term%");
+        return $query->whereLike($column, "%$term%");
     }
 
     /**
