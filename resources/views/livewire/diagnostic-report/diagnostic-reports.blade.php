@@ -124,7 +124,7 @@
                             <button
                                 type="button"
                                 @click="openGroupActions = false"
-                                class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                class="dropdown-button flex! w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                             >
                                 <span class="text-gray-500">
                                     @icon('close', 'w-4 h-4')
@@ -177,12 +177,15 @@
                                     }
                                 "
                                 type="text"
+                                id="filterIssuedRange"
                                 class="daterangepicker-uk with-leading-icon input peer w-full"
                                 placeholder=" "
                                 autocomplete="off"
                             />
 
-                            <label class="wrapped-label"> {{ __('forms.filter_date_range') }} </label>
+                            <label for="filterIssuedRange" class="wrapped-label">
+                                {{ __('forms.filter_date_range') }}
+                            </label>
                         </div>
                     </div>
 

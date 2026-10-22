@@ -19,82 +19,147 @@
         </div>
     </div>
 
-    {{-- Start effective period datetime --}}
+    {{-- Effective type: a moment or a period --}}
     <div class="form-row-3">
+        <div class="form-group group">
+            <select
+                x-model="modalClinicalImpression.effectiveType"
+                @change="setEffectiveType($event.target.value)"
+                id="clinicalImpressionEffectiveType"
+                class="input-select peer"
+            >
+                <option value="period">{{ __('clinical-impressions.effective_period') }}</option>
+                <option value="date_time">{{ __('clinical-impressions.effective_date_time') }}</option>
+            </select>
+
+            <label for="clinicalImpressionEffectiveType" class="label">
+                {{ __('clinical-impressions.effective_type') }}
+            </label>
+        </div>
+    </div>
+
+    {{-- Effective date and time --}}
+    <div class="form-row-3" x-show="modalClinicalImpression.effectiveType === 'date_time'" x-cloak>
         <div class="form-group group">
             <div class="datepicker-wrapper">
                 <input
-                    x-model="modalClinicalImpression.effectivePeriodStartDate"
+                    x-model="modalClinicalImpression.effectiveDate"
                     datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
                     type="text"
-                    name="effectivePeriodStartDate"
-                    id="effectivePeriodStartDate"
+                    name="effectiveDate"
+                    id="clinicalImpressionEffectiveDate"
                     class="datepicker-input with-leading-icon input peer"
                     placeholder=" "
-                    required
+                    :required="modalClinicalImpression.effectiveType === 'date_time'"
                     autocomplete="off"
                 />
-                <label for="effectivePeriodStartDate" class="wrapped-label">
-                    {{ __('clinical-impressions.effective_period_start') }}
+                <label for="clinicalImpressionEffectiveDate" class="wrapped-label">
+                    {{ __('clinical-impressions.effective_date_time') }}
                 </label>
             </div>
         </div>
 
-        <div class="form-group group !w-1/2" onclick="document.getElementById('effectivePeriodStartTime').showPicker()">
-            <label for="effectivePeriodStartTime" class="sr-only">{{ __('forms.time') }}</label>
+        <div
+            class="form-group group !w-1/2"
+            onclick="document.getElementById('clinicalImpressionEffectiveTime').showPicker()"
+        >
+            <label for="clinicalImpressionEffectiveTime" class="sr-only">{{ __('forms.time') }}</label>
             <div class="relative flex items-center">
                 @icon('mingcute-time-fill', 'svg-input left-2.5')
                 <input
-                    x-model="modalClinicalImpression.effectivePeriodStartTime"
+                    x-model="modalClinicalImpression.effectiveTime"
                     @input="$event.target.blur()"
-                    datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
                     type="time"
-                    name="effectivePeriodStartTime"
-                    id="effectivePeriodStartTime"
+                    name="effectiveTime"
+                    id="clinicalImpressionEffectiveTime"
                     class="input peer !pl-10"
                     autocomplete="off"
-                    required
+                    :required="modalClinicalImpression.effectiveType === 'date_time'"
                 />
             </div>
         </div>
     </div>
 
-    {{-- End effective period datetime --}}
-    <div class="form-row-3">
-        <div class="form-group group">
-            <div class="datepicker-wrapper">
-                <input
-                    x-model="modalClinicalImpression.effectivePeriodEndDate"
-                    datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
-                    type="text"
-                    name="effectivePeriodEndDate"
-                    id="effectivePeriodEndDate"
-                    class="datepicker-input with-leading-icon input peer"
-                    placeholder=" "
-                    required
-                    autocomplete="off"
-                />
-                <label for="effectivePeriodEndDate" class="wrapped-label">
-                    {{ __('clinical-impressions.effective_period_end') }}
-                </label>
+    <div x-show="modalClinicalImpression.effectiveType === 'period'" x-cloak>
+        {{-- Start effective period datetime --}}
+        <div class="form-row-3">
+            <div class="form-group group">
+                <div class="datepicker-wrapper">
+                    <input
+                        x-model="modalClinicalImpression.effectivePeriodStartDate"
+                        datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
+                        type="text"
+                        name="effectivePeriodStartDate"
+                        id="effectivePeriodStartDate"
+                        class="datepicker-input with-leading-icon input peer"
+                        placeholder=" "
+                        :required="modalClinicalImpression.effectiveType === 'period'"
+                        autocomplete="off"
+                    />
+                    <label for="effectivePeriodStartDate" class="wrapped-label">
+                        {{ __('clinical-impressions.effective_period_start') }}
+                    </label>
+                </div>
+            </div>
+
+            <div
+                class="form-group group !w-1/2"
+                onclick="document.getElementById('effectivePeriodStartTime').showPicker()"
+            >
+                <label for="effectivePeriodStartTime" class="sr-only">{{ __('forms.time') }}</label>
+                <div class="relative flex items-center">
+                    @icon('mingcute-time-fill', 'svg-input left-2.5')
+                    <input
+                        x-model="modalClinicalImpression.effectivePeriodStartTime"
+                        @input="$event.target.blur()"
+                        type="time"
+                        name="effectivePeriodStartTime"
+                        id="effectivePeriodStartTime"
+                        class="input peer !pl-10"
+                        autocomplete="off"
+                        :required="modalClinicalImpression.effectiveType === 'period'"
+                    />
+                </div>
             </div>
         </div>
 
-        <div class="form-group group !w-1/2" onclick="document.getElementById('effectivePeriodEndTime').showPicker()">
-            <label for="effectivePeriodEndTime" class="sr-only">{{ __('forms.time') }}</label>
-            <div class="relative flex items-center">
-                @icon('mingcute-time-fill', 'svg-input left-2.5')
-                <input
-                    x-model="modalClinicalImpression.effectivePeriodEndTime"
-                    @input="$event.target.blur()"
-                    datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
-                    type="time"
-                    name="effectivePeriodEndTime"
-                    id="effectivePeriodEndTime"
-                    class="input peer !pl-10"
-                    autocomplete="off"
-                    required
-                />
+        {{-- End effective period datetime, left empty while the impression is ongoing --}}
+        <div class="form-row-3">
+            <div class="form-group group">
+                <div class="datepicker-wrapper">
+                    <input
+                        x-model="modalClinicalImpression.effectivePeriodEndDate"
+                        datepicker-max-date="{{ now()->format(config('app.date_format')) }}"
+                        type="text"
+                        name="effectivePeriodEndDate"
+                        id="effectivePeriodEndDate"
+                        class="datepicker-input with-leading-icon input peer"
+                        placeholder=" "
+                        autocomplete="off"
+                    />
+                    <label for="effectivePeriodEndDate" class="wrapped-label">
+                        {{ __('clinical-impressions.effective_period_end') }}
+                    </label>
+                </div>
+            </div>
+
+            <div
+                class="form-group group !w-1/2"
+                onclick="document.getElementById('effectivePeriodEndTime').showPicker()"
+            >
+                <label for="effectivePeriodEndTime" class="sr-only">{{ __('forms.time') }}</label>
+                <div class="relative flex items-center">
+                    @icon('mingcute-time-fill', 'svg-input left-2.5')
+                    <input
+                        x-model="modalClinicalImpression.effectivePeriodEndTime"
+                        @input="$event.target.blur()"
+                        type="time"
+                        name="effectivePeriodEndTime"
+                        id="effectivePeriodEndTime"
+                        class="input peer !pl-10"
+                        autocomplete="off"
+                    />
+                </div>
             </div>
         </div>
     </div>

@@ -1,7 +1,7 @@
 <div
-        class="p-4 sm:p-8"
-        id="clinical-impressions-section"
-        x-data="{
+    class="p-4 sm:p-8"
+    id="clinical-impressions-section"
+    x-data="{
          clinicalImpressions: $wire.entangle('clinicalImpressionForm.clinicalImpressions'),
          selectedRecords: $wire.entangle('selectedRecords.clinicalImpressions'),
          cancelledRecords: $wire.cancelledRecords.clinicalImpressions,
@@ -10,7 +10,19 @@
          newClinicalImpression: false,
          openClinicalImpressionDrawer: false,
          item: 0,
-         dictionary: $wire.dictionaries['eHealth/clinical_impression_patient_categories']
+         dictionary: $wire.dictionaries['eHealth/clinical_impression_patient_categories'],
+
+         setEffectiveType(type) {
+             // The encounter period gives the defaults: its end for a moment, the whole of it for a period
+             const defaults = new ClinicalImpression(null, this.$wire.form.encounter);
+
+             this.modalClinicalImpression.effectiveDate = type === 'date_time' ? defaults.effectivePeriodEndDate : '';
+             this.modalClinicalImpression.effectiveTime = type === 'date_time' ? defaults.effectivePeriodEndTime : '';
+             this.modalClinicalImpression.effectivePeriodStartDate = type === 'period' ? defaults.effectivePeriodStartDate : '';
+             this.modalClinicalImpression.effectivePeriodStartTime = type === 'period' ? defaults.effectivePeriodStartTime : '';
+             this.modalClinicalImpression.effectivePeriodEndDate = type === 'period' ? defaults.effectivePeriodEndDate : '';
+             this.modalClinicalImpression.effectivePeriodEndTime = type === 'period' ? defaults.effectivePeriodEndTime : '';
+         }
      }"
 >
     <div class="space-y-4">
@@ -19,16 +31,16 @@
                 <div class="record-inner-header">
                     <div class="record-inner-checkbox-col">
                         <label
-                                :for="`clinicalImpressionRecord${index}`"
-                                class="sr-only"
+                            :for="`clinicalImpressionRecord${index}`"
+                            class="sr-only"
                         >{{ __('forms.select') }}</label>
                         <input
-                                type="checkbox"
-                                :id="`clinicalImpressionRecord${index}`"
-                                class="default-checkbox h-5 w-5"
-                                :value="clinicalImpression.uuid"
-                                x-model="selectedRecords"
-                                :disabled="! canCancelRecords ||
+                            type="checkbox"
+                            :id="`clinicalImpressionRecord${index}`"
+                            class="default-checkbox h-5 w-5"
+                            :value="clinicalImpression.uuid"
+                            x-model="selectedRecords"
+                            :disabled="! canCancelRecords ||
                             ! clinicalImpression.uuid ||
                             cancelledRecords.includes(clinicalImpression.uuid)"
                         />
@@ -43,14 +55,14 @@
                     <div class="record-inner-column flex-1">
                         <div class="record-inner-label">{{ __('clinical-impressions.label') }}</div>
                         <div
-                                class="record-inner-value text-[16px]"
-                                x-text="`${clinicalImpression.codeCode} - ${dictionary[clinicalImpression.codeCode]}`"
+                            class="record-inner-value text-[16px]"
+                            x-text="`${clinicalImpression.codeCode} - ${dictionary[clinicalImpression.codeCode]}`"
                         ></div>
                     </div>
 
                     <div class="record-inner-action-col">
                         <div
-                                x-data="{
+                            x-data="{
                                 openDropdown: false,
                                 toggle() {
                                     if (this.openDropdown) {
@@ -69,15 +81,15 @@
                                     focusAfter && focusAfter.focus();
                                 },
                             }"
-                                @keydown.escape.prevent.stop="close($refs.button)"
-                                @focusin.window="$refs.panel && ! $refs.panel.contains($event.target) && close()"
-                                x-id="['dropdown-button']"
-                                class="relative"
+                            @keydown.escape.prevent.stop="close($refs.button)"
+                            @focusin.window="$refs.panel && ! $refs.panel.contains($event.target) && close()"
+                            x-id="['dropdown-button']"
+                            class="relative"
                         >
                             @if ($isReadonly)
                                 <a
-                                        href="#"
-                                        @click.prevent="
+                                    href="#"
+                                    @click.prevent="
                                         item = index;
                                         modalClinicalImpression = JSON.parse(
                                             JSON.stringify(clinicalImpressions[index]),
@@ -85,8 +97,8 @@
                                         newClinicalImpression = false;
                                         openClinicalImpressionDrawer = true;
                                     "
-                                        class="record-inner-action-btn cursor-pointer"
-                                        title="{{ __('forms.view') }}"
+                                    class="record-inner-action-btn cursor-pointer"
+                                    title="{{ __('forms.view') }}"
                                 >
                                     @icon('eye', 'w-6 h-6')
                                     <span class="sr-only"> {{ __('forms.view') }} </span>
@@ -94,28 +106,28 @@
                             @else
                                 {{-- Dropdown Button --}}
                                 <button
-                                        x-ref="button"
-                                        @click="toggle()"
-                                        :aria-expanded="openDropdown"
-                                        :aria-controls="$id('dropdown-button')"
-                                        type="button"
-                                        class="record-inner-action-btn cursor-pointer"
+                                    x-ref="button"
+                                    @click="toggle()"
+                                    :aria-expanded="openDropdown"
+                                    :aria-controls="$id('dropdown-button')"
+                                    type="button"
+                                    class="record-inner-action-btn cursor-pointer"
                                 >
                                     <svg
-                                            class="h-6 w-6 text-gray-800 dark:text-gray-200"
-                                            aria-hidden="true"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            width="24"
-                                            height="24"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
+                                        class="h-6 w-6 text-gray-800 dark:text-gray-200"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
                                     >
                                         <path
-                                                stroke="currentColor"
-                                                stroke-linecap="square"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
+                                            stroke="currentColor"
+                                            stroke-linecap="square"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z"
                                         />
                                     </svg>
                                 </button>
@@ -123,16 +135,16 @@
                                 {{-- Dropdown Panel --}}
                                 <div class="absolute right-0 z-50">
                                     <div
-                                            x-ref="panel"
-                                            x-show="openDropdown"
-                                            x-transition.origin.top.left
-                                            @click.outside="close($refs.button)"
-                                            :id="$id('dropdown-button')"
-                                            x-cloak
-                                            class="dropdown-panel relative"
+                                        x-ref="panel"
+                                        x-show="openDropdown"
+                                        x-transition.origin.top.left
+                                        @click.outside="close($refs.button)"
+                                        :id="$id('dropdown-button')"
+                                        x-cloak
+                                        class="dropdown-panel relative"
                                     >
                                         <button
-                                                @click.prevent="
+                                            @click.prevent="
                                                 item = index;
                                                 modalClinicalImpression = JSON.parse(
                                                     JSON.stringify(clinicalImpressions[index]),
@@ -146,8 +158,8 @@
                                         </button>
 
                                         <button
-                                                class="dropdown-delete"
-                                                @click.prevent="
+                                            class="dropdown-delete"
+                                            @click.prevent="
                                                 clinicalImpressions.splice(index, 1);
                                                 close($refs.button);
                                             "
@@ -164,13 +176,22 @@
                 <div class="record-inner-body">
                     <div class="record-inner-grid-container">
                         <div class="grid w-full grid-cols-2 gap-x-4 gap-y-4 xl:grid-cols-3">
-                            <div>
+                            <div x-show="clinicalImpression.effectiveType === 'date_time'">
+                                <div class="record-inner-label">
+                                    {{ __('clinical-impressions.effective_date_time') }}
+                                </div>
+                                <div
+                                    class="record-inner-subvalue"
+                                    x-text="`${clinicalImpression.effectiveDate} ${clinicalImpression.effectiveTime}`"
+                                ></div>
+                            </div>
+                            <div x-show="clinicalImpression.effectiveType !== 'date_time'">
                                 <div class="record-inner-label">
                                     {{ __('clinical-impressions.effective_period_start') }}
                                 </div>
                                 <div
-                                        class="record-inner-subvalue"
-                                        x-text="
+                                    class="record-inner-subvalue"
+                                    x-text="
                                         `${clinicalImpression.effectivePeriodStartDate} ${clinicalImpression.effectivePeriodStartTime}`
                                     "
                                 ></div>
@@ -194,14 +215,14 @@
         {{-- Button to trigger the modal --}}
         @unless ($isReadonly)
             <button
-                    @click.prevent="
+                @click.prevent="
                     newClinicalImpression = true; {{-- We are adding a new clinicalImpression --}}
                     modalClinicalImpression = new ClinicalImpression(null, $wire.form.encounter); {{-- Replace the data of the previous clinicalImpression with a new one--}}
                     modalClinicalImpression.assessorEmployeeId = $wire.form.encounter.performerId;
                     $wire.findings = [];
                     openClinicalImpressionDrawer = true;
                 "
-                    class="item-add my-5"
+                class="item-add my-5"
             >
                 {{ __('forms.add') }}
             </button>
@@ -226,14 +247,14 @@
 
                         @unless ($isReadonly)
                             <button
-                                    @click.prevent="
+                                @click.prevent="
                                     newClinicalImpression !== false
                                         ? clinicalImpressions.push(modalClinicalImpression)
                                         : (clinicalImpressions[item] = modalClinicalImpression);
                                     openClinicalImpressionDrawer = false;
                                 "
-                                    class="button-primary"
-                                    :disabled="! modalClinicalImpression.codeCode.trim()"
+                                class="button-primary"
+                                :disabled="! modalClinicalImpression.codeCode.trim()"
                             >
                                 {{ __('forms.save') }}
                             </button>
@@ -276,6 +297,9 @@
             // The clinical impression is made within the encounter, so it defaults to the encounter period
             const encounterDate = encounter?.periodDate;
 
+            this.effectiveType = 'period';
+            this.effectiveDate = '';
+            this.effectiveTime = '';
             this.effectivePeriodStartDate = encounterDate || toFormattedDate(startTime);
             this.effectivePeriodStartTime =
                 (encounterDate && encounter?.periodStart) || startTime.toLocaleTimeString('uk-UA', timeOptions);

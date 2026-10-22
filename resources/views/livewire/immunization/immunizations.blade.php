@@ -148,12 +148,15 @@
                                     }
                                 "
                                 type="text"
+                                id="filterDateRange"
                                 class="daterangepicker-uk with-leading-icon input peer w-full"
                                 placeholder=" "
                                 autocomplete="off"
                             />
 
-                            <label class="wrapped-label"> {{ __('forms.filter_date_range') }} </label>
+                            <label for="filterDateRange" class="wrapped-label">
+                                {{ __('forms.filter_date_range') }}
+                            </label>
                         </div>
                     </div>
 

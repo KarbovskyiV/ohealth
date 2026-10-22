@@ -54,14 +54,18 @@ class ClinicalImpressionRepository extends BaseRepository
                     'encounter_id' => $encounter->id,
                     'assessor_id' => $assessor->id,
                     'previous_id' => $previous?->id,
+                    'effective_date_time' => $datum['effectiveDateTime'] ?? null,
                     'note' => $datum['note'] ?? null,
                     'summary' => $datum['summary'] ?? null,
                 ]);
 
-                $clinicalImpression->effectivePeriod()->create([
-                    'start' => $datum['effectivePeriod']['start'],
-                    'end' => $datum['effectivePeriod']['end']
-                ]);
+                // An impression is made either at a moment or over a period
+                if (isset($datum['effectivePeriod'])) {
+                    $clinicalImpression->effectivePeriod()->create([
+                        'start' => $datum['effectivePeriod']['start'],
+                        'end' => $datum['effectivePeriod']['end'] ?? null
+                    ]);
+                }
 
                 if (isset($datum['problems'])) {
                     foreach ($datum['problems'] as $problem) {
@@ -168,6 +172,7 @@ class ClinicalImpressionRepository extends BaseRepository
                     'encounter_id' => $encounter->id,
                     'assessor_id' => $assessor->id,
                     'previous_id' => $previous?->id,
+                    'effective_date_time' => $data['effective_date_time'] ?? null,
                     'note' => $data['note'] ?? null,
                     'summary' => $data['summary'] ?? null,
                     'explanatory_letter' => $data['explanatory_letter'] ?? null,
@@ -184,18 +189,20 @@ class ClinicalImpressionRepository extends BaseRepository
                     );
                 }
 
+                // Both lists are optional and missing from an impression that has none
                 $this->syncPivot(
                     $clinicalImpression,
                     'problems',
-                    $this->syncIdentifiers($existing, $data['problems'], 'problems')
+                    $this->syncIdentifiers($existing, $data['problems'] ?? null, 'problems')
                 );
                 $this->syncPivot(
                     $clinicalImpression,
                     'supportingInfo',
-                    $this->syncIdentifiers($existing, $data['supporting_info'], 'supportingInfo')
+                    $this->syncIdentifiers($existing, $data['supporting_info'] ?? null, 'supportingInfo')
                 );
 
-                Repository::period()->sync($clinicalImpression, $data['effective_period'], 'effectivePeriod');
+                // An impression made at a moment carries no period, and the stored one is dropped then
+                Repository::period()->sync($clinicalImpression, $data['effective_period'] ?? null, 'effectivePeriod');
 
                 $this->syncFindings($clinicalImpression, $data['findings'] ?? []);
             }

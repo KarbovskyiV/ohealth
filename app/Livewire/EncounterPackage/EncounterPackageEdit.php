@@ -12,9 +12,20 @@ use App\Enums\Person\EncounterStatus;
 use App\Enums\Person\ServiceRequestStatus;
 use App\Livewire\EncounterPackage\Forms\EncounterCancellationForm;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\ClinicalImpression;
+use App\Models\MedicalEvents\Sql\Condition;
+use App\Models\MedicalEvents\Sql\DetectedIssue;
+use App\Models\MedicalEvents\Sql\Device;
+use App\Models\MedicalEvents\Sql\DeviceAssociation;
+use App\Models\MedicalEvents\Sql\DeviceDispense;
+use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Episode;
+use App\Models\MedicalEvents\Sql\Immunization;
+use App\Models\MedicalEvents\Sql\Observation;
+use App\Models\MedicalEvents\Sql\Procedure;
 use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
+use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
@@ -26,6 +37,7 @@ use App\Exceptions\Cipher\CipherException;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use App\Livewire\EncounterPackage\Concerns\ManagesEncounterEPrescription;
@@ -350,43 +362,47 @@ class EncounterPackageEdit extends EncounterPackageComponent
         $fhirClinicalImpressions = $fhir['clinicalImpressions'];
 
         try {
-            $this->storePackageElectronicReferralsIfMissing();
+            // The package is stored as a whole, so a failing section leaves none of the others changed
+            DB::transaction(function () use ($fhir, $fhirEpisode, $fhirEncounter, $uuids): void {
+                $this->storePackageElectronicReferralsIfMissing();
+                $this->deleteRemovedDraftRecords($uuids['encounter'], $fhir);
 
-            if ($fhirEpisode !== null) {
-                Repository::episode()->updateDraft(Episode::whereUuid($this->draftEpisodeId)->firstOrFail(), $fhirEpisode);
-            }
+                if ($fhirEpisode !== null) {
+                    Repository::episode()->updateDraft(Episode::whereUuid($this->draftEpisodeId)->firstOrFail(), $fhirEpisode);
+                }
 
-            Repository::encounter()->sync($this->patient(), [$this->fhirToSync($fhirEncounter)]);
-            Repository::condition()->sync($this->patient(), array_map($this->fhirToSync(...), $fhirConditions));
-            Repository::immunization()->sync($this->patient(), array_map($this->fhirToSync(...), $fhirImmunizations));
-            Repository::diagnosticReport()->sync(
-                $this->patient(),
-                array_map($this->fhirToSync(...), $fhirDiagnosticReports)
-            );
-            Repository::observation()->sync(
-                $this->patient(),
-                array_map($this->fhirToSync(...), $fhirObservations),
-                $uuids['encounter']
-            );
-            Repository::procedure()->sync($this->patient(), array_map($this->fhirToSync(...), $fhirProcedures));
-            Repository::device()->sync($this->patient(), array_map($this->fhirToSync(...), $fhirDevices));
-            Repository::deviceAssociation()->sync(
-                $this->patient(),
-                array_map($this->fhirToSync(...), $fhirDeviceAssociations)
-            );
-            Repository::detectedIssue()->sync(
-                $this->patient(),
-                array_map($this->fhirToSync(...), $fhirDetectedIssues)
-            );
-            Repository::deviceDispense()->sync(
-                $this->patient(),
-                array_map($this->fhirToSync(...), $fhirDeviceDispenses)
-            );
-            Repository::specimen()->sync($this->patient(), array_map($this->fhirToSync(...), $fhir['specimens']));
-            Repository::clinicalImpression()->sync(
-                $this->patient(),
-                array_map($this->fhirToSync(...), $fhirClinicalImpressions)
-            );
+                Repository::encounter()->sync($this->patient(), [$this->fhirToSync($fhirEncounter)]);
+                Repository::condition()->sync($this->patient(), array_map($this->fhirToSync(...), $fhir['conditions']));
+                Repository::immunization()->sync($this->patient(), array_map($this->fhirToSync(...), $fhir['immunizations']));
+                Repository::diagnosticReport()->sync(
+                    $this->patient(),
+                    array_map($this->fhirToSync(...), $fhir['diagnosticReports'])
+                );
+                Repository::observation()->sync(
+                    $this->patient(),
+                    array_map($this->fhirToSync(...), $fhir['observations']),
+                    $uuids['encounter']
+                );
+                Repository::procedure()->sync($this->patient(), array_map($this->fhirToSync(...), $fhir['procedures']));
+                Repository::device()->sync($this->patient(), array_map($this->fhirToSync(...), $fhir['devices']));
+                Repository::deviceAssociation()->sync(
+                    $this->patient(),
+                    array_map($this->fhirToSync(...), $fhir['deviceAssociations'])
+                );
+                Repository::detectedIssue()->sync(
+                    $this->patient(),
+                    array_map($this->fhirToSync(...), $fhir['detectedIssues'])
+                );
+                Repository::deviceDispense()->sync(
+                    $this->patient(),
+                    array_map($this->fhirToSync(...), $fhir['deviceDispenses'])
+                );
+                Repository::specimen()->sync($this->patient(), array_map($this->fhirToSync(...), $fhir['specimens']));
+                Repository::clinicalImpression()->sync(
+                    $this->patient(),
+                    array_map($this->fhirToSync(...), $fhir['clinicalImpressions'])
+                );
+            });
         } catch (Throwable $exception) {
             $this->handleDatabaseErrors($exception, 'Failed to sync encounter package data');
 
@@ -695,5 +711,37 @@ class EncounterPackageEdit extends EncounterPackageComponent
         return Arr::toSnakeCase(
             collect($fhirItem)->put('uuid', $fhirItem['id'])->forget(['id'])->all()
         );
+    }
+
+    /**
+     * Drop the records of the draft package the user removed from the form, so that only the submitted ones stay stored.
+     * The draft never reached eHealth, so none of these records exists there.
+     *
+     * @param  string  $encounterUuid
+     * @param  array  $fhir  Package sections keyed as Fhir::encounterPackage()->toFhir() returns them
+     * @return void
+     */
+    private function deleteRemovedDraftRecords(string $encounterUuid, array $fhir): void
+    {
+        $sections = [
+            'conditions' => Condition::class,
+            'immunizations' => Immunization::class,
+            'diagnosticReports' => DiagnosticReport::class,
+            'observations' => Observation::class,
+            'procedures' => Procedure::class,
+            'devices' => Device::class,
+            'deviceAssociations' => DeviceAssociation::class,
+            'detectedIssues' => DetectedIssue::class,
+            'deviceDispenses' => DeviceDispense::class,
+            'specimens' => Specimen::class,
+            'clinicalImpressions' => ClinicalImpression::class
+        ];
+
+        foreach ($sections as $section => $model) {
+            $model::forPatient($this->patient())
+                ->forEncounter($encounterUuid)
+                ->whereNotIn('uuid', array_column($fhir[$section], 'id'))
+                ->delete();
+        }
     }
 }
