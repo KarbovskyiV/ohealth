@@ -1,6 +1,7 @@
 @php
     use App\Livewire\EncounterPackage\EncounterPackageEdit;
     use App\Livewire\EncounterPackage\EncounterPackageView;
+    use App\Models\MedicalEvents\Sql\ClinicalImpression;
     use App\Models\MedicalEvents\Sql\Encounter;
 
     $patientName = $patientFullName ?? __('forms.patient');
@@ -33,7 +34,10 @@
         ['id' => 'immunizations', 'label' => __('immunizations.plural'), 'icon' => 'shield', 'view' => 'livewire.encounter-package.parts.immunizations', 'holdsCancellableRecords' => true],
         ['id' => 'procedures', 'label' => __('procedures.plural'), 'icon' => 'settings', 'view' => 'livewire.encounter-package.parts.procedures', 'holdsCancellableRecords' => true],
         ['id' => 'diagnostic-reports', 'label' => __('diagnostic-reports.plural'), 'icon' => 'activity', 'view' => 'livewire.encounter-package.parts.diagnostic-reports', 'holdsCancellableRecords' => true],
-        ['id' => 'clinical-impressions', 'label' => __('clinical-impressions.plural'), 'icon' => 'check', 'view' => 'livewire.encounter-package.parts.clinical-impressions', 'holdsCancellableRecords' => true],
+        // Recorded clinical impressions stay visible, while only the roles allowed to create one can add it
+        ...($isReadonly || Auth::user()->can('create', ClinicalImpression::class)
+            ? [['id' => 'clinical-impressions', 'label' => __('clinical-impressions.plural'), 'icon' => 'check', 'view' => 'livewire.encounter-package.parts.clinical-impressions', 'holdsCancellableRecords' => true]]
+            : []),
         ['id' => 'devices', 'label' => __('devices.label'), 'icon' => 'equipment', 'view' => 'livewire.encounter-package.parts.devices', 'holdsCancellableRecords' => true],
         ['id' => 'device-association', 'label' => __('device-associations.label'), 'icon' => 'boxicons-plug-connect-filled', 'view' => 'livewire.encounter-package.parts.device-association', 'holdsCancellableRecords' => true],
         ['id' => 'detected-issue', 'label' => __('detected-issues.label'), 'icon' => 'alert-octagon', 'view' => 'livewire.encounter-package.parts.detected-issue', 'holdsCancellableRecords' => true],
@@ -63,12 +67,12 @@
 @endphp
 
 <x-layouts.patient
-        :showLegacyMessages="false"
-        :personId="$personId"
-        :patientFullName="$patientFullName"
-        :hideNavigation="true"
-        :title="$title"
-        :breadcrumbs="[
+    :showLegacyMessages="false"
+    :personId="$personId"
+    :patientFullName="$patientFullName"
+    :hideNavigation="true"
+    :title="$title"
+    :breadcrumbs="[
         ['label' => __('general.home'), 'url' => route('dashboard', [legalEntity()])],
         ['label' => $patientName]
     ]"
@@ -79,30 +83,30 @@
         <div class="flex w-full justify-start lg:w-75">
             @if ($canCancelRecords)
                 <div
-                        class="relative inline-block"
-                        x-data="{ openGroupActions: false }"
-                        @click.outside="openGroupActions = false"
+                    class="relative inline-block"
+                    x-data="{ openGroupActions: false }"
+                    @click.outside="openGroupActions = false"
                 >
                     <button
-                            type="button"
-                            @click="openGroupActions = ! openGroupActions"
-                            class="button-primary-outline px-5 py-2.5 text-sm"
+                        type="button"
+                        @click="openGroupActions = ! openGroupActions"
+                        class="button-primary-outline px-5 py-2.5 text-sm"
                     >
                         {{ __('forms.group_actions') }}
                     </button>
 
                     <div
-                            x-show="openGroupActions"
-                            x-transition
-                            x-cloak
-                            class="absolute top-full left-0 z-10 mt-2 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-700"
+                        x-show="openGroupActions"
+                        x-transition
+                        x-cloak
+                        class="absolute top-full left-0 z-10 mt-2 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-700"
                     >
                         <div class="py-1">
                             <button
-                                    type="button"
-                                    @click="openGroupActions = false"
-                                    wire:click="openRecordsCancellation"
-                                    class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-600"
+                                type="button"
+                                @click="openGroupActions = false"
+                                wire:click="openRecordsCancellation"
+                                class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-600"
                             >
                                 <span class="!text-red-500 dark:!text-red-400">
                                     @icon('close', 'w-4 h-4')
@@ -125,7 +129,7 @@
             $initialActiveSections = array_merge($initialActiveSections, array_column($footerItems, 'id'));
         @endphp
         <div
-                @scroll-to-error.window="
+            @scroll-to-error.window="
                 setTimeout(() => {
                     const errorElement = $el.querySelector('.text-error, .is-invalid, [aria-invalid=\'true\']');
                     if (! errorElement) return;
@@ -147,7 +151,7 @@
                     });
                 }, 50)
             "
-                x-data="{
+            x-data="{
                 activeSections: {!! $escapeForAlpineAttribute($initialActiveSections) !!},
                 typeCode: $wire.entangle('form.encounter.typeCode'),
                 coAuthors: $wire.entangle('form.encounter.participant'),
@@ -292,16 +296,16 @@
                     });
                 }
              }"
-                class="flex flex-col gap-8 lg:flex-row lg:gap-12"
+            class="flex flex-col gap-8 lg:flex-row lg:gap-12"
         >
             <!-- Main Content -->
             <div class="flex-1 space-y-4">
                 @if ($this instanceof EncounterPackageView)
                     <livewire:components.submission-status
-                            :recordType="Encounter::class"
-                            :recordId="$encounterId"
-                            :recordStatusLabel="$this->statusLabel"
-                            :editUrl="$this->editUrl"
+                        :recordType="Encounter::class"
+                        :recordId="$encounterId"
+                        :recordStatusLabel="$this->statusLabel"
+                        :editUrl="$this->editUrl"
                     />
                 @endif
 
@@ -309,9 +313,9 @@
                     @if (isset($item['view']))
                         @if ($item['id'] === 'observations')
                             <div
-                                    x-show="typeCode === 'patient_identity'"
-                                    x-cloak
-                                    class="mb-4 flex items-start gap-4 rounded-xl border border-[#d2e4f9] bg-[#e8f1fc] p-5 dark:border-blue-900 dark:bg-blue-950/40"
+                                x-show="typeCode === 'patient_identity'"
+                                x-cloak
+                                class="mb-4 flex items-start gap-4 rounded-xl border border-[#d2e4f9] bg-[#e8f1fc] p-5 dark:border-blue-900 dark:bg-blue-950/40"
                             >
                                 <span class="mt-0.5 shrink-0 text-[#2563eb] dark:text-[#60a5fa]">
                                     @icon('info-circle', 'w-5 h-5')
@@ -327,15 +331,15 @@
                             </div>
                         @endif
                         <div
-                                id="block-{{ $item['id'] }}"
-                                @isset($item['showWhen']) x-show="{{ $item['showWhen'] }}" x-cloak @endisset
-                                class="scroll-mt-16 rounded-xl bg-white dark:border-gray-700 dark:bg-gray-800"
-                                :class="activeSections.includes('{{ $item['id'] }}') ? 'summary-section-active' : 'summary-section-inactive'"
+                            id="block-{{ $item['id'] }}"
+                            @isset($item['showWhen']) x-show="{{ $item['showWhen'] }}" x-cloak @endisset
+                            class="scroll-mt-16 rounded-xl bg-white dark:border-gray-700 dark:bg-gray-800"
+                            :class="activeSections.includes('{{ $item['id'] }}') ? 'summary-section-active' : 'summary-section-inactive'"
                         >
                             <button
-                                    @click="toggle('{{ $item['id'] }}')"
-                                    type="button"
-                                    class="flex w-full items-center justify-between p-5 focus:outline-none"
+                                @click="toggle('{{ $item['id'] }}')"
+                                type="button"
+                                class="flex w-full items-center justify-between p-5 focus:outline-none"
                             >
                                 <div class="flex min-w-0 items-center gap-4 text-left text-[17px] font-semibold text-gray-900 dark:text-gray-100">
                                     <span class="flex h-6 w-6 shrink-0 items-center justify-center text-gray-900 dark:text-gray-100">
@@ -345,17 +349,17 @@
                                 </div>
 
                                 <div
-                                        class="shrink-0 text-gray-400 transition-transform duration-300 dark:text-gray-500"
-                                        :class="activeSections.includes('{{ $item['id'] }}') ? '' : '-rotate-90'"
+                                    class="shrink-0 text-gray-400 transition-transform duration-300 dark:text-gray-500"
+                                    :class="activeSections.includes('{{ $item['id'] }}') ? '' : '-rotate-90'"
                                 >
                                     @icon('chevron-down', 'w-5 h-5')
                                 </div>
                             </button>
 
                             <div
-                                    x-show="activeSections.includes('{{ $item['id'] }}')"
-                                    style="display: none"
-                                    class="px-5 pb-5"
+                                x-show="activeSections.includes('{{ $item['id'] }}')"
+                                style="display: none"
+                                class="px-5 pb-5"
                             >
                                 {{-- A disabled fieldset disables every control inside it, the record cancellation
                                      checkboxes included, so a section holding records to pick is left to the
@@ -380,17 +384,17 @@
 
                         @if ($this instanceof EncounterPackageEdit && $this->canBeCancelled)
                             <button
-                                    wire:click="openPackageCancellation"
-                                    type="button"
-                                    class="button-primary-outline-red"
+                                wire:click="openPackageCancellation"
+                                type="button"
+                                class="button-primary-outline-red"
                             >
                                 {{ __('encounters.encounter_entered_in_error') }}
                             </button>
 
                             <button
-                                    wire:click="openRecordsCancellation"
-                                    type="button"
-                                    class="button-primary-outline-red"
+                                wire:click="openRecordsCancellation"
+                                type="button"
+                                class="button-primary-outline-red"
                             >
                                 {{ __('encounters.records_entered_in_error') }}
                             </button>
@@ -398,21 +402,21 @@
 
                         @unless ($isReadonly)
                             <button
-                                    wire:click.prevent="save"
-                                    type="submit"
-                                    class="button-primary-outline flex items-center gap-2"
+                                wire:click.prevent="save"
+                                type="submit"
+                                class="button-primary-outline flex items-center gap-2"
                             >
                                 @icon('archive', 'w-4 h-4')
                                 {{ __('forms.save') }}
                             </button>
 
                             <button
-                                    type="submit"
-                                    @click="
+                                type="submit"
+                                @click="
                                     $wire.set('actionType', null, false);
                                     $wire.showSignatureModal = true;
                                 "
-                                    class="button-primary"
+                                class="button-primary"
                             >
                                 {{ __('forms.complete_the_interaction_and_sign') }}
                             </button>
@@ -438,7 +442,7 @@
                             <span class="flex h-5 w-5 shrink-0 items-center justify-center">
                                 @icon($item['icon'], 'w-5 h-5')
                             </span>
-                            <span class="min-w-0 whitespace-normal break-words">{{ $item['label'] }}</span>
+                            <span class="min-w-0 break-words whitespace-normal">{{ $item['label'] }}</span>
                         </button>
                     @endforeach
                 </div>
@@ -452,10 +456,10 @@
                                 :class="activeSections.includes('{{ $item['id'] }}') ? 'summary-sidebar-btn-active' : 'summary-sidebar-btn-inactive'"
                                 class="summary-sidebar-btn w-full text-left"
                             >
-                                <span class="flex h-5 w-5 shrink-0 items-center justify-center [&>svg]:h-full [&>svg]:w-full">
+                                <span class="[&>svg]:h-full [&>svg]:w-full flex h-5 w-5 shrink-0 items-center justify-center">
                                     @icon($item['icon'], 'w-5 h-5')
                                 </span>
-                                <span class="min-w-0 whitespace-normal break-words">{{ $item['label'] }}</span>
+                                <span class="min-w-0 break-words whitespace-normal">{{ $item['label'] }}</span>
                             </button>
                         @endforeach
                     </div>

@@ -858,7 +858,7 @@ class EncounterPackageComponent extends Component
             ->values()
             ->toArray();
 
-        $this->assessorEmployees = $employees->whereIn('employeeType', [Role::DOCTOR->value, Role::SPECIALIST->value, Role::ASSISTANT->value])
+        $this->assessorEmployees = $employees->whereIn('employeeType', [Role::DOCTOR->value, Role::SPECIALIST->value])
             ->map(static fn (Employee $employee): array => [
                 'uuid' => $employee->uuid,
                 'name' => $employee->fullName,

@@ -12,7 +12,6 @@ return [
         'VERIFICATION_NOT_NEEDED' => 'Не потребує верифікації',
     ],
 
-
     // Common translations for all program types
     'program_label' => 'Програма',
     'search_title' => 'Пошук програм',
@@ -26,7 +25,8 @@ return [
         'funding_source' => 'Джерело фінансування',
         'care_plan_required' => "Обов'язковість використання плану лікування для EP",
         'employee_types_to_create_request' => 'Типи користувачів, яким дозволено виписувати EP',
-        'speciality_types_allowed' => 'Перелік спеціальностей лікарів СМД та ПМД, яким дозволено виписувати EP/Призначення ПЛ',
+        'speciality_types_request_allowed' => 'Перелік спеціальностей користувачів, яким дозволено виписувати EP за програмою',
+        'speciality_types_care_plan_activity_allowed' => 'Перелік спеціальностей користувачів, яким дозволено створювати призначення ПЛ за програмою',
         'skip_treatment_period' => 'Можливість виписувати EP на такий самий МНН протягом курсу лікування',
         'request_max_period_day' => 'Максимальна тривалість курсу лікування на який може бути виписаний EP за програмою',
         'skip_request_employee_declaration_verify' => 'Можливість виписувати EP незалежно від наявності укладеної декларації з пацієнтом',
