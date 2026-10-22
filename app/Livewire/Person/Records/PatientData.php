@@ -300,9 +300,34 @@ class PatientData extends BasePatientComponent
             }
         }
 
+        if (empty($this->authenticationMethods)) {
+            try {
+                $authenticationMethods = EHealth::person()->getAuthMethods($person->uuid)->validate();
+
+                Repository::authenticationMethod()->sync($person, $authenticationMethods);
+                $this->loadAuthenticationMethods($person->fresh());
+            } catch (EHealthException|EHealthConnectionException $exception) {
+                $exception->handle(__('patients.errors.person_auth_methods_sync_error'));
+
+                return;
+            }
+        }
+
         $authorizeWith = collect($this->authenticationMethods)->firstWhere('type', AuthenticationMethod::OTP->value) ??
             collect($this->authenticationMethods)->firstWhere('type', AuthenticationMethod::THIRD_PERSON->value) ??
             collect($this->authenticationMethods)->firstWhere('type', AuthenticationMethod::OFFLINE->value) ?? null;
+
+        if (!$authorizeWith) {
+            Session::flash('error', __('patients.errors.authMethod.not_found'));
+
+            return;
+        }
+
+        if ($authorizeWith['type'] === AuthenticationMethod::OFFLINE->value) {
+            Session::flash('error', __('patients.errors.authMethod.personal_data_requires_otp'));
+
+            return;
+        }
 
         $employee = Auth::user()->activeDoctorEmployee();
 
