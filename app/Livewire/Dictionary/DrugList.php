@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Dictionary;
 
 use App\Classes\eHealth\EHealth;
+use App\Enums\MedicalProgram\Type;
 use App\Models\LegalEntity;
 use App\Traits\FormTrait;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -35,42 +36,42 @@ class DrugList extends Component
      *
      * @var string
      */
-    public string $selectedProgram = '';
+    public string $filterMedicalProgramId = '';
 
     /**
      * Filter by name.
      *
      * @var string
      */
-    public string $innmDosageName = '';
+    public string $filterInnmDosageName = '';
 
     /**
      * Filter by local name in ingredients.*.name array.
      *
      * @var string
      */
-    public string $innmName = '';
+    public string $filterInnmName = '';
 
     /**
      * Filter by MEDICATION_FORM keys.
      *
      * @var string
      */
-    public string $innmDosageForm = '';
+    public string $filterInnmDosageForm = '';
 
     /**
-     *
+     * Filter by ATC code.
      *
      * @var string
      */
-    public string $medicationCodeAtc = '';
+    public string $filterMedicationCodeAtc = '';
 
     /**
      * Filter by MR_BLANK_TYPES keys.
      *
      * @var string
      */
-    public string $mrBlankType = '';
+    public string $filterMrBlankType = '';
 
     public array $dictionaryNames = ['MEDICATION_UNIT', 'MEDICATION_FORM', 'MR_BLANK_TYPES'];
 
@@ -80,6 +81,7 @@ class DrugList extends Component
 
         $this->programs = dictionary()->medicalPrograms()
             ->where('is_active', true)
+            ->where('type', Type::MEDICATION)
             ->map(fn (array $program) => [
                 'id' => $program['id'],
                 'name' => $program['name']
@@ -95,7 +97,14 @@ class DrugList extends Component
     public function resetFilters(): void
     {
         $this->reset(
-            ['selectedProgram', 'innmDosageName', 'innmName', 'innmDosageForm', 'medicationCodeAtc', 'mrBlankType']
+            [
+                'filterMedicalProgramId',
+                'filterInnmDosageName',
+                'filterInnmName',
+                'filterInnmDosageForm',
+                'filterMedicationCodeAtc',
+                'filterMrBlankType'
+            ]
         );
     }
 
@@ -113,7 +122,7 @@ class DrugList extends Component
     public function search(): void
     {
         try {
-            $this->validate(['selectedProgram' => 'required']);
+            $this->validate(['filterMedicalProgramId' => 'required']);
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
@@ -127,48 +136,51 @@ class DrugList extends Component
     #[Computed]
     public function drugs(): LengthAwarePaginator
     {
-        if (empty($this->selectedProgram)) {
-            return new LengthAwarePaginator([], 0, config('pagination.per_page'), 1);
-        }
-
-        $filters = ['medical_program_id' => $this->selectedProgram];
-
-        // Filters
-        if (!empty($this->innmDosageName)) {
-            $filters['innm_dosage_name'] = $this->innmDosageName;
-        }
-
-        if (!empty($this->innmName)) {
-            $filters['innm_name'] = $this->innmName;
-        }
-
-        if (!empty($this->innmDosageForm)) {
-            $filters['innm_dosage_form'] = $this->innmDosageForm;
-        }
-
-        if (!empty($this->medicationCodeAtc)) {
-            $filters['medication_code_atc'] = $this->medicationCodeAtc;
-        }
-
-        if (!empty($this->mrBlankType)) {
-            $filters['mr_blank_type'] = $this->mrBlankType;
-        }
-
-        try {
-            $drugsData = collect(EHealth::drug()->getMany($filters)->getData());
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error when searching for drugs list.');
-
+        if (empty($this->filterMedicalProgramId)) {
             return new LengthAwarePaginator([], 0, config('pagination.per_page'), 1);
         }
 
         $perPage = config('pagination.per_page');
         $currentPage = Paginator::resolveCurrentPage();
-        $currentPageItems = $drugsData->forPage($currentPage, $perPage);
+
+        $filters = [
+            'medical_program_id' => $this->filterMedicalProgramId,
+            'page' => $currentPage,
+            'page_size' => $perPage
+        ];
+
+        // Filters
+        if (!empty($this->filterInnmDosageName)) {
+            $filters['innm_dosage_name'] = $this->filterInnmDosageName;
+        }
+
+        if (!empty($this->filterInnmName)) {
+            $filters['innm_name'] = $this->filterInnmName;
+        }
+
+        if (!empty($this->filterInnmDosageForm)) {
+            $filters['innm_dosage_form'] = $this->filterInnmDosageForm;
+        }
+
+        if (!empty($this->filterMedicationCodeAtc)) {
+            $filters['medication_code_atc'] = $this->filterMedicationCodeAtc;
+        }
+
+        if (!empty($this->filterMrBlankType)) {
+            $filters['mr_blank_type'] = $this->filterMrBlankType;
+        }
+
+        try {
+            $response = EHealth::drug()->getMany($filters);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error when searching for drugs list.');
+
+            return new LengthAwarePaginator([], 0, $perPage, 1);
+        }
 
         return new LengthAwarePaginator(
-            $currentPageItems->values(),
-            $drugsData->count(),
+            collect($response->getData()),
+            $response->getPaging()['total_entries'],
             $perPage,
             $currentPage,
             [
@@ -180,8 +192,6 @@ class DrugList extends Component
 
     public function render(): View
     {
-        return view('livewire.dictionary.drug-list', [
-            'drugs' => $this->drugs
-        ]);
+        return view('livewire.dictionary.drug-list', ['drugs' => $this->drugs]);
     }
 }

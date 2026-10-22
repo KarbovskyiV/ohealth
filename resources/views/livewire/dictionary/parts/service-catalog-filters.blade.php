@@ -20,7 +20,7 @@
                     id="serviceSearch{{ $componentId }}"
                     class="input peer w-full"
                     placeholder=" "
-                    wire:model="searchBy"
+                    wire:model="filterCodeOrName"
                     wire:keydown.enter="search"
                 />
 
@@ -55,7 +55,7 @@
     >
         <div class="form-group group">
             <select
-                wire:model="serviceCategory"
+                wire:model="filterCategory"
                 id="filterServiceCategory{{ $componentId }}"
                 class="peer input-select w-full"
             >
@@ -68,17 +68,14 @@
                 @endforeach
             </select>
 
-            <label
-                for="filterServiceCategory{{ $componentId }}"
-                class="label peer-valid:text-blue-600 peer-focus:text-blue-600"
-            >
+            <label for="filterServiceCategory{{ $componentId }}" class="label">
                 {{ __('dictionaries.service_catalog.service_category') }}
             </label>
         </div>
 
         <div class="form-group group">
             <select
-                wire:model="serviceGroupActive"
+                wire:model="filterGroupIsActive"
                 id="filterServiceGroupActive{{ $componentId }}"
                 class="peer input-select w-full"
             >
@@ -87,17 +84,14 @@
                 <option value="0">{{ __('forms.no') }}</option>
             </select>
 
-            <label
-                for="filterServiceGroupActive{{ $componentId }}"
-                class="label peer-valid:text-blue-600 peer-focus:text-blue-600"
-            >
+            <label for="filterServiceGroupActive{{ $componentId }}" class="label">
                 {{ __('dictionaries.service_catalog.service_group_active') }}
             </label>
         </div>
 
         <div class="form-group group">
             <select
-                wire:model="serviceActive"
+                wire:model="filterServiceIsActive"
                 id="filterServiceActive{{ $componentId }}"
                 class="peer input-select w-full"
             >
@@ -106,37 +100,28 @@
                 <option value="0">{{ __('forms.no') }}</option>
             </select>
 
-            <label
-                for="filterServiceActive{{ $componentId }}"
-                class="label peer-valid:text-blue-600 peer-focus:text-blue-600"
-            >
+            <label for="filterServiceActive{{ $componentId }}" class="label">
                 {{ __('dictionaries.service_catalog.service_active') }}
             </label>
         </div>
 
-        <div
-            @class([
-                'form-group group',
-                'pointer-events-none opacity-50' => $requestAllowedOnly,
-            ])
-        >
-            <select
-                wire:model="allowedForEn"
-                id="filterAllowedForEn{{ $componentId }}"
-                @disabled($requestAllowedOnly)
-                class="peer input-select w-full"
-            >
-                <option value="">{{ __('forms.select') }}</option>
-                <option value="1">{{ __('forms.yes') }}</option>
-                <option value="0">{{ __('forms.no') }}</option>
-            </select>
+        {{-- Picking a service for a referral already keeps only the services allowed in it --}}
+        @unless ($requestAllowedOnly)
+            <div class="form-group group">
+                <select
+                    wire:model="filterRequestAllowed"
+                    id="filterAllowedForEn{{ $componentId }}"
+                    class="peer input-select w-full"
+                >
+                    <option value="">{{ __('forms.select') }}</option>
+                    <option value="1">{{ __('forms.yes') }}</option>
+                    <option value="0">{{ __('forms.no') }}</option>
+                </select>
 
-            <label
-                for="filterAllowedForEn{{ $componentId }}"
-                class="label peer-valid:text-blue-600 peer-focus:text-blue-600"
-            >
-                {{ __('dictionaries.service_catalog.allowed_for_en') }}
-            </label>
-        </div>
+                <label for="filterAllowedForEn{{ $componentId }}" class="label">
+                    {{ __('dictionaries.service_catalog.allowed_for_en') }}
+                </label>
+            </div>
+        @endunless
     </div>
 </div>
