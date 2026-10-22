@@ -7,36 +7,20 @@ namespace App\Jobs;
 use App\Classes\eHealth\EHealth;
 use App\Classes\eHealth\EHealthResponse;
 use App\Core\EHealthJob;
+use App\Core\PatientEHealthJob;
 use App\Models\LegalEntity;
-use App\Models\Person\Person;
-use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Queue\Middleware\RateLimited;
 use Throwable;
 
-class DeviceDispenseSync extends EHealthJob
+class DeviceDispenseSync extends PatientEHealthJob
 {
     public const string BATCH_NAME = 'DeviceDispenseSync';
 
     public const string SCOPE_REQUIRED = 'device_dispense:read';
 
     public const string ENTITY = LegalEntity::ENTITY_DEVICE_DISPENSE;
-
-    protected ?string $patientUuid = null;
-
-    protected ?int $personId = null;
-
-    protected ?int $prepersonId = null;
-
-    public function handle(): void
-    {
-        $this->patientUuid = $this->batch()->options['patient_uuid'] ?? null;
-        $this->personId = $this->batch()->options['person_id'] ?? null;
-        $this->prepersonId = $this->batch()->options['preperson_id'] ?? null;
-
-        parent::handle();
-    }
 
     /**
      * {@inheritDoc}
@@ -45,10 +29,10 @@ class DeviceDispenseSync extends EHealthJob
     {
         return EHealth::deviceDispense()
             ->withToken($token)
-            ->getBySearchParams($this->patientUuid, [
-                'performer_legal_entity' => $this->legalEntity->uuid,
+            ->getBySearchParams($this->patientUuid, array_filter([
+                'performer_legal_entity' => $this->hasPatientAccess ? null : $this->legalEntity->uuid,
                 'page' => $this->page
-            ]);
+            ]));
     }
 
     /**
@@ -64,9 +48,7 @@ class DeviceDispenseSync extends EHealthJob
             return;
         }
 
-        $patient = $this->prepersonId !== null ? Preperson::findOrFail($this->prepersonId) : Person::findOrFail($this->personId);
-
-        Repository::deviceDispense()->sync($patient, $validatedData);
+        Repository::deviceDispense()->sync($this->patient(), $validatedData);
     }
 
     /**

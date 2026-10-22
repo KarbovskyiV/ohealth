@@ -182,6 +182,20 @@ class Approval extends Model
     }
 
     /**
+     * Filter approvals that are active, verified and not expired yet.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function active(Builder $query): Builder
+    {
+        return $query->whereStatus(ApprovalStatus::ACTIVE)
+            ->isVerified()
+            ->whereFuture('expires_at');
+    }
+
+    /**
      * Active approvals on the patient's data granted to one of the user's employees in the legal entity, which open
      * all the patient's data.
      *
@@ -196,9 +210,38 @@ class Approval extends Model
     #[Scope]
     protected function accessGrantedTo(Builder $query, User $user, Person|Preperson $patient, LegalEntity $legalEntity): Builder
     {
-        return $query->isAlive($patient)
-            ->isVerified()
-            ->whereStatus(ApprovalStatus::ACTIVE)
+        return $query->whereMorphedTo('approvable', $patient)
+            ->active()
+            ->grantedToEmployees($user, $legalEntity);
+    }
+
+    /**
+     * Active approvals on a type of the patient's records granted to one of the user's employees in the legal entity,
+     * which open all the patient's records of that type.
+     *
+     * ABAC rule 16.
+     *
+     * @param  Builder  $query
+     * @param  User  $user
+     * @param  Person|Preperson  $patient
+     * @param  string  $resourceType
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function resourceTypeAccessGrantedTo(
+        Builder $query,
+        User $user,
+        Person|Preperson $patient,
+        string $resourceType,
+        LegalEntity $legalEntity
+    ): Builder {
+        return $query->whereMorphedTo('approvable', $patient)
+            ->active()
+            ->whereHas(
+                'grantedResourceTypes.codeableConcept.coding',
+                static fn (Builder $coding): Builder => $coding->whereCode($resourceType)
+            )
             ->grantedToEmployees($user, $legalEntity);
     }
 
@@ -217,9 +260,8 @@ class Approval extends Model
     #[Scope]
     protected function resourceAccessGrantedTo(Builder $query, User $user, Model $resource, LegalEntity $legalEntity): Builder
     {
-        return $query->isAlive($resource)
-            ->isVerified()
-            ->whereStatus(ApprovalStatus::ACTIVE)
+        return $query->whereMorphedTo('approvable', $resource)
+            ->active()
             ->grantedToEmployeesOrLegalEntity($user, $legalEntity);
     }
 
@@ -238,9 +280,7 @@ class Approval extends Model
     protected function diagnosticReportAccessGrantedTo(Builder $query, User $user, LegalEntity $legalEntity): Builder
     {
         return $query->whereApprovableType(DiagnosticReport::class)
-            ->where('expires_at', '>', now())
-            ->isVerified()
-            ->whereStatus(ApprovalStatus::ACTIVE)
+            ->active()
             ->grantedToEmployeesOrLegalEntity($user, $legalEntity);
     }
 
@@ -259,9 +299,7 @@ class Approval extends Model
     protected function carePlanAccessGrantedTo(Builder $query, User $user, LegalEntity $legalEntity): Builder
     {
         return $query->whereApprovableType(CarePlan::class)
-            ->where('expires_at', '>', now())
-            ->isVerified()
-            ->whereStatus(ApprovalStatus::ACTIVE)
+            ->active()
             ->whereAccessLevel('read')
             ->grantedToEmployees($user, $legalEntity);
     }
@@ -289,9 +327,7 @@ class Approval extends Model
             'grantedResources.grantedTo',
             static fn (Builder $identifier): Builder => $identifier->whereValue($procedure->uuid)
         )
-            ->where('expires_at', '>', now())
-            ->isVerified()
-            ->whereStatus(ApprovalStatus::ACTIVE)
+            ->active()
             ->grantedToEmployees($user, $legalEntity);
     }
 

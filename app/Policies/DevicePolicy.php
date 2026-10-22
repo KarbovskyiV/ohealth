@@ -4,21 +4,44 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Models\Declaration;
+use App\Models\MedicalEvents\Sql\Approval;
+use App\Models\MedicalEvents\Sql\Device;
+use App\Models\Person\Person;
+use App\Models\Preperson;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
 class DevicePolicy
 {
     /**
-     * Determine whether the user can view the device.
+     * Determine whether the user can view the list of devices.
      */
-    public function view(User $user): Response
+    public function viewAny(User $user): Response
     {
         if ($user->cannot('device:read')) {
             return Response::denyWithStatus(404);
         }
 
         return Response::allow();
+    }
+
+    /**
+     * Determine whether the user can view the device of the patient: one of the devices the user may read.
+     */
+    public function view(User $user, Device $device, Person|Preperson $patient): Response
+    {
+        if ($user->cannot('device:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        $hasPatientAccess = Declaration::accessGrantedTo($user, $patient, legalEntity())->exists()
+            || Approval::accessGrantedTo($user, $patient, legalEntity())->exists()
+            || Approval::resourceTypeAccessGrantedTo($user, $patient, 'device', legalEntity())->exists();
+
+        return Device::readableFor($patient, $hasPatientAccess)->whereKey($device->id)->exists()
+            ? Response::allow()
+            : Response::denyWithStatus(404);
     }
 
     /**

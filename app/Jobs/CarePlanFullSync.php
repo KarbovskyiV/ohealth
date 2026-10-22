@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Core\EHealthJob;
+use App\Core\PatientEHealthJob;
 use App\Models\LegalEntity;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\CarePlanRepository;
@@ -13,7 +14,7 @@ use App\Classes\eHealth\EHealthResponse;
 use Illuminate\Queue\Middleware\RateLimited;
 use Throwable;
 
-class CarePlanFullSync extends EHealthJob
+class CarePlanFullSync extends PatientEHealthJob
 {
     public const string BATCH_NAME = 'CarePlanFullSync';
 
@@ -22,17 +23,6 @@ class CarePlanFullSync extends EHealthJob
     public const string ENTITY = LegalEntity::ENTITY_CARE_PLAN;
 
     public $queue = 'care-plans';
-
-    protected ?string $patientUuid = null;
-    protected ?int $personId = null;
-
-    public function handle(): void
-    {
-        $this->patientUuid = $this->batch()->options['patient_uuid'] ?? null;
-        $this->personId = $this->batch()->options['person_id'] ?? null;
-
-        parent::handle();
-    }
 
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse
     {

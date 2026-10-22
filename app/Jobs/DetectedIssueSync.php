@@ -7,15 +7,14 @@ namespace App\Jobs;
 use App\Classes\eHealth\EHealth;
 use App\Classes\eHealth\EHealthResponse;
 use App\Core\EHealthJob;
+use App\Core\PatientEHealthJob;
 use App\Models\LegalEntity;
-use App\Models\Person\Person;
-use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Queue\Middleware\RateLimited;
 use Throwable;
 
-class DetectedIssueSync extends EHealthJob
+class DetectedIssueSync extends PatientEHealthJob
 {
     public const string BATCH_NAME = 'DetectedIssueSync';
 
@@ -23,26 +22,11 @@ class DetectedIssueSync extends EHealthJob
 
     public const string ENTITY = LegalEntity::ENTITY_DETECTED_ISSUE;
 
-    protected ?string $patientUuid = null;
-
-    protected ?int $personId = null;
-
-    protected ?int $prepersonId = null;
-
     /**
      * Read the patient the batch was started for, then process the page.
      *
      * @return void
      */
-    public function handle(): void
-    {
-        $this->patientUuid = $this->batch()->options['patient_uuid'] ?? null;
-        $this->personId = $this->batch()->options['person_id'] ?? null;
-        $this->prepersonId = $this->batch()->options['preperson_id'] ?? null;
-
-        parent::handle();
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -69,11 +53,7 @@ class DetectedIssueSync extends EHealthJob
             return;
         }
 
-        $patient = $this->prepersonId !== null
-            ? Preperson::findOrFail($this->prepersonId)
-            : Person::findOrFail($this->personId);
-
-        Repository::detectedIssue()->sync($patient, $validatedData);
+        Repository::detectedIssue()->sync($this->patient(), $validatedData);
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Observation;
+use App\Models\MedicalEvents\Sql\ObservationComponent;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
@@ -81,6 +82,22 @@ class ObservationView extends BasePatientComponent
     ): void {
         parent::mount($legalEntity, $person, $preperson);
 
+        $this->observationId = $observation->id;
+        $this->observationUuid = $observation->uuid;
+
+        // Each component names the dictionaries of its code and coded result in their system
+        $this->dictionaryNames = [
+            ...$this->dictionaryNames,
+            ...$this->observation()->components
+                ->flatMap(static fn (ObservationComponent $component): array => [
+                    $component->code?->coding->first()?->system,
+                    $component->value?->valueCodeableConcept?->coding->first()?->system
+                ])
+                ->filter()
+                ->unique()
+                ->all()
+        ];
+
         $this->getDictionary();
 
         // ICF codes are nested under their groups, while the observation refers to them by the code alone
@@ -88,11 +105,6 @@ class ObservationView extends BasePatientComponent
             ->byName('eHealth/ICF/classifiers')
             ->flattenedChildValues()
             ->toArray();
-
-        $this->observationId = $observation->id;
-        $this->observationUuid = $observation->uuid;
-
-        $this->observation();
     }
 
     /**

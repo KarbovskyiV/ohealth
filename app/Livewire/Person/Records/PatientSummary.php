@@ -757,9 +757,14 @@ class PatientSummary extends BasePatientComponent
 
     public function getDevices(): void
     {
+        // Short devices are open by a declaration (rule 1) or by the recorder's legal entity (rule 2) only
+        $devices = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? Device::readableFor($this->patient(), true)
+            : Device::forLegalEntity($this->patient());
+
         $this->setPaginatedRecords(
             'devices',
-            Device::forPatient($this->patient())->notInDraftEncounter($this->patient())->allowedForSummary()->withAllRelations(),
+            $devices->notInDraftEncounter($this->patient())->allowedForSummary()->withAllRelations(),
             'devices'
         );
     }

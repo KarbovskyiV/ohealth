@@ -78,14 +78,15 @@ class DeviceView extends BasePatientComponent
     }
 
     /**
-     * Resolve the device being displayed, scoped to the patient so that a device belonging to somebody else
-     * is not reachable by its ID. Loaded again on later requests, where Livewire hydrates without mount().
+     * Resolve the device being displayed, scoped to the patient and the persons merged into it so that a record
+     * belonging to somebody else is not reachable by its ID. Loaded again on later requests, where Livewire hydrates
+     * without mount().
      *
      * @return Device
      */
     protected function device(): Device
     {
-        return $this->deviceModel ??= Device::forPatient($this->patient())
+        return $this->deviceModel ??= Device::readableFor($this->patient(), true)
             ->withAllRelations()
             ->whereId($this->deviceId)
             ->firstOrFail();
@@ -106,8 +107,15 @@ class DeviceView extends BasePatientComponent
             return;
         }
 
+        $device = $this->device();
+
+        // A record of a person merged into the patient stays with its own owner
+        $owner = $device->prepersonId !== null
+            ? Preperson::findOrFail($device->prepersonId)
+            : Person::findOrFail($device->personId);
+
         try {
-            Repository::device()->sync($this->patient(), [$response->validate()]);
+            Repository::device()->sync($owner, [$response->validate()]);
         } catch (Throwable $exception) {
             $this->handleDatabaseErrors($exception, 'Error while synchronizing the device');
 

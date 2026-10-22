@@ -256,6 +256,14 @@
                             <label for="filterInsertedAt" class="wrapped-label">{{ __('devices.inserted_at') }}</label>
                         </div>
                     </div>
+
+                    <x-forms.combobox
+                        :options="$recorderLegalEntities"
+                        bind="filterRecorderLegalEntityId"
+                        bindValue="uuid"
+                        bindParam="name"
+                        :label="__('devices.recorder_legal_entity_id')"
+                    />
                 </div>
             </div>
 
