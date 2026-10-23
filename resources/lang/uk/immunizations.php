@@ -68,10 +68,16 @@ return [
 
     'messages' => [
         'synced_successfully' => 'Вакцинації успішно синхронізовані',
+        'record_synced_successfully' => 'Вакцинацію успішно синхронізовано',
         'first_page_synced_successfully' => 'Перша сторінка вакцинацій синхронізована, решта обробляється у фоні',
         'sync_already_running' => 'Синхронізація вакцинацій вже запущена. Будь ласка, зачекайте її завершення.',
         'sync_resume_started' => 'Відновлення попередньої синхронізації вакцинацій розпочато',
         'sync_background_dispatch_error' => 'Помилка запуску фонової синхронізації вакцинацій'
+    ],
+
+    // Denials of an action the user has no access to
+    'policy' => [
+        'view' => 'У вас немає доступу до цієї вакцинації.'
     ],
 
     // Custom messages for validation rules

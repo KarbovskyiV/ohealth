@@ -12,6 +12,7 @@ use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use App\Enums\User\Role;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 
@@ -25,6 +26,7 @@ class DeviceAssociationForm extends Form
             'deviceAssociations' => [
                 'nullable',
                 'array',
+                Rule::prohibitedIf($this->component->employeeType === Role::MED_COORDINATOR->value),
                 static function (string $attribute, mixed $value, Closure $fail): void {
                     if ($value && Auth::user()->cannot('create', DeviceAssociation::class)) {
                         $fail(__('device-associations.policy.create'));

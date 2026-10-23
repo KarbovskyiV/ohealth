@@ -17,6 +17,7 @@ use App\Rules\PastDateTime;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
+use App\Enums\User\Role;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 
@@ -62,7 +63,7 @@ class ObservationForm extends Form
     protected function rules(): array
     {
         return [
-            'observations' => ['nullable', 'array'],
+            'observations' => ['nullable', 'array', Rule::prohibitedIf($this->component->employeeType === Role::MED_COORDINATOR->value)],
             'observations.*' => [
                 'array',
                 new ObservationValue(),

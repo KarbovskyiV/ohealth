@@ -209,8 +209,11 @@ class ImmunizationRepository extends BaseRepository
                     'manufacturer' => $data['manufacturer'] ?? null,
                     'lot_number' => $data['lot_number'] ?? null,
                     'expiration_date' => $data['expiration_date'] ?? null,
+                    'explanatory_letter' => $data['explanatory_letter'] ?? null,
                     'site_id' => $site?->id,
-                    'route_id' => $route?->id
+                    'route_id' => $route?->id,
+                    'ehealth_inserted_at' => $data['ehealth_inserted_at'] ?? null,
+                    'ehealth_updated_at' => $data['ehealth_updated_at'] ?? null
                 ];
 
                 if ($existing) {

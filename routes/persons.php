@@ -34,6 +34,7 @@ use App\Livewire\Episode\EpisodeEdit;
 use App\Livewire\Episode\EpisodeIndex;
 use App\Livewire\Episode\EpisodeView;
 use App\Livewire\Immunization\ImmunizationIndex;
+use App\Livewire\Immunization\ImmunizationView;
 use App\Livewire\Observation\ObservationIndex;
 use App\Livewire\Observation\ObservationView;
 use App\Livewire\Person\PatientVerifications;
@@ -163,6 +164,10 @@ Route::prefix('persons')->whereNumber('person')
                 Route::get('/immunizations', ImmunizationIndex::class)
                     ->can('viewAny', Immunization::class)
                     ->name('immunizations');
+                Route::get('/immunizations/{immunization}', ImmunizationView::class)
+                    ->can('view', ['immunization', 'person'])
+                    ->whereNumber('immunization')
+                    ->name('immunizations.view');
                 Route::get('/conditions', ConditionIndex::class)
                     ->can('viewAny', Condition::class)
                     ->name('conditions');
@@ -354,6 +359,10 @@ Route::prefix('prepersons')
             Route::get('/immunizations', ImmunizationIndex::class)
                 ->can('viewAny', Immunization::class)
                 ->name('immunizations');
+            Route::get('/immunizations/{immunization}', ImmunizationView::class)
+                ->can('view', ['immunization', 'preperson'])
+                ->whereNumber('immunization')
+                ->name('immunizations.view');
             Route::get('/conditions', ConditionIndex::class)
                 ->can('viewAny', Condition::class)
                 ->name('conditions');

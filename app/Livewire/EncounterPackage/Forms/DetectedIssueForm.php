@@ -13,6 +13,7 @@ use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\DetectedIssue;
 use Carbon\CarbonImmutable;
 use Closure;
+use App\Enums\User\Role;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Form;
@@ -27,6 +28,7 @@ class DetectedIssueForm extends Form
             'detectedIssues' => [
                 'nullable',
                 'array',
+                Rule::prohibitedIf($this->component->employeeType === Role::MED_COORDINATOR->value),
                 static function (string $attribute, mixed $value, Closure $fail): void {
                     if ($value && Auth::user()->cannot('create', DetectedIssue::class)) {
                         $fail(__('detected-issues.policy.create'));

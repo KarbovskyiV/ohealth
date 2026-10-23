@@ -1,6 +1,7 @@
 @php
     use App\Livewire\EncounterPackage\EncounterPackageEdit;
     use App\Livewire\EncounterPackage\EncounterPackageView;
+    use App\Enums\User\Role;
     use App\Models\MedicalEvents\Sql\ClinicalImpression;
     use App\Models\MedicalEvents\Sql\Encounter;
 
@@ -44,6 +45,18 @@
         ['id' => 'device-dispense', 'label' => __('device-dispenses.label'), 'icon' => 'solid-notes-medical', 'view' => 'livewire.encounter-package.parts.device-dispense', 'holdsCancellableRecords' => true],
         ['id' => 'specimens', 'label' => __('specimens.label'), 'icon' => 'sample-outline', 'view' => 'livewire.encounter-package.parts.specimens', 'holdsCancellableRecords' => true],
     ];
+
+    // A medical coordinator submits only the encounter and its conditions, while a recorded package stays fully visible
+    if (!$isReadonly && $employeeType === Role::MED_COORDINATOR->value) {
+        $mainGroups = array_values(array_filter(
+            $mainGroups,
+            static fn (array $group): bool => in_array(
+                $group['id'],
+                ['referral', 'main-data', 'hospitalization', 'conditions', 'reasons', 'actions', 'additional-data'],
+                true
+            )
+        ));
+    }
 
     $footerItems = isset($encounterId) ? [
         ['id' => 'prescriptions', 'label' => __('patients.prescriptions'), 'icon' => 'pill-outline'],

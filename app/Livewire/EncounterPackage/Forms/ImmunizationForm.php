@@ -10,6 +10,7 @@ use App\Rules\InDictionary;
 use App\Rules\PastDateTime;
 use App\Services\Dictionary\Mappers\ImmunizationDictionaryMapper;
 use Closure;
+use App\Enums\User\Role;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\RequiredIf;
 use Livewire\Form;
@@ -56,7 +57,7 @@ class ImmunizationForm extends Form
     protected function rules(): array
     {
         return [
-            'immunizations' => ['nullable', 'array'],
+            'immunizations' => ['nullable', 'array', Rule::prohibitedIf($this->component->employeeType === Role::MED_COORDINATOR->value)],
             // for edit page
             'immunizations.*.uuid' => ['nullable', 'uuid'],
             'immunizations.*.primarySource' => ['required_with:immunizations', 'boolean'],
