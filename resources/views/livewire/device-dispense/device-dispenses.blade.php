@@ -7,23 +7,23 @@
     :patientFullName="$patientFullName ?? ''"
     :activeTab="'device-dispenses'"
 >
-<x-slot name="headerActions">
-    @php
-        $isSyncing = $syncStatus === JobStatus::PROCESSING->value;
-        $isRetryable = $syncStatus === JobStatus::PAUSED->value || $syncStatus === JobStatus::FAILED->value;
-    @endphp
+    <x-slot name="headerActions">
+        @php
+            $isSyncing = $syncStatus === JobStatus::PROCESSING->value;
+            $isRetryable = $syncStatus === JobStatus::PAUSED->value || $syncStatus === JobStatus::FAILED->value;
+        @endphp
 
-    <button
-        @if (!$isSyncing) wire:click="sync" @endif
-        type="button"
-        @if ($isSyncing) disabled @endif
-        class="flex items-center gap-2 whitespace-nowrap px-5 py-2 text-sm shadow-sm transition-colors
+        <button
+            @if (!$isSyncing) wire:click="sync" @endif
+            type="button"
+            @if ($isSyncing) disabled @endif
+            class="flex items-center gap-2 whitespace-nowrap px-5 py-2 text-sm shadow-sm transition-colors
             @if($isSyncing) button-sync-disabled cursor-not-allowed @else button-sync @endif"
-    >
-        @icon('refresh', 'w-4 h-4')
-        <span>{{ $isRetryable ? __('forms.sync_retry') : __('forms.synchronise_with_eHealth') }}</span>
-    </button>
-</x-slot>
+        >
+            @icon('refresh', 'w-4 h-4')
+            <span>{{ $isRetryable ? __('forms.sync_retry') : __('forms.synchronise_with_eHealth') }}</span>
+        </button>
+    </x-slot>
     <div
         class="breadcrumb-form shift-content px-4 pt-4 pb-10"
         x-data="{
@@ -31,7 +31,7 @@
             deviceId: $wire.entangle('filterDeviceId'),
             deviceCode: $wire.entangle('filterDeviceCode'),
             deviceIdSearch: '',
-            deviceCodeSearch: ''
+            deviceCodeSearch: '',
         }"
     >
         <h2 class="mb-6 flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white">
@@ -64,10 +64,8 @@
                 />
 
                 <div class="form-group group">
-                    <select class="input-select peer w-full" wire:model.defer="filterStatus">
-                        <option value="">
-                            {{ __('forms.select') }} {{ mb_strtolower(__('forms.status.label')) }}
-                        </option>
+                    <select class="input-select peer w-full" wire:model="filterStatus">
+                        <option value="">{{ __('forms.select') }} {{ mb_strtolower(__('forms.status.label')) }}</option>
 
                         @foreach (Status::cases() as $status)
                             <option value="{{ $status->value }}">{{ $status->label() }}</option>
@@ -128,7 +126,7 @@
                             <button
                                 type="button"
                                 @click="openGroupActions = false"
-                                class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                class="dropdown-button flex! w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                             >
                                 <span class="text-gray-500">
                                     @icon('close', 'w-4 h-4')
@@ -233,11 +231,14 @@
                                     }
                                 "
                                 type="text"
+                                id="filterDispenseDateRange"
                                 class="daterangepicker-uk with-leading-icon input peer w-full"
                                 placeholder=" "
                                 autocomplete="off"
                             />
-                            <label class="wrapped-label">{{ __('device-dispenses.filter_date_range') }}</label>
+                            <label for="filterDispenseDateRange" class="wrapped-label">
+                                {{ __('device-dispenses.filter_date_range') }}
+                            </label>
                         </div>
                     </div>
                     <div class="form-group group">
@@ -279,11 +280,15 @@
                                     }
                                 "
                                 type="text"
+                                id="filterCreatedAtRange"
                                 class="daterangepicker-uk with-leading-icon input peer w-full"
                                 placeholder=" "
                                 autocomplete="off"
                             />
-                            <label class="wrapped-label">{{ __('forms.filter_created_at_range') }}</label>
+                            <label
+                                for="filterCreatedAtRange"
+                                class="wrapped-label"
+                            >{{ __('forms.filter_created_at_range') }}</label>
                         </div>
                     </div>
 
@@ -487,11 +492,15 @@
                                     <div class="record-inner-label text-[10px] uppercase">
                                         {{ __('patients.encounter_id') }}
                                     </div>
-                                    <div class="record-inner-id-value">{{ data_get($dispense, 'encounterId') ?: '-' }}</div>
+                                    <div class="record-inner-id-value">
+                                        {{ data_get($dispense, 'encounterId') ?: '-' }}
+                                    </div>
                                 </div>
                                 <div class="min-w-0">
                                     <div class="record-inner-label text-[10px] uppercase">{{ __('episodes.id') }}</div>
-                                    <div class="record-inner-id-value">{{ data_get($dispense, 'contextEpisodeId') ?: '-' }}</div>
+                                    <div class="record-inner-id-value">
+                                        {{ data_get($dispense, 'contextEpisodeId') ?: '-' }}
+                                    </div>
                                 </div>
                             </div>
                         </div>

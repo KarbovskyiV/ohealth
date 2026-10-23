@@ -24,6 +24,9 @@ return [
     'description' => 'Опис',
     'effective_period_start' => 'Дата та час початку прийому',
     'effective_period_end' => 'Дата та час завершення прийому',
+    'effective_type' => 'Час проведення клінічної оцінки',
+    'effective_date_time' => 'Дата та час',
+    'effective_period' => 'Період',
     'findings' => 'Що було ідентифіковано',
     'findings_basis' => 'Обґрунтування знахідки',
     'note' => 'Коментар',
@@ -42,6 +45,7 @@ return [
     // Outcomes reported to the user after an action
     'messages' => [
         'synced_successfully' => 'Клінічні оцінки успішно синхронізовані',
+        'record_synced_successfully' => 'Клінічну оцінку успішно синхронізовано',
         'first_page_synced_successfully' => 'Перша сторінка клінічних оцінок синхронізована, решта обробляється у фоні',
         'sync_already_running' => 'Синхронізація клінічних оцінок вже запущена. Будь ласка, зачекайте її завершення.',
         'sync_resume_started' => 'Відновлення попередньої синхронізації клінічних оцінок розпочато',
@@ -51,7 +55,8 @@ return [
     // Denials of an action the user has no access to
     'policy' => [
         'sync' => 'Синхронізація клінічних оцінок доступна лише за наявності декларації або дозволу на дані пацієнта.',
-        'search' => 'Пошук клінічних оцінок доступний лише за наявності декларації або дозволу на дані пацієнта.'
+        'search' => 'Пошук клінічних оцінок доступний лише за наявності декларації або дозволу на дані пацієнта.',
+        'view' => 'У вас немає доступу до цієї клінічної оцінки.'
     ],
 
     // Number of the record every :attribute of a validation message carries
@@ -62,6 +67,9 @@ return [
         'codeCode' => 'код клінічної оцінки',
         'assessorEmployeeId' => 'медичний працівник, який провів клінічну оцінку',
         'description' => 'опис клінічної оцінки',
+        'effectiveType' => 'час проведення клінічної оцінки',
+        'effectiveDate' => 'дата клінічної оцінки',
+        'effectiveTime' => 'час клінічної оцінки',
         'effectivePeriodStartDate' => 'дата початку клінічної оцінки',
         'effectivePeriodStartTime' => 'час початку клінічної оцінки',
         'effectivePeriodEndDate' => 'дата завершення клінічної оцінки',

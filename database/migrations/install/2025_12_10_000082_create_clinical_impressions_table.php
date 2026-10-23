@@ -26,6 +26,7 @@ return new class extends Migration
             $table->foreignId('encounter_id')->constrained('identifiers');
             $table->foreignId('assessor_id')->comment('author of the clinical impression')->constrained('identifiers');
             $table->foreignId('previous_id')->nullable()->constrained('identifiers');
+            $table->timestamp('effective_date_time')->nullable();
             $table->text('summary')->nullable()->comment('Some summary');
             $table->text('note')->nullable()->comment('Some note');
             $table->string('explanatory_letter')->nullable();

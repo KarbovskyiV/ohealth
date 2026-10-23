@@ -31,18 +31,25 @@ class ClinicalImpressionMapper implements FhirMapperContract
             'encounter' => FhirResource::make()
                 ->coding('eHealth/resources', 'encounter')
                 ->toIdentifier($uuids['encounter']),
-            'effectivePeriod' => [
-                'start' => convertToEHealthISO8601(
-                    $data['effectivePeriodStartDate'] . ' ' . $data['effectivePeriodStartTime']
-                ),
-                'end' => convertToEHealthISO8601(
-                    $data['effectivePeriodEndDate'] . ' ' . $data['effectivePeriodEndTime']
-                ),
-            ],
             'assessor' => FhirResource::make()
                 ->coding('eHealth/resources', 'employee')
                 ->toIdentifier($data['assessorEmployeeId'] ?? $uuids['employee'])
         ];
+
+        // An impression is made either at a moment or over a period, whose end may stay open
+        if (($data['effectiveType'] ?? null) === 'date_time') {
+            $result['effectiveDateTime'] = convertToEHealthISO8601($data['effectiveDate'] . ' ' . $data['effectiveTime']);
+        } else {
+            $result['effectivePeriod'] = [
+                'start' => convertToEHealthISO8601($data['effectivePeriodStartDate'] . ' ' . $data['effectivePeriodStartTime'])
+            ];
+
+            if (!empty($data['effectivePeriodEndDate']) && !empty($data['effectivePeriodEndTime'])) {
+                $result['effectivePeriod']['end'] = convertToEHealthISO8601(
+                    $data['effectivePeriodEndDate'] . ' ' . $data['effectivePeriodEndTime']
+                );
+            }
+        }
 
         if (!empty($data['description'])) {
             $result['description'] = $data['description'];
@@ -138,6 +145,9 @@ class ClinicalImpressionMapper implements FhirMapperContract
             'codeCode' => data_get($data, 'code.coding.0.code'),
             'assessorEmployeeId' => data_get($data, 'assessor.identifier.value', ''),
             'description' => data_get($data, 'description', ''),
+            'effectiveType' => empty(data_get($data, 'effectiveDateTime')) ? 'period' : 'date_time',
+            'effectiveDate' => data_get($data, 'effectiveDate', ''),
+            'effectiveTime' => data_get($data, 'effectiveTime', ''),
             'effectivePeriodStartDate' => data_get($data, 'effectivePeriodStartDate', ''),
             'effectivePeriodStartTime' => data_get($data, 'effectivePeriodStartTime', ''),
             'effectivePeriodEndDate' => data_get($data, 'effectivePeriodEndDate', ''),

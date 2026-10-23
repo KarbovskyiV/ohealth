@@ -55,6 +55,17 @@ class ClinicalImpressionForm extends Form
         return $attributes;
     }
 
+    /**
+     * Get the clinical impression a nested attribute such as "clinicalImpressions.0.effectiveDate" belongs to.
+     *
+     * @param  string  $attribute
+     * @return array
+     */
+    protected function clinicalImpressionAt(string $attribute): array
+    {
+        return $this->clinicalImpressions[(int) explode('.', $attribute)[1]];
+    }
+
     protected function rules(): array
     {
         return [
@@ -83,37 +94,75 @@ class ClinicalImpressionForm extends Form
                         ->orWhere('end_date', '>=', today()->toDateString()))
             ],
             'clinicalImpressions.*.description' => ['nullable', 'string', 'max:1000'],
-            'clinicalImpressions.*.effectivePeriodStartDate' => [
-                'required_with:clinicalImpressions',
-                'date',
-                'before_or_equal:' . (($this->component->form->encounter['periodDate'] ?? '') ?: 'today'),
-            ],
-            'clinicalImpressions.*.effectivePeriodStartTime' => [
-                'required_with:clinicalImpressions',
-                'date_format:H:i',
-            ],
-            'clinicalImpressions.*.effectivePeriodEndDate' => Rule::forEach(fn (mixed $value, string $attribute) => [
-                'required_with:clinicalImpressions',
-                'date',
-                'before_or_equal:today',
-                'after_or_equal:' . ($this->clinicalImpressions[(int)explode(
-                    '.',
-                    $attribute
-                )[1]]['effectivePeriodStartDate'] ?? 'today'),
-            ]),
-            'clinicalImpressions.*.effectivePeriodEndTime' => Rule::forEach(function (mixed $value, string $attribute) {
-                $index = (int)explode('.', $attribute)[1];
-                $clinicalImpression = $this->clinicalImpressions[$index];
+            // An impression is made either at a moment or over a period, whose end may stay open
+            'clinicalImpressions.*.effectiveType' => ['required_with:clinicalImpressions', Rule::in(['date_time', 'period'])],
+            'clinicalImpressions.*.effectiveDate' => Rule::forEach(function (mixed $value, string $attribute): array {
+                $isDateTime = ($this->clinicalImpressionAt($attribute)['effectiveType'] ?? null) === 'date_time';
 
                 return [
-                    'required_with:clinicalImpressions',
+                    Rule::requiredIf($isDateTime),
+                    Rule::prohibitedIf(!$isDateTime),
+                    'nullable',
+                    'date',
+                    'before_or_equal:' . (($this->component->form->encounter['periodDate'] ?? '') ?: 'today')
+                ];
+            }),
+            'clinicalImpressions.*.effectiveTime' => Rule::forEach(function (mixed $value, string $attribute): array {
+                $clinicalImpression = $this->clinicalImpressionAt($attribute);
+                $isDateTime = ($clinicalImpression['effectiveType'] ?? null) === 'date_time';
+
+                return [
+                    Rule::requiredIf($isDateTime),
+                    Rule::prohibitedIf(!$isDateTime),
+                    'nullable',
+                    'date_format:H:i',
+                    new PastDateTime($clinicalImpression['effectiveDate'] ?? '')
+                ];
+            }),
+            'clinicalImpressions.*.effectivePeriodStartDate' => Rule::forEach(function (mixed $value, string $attribute): array {
+                $isPeriod = ($this->clinicalImpressionAt($attribute)['effectiveType'] ?? null) === 'period';
+
+                return [
+                    Rule::requiredIf($isPeriod),
+                    Rule::prohibitedIf(!$isPeriod),
+                    'nullable',
+                    'date',
+                    'before_or_equal:' . (($this->component->form->encounter['periodDate'] ?? '') ?: 'today')
+                ];
+            }),
+            'clinicalImpressions.*.effectivePeriodStartTime' => Rule::forEach(function (mixed $value, string $attribute): array {
+                $isPeriod = ($this->clinicalImpressionAt($attribute)['effectiveType'] ?? null) === 'period';
+
+                return [Rule::requiredIf($isPeriod), Rule::prohibitedIf(!$isPeriod), 'nullable', 'date_format:H:i'];
+            }),
+            'clinicalImpressions.*.effectivePeriodEndDate' => Rule::forEach(function (mixed $value, string $attribute): array {
+                $clinicalImpression = $this->clinicalImpressionAt($attribute);
+                $isPeriod = ($clinicalImpression['effectiveType'] ?? null) === 'period';
+
+                return [
+                    Rule::requiredIf($isPeriod && !empty($clinicalImpression['effectivePeriodEndTime'])),
+                    Rule::prohibitedIf(!$isPeriod),
+                    'nullable',
+                    'date',
+                    'before_or_equal:today',
+                    'after_or_equal:' . (($clinicalImpression['effectivePeriodStartDate'] ?? '') ?: 'today')
+                ];
+            }),
+            'clinicalImpressions.*.effectivePeriodEndTime' => Rule::forEach(function (mixed $value, string $attribute): array {
+                $clinicalImpression = $this->clinicalImpressionAt($attribute);
+                $isPeriod = ($clinicalImpression['effectiveType'] ?? null) === 'period';
+
+                return [
+                    Rule::requiredIf($isPeriod && !empty($clinicalImpression['effectivePeriodEndDate'])),
+                    Rule::prohibitedIf(!$isPeriod),
+                    'nullable',
                     'date_format:H:i',
                     new PastDateTime($clinicalImpression['effectivePeriodEndDate'] ?? ''),
                     new AfterOrEqualDateTime(
                         $clinicalImpression['effectivePeriodEndDate'] ?? '',
                         $clinicalImpression['effectivePeriodStartDate'] ?? '',
                         $clinicalImpression['effectivePeriodStartTime'] ?? ''
-                    ),
+                    )
                 ];
             }),
             'clinicalImpressions.*.note' => ['nullable', 'string', 'max:3000'],

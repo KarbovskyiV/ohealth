@@ -373,7 +373,8 @@
                 @endforeach
 
                 <!-- Additional Actions -->
-                @if (isset($encounterId))
+                {{-- Prescriptions, referrals, reports and care plans refer to an encounter eHealth has accepted --}}
+                @if (isset($encounterId) && $this->isFinished)
                     @include('livewire.encounter-package.parts.additional-actions')
                 @endif
 

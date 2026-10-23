@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Livewire\CarePlan\CarePlanCreate;
 use App\Livewire\ClinicalImpression\ClinicalImpressionIndex;
+use App\Livewire\ClinicalImpression\ClinicalImpressionView;
 use App\Livewire\Composition\CompositionCreate;
 use App\Livewire\Composition\CompositionTempDisabilityCreate;
 use App\Livewire\Condition\ConditionIndex;
@@ -175,6 +176,10 @@ Route::prefix('persons')->whereNumber('person')
                 Route::get('/clinical-impressions', ClinicalImpressionIndex::class)
                     ->can('viewAny', ClinicalImpression::class)
                     ->name('clinical-impressions');
+                Route::get('/clinical-impressions/{clinicalImpression}', ClinicalImpressionView::class)
+                    ->can('view', ['clinicalImpression', 'person'])
+                    ->whereNumber('clinicalImpression')
+                    ->name('clinical-impressions.view');
                 Route::get('/encounters', EncounterIndex::class)
                     ->can('viewAny', Encounter::class)
                     ->name('encounters');
@@ -362,6 +367,10 @@ Route::prefix('prepersons')
             Route::get('/clinical-impressions', ClinicalImpressionIndex::class)
                 ->can('viewAny', ClinicalImpression::class)
                 ->name('clinical-impressions');
+            Route::get('/clinical-impressions/{clinicalImpression}', ClinicalImpressionView::class)
+                ->can('view', ['clinicalImpression', 'preperson'])
+                ->whereNumber('clinicalImpression')
+                ->name('clinical-impressions.view');
             Route::get('/encounters', EncounterIndex::class)
                 ->can('viewAny', Encounter::class)
                 ->name('encounters');

@@ -88,7 +88,7 @@
                         <form>
                             <div class="space-y-2">
                                 <p class="default-p">{{ __('forms.details') }}:</p>
-                                <div class="space-y-2 rounded-md border-2 border-dashed border-white dark:border-white">
+                                <div class="space-y-4 rounded-md border-2 border-dashed border-white dark:border-white">
                                     <template
                                         x-for="
                                             (detail, index) in
@@ -98,7 +98,13 @@
                                         "
                                         :key="index"
                                     >
-                                        <p class="default-p" x-text="detail.value.string"></p>
+                                        <div class="space-y-1">
+                                            <p class="default-p font-semibold" x-text="detail.description"></p>
+                                            <p
+                                                class="text-sm text-gray-500 dark:text-gray-400"
+                                                x-text="detail.value.string"
+                                            ></p>
+                                        </div>
                                     </template>
                                 </div>
                             </div>

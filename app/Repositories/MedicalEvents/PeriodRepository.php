@@ -27,7 +27,8 @@ class PeriodRepository extends BaseRepository
         $existing = $periodable->wasRecentlyCreated ? null : $periodable->{$relation};
 
         if ($existing) {
-            $existing->update($periodData);
+            // A period without an end has none, so an end stored before is cleared
+            $existing->update(['end' => null, ...$periodData]);
         } else {
             $periodable->{$relation}()->create($periodData);
         }
