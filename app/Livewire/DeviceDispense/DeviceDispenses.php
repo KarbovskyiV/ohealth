@@ -162,7 +162,12 @@ class DeviceDispenses extends BasePatientComponent
 
     public function openDeviceDispenseView(string $deviceDispenseUuid): void
     {
-        $this->authorize('viewAny', DeviceDispense::class);
+        if (!Auth::user()->can('viewAny', DeviceDispense::class)) {
+            Session::flash('error', __('device-dispenses.policy.view'));
+
+            return;
+        }
+
         validator(['uuid' => $deviceDispenseUuid], ['uuid' => ['required', 'uuid']])->validate();
         $repository = Repository::deviceDispense();
         $deviceDispense = $repository->findForPatientByUuid($this->patient(), $deviceDispenseUuid);
@@ -254,7 +259,7 @@ class DeviceDispenses extends BasePatientComponent
             $this->dispatchRemainingPages('device_dispense');
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_DEVICE_DISPENSE);
-            Session::flash('success', __('device-dispenses.messages.sync_result', ['count' => count($validatedData)]));
+            Session::flash('success', __('device-dispenses.messages.synced_successfully'));
         }
 
         $this->loadFilterOptions();

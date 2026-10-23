@@ -28,7 +28,6 @@
         </div>
     </x-slot>
 
-
     <div class="breadcrumb-form shift-content p-4">
         <div class="mt-6 w-full" x-data="{ showAdditionalParams: $wire.entangle('showAdditionalParams') }">
             <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">

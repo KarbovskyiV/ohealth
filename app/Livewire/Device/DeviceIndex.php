@@ -212,7 +212,7 @@ class DeviceIndex extends BasePatientComponent
             $this->dispatchRemainingPages('device');
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_DEVICE);
-            Session::flash('success', __('devices.messages.sync_result', ['count' => count($validatedData)]));
+            Session::flash('success', __('devices.messages.synced_successfully'));
         }
 
         $this->loadFilterOptions();

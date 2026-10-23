@@ -19,6 +19,7 @@ use App\Services\Dictionary\Collections\ServiceCollection;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -102,7 +103,9 @@ class DeviceDispensePatientViewTest extends TestCase
         $component = $this->patientComponent();
         $this->canRead = false;
         $this->api->shouldNotReceive('getById');
-        $component->call('openDeviceDispenseView', (string) Str::uuid())->assertForbidden();
+        $component->call('openDeviceDispenseView', (string) Str::uuid())
+            ->assertNoRedirect()
+            ->assertSee(__('device-dispenses.policy.view'));
     }
 
     public function testRecordPolicyCanDenyOpeningAfterRegistryPermissionWasGranted(): void
@@ -135,7 +138,31 @@ class DeviceDispensePatientViewTest extends TestCase
             ->call('resetFilters')->assertDontSee(__('messages.connection_exception'));
     }
 
-    public function testEmptySyncReportsZeroRecordsAndConsumesItsMessage(): void
+    public function testRepeatedSearchErrorsAreVisibleWithinTheSameSecond(): void
+    {
+        // Freeze timestamp keys so this regression does not depend on execution speed.
+        $freezeMessageKey = true;
+        Blade::precompiler(static function (string $source) use (&$freezeMessageKey): string {
+            return $freezeMessageKey ? str_replace(':key="time()"', ':key="1234567890"', $source) : $source;
+        });
+        $layoutPath = resource_path('views/components/layouts/patient.blade.php');
+        Blade::compile($layoutPath);
+
+        try {
+            $this->api->shouldReceive('getBySearchParams')->twice()
+                ->andThrow(new EHealthConnectionException('Timeout'));
+            $message = __('messages.connection_exception');
+
+            $this->patientComponent()->call('search')->assertSee($message)
+                ->call('resetFilters')->assertDontSee($message)
+                ->call('search')->assertSee($message);
+        } finally {
+            $freezeMessageKey = false;
+            Blade::compile($layoutPath);
+        }
+    }
+
+    public function testEmptySyncReportsSuccessAndConsumesItsMessage(): void
     {
         $dictionary = Mockery::mock(DictionaryManager::class);
         $dictionary->shouldReceive('basics')->andReturn(BasicDictionaryCollection::make([
@@ -152,7 +179,7 @@ class DeviceDispensePatientViewTest extends TestCase
         $this->api->shouldReceive('getBySearchParams')->once()
             ->with($this->person->uuid, ['performer_legal_entity' => $this->legalEntity->uuid])
             ->andReturn($response);
-        $message = __('device-dispenses.messages.sync_result', ['count' => 0]);
+        $message = __('device-dispenses.messages.synced_successfully');
 
         $this->patientComponent()->call('sync')->assertSee($message)
             ->call('resetFilters')->assertDontSee($message);

@@ -207,8 +207,7 @@ class DeviceAssociationIndex extends BasePatientComponent
         }
 
         try {
-            $validatedData = $response->validate();
-            Repository::deviceAssociation()->sync($this->patient(), $validatedData);
+            Repository::deviceAssociation()->sync($this->patient(), $response->validate());
         } catch (Throwable $exception) {
             $this->handleDatabaseErrors($exception, 'Error while synchronizing device associations');
 
@@ -219,7 +218,7 @@ class DeviceAssociationIndex extends BasePatientComponent
             $this->dispatchRemainingPages('device_association');
         } else {
             legalEntity()->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_DEVICE_ASSOCIATION);
-            Session::flash('success', __('device-associations.messages.sync_result', ['count' => count($validatedData)]));
+            Session::flash('success', __('device-associations.messages.synced_successfully'));
         }
 
         $this->loadFilterOptions();
