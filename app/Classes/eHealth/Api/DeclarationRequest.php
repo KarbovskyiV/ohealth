@@ -174,7 +174,7 @@ class DeclarationRequest extends Request
             '*.channel' => ['required', 'string'],
             '*.person_id' => ['required', 'uuid'],
             '*.employee_id' => ['required', 'uuid'],
-            '*.division_id' => ['required', 'uuid'],
+            '*.division_id' => ['nullable', 'uuid'],
             '*.legal_entity_id' => ['required', 'uuid'],
             '*.authorize_with' => ['nullable', 'uuid'],
             '*.parent_declaration_id' => ['nullable', 'uuid'],
@@ -224,7 +224,7 @@ class DeclarationRequest extends Request
             'person_id' => ['required', 'uuid'],
             'legal_entity_id' => ['required', 'uuid'],
             'employee_id' => ['required', 'uuid'],
-            'division_id' => ['required', 'uuid'],
+            'division_id' => ['nullable', 'uuid'],
             'inserted_at' => ['required', 'date'],
             'is_active' => ['required', 'boolean:strict'],
             'reason' => ['nullable', 'string'],
@@ -279,7 +279,7 @@ class DeclarationRequest extends Request
             'end_date' => ['required', 'date'],
             'person_id' => ['required', 'uuid'],
             'employee_id' => ['required', 'uuid'],
-            'division_id' => ['required', 'uuid'],
+            'division_id' => ['nullable', 'uuid'],
             'declaration_number' => ['required', 'string'],
             'declaration_id' => ['required', 'uuid'],
             'parent_declaration_id' => ['nullable', 'uuid'],
@@ -333,7 +333,7 @@ class DeclarationRequest extends Request
 
         if ($validator->fails()) {
             Log::channel('e_health_errors')->error(
-                'EHealth Employee validation failed: ' . implode(', ', $validator->errors()->all())
+                'EHealth Declaration Request validation failed: ' . implode(', ', $validator->errors()->all())
             );
         }
 

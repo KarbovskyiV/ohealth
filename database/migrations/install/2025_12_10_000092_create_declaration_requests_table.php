@@ -30,6 +30,7 @@ return new class extends Migration
                 ->comment('identifier of parent declaration in reorganized legal entity');
             $table->string('declaration_number')->nullable();
             $table->foreignId('division_id')
+                ->nullable()
                 ->comment('Registered Medical Service Provider Division identifier.')
                 ->constrained();
             $table->foreignId('employee_id')
