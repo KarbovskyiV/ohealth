@@ -1,4 +1,4 @@
-<div class="shift-content space-y-5 p-6">
+<div class="shift-content space-y-8 p-6">
     <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
     <x-forms.loading />
     <h1 class="text-xl font-bold">{{ __('device-requests.form.title') }} — {{ $person->fullName }}</h1>
@@ -12,8 +12,8 @@
             @endforeach
         </div>
     @endif
-    <form wire:submit="createDraft" novalidate class="space-y-5">
-        <div class="grid gap-4 md:grid-cols-2">
+    <form wire:submit="createDraft" novalidate class="space-y-8">
+        <div class="grid gap-6 rounded-xl border border-gray-200 p-6 md:grid-cols-2 dark:border-gray-700">
             <label
                 >{{ __('device-requests.form.encounter') }}
                 <select wire:model="request.encounter_uuid" class="input-select w-full @error('request.encounter_uuid') input-error @enderror">
@@ -166,7 +166,7 @@
                 @endif
             </div>
         </div>
-        <fieldset class="space-y-3">
+        <fieldset class="fieldset-card space-y-4 p-6 sm:p-8">
             <legend class="font-semibold">{{ __('device-requests.form.reasons') }}</legend>
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('device-requests.form.reason_hint') }}</p>
             @foreach ($request['reason_reference'] as $index => $reason)
@@ -198,7 +198,7 @@
             @endforeach
             <button type="button" wire:click="addReason" class="button-minor">{{ __('device-requests.form.add_reason') }}</button>
         </fieldset>
-        <fieldset class="grid gap-4 md:grid-cols-2">
+        <fieldset class="fieldset-card grid gap-4 p-6 md:grid-cols-2 sm:p-8">
             <legend class="font-semibold">{{ __('device-requests.form.parameters') }}</legend>
             @foreach ($options['parameters'] ?? [] as $key => $parameter)
                 <label wire:key="parameter-{{ $key }}"

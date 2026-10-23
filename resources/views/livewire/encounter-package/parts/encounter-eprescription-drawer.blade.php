@@ -23,9 +23,9 @@
                 wire:submit.prevent="validateEncounterEPrescription"
                 class="space-y-6"
             >
-                <fieldset class="fieldset">
+                <fieldset class="fieldset-card p-6 sm:p-8">
                     <legend class="legend">{{ __('care-plan.medication') }}</legend>
-                    <div class="form-row-2">
+                    <div class="form-row-2 mt-6">
                         <div class="form-group group md:col-span-2">
                             <label
                                 for="encounterEPrescriptionProgram"
@@ -173,9 +173,9 @@
                     </div>
                 </fieldset>
 
-                <fieldset class="fieldset">
+                <fieldset class="fieldset-card p-6 sm:p-8">
                     <legend class="legend">{{ __('encounters.eprescription.dosage') }}</legend>
-                    <div class="form-row-2">
+                    <div class="form-row-2 mt-6">
                         <div class="form-group group md:col-span-2">
                             <label
                                 for="encounterEPrescriptionSignature"
@@ -267,7 +267,7 @@
                     </div>
                 </fieldset>
 
-                <fieldset class="fieldset">
+                <fieldset class="fieldset-card p-6 sm:p-8">
                     <legend class="legend">{{ __('forms.authentication') }}</legend>
                     <div class="form-group group">
                         <label
