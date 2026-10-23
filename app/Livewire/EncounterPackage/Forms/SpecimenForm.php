@@ -10,6 +10,7 @@ use App\Rules\InDictionary;
 use App\Rules\PastDateTime;
 use Carbon\CarbonImmutable;
 use Closure;
+use App\Enums\User\Role;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 
@@ -25,7 +26,7 @@ class SpecimenForm extends Form
     protected function rules(): array
     {
         return [
-            'specimens' => ['nullable', 'array'],
+            'specimens' => ['nullable', 'array', Rule::prohibitedIf($this->component->employeeType === Role::MED_COORDINATOR->value)],
             'specimens.*.uuid' => ['required_with:specimens', 'uuid', 'distinct'],
             'specimens.*.receivedDate' => Rule::forEach(fn (mixed $value, string $attribute): array => [
                 $this->isReferenced($this->specimens[(int) explode('.', $attribute)[1]]['uuid'] ?? '') ? 'nullable' : 'prohibited',

@@ -18,6 +18,7 @@ use App\Rules\PrimarySourceRequiredForAssistant;
 use App\Rules\PastDateTime;
 use App\Rules\AfterOrEqualDateTime;
 use Closure;
+use App\Enums\User\Role;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 use Carbon\CarbonImmutable;
@@ -72,7 +73,7 @@ class ProcedureForm extends Form
             ->toArray();
 
         return [
-            'procedures' => ['nullable', 'array'],
+            'procedures' => ['nullable', 'array', Rule::prohibitedIf($this->component->employeeType === Role::MED_COORDINATOR->value)],
             // for edit page
             'procedures.*.uuid' => ['nullable', 'uuid'],
             'procedures.*.status' => [

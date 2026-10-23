@@ -11,6 +11,7 @@ use App\Rules\InDictionary;
 use App\Rules\PrimarySourceRequiredForAssistant;
 use Closure;
 use Illuminate\Support\Facades\Auth;
+use App\Enums\User\Role;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 
@@ -59,6 +60,7 @@ class DeviceForm extends Form
             'devices' => [
                 'nullable',
                 'array',
+                Rule::prohibitedIf($this->component->employeeType === Role::MED_COORDINATOR->value),
                 static function (string $attribute, mixed $value, Closure $fail): void {
                     if ($value && Auth::user()->cannot('create', Device::class)) {
                         $fail(__('devices.policy.create'));

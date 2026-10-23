@@ -63,7 +63,7 @@ class DiagnosticReportForm extends Form
     protected function rules(): array
     {
         return [
-            'diagnosticReports' => ['nullable', 'array'],
+            'diagnosticReports' => ['nullable', 'array', Rule::prohibitedIf($this->component->employeeType === Role::MED_COORDINATOR->value)],
             'diagnosticReports.*' => [
                 'array',
                 function (string $attribute, mixed $value, Closure $fail): void {

@@ -1233,7 +1233,7 @@ class EncounterPackageComponent extends Component
             ->filter(static fn (array $condition): bool => ($condition['isRegistered'] ?? false) === true)
             ->pluck('uuid');
 
-        if ($registeredIds->isEmpty() || $this->patientUuid === null) {
+        if ($this->patientUuid === null || $registeredIds->isEmpty()) {
             return;
         }
 

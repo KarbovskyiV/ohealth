@@ -48,7 +48,9 @@ class Immunization extends Model
     protected $casts = [
         'date' => EHealthTimestampCast::class,
         'expiration_date' => EHealthTimestampCast::class,
-        'status' => ImmunizationStatus::class
+        'status' => ImmunizationStatus::class,
+        'ehealth_inserted_at' => EHealthTimestampCast::class,
+        'ehealth_updated_at' => EHealthTimestampCast::class
     ];
 
     protected $hidden = [

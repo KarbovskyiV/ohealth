@@ -8,6 +8,7 @@ use App\Enums\DeviceDispense\Status;
 use App\Enums\Person\DeviceRequestStatus;
 use App\Rules\InDictionary;
 use Closure;
+use App\Enums\User\Role;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 
@@ -18,7 +19,7 @@ class DeviceDispenseForm extends Form
     protected function rules(): array
     {
         return [
-            'deviceDispenses' => ['nullable', 'array'],
+            'deviceDispenses' => ['nullable', 'array', Rule::prohibitedIf($this->component->employeeType === Role::MED_COORDINATOR->value)],
             'deviceDispenses.*.uuid' => ['nullable', 'uuid'],
             'deviceDispenses.*.basedOnId' => [
                 'nullable',
