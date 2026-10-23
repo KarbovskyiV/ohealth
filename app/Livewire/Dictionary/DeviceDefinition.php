@@ -43,28 +43,28 @@ class DeviceDefinition extends Component
      *
      * @var string
      */
-    public string $selectedProgram = '';
+    public string $filterMedicalProgramId = '';
 
     /**
      * Filter by device name.
      *
      * @var string
      */
-    public string $name = '';
+    public string $filterName = '';
 
     /**
      * Filter by model number.
      *
      * @var string
      */
-    public string $modelNumber = '';
+    public string $filterModelNumber = '';
 
     /**
      * Filter by classification type code.
      *
      * @var string
      */
-    public string $classificationTypeCode = '';
+    public string $filterClassificationTypeCode = '';
 
     public array $dictionaryNames = [
         'FUNDING_SOURCE',
@@ -119,13 +119,13 @@ class DeviceDefinition extends Component
      */
     public function resetFilters(): void
     {
-        $this->reset(['selectedProgram', 'name', 'classificationTypeCode', 'modelNumber']);
+        $this->reset(['filterMedicalProgramId', 'filterName', 'filterClassificationTypeCode', 'filterModelNumber']);
     }
 
     public function search(): void
     {
         try {
-            $this->validate(['selectedProgram' => 'required']);
+            $this->validate(['filterMedicalProgramId' => 'required']);
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
@@ -139,40 +139,45 @@ class DeviceDefinition extends Component
     #[Computed]
     public function deviceDefinitions(): LengthAwarePaginator
     {
-        if (empty($this->selectedProgram)) {
-            return new LengthAwarePaginator([], 0, config('pagination.per_page'), 1);
-        }
-
-        $filters = ['medical_program_id' => $this->selectedProgram];
-
-        // Filters
-        if (!empty($this->name)) {
-            $filters['name'] = $this->name;
-        }
-
-        if (!empty($this->classificationTypeCode)) {
-            $filters['classification_type_code'] = $this->classificationTypeCode;
-        }
-
-        if (!empty($this->modelNumber)) {
-            $filters['model_number'] = $this->modelNumber;
-        }
-
-        try {
-            $deviceDefinitionsData = collect(EHealth::deviceDefinition()->getMany($filters)->getData());
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error when searching for device definitions list.');
-
+        if (empty($this->filterMedicalProgramId)) {
             return new LengthAwarePaginator([], 0, config('pagination.per_page'), 1);
         }
 
         $perPage = config('pagination.per_page');
         $currentPage = Paginator::resolveCurrentPage();
-        $currentPageItems = $deviceDefinitionsData->forPage($currentPage, $perPage);
+
+        // The list holds deactivated devices too, while only active ones may be prescribed
+        $filters = [
+            'medical_program_id' => $this->filterMedicalProgramId,
+            'is_active' => true,
+            'page' => $currentPage,
+            'page_size' => $perPage
+        ];
+
+        // Filters
+        if (!empty($this->filterName)) {
+            $filters['name'] = $this->filterName;
+        }
+
+        if (!empty($this->filterClassificationTypeCode)) {
+            $filters['classification_type_code'] = $this->filterClassificationTypeCode;
+        }
+
+        if (!empty($this->filterModelNumber)) {
+            $filters['model_number'] = $this->filterModelNumber;
+        }
+
+        try {
+            $response = EHealth::deviceDefinition()->getMany($filters);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error when searching for device definitions list.');
+
+            return new LengthAwarePaginator([], 0, $perPage, 1);
+        }
 
         return new LengthAwarePaginator(
-            $currentPageItems->values(),
-            $deviceDefinitionsData->count(),
+            collect($response->getData()),
+            $response->getPaging()['total_entries'],
             $perPage,
             $currentPage,
             [

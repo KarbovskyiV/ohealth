@@ -40,19 +40,24 @@ class MedicalDevice extends Component
             ->where('is_active', '=', true)
             ->where('type', '=', Type::DEVICE);
 
-        // Filter by employee types allowed to create requests
-        $filteredPrograms = $filteredPrograms->filter(function (array $program) use ($roles) {
+        // Employee type filter
+        $filteredPrograms = $filteredPrograms->filter(static function (array $program) use ($roles): bool {
             $allowedEmployeeTypes = Arr::get($program, 'medical_program_settings.employee_types_to_create_request', []);
 
-            return $roles->intersect($allowedEmployeeTypes)->isNotEmpty();
+            return empty($allowedEmployeeTypes) || $roles->intersect($allowedEmployeeTypes)->isNotEmpty();
         });
 
-        // Additional filter for SPECIALIST role - check speciality_types_allowed
-        if ($user->hasAllowedRole(Role::SPECIALIST->value)) {
-            $filteredPrograms = $filteredPrograms->filter(function (array $program) use ($mainSpeciality) {
-                $allowedSpecialities = Arr::get($program, 'medical_program_settings.speciality_types_allowed', []);
+        // Main speciality filter, not applied when either speciality list is undefined
+        if ($user->hasAllowedRole(Role::SPECIALIST) || $user->hasAllowedRole(Role::DOCTOR)) {
+            $filteredPrograms = $filteredPrograms->filter(static function (array $program) use ($mainSpeciality): bool {
+                $requestSpecialities = Arr::get($program, 'medical_program_settings.speciality_types_request_allowed');
+                $carePlanSpecialities = Arr::get($program, 'medical_program_settings.speciality_types_care_plan_activity_allowed');
 
-                return $mainSpeciality->intersect($allowedSpecialities)->isNotEmpty();
+                if ($requestSpecialities === null || $carePlanSpecialities === null) {
+                    return true;
+                }
+
+                return $mainSpeciality->intersect([...$requestSpecialities, ...$carePlanSpecialities])->isNotEmpty();
             });
         }
 

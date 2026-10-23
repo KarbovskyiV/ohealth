@@ -10,7 +10,6 @@ use App\Models\LegalEntity;
 use App\Traits\FormTrait;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -62,28 +61,28 @@ class ForbiddenGroup extends Component
         try {
             $details = EHealth::forbiddenGroup()->getDetails($this->selectedForbiddenGroup)->getData();
 
-            // Get codes grouped by system
-            $codesBySystem = collect($details['forbidden_group_codes'])
-                ->groupBy('system')
-                ->map(fn (Collection $codes) => $codes->pluck('code')->toArray());
+            // The same code means a different diagnosis in ICD-10 and ICPC-2, while the ICPC-2 reasons share its codes
+            $icd10Descriptions = Icd10::whereIn(
+                'code',
+                collect($details['forbidden_group_codes'])->where('system', 'eHealth/ICD10_AM/condition_codes')->pluck('code')
+            )->pluck('description', 'code');
+            $icpc2Descriptions = dictionary()->basics()
+                ->byName('eHealth/ICPC2/condition_codes', false)
+                ->asCodeDescription();
 
-            $descriptions = collect();
-
-            // Get descriptions for each system separately
-            foreach ($codesBySystem as $system => $codes) {
-                $systemDescriptions = $system === 'eHealth/ICD10_AM/condition_codes'
-                    ? Icd10::whereIn('code', $codes)->pluck('description', 'code')
-                    : dictionary()->basics()
-                        ->byName('eHealth/ICPC2/condition_codes')
-                        ->whereIn('code', $codes)
-                        ->asCodeDescription();
-
-                $descriptions = $descriptions->merge($systemDescriptions);
+            foreach ($details['forbidden_group_codes'] as &$codeItem) {
+                $codeItem['description'] = $codeItem['system'] === 'eHealth/ICD10_AM/condition_codes'
+                    ? $icd10Descriptions->get($codeItem['code'], '')
+                    : $icpc2Descriptions[$codeItem['code']];
             }
 
-            // Add descriptions to each code
-            foreach ($details['forbidden_group_codes'] as &$codeItem) {
-                $codeItem['description'] = $descriptions->get($codeItem['code'], '');
+            unset($codeItem);
+
+            // A forbidden entry is either a service or a service group, and it may be inactive in the catalog already
+            $catalogNames = $this->catalogNames(dictionary()->services()->all());
+
+            foreach ($details['forbidden_group_services'] as &$serviceItem) {
+                $serviceItem['name'] = $catalogNames[$serviceItem['service_id'] ?? $serviceItem['service_group_id']];
             }
 
             return $details;
@@ -98,6 +97,24 @@ class ForbiddenGroup extends Component
     public function resetFilters(): void
     {
         $this->reset(['selectedForbiddenGroup']);
+    }
+
+    /**
+     * Map the id of every service and service group in the catalog to its name, inactive ones included.
+     *
+     * @param  array  $items
+     * @return array
+     */
+    private function catalogNames(array $items): array
+    {
+        $names = [];
+
+        foreach ($items as $item) {
+            $names[$item['id']] = $item['name'];
+            $names += $this->catalogNames([...$item['groups'] ?? [], ...$item['services'] ?? []]);
+        }
+
+        return $names;
     }
 
     public function render(): View

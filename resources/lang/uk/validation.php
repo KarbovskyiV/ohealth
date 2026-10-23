@@ -837,6 +837,7 @@ return [
 
         // Dictionary
         'selectedProgram' => 'медична програма',
+        'filterMedicalProgramId' => 'медична програма',
         'selectedDiagnoseGroup' => 'група діагнозів',
         'selectedForbiddenGroup' => 'обмежувальна група',
 

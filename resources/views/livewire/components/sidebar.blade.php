@@ -114,9 +114,11 @@
                 @canany(['create', 'viewAny'], Connection::class)
                     <li>
                         <a
-                            href="{{ Auth::user()->can('viewAny', Connection::class)
+                            href="{{
+                                Auth::user()->can('viewAny', Connection::class)
                                 ? route('connection.index', [legalEntity()])
-                                : route('connection.legal-entity.create', [legalEntity()]) }}"
+                                : route('connection.legal-entity.create', [legalEntity()])
+                            }}"
                             class="menu-item-simple {{ request()->routeIs('connection.*') ? 'menu-item-active' : '' }}"
                         >
                             @icon('connection-two-way')
@@ -459,7 +461,10 @@
                 @endcan
 
                 <li>
-                    <a href="{{ route('data-access.index', [legalEntity()]) }}" class="menu-item-simple {{ request()->routeIs('data-access.*') ? 'menu-item-active' : '' }}">
+                    <a
+                        href="{{ route('data-access.index', [legalEntity()]) }}"
+                        class="menu-item-simple {{ request()->routeIs('data-access.*') ? 'menu-item-active' : '' }}"
+                    >
                         @icon('hugeicons-access')
                         <span>{{ __('patients.data_access') }}</span>
                     </a>
@@ -533,15 +538,17 @@
                             </li>
                         @endcan
 
-                        <li>
-                            <a
-                                href="{{ route('dictionaries.service-catalog.index', [legalEntity()]) }}"
-                                class="submenu-item {{ request()->routeIs('dictionaries.service-catalog.*') ? 'submenu-item-active' : '' }}"
-                            >
-                                @icon('boxicons-file')
-                                <span>{{ __('dictionaries.service_catalog.title') }}</span>
-                            </a>
-                        </li>
+                        @can('view-service-catalog')
+                            <li>
+                                <a
+                                    href="{{ route('dictionaries.service-catalog.index', [legalEntity()]) }}"
+                                    class="submenu-item {{ request()->routeIs('dictionaries.service-catalog.*') ? 'submenu-item-active' : '' }}"
+                                >
+                                    @icon('boxicons-file')
+                                    <span>{{ __('dictionaries.service_catalog.title') }}</span>
+                                </a>
+                            </li>
+                        @endcan
                         <li>
                             <a
                                 href="{{ route('dictionaries.condition-diagnose.index', [legalEntity()]) }}"
@@ -584,18 +591,18 @@
                 </li>
             @endif
 
-              {{-- Create connection for unauthorized (by eHealth) user --}}
-              @if (!legalEntity() && Auth::user()->can('create', Connection::class))
-                    <li>
-                        <a
-                            href="{{ route('connection.create') }}"
-                            class="menu-item-simple {{ request()->routeIs('connection.*') ? 'menu-item-active' : '' }}"
-                        >
-                            @icon('connection-two-way')
-                            <span>{{ __('legal-entity-connection.connection_sidebar') }}</span>
-                        </a>
-                    </li>
-              @endif
+            {{-- Create connection for unauthorized (by eHealth) user --}}
+            @if (!legalEntity() && Auth::user()->can('create', Connection::class))
+                <li>
+                    <a
+                        href="{{ route('connection.create') }}"
+                        class="menu-item-simple {{ request()->routeIs('connection.*') ? 'menu-item-active' : '' }}"
+                    >
+                        @icon('connection-two-way')
+                        <span>{{ __('legal-entity-connection.connection_sidebar') }}</span>
+                    </a>
+                </li>
+            @endif
         </ul>
     </div>
 </aside>
