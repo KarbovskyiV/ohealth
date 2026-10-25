@@ -12,6 +12,7 @@ use Illuminate\Bus\Batch;
 use App\Models\Connection;
 use App\Models\LegalEntity;
 use App\Jobs\ConnectionSync;
+use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Locked;
@@ -36,6 +37,7 @@ use App\Livewire\LegalEntity\Connections\Form\ConnectionForm;
 class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
 {
     use BatchLegalEntityQueries,
+        WithPagination,
         WithFileUploads;
 
     /**
@@ -79,7 +81,7 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
             $connections->count(),
             $perPage,
             $currentPage,
-            ['path' => request()->url()]
+            ['path' => route('connection.index', [$this->legalEntityId])]
         );
     }
 
