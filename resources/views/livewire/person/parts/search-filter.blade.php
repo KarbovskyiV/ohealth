@@ -36,7 +36,7 @@
                 :disabled="$wire.form.noLastName"
             />
             <label for="filterLastName" class="label">
-                {{ __('forms.last_name') }}
+                {{ __('forms.last_name') }} <span x-show="!$wire.form.noLastName">*</span>
             </label>
 
             <div class="flex items-center gap-2 mt-2">

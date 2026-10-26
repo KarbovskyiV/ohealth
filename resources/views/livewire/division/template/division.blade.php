@@ -66,6 +66,19 @@
                     class="form-row"
                     x-data="{
                         isDisabled: @json($readonly),
+                        workingHours: $wire.entangle('divisionForm.division.workingHours'),
+                        prepareWorkingHours() {
+                            const hasTime = time => time !== null && time !== undefined && String(time).trim() !== '';
+                            const preparedHours = Object.fromEntries(
+                                Object.entries(this.workingHours).map(([day, shifts]) => {
+                                    const filledShifts = shifts.filter(shift => shift.some(hasTime));
+                                    return [day, filledShifts.length ? filledShifts : [['-1', '-1']]];
+                                })
+                            );
+
+                            this.workingHours = preparedHours;
+                            $wire.set('divisionForm.division.workingHours', preparedHours, false);
+                        },
                         init() {
                             Livewire.hook('commit', ({ succeed }) => {
                                 succeed(() => {
@@ -80,7 +93,16 @@
                         }
                     }"
                 >
-                    <form wire:submit.prevent="{{ $action }}">
+                    <form
+                        wire:submit.prevent="{{ $action }}"
+                        @submit.capture="prepareWorkingHours()"
+                        @click.capture="
+                            const method = $event.target.closest('button')?.getAttribute('wire:click');
+                            if (['store', 'create', 'update'].includes(method)) {
+                                prepareWorkingHours();
+                            }
+                        "
+                    >
 
                         @if (!in_array(strtoupper($httpMethod), ['GET', 'POST']))
                             @method($httpMethod)
@@ -534,7 +556,6 @@
                                 wire:key="division-working-hours-{{ $divisionForm->division['id'] ?? 'new' }}-{{ $divisionForm->division['status'] ?? 'DRAFT' }}"
                                 x-data="{
                                     working: false,
-                                    workingHours: $wire.entangle('divisionForm.division.workingHours'),
                                     isStoreMode: {{ $action === 'store' ? 'true' : 'false' }},
                                     init() {
                                         this.working = Object.values(this.workingHours).some(day => 
@@ -595,7 +616,7 @@
                                                         switchWorking(day) {
                                                             this.show_work = !this.show_work;
 
-                                                            this.workingHours[day] = [this.show_work ? ['00:00', '00:00'] : ['-1', '-1']];
+                                                            this.workingHours[day] = [this.show_work ? ['', ''] : ['-1', '-1']];
 
                                                             if (! this.show_work) {
                                                                 this.shift = false;
@@ -604,7 +625,7 @@
 
                                                         addAvailableShift(day) {
                                                             if (this.workingHours[day].length < 4) {
-                                                                this.workingHours[day].push(['00:00', '00:00']);
+                                                                this.workingHours[day].push(['', '']);
                                                             }
                                                         },
 
