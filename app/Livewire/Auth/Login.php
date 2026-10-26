@@ -283,6 +283,9 @@ class Login extends Component
      */
     protected function buildEHealthLoginUrl(User $user): string
     {
+        // A combined login must not reuse the role from a previous single-role attempt.
+        Session::forget('single_role_login');
+
         // Base URL and client ID
         $baseUrl = config('ehealth.api.auth_host');
         $redirectUri = config('ehealth.api.redirect_uri');

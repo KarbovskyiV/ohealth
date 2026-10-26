@@ -19,7 +19,6 @@
 
                             if (firstErrorMessage !== null) {
                                 firstErrorMessage.scrollIntoView({ block: 'center', inline: 'center' });
-                                this.isTermDisabled = false;
                             }
                         })
                     })

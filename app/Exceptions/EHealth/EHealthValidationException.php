@@ -16,7 +16,7 @@ class EHealthValidationException extends EHealthException
 {
     public function __construct(public readonly array $details)
     {
-        parent::__construct('eHealth API returned a validation error.');
+        parent::__construct(__('errors.ehealth.messages.validation_error'));
     }
 
     /**
