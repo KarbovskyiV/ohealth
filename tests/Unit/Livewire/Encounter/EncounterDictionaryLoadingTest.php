@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Livewire\Encounter;
 
-use App\Livewire\Encounter\EncounterComponent;
+use App\Livewire\EncounterPackage\EncounterPackageComponent;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\LegalEntityType;
@@ -81,7 +81,7 @@ class EncounterDictionaryLoadingTest extends TestCase
     }
 }
 
-class EncounterDictionaryLoadingHarness extends EncounterComponent
+class EncounterDictionaryLoadingHarness extends EncounterPackageComponent
 {
     public function loadInitialCustomDictionaries(): void
     {
