@@ -4,14 +4,24 @@ declare(strict_types=1);
 
 namespace App\Exceptions\EHealth;
 
+use App\Classes\eHealth\Errors\BaseErrorTranslator;
+use App\Contracts\ApiErrorTranslator;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 
 class EHealthResponseException extends EHealthException
 {
-    public function __construct(public readonly Response $response)
+    private readonly ApiErrorTranslator $errorTranslator;
+
+    /**
+     * @param  Response  $response
+     * @param  ApiErrorTranslator|null  $errorTranslator  Translator of the resource that returned the error, the base one when omitted
+     */
+    public function __construct(public readonly Response $response, ?ApiErrorTranslator $errorTranslator = null)
     {
+        $this->errorTranslator = $errorTranslator ?? new BaseErrorTranslator();
+
         $message = $this->extractErrorMessage($this->response);
         $code = $this->response->status();
         parent::__construct($message, $code);
@@ -64,6 +74,8 @@ class EHealthResponseException extends EHealthException
         $extracted = $this->response->json('error.message')
             ?? $this->response->json('details.errorMessage')
             ?? $this->response->json('description');
+
+        $flashMessage ??= is_string($extracted) ? $this->errorTranslator->translate($extracted) : null;
 
         $translationKey = \is_string($extracted) ? $this->getErrorTranslationKey($extracted) : null;
 

@@ -14,6 +14,8 @@ use App\Models\Employee\Employee as EmployeeModel;
 use App\Rules\InDictionary;
 use Illuminate\Support\Facades\Log;
 use App\Classes\eHealth\EHealthResponse;
+use App\Classes\eHealth\Errors\EquipmentErrorTranslator;
+use App\Contracts\ApiErrorTranslator;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Validator;
 use App\Classes\eHealth\EHealthRequest as Request;
@@ -113,6 +115,16 @@ class Equipment extends Request
         $this->setValidator($this->validateResponse(...));
 
         return $this->patch(self::URL . "/$uuid" . '/actions/change_availability_status', $data);
+    }
+
+    /**
+     * Get the translator of the errors the equipment resource returns.
+     *
+     * @return ApiErrorTranslator
+     */
+    protected function errorTranslator(): ApiErrorTranslator
+    {
+        return new EquipmentErrorTranslator();
     }
 
     /**

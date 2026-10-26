@@ -27,6 +27,7 @@ return [
             'load_error' => 'Не вдалося завантажити дані з БД'
         ]
     ],
+
     'ehealth' => [
         'validation_error_header' => 'eHealth відхилив запит через невірні дані. Будь ласка, виправте:',
         'messages' => [
@@ -91,6 +92,18 @@ return [
             'license_type_mismatch' => 'Тип закладу та тип ліцензії не співпадають.',
             'license_expired' => 'Ліцензія втратила чинність.',
             'no_active_primary_license' => 'Для закладу не знайдено активної основної ліцензії.',
+            'invalid_access_token' => 'Недійсний токен доступу',
+            'access_token_validation_failed' => 'У доступі відмовлено. Перевірка токена доступу не пройдена',
+            'legal_entity_not_found' => 'Юридичну особу не знайдено',
+            'division_not_found' => 'Відділення юридичної особи не знайдено',
+            'division_not_active' => 'Структурний підрозділ не активний',
+            'value_not_allowed_in_enum' => 'Недопустиме значення',
+            'employee_not_found' => 'Співробітника не знайдено',
+            'employee_user_mismatch' => 'Співробітник не відповідає користувачу',
+            'employee_not_active' => 'Співробітник не активний в системі',
+            'employee_of_another_legal_entity' => 'Працівник не належить до поточного закладу',
+            'employee_not_verified' => 'Співробітник не верифікований',
+            'device_definition_not_found' => 'Медичний виріб не знайдено',
             // Real newlines (not literal \n) so flash UI with whitespace-pre-line renders paragraphs.
             'party_not_verified' => <<<'TXT'
 Увага! Працівника не верифіковано, можливість роботи в ЕСОЗ тимчасово обмежена.
