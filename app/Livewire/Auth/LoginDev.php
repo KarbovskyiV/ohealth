@@ -77,6 +77,7 @@ class LoginDev extends Login
         setPermissionsTeamId($selectedLegalEntityId);
 
         if ($user && !$this->isSingleRoleAuth) {
+            Session::forget('single_role_login');
             $scopes = $user->getScopes();
             Session::put(config('ehealth.api.auth_ehealth'), $user->id);
         } else {
