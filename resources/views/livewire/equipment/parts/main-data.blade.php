@@ -96,7 +96,7 @@
                 name="typeMedicalDevice"
                 class="input peer"
             />
-            <label for="typeMedicalDevice" class="label"> {{ __('equipments.type_medical_device') }} </label>
+            <label for="typeMedicalDevice" class="label"> {{ __('equipments.type_medical_device') }} * </label>
 
             @error('form.type')
                 <p class="text-error">{{ $message }}</p>
