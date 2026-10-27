@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\DeviceRequest;
 
 use App\Classes\eHealth\Api\Patient\DeviceDispense as DeviceDispenseApi;
+use App\Classes\eHealth\Api\Patient\DeviceAssociation as DeviceAssociationApi;
 use App\Classes\eHealth\EHealthResponse;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Livewire\DeviceDispense\DeviceDispenses;
+use App\Livewire\DeviceAssociation\DeviceAssociationIndex;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\DeviceDispense;
 use App\Models\Person\Person;
@@ -24,6 +26,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -138,27 +141,48 @@ class DeviceDispensePatientViewTest extends TestCase
             ->call('resetFilters')->assertDontSee(__('messages.connection_exception'));
     }
 
-    public function testRepeatedSearchErrorsAreVisibleWithinTheSameSecond(): void
+    public static function messageComponents(): array
+    {
+        return [
+            'dispenses' => [DeviceDispensesForPatientViewTest::class, DeviceDispenseApi::class],
+            'associations' => [DeviceAssociationsForPatientViewTest::class, DeviceAssociationApi::class],
+        ];
+    }
+
+    #[DataProvider('messageComponents')]
+    public function testRepeatedSearchErrorsAreVisibleWithinTheSameSecond(string $componentClass, string $apiClass): void
     {
         // Freeze timestamp keys so this regression does not depend on execution speed.
         $freezeMessageKey = true;
-        Blade::precompiler(static function (string $source) use (&$freezeMessageKey): string {
+        Blade::prepareStringsForCompilationUsing(static function (string $source) use (&$freezeMessageKey): string {
             return $freezeMessageKey ? str_replace(':key="time()"', ':key="1234567890"', $source) : $source;
         });
-        $layoutPath = resource_path('views/components/layouts/patient.blade.php');
-        Blade::compile($layoutPath);
+        $viewPaths = [
+            resource_path('views/components/layouts/patient.blade.php'),
+            resource_path('views/livewire/device-dispense/device-dispenses.blade.php'),
+            resource_path('views/livewire/device-association/device-associations.blade.php'),
+        ];
+        foreach ($viewPaths as $viewPath) {
+            Blade::compile($viewPath);
+        }
 
         try {
-            $this->api->shouldReceive('getBySearchParams')->twice()
+            $api = $apiClass === DeviceDispenseApi::class ? $this->api : Mockery::mock($apiClass);
+            $this->instance($apiClass, $api);
+            $api->shouldReceive('getBySearchParams')->twice()
                 ->andThrow(new EHealthConnectionException('Timeout'));
             $message = __('messages.connection_exception');
+            Livewire::component('patient-device-message-clock-test', $componentClass);
 
-            $this->patientComponent()->call('search')->assertSee($message)
+            Livewire::test('patient-device-message-clock-test', ['legalEntity' => $this->legalEntity, 'personId' => $this->person->id])
+                ->call('search')->assertSee($message)
                 ->call('resetFilters')->assertDontSee($message)
                 ->call('search')->assertSee($message);
         } finally {
             $freezeMessageKey = false;
-            Blade::compile($layoutPath);
+            foreach ($viewPaths as $viewPath) {
+                Blade::compile($viewPath);
+            }
         }
     }
 
@@ -209,5 +233,18 @@ class DeviceDispensesForPatientViewTest extends DeviceDispenses
     protected function initializeComponent(): void
     {
         $this->dictionaries = ['device_definition_classification_type' => []];
+    }
+}
+
+class DeviceAssociationsForPatientViewTest extends DeviceAssociationIndex
+{
+    protected function initializeComponent(): void
+    {
+        $this->dictionaries = [
+            'POSITION' => [],
+            'eHealth/cancellation_reasons' => [],
+            'device_association_statuses' => [],
+            'eHealth/body_structures' => [],
+        ];
     }
 }
