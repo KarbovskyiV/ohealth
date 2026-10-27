@@ -1,33 +1,14 @@
-{{-- Medical Device Search Drawer — same structure as medication-search-drawer (no teleport). --}}
-<div
-    x-show="showMedicalDeviceSearchDrawer"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-200"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    x-cloak
-    @click="showMedicalDeviceSearchDrawer = false"
-    class="fixed top-0 right-0 h-screen w-4/5 bg-gray-900/50 pt-20"
-    style="z-index: 48"
-></div>
-
-<div
+<x-dialog-drawer
     id="medical-device-search-drawer-right"
-    x-show="showMedicalDeviceSearchDrawer"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="translate-x-full"
-    x-transition:enter-end="translate-x-0"
-    x-transition:leave="transition ease-in duration-200"
-    x-transition:leave-start="translate-x-0"
-    x-transition:leave-end="translate-x-full"
-    x-cloak
-    class="fixed top-0 right-0 h-screen overflow-y-auto bg-white p-4 pt-20 shadow-2xl dark:bg-gray-800"
-    style="z-index: 49; width: calc(80% - 30px)"
-    tabindex="-1"
+    x-model="showMedicalDeviceSearchDrawer"
+    :stopClickPropagation="true"
+    maxWidth="4/5"
+    zIndex="48"
+    customWidth="w-full sm:w-[calc(80%-30px)]"
+    overlayWidth="80%"
+    onCloseClick="showMedicalDeviceSearchDrawer = false"
 >
-    <h3 class="modal-header">{{ __('care-plan.medical_device_search') }}</h3>
+    <x-slot name="title">{{ __('care-plan.medical_device_search') }}</x-slot>
 
     @php
         $deviceProgramId = $selectedProgram ?: ($activityForm['program'] ?? '');
@@ -42,7 +23,8 @@
         </p>
     @else
         <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
-            {{ __('care-plan.program') }}: <span class="font-medium">{{ __('care-plan.without_medical_program') }}</span>
+            {{ __('care-plan.program') }}:
+            <span class="font-medium">{{ __('care-plan.without_medical_program') }}</span>
         </p>
     @endif
 
@@ -201,4 +183,4 @@
             {{ __('forms.cancel') }}
         </button>
     </div>
-</div>
+</x-dialog-drawer>

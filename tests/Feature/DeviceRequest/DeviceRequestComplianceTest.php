@@ -17,7 +17,9 @@ use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Identifier;
 use App\Models\MedicalEvents\Sql\Coding;
 use App\Models\MedicalEvents\Sql\CodeableConcept;
+use App\Repositories\MedicalEvents\PeriodRepository;
 use App\Services\MedicalEvents\DeviceRequestLifecycleService;
+use Carbon\CarbonImmutable;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
@@ -324,13 +326,15 @@ class DeviceRequestComplianceTest extends TestCase
             'class_id' => Coding::create(['code' => 'AMB', 'system' => 'eHealth/encounter_classes'])->id,
             'type_id' => CodeableConcept::create()->id, 'ehealth_inserted_at' => now(),
         ]);
-        $encounter->period()->create(['start' => $end, 'end' => $end]);
+        app(PeriodRepository::class)->sync($encounter, ['start' => $end, 'end' => $end]);
 
         return $encounter;
     }
 
-    public function test_only_own_encounter_finished_today_can_be_selected(): void
+    #[DataProvider('encounterLocalTimes')]
+    public function testOnlyOwnEncounterFinishedTodayCanBeSelected(string $localTime): void
     {
+        $this->travelTo(CarbonImmutable::parse($localTime, config('app.timezone')));
         $employee = new Employee(['uuid' => (string) Str::uuid()]);
         $encounter = $this->encounter($employee->uuid, now()->toIso8601String());
         $this->assertSame($encounter->id, app(DeviceRequestLifecycleService::class)->encounter($this->person, $employee, $encounter->uuid)->id);
@@ -338,12 +342,24 @@ class DeviceRequestComplianceTest extends TestCase
         app(DeviceRequestLifecycleService::class)->encounter($this->person, new Employee(['uuid' => (string) Str::uuid()]), $encounter->uuid);
     }
 
-    public function test_yesterdays_encounter_cannot_be_selected(): void
+    #[DataProvider('encounterLocalTimes')]
+    public function testYesterdaysEncounterCannotBeSelected(string $localTime): void
     {
+        $this->travelTo(CarbonImmutable::parse($localTime, config('app.timezone')));
         $employee = new Employee(['uuid' => (string) Str::uuid()]);
         $encounter = $this->encounter($employee->uuid, now()->subDay()->toIso8601String());
         $this->expectException(ValidationException::class);
         app(DeviceRequestLifecycleService::class)->encounter($this->person, $employee, $encounter->uuid);
+    }
+
+    public static function encounterLocalTimes(): array
+    {
+        return [
+            'daytime' => ['2026-10-27 12:30:00'],
+            'late evening' => ['2026-10-27 23:30:00'],
+            'after midnight' => ['2026-10-28 00:30:00'],
+            'summer offset' => ['2026-08-13 23:30:00'],
+        ];
     }
 
     private function preparation(array $settings = [], array $methods = [], array $model = [], array $parameters = []): array

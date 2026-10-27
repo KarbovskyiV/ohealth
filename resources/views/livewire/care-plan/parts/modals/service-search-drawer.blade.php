@@ -1,6 +1,7 @@
 <x-dialog-drawer
     id="service-search-drawer-right"
     x-model="showServiceSearchDrawer"
+    :stopClickPropagation="true"
     maxWidth="4/5"
     zIndex="44"
     onCloseClick="showServiceSearchDrawer = false"

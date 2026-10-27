@@ -10,9 +10,11 @@ use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\Relations\Party;
 use App\Models\User;
+use App\Repositories\MedicalEvents\PeriodRepository;
 use App\Services\MedicalEvents\DeviceRequestLifecycleService;
 use App\Services\MedicalEvents\MedicationRequestLifecycleService;
 use App\Services\SignatureService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +24,7 @@ use App\Services\Dictionary\Dictionaries\MedicalProgramDictionary;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\MocksBasicDictionaries;
 use Tests\TestCase;
 
@@ -267,13 +270,18 @@ class StandaloneRequestSigningTest extends TestCase
             'class_id' => \App\Models\MedicalEvents\Sql\Coding::create(['code' => 'AMB', 'system' => 'eHealth/encounter_classes'])->id,
             'type_id' => \App\Models\MedicalEvents\Sql\CodeableConcept::create()->id, 'ehealth_inserted_at' => now(),
         ]);
-        $encounter->period()->create(['start' => now()->subHour()->toIso8601String(), 'end' => now()->toIso8601String()]);
+        app(PeriodRepository::class)->sync($encounter, [
+            'start' => now()->subHour()->toIso8601String(),
+            'end' => now()->toIso8601String(),
+        ]);
 
         return $encounter;
     }
 
-    public function test_device_form_uses_local_encounter_id_and_cached_device_programs(): void
+    #[DataProvider('encounterLocalTimes')]
+    public function testDeviceFormUsesLocalEncounterIdAndCachedDevicePrograms(string $localTime): void
     {
+        $this->travelTo(CarbonImmutable::parse($localTime, config('app.timezone')));
         $employee = $this->user->employees()->firstOrFail();
         $person = \App\Models\Person\Person::create(['uuid' => (string) Str::uuid(), 'gender' => 'MALE']);
         $encounter = $this->createDeviceEncounter($person, $employee);
@@ -294,6 +302,16 @@ class StandaloneRequestSigningTest extends TestCase
             ->assertSet('request.encounter_uuid', $encounter->uuid)
             ->assertSet('programs', [$deviceProgram])
             ->assertHasNoErrors();
+    }
+
+    public static function encounterLocalTimes(): array
+    {
+        return [
+            'daytime' => ['2026-10-27 12:30:00'],
+            'late evening' => ['2026-10-27 23:30:00'],
+            'after midnight' => ['2026-10-28 00:30:00'],
+            'summer offset' => ['2026-08-13 23:30:00'],
+        ];
     }
 
     public function test_device_form_translates_and_displays_errors_at_fields_and_resets_changed_reason(): void

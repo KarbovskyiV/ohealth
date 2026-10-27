@@ -2,7 +2,9 @@
 <x-layouts.patient :showLegacyMessages="false" :personId="$personId" :patientFullName="$patientFullName">
     <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
     @if ($syncBatchId !== null)
-        <div wire:poll.3s="checkSyncStatus" class="mb-4 text-sm text-gray-600 dark:text-gray-300">{{ __('care-plan.sync_running') }}</div>
+        <div wire:poll.3s="checkSyncStatus" class="mb-4 text-sm text-gray-600 dark:text-gray-300">
+            {{ __('care-plan.sync_running') }}
+        </div>
     @endif
     <x-slot name="headerActions">
         @can('create', \App\Models\CarePlan::class)
@@ -269,75 +271,75 @@
                                         $rawStatus = is_array($plan['status']) ? ($plan['status']['coding'][0]['code'] ?? ($plan['status']['text'] ?? '')) : $plan['status'];
                                         $statusEnum = CarePlanStatus::fromStored($rawStatus);
                                     @endphp
-                                    <span class="{{ $statusEnum->color() }}">
+                                    <span class="{{ $statusEnum === CarePlanStatus::DRAFT ? 'badge-red' : $statusEnum->color() }}">
                                         {{ CarePlanStatus::labelFor($rawStatus) }}
                                     </span>
                                 </div>
                             </div>
 
                             @if (!$plan['requiresFhirImport'])
-                            <div class="record-inner-action-col">
-                                <div
-                                    x-data="{
-                                        open: false,
-                                        toggle() {
-                                            if (this.open) {
-                                                return this.close();
-                                            }
-                                            this.$refs.button.focus();
-                                            this.open = true;
-                                        },
-                                        close(focusAfter) {
-                                            if (! this.open) return;
-                                            this.open = false;
-                                            focusAfter && focusAfter.focus();
-                                        },
-                                    }"
-                                    @keydown.escape.prevent.stop="close($refs.button)"
-                                    @focusin.window="! $refs.panel.contains($event.target) && close()"
-                                    x-id="['dropdown-button']"
-                                    class="relative"
-                                >
-                                    <button
-                                        @click="toggle()"
-                                        x-ref="button"
-                                        :aria-expanded="open"
-                                        :aria-controls="$id('dropdown-button')"
-                                        type="button"
-                                        class="record-inner-action-btn cursor-pointer rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                                    >
-                                        @icon('edit-user-outline', 'w-6 h-6 text-gray-700 dark:text-gray-300')
-                                    </button>
-
+                                <div class="record-inner-action-col">
                                     <div
-                                        x-show="open"
-                                        x-cloak
-                                        x-ref="panel"
-                                        x-transition.origin.top.right
-                                        @click.outside="close($refs.button)"
-                                        :id="$id('dropdown-button')"
-                                        class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
+                                        x-data="{
+                                            open: false,
+                                            toggle() {
+                                                if (this.open) {
+                                                    return this.close();
+                                                }
+                                                this.$refs.button.focus();
+                                                this.open = true;
+                                            },
+                                            close(focusAfter) {
+                                                if (! this.open) return;
+                                                this.open = false;
+                                                focusAfter && focusAfter.focus();
+                                            },
+                                        }"
+                                        @keydown.escape.prevent.stop="close($refs.button)"
+                                        @focusin.window="! $refs.panel.contains($event.target) && close()"
+                                        x-id="['dropdown-button']"
+                                        class="relative"
                                     >
-                                        @if ($plan['status'] === CarePlanStatus::DRAFT->value)
+                                        <button
+                                            @click="toggle()"
+                                            x-ref="button"
+                                            :aria-expanded="open"
+                                            :aria-controls="$id('dropdown-button')"
+                                            type="button"
+                                            class="record-inner-action-btn cursor-pointer rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                                        >
+                                            @icon('edit-user-outline', 'w-6 h-6 text-gray-700 dark:text-gray-300')
+                                        </button>
+
+                                        <div
+                                            x-show="open"
+                                            x-cloak
+                                            x-ref="panel"
+                                            x-transition.origin.top.right
+                                            @click.outside="close($refs.button)"
+                                            :id="$id('dropdown-button')"
+                                            class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
+                                        >
+                                            @if ($plan['status'] === CarePlanStatus::DRAFT->value)
+                                                <a
+                                                    href="{{ route('care-plans.edit', [legalEntity(), $plan['id']]) }}"
+                                                    class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                >
+                                                    @icon('edit', 'w-5 h-5 text-gray-500')
+                                                    {{ __('forms.edit') ?? 'Редагувати' }}
+                                                </a>
+                                            @endif
+
                                             <a
-                                                href="{{ route('care-plans.edit', [legalEntity(), $plan['id']]) }}"
+                                                href="{{ route('care-plans.show', [legalEntity(), $plan['id']]) }}"
                                                 class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
-                                                @icon('edit', 'w-5 h-5 text-gray-500')
-                                                {{ __('forms.edit') ?? 'Редагувати' }}
+                                                @icon('eye', 'w-5 h-5 text-gray-500')
+                                                {{ __('forms.view_details') ?? 'Переглянути' }}
                                             </a>
-                                        @endif
-
-                                        <a
-                                            href="{{ route('care-plans.show', [legalEntity(), $plan['id']]) }}"
-                                            class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                        >
-                                            @icon('eye', 'w-5 h-5 text-gray-500')
-                                            {{ __('forms.view_details') ?? 'Переглянути' }}
-                                        </a>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
                             @endif
                         </div>
 

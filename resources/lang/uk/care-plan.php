@@ -119,7 +119,7 @@ return [
     'ehealth_id' => 'eHealth ID',
     'status_in_ehealth' => 'Статус в ЕСОЗ',
     'synchronize_with_ehealth' => 'Синхронізувати дані з ЕСОЗ',
-    'sign_and_send_plan' => 'Підписати та відправити План',
+    'sign_and_send_plan' => 'Підписати і створити план лікування',
     'activate_plan_patient_approval' => 'Активувати план (Дозвіл пацієнта)',
     'cancel_care_plan' => 'Скасувати план лікування',
     'complete_care_plan' => 'Завершити план лікування',
@@ -491,6 +491,7 @@ return [
     'cannot_complete_plan_open_activities' => 'Неможливо завершити план лікування: є призначення у статусі :statuses. Усі призначення мають бути завершені або скасовані. Якщо статус уже оновлено в ЕСОЗ, натисніть «Синхронізувати з ЕСОЗ».',
     'cannot_complete_plan_no_completed_activity' => 'Неможливо завершити план лікування: має бути хоча б одне завершене призначення.',
     'cannot_mutate_terminal_care_plan' => 'План лікування у статусі «:status» не можна змінювати.',
+    'cannot_grant_unregistered' => 'Щоб надати доступ, спочатку підпишіть і створіть план лікування в ЕСОЗ.',
     'cannot_grant_terminal' => 'Не можна надавати доступ до плану лікування у статусі «:status».',
     'open_doc_type' => [
         'medication_request_request' => 'нова заявка на електронний рецепт',
