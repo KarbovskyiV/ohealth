@@ -3,12 +3,23 @@
 <fieldset class="fieldset">
     <legend class="legend">{{ __('patients.patient_information') }}</legend>
 
-    {{-- Using Alpine to dynamically add and remove name groups filled in different languages --}}
+    {{-- Using Alpine to dynamically add and remove name groups filled in different languages. The name groups after
+         the first are drawn by Alpine, so they read their errors from the data attribute, read again each time the
+         component has been redrawn --}}
     <div
+        data-name-errors="{{ json_encode($errors->get('form.person.names.*')) }}"
         x-data="{
              names: $wire.entangle('form.person.names'),
              documents: $wire.entangle('form.person.documents'),
              foreignDocumentTypes: @js(config('ehealth.identity_document_types_foreign')),
+             nameErrors: {},
+             init() {
+                 this.nameErrors = JSON.parse(this.$root.dataset.nameErrors);
+                 this.$wire.$hook('morphed', () => this.nameErrors = JSON.parse(this.$root.dataset.nameErrors));
+             },
+             nameError(index, field) {
+                 return (this.nameErrors[`form.person.names.${index}.${field}`] ?? [])[0] ?? '';
+             },
              get hasForeignDocument() {
                  return (this.documents ?? []).some(document => this.foreignDocumentTypes.includes(document.type));
              }
@@ -179,9 +190,10 @@
                 </div>
 
                 <div class="form-group group">
+                    {{-- Required only along with the biometric passport --}}
                     <input
                         wire:model="form.person.unzr"
-                        required
+                        :required="(documents ?? []).some((document) => document.type === 'NATIONAL_ID')"
                         type="text"
                         name="unzr"
                         id="unzr"
@@ -220,12 +232,18 @@
                                 type="text"
                                 :id="'patientFirstName-' + index"
                                 class="input peer"
+                                :class="{ 'input-error': nameError(index, 'firstName') }"
                                 placeholder=" "
                                 required
                             />
                             <label :for="'patientFirstName-' + index" class="label">
                                 {{ __('forms.first_name') }}
                             </label>
+                            <p
+                                class="text-error"
+                                x-show="nameError(index, 'firstName')"
+                                x-text="nameError(index, 'firstName')"
+                            ></p>
                         </div>
 
                         <div
@@ -256,11 +274,17 @@
                                 type="text"
                                 :id="'patientLastName-' + index"
                                 class="input peer"
+                                :class="{ 'input-error': nameError(index, 'lastName') }"
                                 placeholder=" "
                                 :required="! name.noLastName"
                                 :disabled="name.noLastName"
                             />
                             <label :for="'patientLastName-' + index" class="label"> {{ __('forms.last_name') }} </label>
+                            <p
+                                class="text-error"
+                                x-show="nameError(index, 'lastName')"
+                                x-text="nameError(index, 'lastName')"
+                            ></p>
                         </div>
 
                         <div class="form-group group">
@@ -269,11 +293,17 @@
                                 type="text"
                                 :id="'patientSecondName-' + index"
                                 class="input peer"
+                                :class="{ 'input-error': nameError(index, 'secondName') }"
                                 placeholder=" "
                             />
                             <label :for="'patientSecondName-' + index" class="label">
                                 {{ __('forms.second_name') }}
                             </label>
+                            <p
+                                class="text-error"
+                                x-show="nameError(index, 'secondName')"
+                                x-text="nameError(index, 'secondName')"
+                            ></p>
                         </div>
 
                         <div class="form-group">
@@ -281,6 +311,7 @@
                                 x-model="name.language"
                                 :id="'nameLanguage-' + index"
                                 class="input-select peer"
+                                :class="{ 'input-error': nameError(index, 'language') }"
                                 required
                             >
                                 <option value="" selected>{{ __('forms.select') }}</option>
@@ -291,6 +322,11 @@
                             <label :for="'nameLanguage-' + index" class="label">
                                 {{ __('patients.name_language') }}
                             </label>
+                            <p
+                                class="text-error"
+                                x-show="nameError(index, 'language')"
+                                x-text="nameError(index, 'language')"
+                            ></p>
                         </div>
                     </div>
                 </div>

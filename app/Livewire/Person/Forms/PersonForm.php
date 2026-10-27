@@ -227,7 +227,12 @@ class PersonForm extends BaseForm
 
             'person.noTaxId' => ['nullable', 'boolean'],
             'person.taxId' => ['nullable', 'numeric', 'digits:10'],
-            'person.secret' => ['required', 'string', 'min:6'],
+            'person.secret' => [
+                'required',
+                'string',
+                'min:6',
+                'regex:/^(?!.*[ЫЪЭЁыъэё@%&$^#])[a-zA-ZА-ЯҐЇІЄа-яґїіє0-9№"!\^*)\]\[(._-].*$/u'
+            ],
             'person.email' => [
                 'nullable',
                 'email:filter',
@@ -303,7 +308,7 @@ class PersonForm extends BaseForm
         $this->addNamesLastNameValidation($rules);
         $this->addNamesAlphabetValidation($rules);
         $this->addEmergencyContactNameValidation($rules);
-        $this->validateNamesLanguagePresence();
+        $this->addNamesLanguagePresenceValidation($rules);
 
         if (!empty($this->person['documents'])) {
             // Must run first: it is the only one that covers every document, and validated() rebuilds the
@@ -617,6 +622,18 @@ class PersonForm extends BaseForm
             }
         }
 
+        // A patient may have names in several languages, so each name field carries the language it is written in
+        $languages = dictionary()->basics()->byName('LANGUAGE', false)->asCodeDescription();
+
+        foreach ($this->person['names'] ?? [] as $index => $name) {
+            $language = mb_strtolower((string) $languages->get($name['language'] ?? ''));
+
+            foreach (['firstName', 'lastName', 'secondName'] as $field) {
+                $fieldName = __("validation.attributes.person.$field");
+                $attributes["person.names.$index.$field"] = $language === '' ? $fieldName : "$fieldName ($language)";
+            }
+        }
+
         $documentTypes = dictionary()->basics()->byName('DOCUMENT_TYPE', false)->asCodeDescription();
 
         foreach ($this->person['documents'] ?? [] as $index => $document) {
@@ -638,6 +655,7 @@ class PersonForm extends BaseForm
             'person.unzr.required' => __('validation.custom.person.unzr_required_for_national_id'),
             'person.unzr.prohibited' => __('validation.custom.person.unzr_prohibited_for_foreign'),
             'person.taxId.unique' => __('validation.custom.person.tax_id_already_used'),
+            'person.secret.regex' => __('validation.custom.person.secret_format'),
             'person.documents.*.issuedAt.after_or_equal' => __('validation.custom.person.issued_at_before_birth_date'),
             'person.confidantPerson.documentsRelationship.*.issuedAt.after_or_equal' => __(
                 'validation.custom.person.issued_at_before_birth_date'
@@ -1168,35 +1186,37 @@ class PersonForm extends BaseForm
 
     /**
      * A names entry with language 'en' is required for foreign documents, and an entry with 'uk' for non-foreign
-     * documents or when a foreign document is accompanied by a tax_id.
+     * documents or when a foreign document is accompanied by a tax_id. Checked as a rule of the names list, so that
+     * the errors of the name fields themselves are reported along with it.
      *
+     * @param  array  $rules
      * @return void
      */
-    private function validateNamesLanguagePresence(): void
+    private function addNamesLanguagePresenceValidation(array &$rules): void
     {
-        $foreignTypes = config('ehealth.identity_document_types_foreign');
-        $submittedTypes = array_column($this->person['documents'] ?? [], 'type');
-        $hasForeignDocument = (bool)array_intersect($submittedTypes, $foreignTypes);
+        $rules['person.names'][] = function (string $attribute, mixed $value, Closure $fail): void {
+            $foreignTypes = config('ehealth.identity_document_types_foreign');
+            $submittedTypes = array_column($this->person['documents'] ?? [], 'type');
+            $hasForeignDocument = (bool)array_intersect($submittedTypes, $foreignTypes);
 
-        $languages = array_column($this->person['names'] ?? [], 'language');
+            $languages = array_column($this->person['names'] ?? [], 'language');
 
-        if ($hasForeignDocument && !in_array('en', $languages, true)) {
-            throw ValidationException::withMessages([
-                'person.names' => __('validation.custom.person.names_en_required_for_foreign')
-            ]);
-        }
+            if ($hasForeignDocument && !in_array('en', $languages, true)) {
+                $fail(__('validation.custom.person.names_en_required_for_foreign'));
 
-        if (!$hasForeignDocument && !in_array('uk', $languages, true)) {
-            throw ValidationException::withMessages([
-                'person.names' => __('validation.custom.person.names_uk_required')
-            ]);
-        }
+                return;
+            }
 
-        if ($hasForeignDocument && !empty($this->person['taxId']) && !in_array('uk', $languages, true)) {
-            throw ValidationException::withMessages([
-                'person.names' => __('validation.custom.person.names_uk_required_with_tax_id')
-            ]);
-        }
+            if (!$hasForeignDocument && !in_array('uk', $languages, true)) {
+                $fail(__('validation.custom.person.names_uk_required'));
+
+                return;
+            }
+
+            if ($hasForeignDocument && !empty($this->person['taxId']) && !in_array('uk', $languages, true)) {
+                $fail(__('validation.custom.person.names_uk_required_with_tax_id'));
+            }
+        };
     }
 
     /**
