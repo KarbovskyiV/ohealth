@@ -25,11 +25,13 @@ class LegalEntity extends Request
      * @return PromiseInterface|EHealthResponse
      * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
      */
-    public function getDetails(string $url = self::URL): PromiseInterface|EHealthResponse
+    public function getDetails(string $url = self::URL, ?string $uuid = null): PromiseInterface|EHealthResponse
     {
+        $uuid ??= legalEntity()->uuid;
+
         $this->setValidator($this->validateResponse(...));
 
-        return $this->get($url . '/' . legalEntity()->uuid);
+        return $this->get($url . '/' . $uuid);
     }
 
     /**
@@ -53,6 +55,18 @@ class LegalEntity extends Request
         );
 
         return $this->get(self::LEGATORS_URL . '/' . $uuid . '/related', $mergedQuery);
+    }
+
+    /**
+     * Terminate the current user's authenticated eHealth session.
+     *
+     * @return PromiseInterface|EHealthResponse
+     *
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     */
+    public function logout(): PromiseInterface|EHealthResponse
+    {
+        return $this->post(config('ehealth.api.oauth.logout'));
     }
 
     protected function validateLegatorsResponse(EHealthResponse $response): array

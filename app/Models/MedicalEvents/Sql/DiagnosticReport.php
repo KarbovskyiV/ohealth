@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models\MedicalEvents\Sql;
 
+use App\Enums\Person\EncounterStatus;
 use App\Casts\EHealthTimestampCast;
+use App\Contracts\SubmittedToEHealth;
 use App\Enums\Person\DiagnosticReportStatus;
+use App\Models\EhealthLink;
+use App\Models\LegalEntity;
 use App\Models\Person\Person;
 use App\Models\Preperson;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -18,9 +23,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
-class DiagnosticReport extends Model
+class DiagnosticReport extends Model implements SubmittedToEHealth
 {
     use HasCamelCasing;
 
@@ -145,9 +151,24 @@ class DiagnosticReport extends Model
         );
     }
 
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
+    }
+
     public function preperson(): BelongsTo
     {
         return $this->belongsTo(Preperson::class);
+    }
+
+    /**
+     * eHealth jobs the signed report was submitted with, the latest one telling how the last submission went.
+     *
+     * @return MorphMany
+     */
+    public function ehealthLinks(): MorphMany
+    {
+        return $this->morphMany(EhealthLink::class, 'linkable');
     }
 
     public function basedOn(): BelongsTo
@@ -261,6 +282,26 @@ class DiagnosticReport extends Model
     }
 
     /**
+     * Leave out the records of an encounter package eHealth has not accepted yet, which is still a draft, including the
+     * draft encounters of the persons and prepersons merged into a person.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function notInDraftEncounter(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->whereDoesntHave(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::readableFor($patient, true)->whereStatus(EncounterStatus::DRAFT)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
      * Filter diagnostic reports managed by the current legal entity.
      *
      * ABAC rule 10.
@@ -269,7 +310,7 @@ class DiagnosticReport extends Model
      * @return Builder
      */
     #[Scope]
-    protected function forLegalEntity(Builder $query): Builder
+    protected function managedByLegalEntity(Builder $query): Builder
     {
         return $query->whereHas(
             'managingOrganization',
@@ -278,9 +319,82 @@ class DiagnosticReport extends Model
     }
 
     /**
+     * Filter the patient's diagnostic reports of the current legal entity: the managing organization of the episode
+     * of the report's encounter or of the report itself is the current legal entity.
+     *
+     * ABAC rule 2.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function forLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->where(
+            static fn (Builder $report): Builder => $report
+                ->whereHas(
+                    'encounter',
+                    static fn (Builder $identifier): Builder => $identifier->whereIn(
+                        'value',
+                        Encounter::forLegalEntity($patient)->pluck('uuid')
+                    )
+                )
+                ->orWhereHas(
+                    'managingOrganization',
+                    static fn (Builder $identifier): Builder => $identifier->whereValue(legalEntity()->uuid)
+                )
+        );
+    }
+
+    /**
+     * Filter the patient's diagnostic reports created within an encounter whose episode is managed by the current
+     * legal entity.
+     *
+     * ABAC rule 3.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEpisodeOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::inEpisodeOfLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's diagnostic reports created within an encounter originated by an episode managed by the
+     * current legal entity.
+     *
+     * ABAC rule 8.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEncounterOriginatedInLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::originatedInLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
      * Filter the patient's diagnostic reports originated by an episode managed by the current legal entity.
      *
-     * ABAC rule 7.
+     * ABAC rule 6.
      *
      * @param  Builder  $query
      * @param  Person|Preperson  $patient
@@ -293,7 +407,57 @@ class DiagnosticReport extends Model
             'originEpisode',
             static fn (Builder $identifier): Builder => $identifier->whereIn(
                 'value',
-                Episode::forPatient($patient)->forLegalEntity()->pluck('uuid')
+                Episode::forPatient($patient)->managedByLegalEntity()->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's diagnostic reports based on a referral issued under a care plan one of the user's employees
+     * has an active read approval on.
+     *
+     * ABAC rule 14.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  User  $user
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function basedOnApprovedCarePlan(
+        Builder $query,
+        Person|Preperson $patient,
+        User $user,
+        LegalEntity $legalEntity
+    ): Builder {
+        return $query->forPatient($patient)->whereHas(
+            'basedOn',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnApprovedCarePlan($patient, $user, $legalEntity)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's diagnostic reports based on a referral issued under a care plan managed by the current
+     * legal entity.
+     *
+     * ABAC rule 17.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function basedOnCarePlanOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'basedOn',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnCarePlanOfLegalEntity($patient)->pluck('uuid')
             )
         );
     }
@@ -301,7 +465,8 @@ class DiagnosticReport extends Model
     /**
      * Diagnostic reports of the patient the user may read: with access to all the patient's data (an active
      * declaration or approval) all of them, including the ones of the persons and prepersons merged into a person,
-     * otherwise only the patient's own ones managed by the current legal entity or originated by its episode.
+     * otherwise only the patient's own ones of the current legal entity, originated by its episode or created within
+     * an encounter originated by its episode.
      *
      * @param  Builder  $query
      * @param  Person|Preperson  $patient
@@ -317,14 +482,18 @@ class DiagnosticReport extends Model
                 : $query->forPatient($patient);
         }
 
-        return $query->forPatient($patient)->where(
-            static fn (Builder $report): Builder => $report->forLegalEntity()
+        return $query->where(
+            static fn (Builder $report): Builder => $report->forLegalEntity($patient)
                 ->orWhere(static fn (Builder $originated): Builder => $originated->originatedInLegalEntity($patient))
+                ->orWhere(
+                    static fn (Builder $originated): Builder => $originated->inEncounterOriginatedInLegalEntity($patient)
+                )
         );
     }
 
     /**
-     * Order by most recently updated in eHealth first, keeping records without a timestamp last.
+     * Order by most recently updated in eHealth first, keeping records without a timestamp last. Drafts lead the list,
+     * by their local update time, as they are not in eHealth yet.
      *
      * @param  Builder  $query
      * @return Builder
@@ -332,8 +501,10 @@ class DiagnosticReport extends Model
     #[Scope]
     protected function recentlyUpdatedFirst(Builder $query): Builder
     {
-        return $query->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
-            ->orderByDesc('ehealth_updated_at');
+        return $query->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [DiagnosticReportStatus::DRAFT->value])
+            ->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('ehealth_updated_at')
+            ->orderByDesc('updated_at');
     }
 
     /**

@@ -10,9 +10,9 @@
                             {{ __('dictionaries.program_label') }}
                         </label>
                         <select
-                            wire:model="selectedProgram"
+                            wire:model="filterMedicalProgramId"
                             id="programSelect"
-                            class="input-select @error('selectedProgram') input-error @enderror"
+                            class="input-select @error('filterMedicalProgramId') input-error @enderror"
                         >
                             <option value="" selected>{{ __('forms.select') }}</option>
                             @foreach ($programs as $program)
@@ -20,7 +20,7 @@
                             @endforeach
                         </select>
 
-                        @error('selectedProgram')
+                        @error('filterMedicalProgramId')
                             <p class="text-error">{{ $message }}</p>
                         @enderror
                     </div>
@@ -39,7 +39,7 @@
                                 id="drugSearch"
                                 class="input w-full ps-9"
                                 placeholder="{{ __('dictionaries.drug_list.name') }}"
-                                wire:model="innmDosageName"
+                                wire:model="filterInnmDosageName"
                                 autocomplete="off"
                             />
                         </div>
@@ -70,52 +70,52 @@
                 <div x-cloak x-show="showFilter" x-transition class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div class="form-group group">
                         <input
-                            wire:model="innmName"
+                            wire:model="filterInnmName"
                             type="text"
                             id="innmName"
                             class="input peer"
                             placeholder=" "
                             autocomplete="off"
                         />
-                        <label for="innmName" class="label peer-valid:text-blue-600 peer-focus:text-blue-600">
-                            {{ __('dictionaries.drug_list.inn_name') }}
-                        </label>
+                        <label for="innmName" class="label"> {{ __('dictionaries.drug_list.inn_name') }} </label>
                     </div>
 
                     <div class="form-group group">
-                        <select wire:model="innmDosageForm" id="innmDosageForm" class="peer input-select w-full">
+                        <select wire:model="filterInnmDosageForm" id="innmDosageForm" class="peer input-select w-full">
                             <option value="" selected>{{ __('forms.select') }}</option>
                             @foreach ($this->dictionaries['MEDICATION_FORM'] as $key => $value)
                                 <option value="{{ $key }}">{{ $value }}</option>
                             @endforeach
                         </select>
-                        <label for="innmDosageForm" class="label peer-valid:text-blue-600 peer-focus:text-blue-600">
+                        <label for="innmDosageForm" class="label">
                             {{ __('dictionaries.drug_list.dosage_form') }}
                         </label>
                     </div>
 
                     <div class="form-group group">
-                        <select wire:model="medicationCodeAtc" id="medicationCodeAtc" class="peer input-select w-full">
+                        <select
+                            wire:model="filterMedicationCodeAtc"
+                            id="medicationCodeAtc"
+                            class="peer input-select w-full"
+                        >
                             <option value="" selected>{{ __('forms.select') }}</option>
                             @foreach (config('ehealth.medications_atc_code') as $code)
                                 <option value="{{ $code }}">{{ $code }}</option>
                             @endforeach
                         </select>
-                        <label for="medicationCodeAtc" class="label peer-valid:text-blue-600 peer-focus:text-blue-600">
+                        <label for="medicationCodeAtc" class="label">
                             {{ __('dictionaries.drug_list.medication_code_atc') }}
                         </label>
                     </div>
 
                     <div class="form-group group">
-                        <select wire:model="mrBlankType" id="mrBlankType" class="peer input-select w-full">
+                        <select wire:model="filterMrBlankType" id="mrBlankType" class="peer input-select w-full">
                             <option value="" selected>{{ __('forms.select') }}</option>
                             @foreach ($this->dictionaries['MR_BLANK_TYPES'] as $key => $value)
                                 <option value="{{ $key }}">{{ $value }}</option>
                             @endforeach
                         </select>
-                        <label for="mrBlankType" class="label peer-valid:text-blue-600 peer-focus:text-blue-600">
-                            {{ __('dictionaries.mr_blank_type') }}
-                        </label>
+                        <label for="mrBlankType" class="label"> {{ __('dictionaries.mr_blank_type') }} </label>
                     </div>
                 </div>
             </div>

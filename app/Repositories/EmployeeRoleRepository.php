@@ -31,7 +31,7 @@ class EmployeeRoleRepository
      */
     public function update(EmployeeRole $employeeRole, array $data): void
     {
-        $forUpdate = Arr::only($data, ['status', 'end_date', 'ehealth_updated_at', 'ehealth_updated_by']);
+        $forUpdate = Arr::only($data, ['status', 'is_active', 'end_date', 'ehealth_updated_at', 'ehealth_updated_by']);
         $employeeRole->update($forUpdate);
     }
 

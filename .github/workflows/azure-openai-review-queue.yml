@@ -1,0 +1,46 @@
+name: Azure review queue
+run-name: 'Azure review queue · ${{ github.event_name }} · ${{ github.event.workflow_run.id || github.event.issue.number }}'
+
+on:
+  workflow_run:
+    workflows: [Domain tests]
+    types: [completed]
+  issues:
+    types: [edited]
+
+permissions: {}
+
+concurrency:
+  group: azure-queue-${{ github.event_name }}-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch || github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  queue:
+    # Both supported events use this job; there is no mutually exclusive review job to skip.
+    if: github.repository == 'openhealths/nationHealth' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+      issues: read
+    steps:
+      - name: Load the trusted CI gate from main
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Verify current CI and queue eligible PRs without Azure access
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        shell: bash
+        run: |
+          case "$GITHUB_EVENT_NAME" in
+            workflow_run) php .github/scripts/azure-ci-gate.php --queue ;;
+            issues) php .github/scripts/azure-ci-gate.php --issue ;;
+            *) exit 1 ;;
+          esac

@@ -28,13 +28,13 @@ class OwnerNewReplace
         $legalEntityId = $event->legalEntity->id;
 
         // This need to be user with roles and permissions loaded
-        setPermissionsTeamId($event->legalEntity->id);
+        setPermissionsTeamId($legalEntityId);
 
         Auth::shouldUse($event->guard);
 
         $user = $event->user->load('roles', 'permissions', 'party');
 
-        $role = session('first_login_role');
+        $role = session('single_role_login');
 
         if ($role !== Role::OWNER->value) {
             return;

@@ -16,8 +16,10 @@ use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\ProcedureSync;
 use App\Livewire\Person\Records\BasePatientComponent;
 use App\Livewire\Procedure\Forms\ProcedureCancellationForm as Form;
+use App\Models\Declaration;
 use App\Models\Equipment;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Identifier;
 use App\Models\MedicalEvents\Sql\Procedure;
@@ -135,6 +137,19 @@ class ProcedureIndex extends BasePatientComponent
     }
 
     /**
+     * Whether the user has access to all the patient's procedures: an active declaration (ABAC rule 1) or an active
+     * approval on the patient's data (ABAC rule 4).
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function hasPatientAccess(): bool
+    {
+        return Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            || Approval::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists();
+    }
+
+    /**
      * Narrow the service list down to the picked category and drop the service that no longer belongs to it.
      *
      * @return void
@@ -202,7 +217,7 @@ class ProcedureIndex extends BasePatientComponent
         try {
             $response = EHealth::procedure()->getBySearchParams(
                 $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
+                $this->hasPatientAccess ? [] : ['managing_organization_id' => legalEntity()->uuid]
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing procedure');
@@ -243,7 +258,7 @@ class ProcedureIndex extends BasePatientComponent
         if ($this->prepersonId !== null) {
             $this->redirectRoute(
                 'prepersons.procedure.view',
-                [legalEntity(), 'preperson' => $this->prepersonId, 'procedureId' => $procedure->id],
+                [legalEntity(), 'preperson' => $this->prepersonId, 'procedure' => $procedure->id],
                 navigate: true
             );
 
@@ -252,7 +267,7 @@ class ProcedureIndex extends BasePatientComponent
 
         $this->redirectRoute(
             'procedure.view',
-            [legalEntity(), 'person' => $this->personId, 'procedureId' => $procedure->id],
+            [legalEntity(), 'person' => $this->personId, 'procedure' => $procedure->id],
             navigate: true
         );
     }
@@ -493,7 +508,8 @@ class ProcedureIndex extends BasePatientComponent
      */
     protected function paginateLocalProcedures(): LengthAwarePaginator
     {
-        $paginator = Procedure::forPatient($this->patient())
+        $paginator = Procedure::readableFor($this->patient(), $this->hasPatientAccess)
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->latest()
             ->paginate(config('pagination.per_page'));
@@ -682,7 +698,7 @@ class ProcedureIndex extends BasePatientComponent
             'used_reference_id' => $this->filterUsedReferenceId ?: null,
             'based_on' => $this->filterBasedOn ?: null,
             'code' => $this->filterCode ?: null,
-            'managing_organization_id' => legalEntity()->uuid,
+            'managing_organization_id' => $this->hasPatientAccess ? null : legalEntity()->uuid,
             'encounter_id' => $this->filterEncounterId ?: null,
             'origin_episode_id' => $this->filterOriginEpisodeId ?: null,
             'device_id' => $this->filterDeviceId ?: null,
@@ -695,7 +711,11 @@ class ProcedureIndex extends BasePatientComponent
     {
         return [
             'filterCategory' => ['nullable', 'string', 'max:255'],
-            'filterStatus' => ['nullable', Rule::in(ProcedureStatus::values())],
+            'filterStatus' => [
+                'nullable',
+                Rule::in(ProcedureStatus::values()),
+                Rule::notIn([ProcedureStatus::DRAFT->value])
+            ],
             'filterEpisodeId' => ['nullable', 'uuid'],
             'filterUsedReferenceId' => ['nullable', 'uuid'],
             'filterBasedOn' => ['nullable', 'uuid'],

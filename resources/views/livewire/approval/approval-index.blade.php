@@ -2,6 +2,7 @@
 @use(App\Models\Person\Person)
 
 <div>
+    <livewire:components.x-message :key="time()" />
     <x-header-navigation class="items-start" x-data="{ showFilter: false }"
         :breadcrumbs="[
             ['label' => __('forms.home'), 'url' => route('dashboard', [legalEntity()])],

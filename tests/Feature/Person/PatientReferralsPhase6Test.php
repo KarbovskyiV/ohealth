@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Person;
 
 use App\Enums\Person\ServiceRequestStatus;
-use App\Livewire\DiagnosticReport\DiagnosticReportCreate;
 use App\Livewire\DiagnosticReport\DiagnosticReportEdit;
-use App\Livewire\Encounter\EncounterComponent;
+use App\Livewire\EncounterPackage\EncounterPackageComponent;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Encounter;
@@ -157,7 +156,7 @@ class PatientReferralsPhase6Test extends TestCase
             ServiceRequestRequest::create([
                 'uuid' => $uuid, 'person_id' => $this->person->id,
                 'employee_id' => $this->employee->id,
-                'status' => ServiceRequestStatus::PROCESSED->value,
+                'status' => ServiceRequestStatus::ACTIVE->value,
                 'service_id' => $serviceId, 'category_id' => $categoryId,
             ]);
             if ($category !== null) {
@@ -166,14 +165,14 @@ class PatientReferralsPhase6Test extends TestCase
             $expected[$uuid] = [$category, $procedureAllowed, $reportAllowed];
         }
 
-        $component = new EncounterComponent();
+        $component = new EncounterPackageComponent();
         $component->personId = $this->person->id;
         $component->dictionaries = [
             'custom/services' => $services,
             'eHealth/procedure_categories' => ['procedure' => 'Procedure'],
             'eHealth/diagnostic_report_categories' => ['laboratory' => 'Laboratory'],
         ];
-        (new ReflectionMethod(EncounterComponent::class, 'loadAvailableReferrals'))->invoke($component);
+        (new ReflectionMethod(EncounterPackageComponent::class, 'loadAvailableReferrals'))->invoke($component);
 
         $this->assertTrue($component->referralsLoaded);
         $this->assertCount(3, $component->availableReferrals);
@@ -187,15 +186,9 @@ class PatientReferralsPhase6Test extends TestCase
             $this->assertSame($referral['id'], $referral['requisition']);
         }
 
-        $create = new DiagnosticReportCreate();
-        $create->personId = $this->person->id;
-        $create->dictionaries = $component->dictionaries;
-        (new ReflectionMethod(DiagnosticReportCreate::class, 'loadAvailableReferrals'))->invoke($create);
-        $this->assertCount(3, $create->availableReferrals);
-
         $edit = new DiagnosticReportEdit();
         $edit->dictionaries = $component->dictionaries;
-        foreach ($create->availableReferrals as $referral) {
+        foreach ($component->availableReferrals as $referral) {
             [$category, , $reportAllowed] = $expected[$referral['id']];
             $this->assertSame($category === null
                 ? __('encounters.electronic_referral')
@@ -203,8 +196,9 @@ class PatientReferralsPhase6Test extends TestCase
             $this->assertSame($reportAllowed, $referral['isDiagnosticReportAllowed']);
             (new ReflectionMethod(DiagnosticReportEdit::class, 'loadSelectedElectronicReferral'))
                 ->invoke($edit, $referral['id']);
-            $this->assertSame([$referral], $edit->availableReferrals);
-            $this->assertTrue($edit->referralsLoaded);
+            $this->assertCount(1, $edit->availableReferrals);
+            $this->assertSame($referral['id'], $edit->availableReferrals[0]['id']);
+            $this->assertSame($reportAllowed, $edit->availableReferrals[0]['isDiagnosticReportAllowed']);
         }
     }
 

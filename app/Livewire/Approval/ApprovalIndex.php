@@ -9,16 +9,26 @@ use App\Core\Arr;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Models\CarePlan;
+use App\Models\LegalEntity;
+use App\Models\User;
 use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\Person\Person;
+use App\Enums\JobStatus;
+use App\Notifications\SyncNotification;
 use App\Repositories\MedicalEvents\Repository;
 use App\Traits\LogsExceptions;
+use App\Traits\BatchLegalEntityQueries;
+use App\Jobs\ApprovalSync;
+use Illuminate\Bus\Batch;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -29,6 +39,7 @@ class ApprovalIndex extends Component
 {
     use LogsExceptions;
     use WithPagination;
+    use BatchLegalEntityQueries;
 
     public array $patients = [];
     public array $employees = [];
@@ -83,48 +94,132 @@ class ApprovalIndex extends Component
 
     public function sync(): void
     {
+        if (!Auth::user()->can('sync', Approval::class)) {
+            return;
+        }
+
         $this->validateOnly('filterPatientId', $this->filterValidationRules());
-        $patient = Person::query()->where('uuid', $this->filterPatientId)->firstOrFail();
+
+        $patient = Person::query()
+            ->where('uuid', $this->filterPatientId)
+            ->firstOrFail();
+
         $employeeUuid = Auth::user()->activeDoctorEmployee()->uuid;
-        $page = 1;
 
-        do {
-            try {
-                $response = EHealth::approval()->getPatientApprovals($patient->uuid, [
-                    'granted_to' => $employeeUuid,
-                    'page' => $page,
-                    'page_size' => config('pagination.per_page'),
-                ]);
-                $approvals = [];
-                foreach ($response->getData() as $approval) {
-                    if (data_get($approval, 'granted_to.identifier.value') === $employeeUuid) {
-                        $approvals[] = EHealth::approval()->getApprovalDetails($patient->uuid, $approval['id'])->getData();
-                    }
+        $batchName = ApprovalSync::BATCH_NAME . '_' . $patient->uuid;
+
+        $running = $this->findRunningBatchesByLegalEntity(legalEntity()->id)
+            ->contains('name', $batchName);
+
+        if ($running) {
+            Session::flash('error', __('approval.messages.sync_already_running'));
+
+            return;
+        }
+
+        try {
+            $response = EHealth::approval()->getPatientApprovals($patient->uuid, [
+                'granted_to' => $employeeUuid,
+                'page' => 1,
+                'page_size' => config('pagination.per_page'),
+            ]);
+
+            $approvals = [];
+
+            foreach ($response->validate() as $approval) {
+                if (data_get($approval, 'granted_to.identifier.value') !== $employeeUuid) {
+                    continue;
                 }
-            } catch (EHealthException|EHealthConnectionException $exception) {
-                $exception->handle('Error while synchronizing approvals');
 
-                return;
+                $approvals[] = EHealth::approval()
+                    ->getApprovalDetails($patient->uuid, $approval['id'])
+                    ->validate();
             }
 
+            Repository::approval()->syncMany($patient, $approvals);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error while synchronizing approvals');
+
+            return;
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Error while synchronizing approvals');
+
+            return;
+        }
+
+        if ($response->isNotLast()) {
+            $user = Auth::user();
+            $userId = $user->id;
+            $legalEntityId = legalEntity()->id;
+            $patientUuid = $patient->uuid;
+
             try {
-                foreach ($approvals as $approval) {
-                    $existing = Approval::query()->where('uuid', $approval['id'])->first();
-                    Repository::approval()->sync($approval, $existing?->approvable ?? $patient, $existing);
-                }
+                Bus::batch([new ApprovalSync(legalEntity(), page: 2)])
+                    ->withOption('legal_entity_id', $legalEntityId)
+                    ->withOption('token', Crypt::encryptString(
+                        Session::get(config('ehealth.api.oauth.bearer_token'))
+                    ))
+                    ->withOption('user', $user)
+                    ->withOption('patient_uuid', $patientUuid)
+                    ->withOption('person_id', $patient->id)
+                    ->withOption('employee_uuid', $employeeUuid)
+                    ->withOption('sync_entity', LegalEntity::ENTITY_APPROVAL)
+                    ->catch(static function (Batch $batch, Throwable $exception) use (
+                        $userId,
+                        $patientUuid
+                    ): void {
+                        Log::error('Approval sync batch failed', [
+                            'batch_id' => $batch->id,
+                            'patient_uuid' => $patientUuid,
+                            'exception' => $exception,
+                        ]);
+
+                        User::find($userId)?->notify(
+                            new SyncNotification('approval', 'failed')
+                        );
+                    })
+                    ->onQueue('sync')
+                    ->name(ApprovalSync::BATCH_NAME . '_' . $patientUuid)
+                    ->dispatch();
+
+                legalEntity()->setEntityStatus(
+                    JobStatus::PROCESSING,
+                    LegalEntity::ENTITY_APPROVAL
+                );
+
+                $user->notify(new SyncNotification('approval', 'started'));
+
+                Session::flash('success', __('approval.sync_started'));
             } catch (Throwable $exception) {
-                $this->handleDatabaseErrors($exception, 'Error while synchronizing approvals');
+                $this->handleDatabaseErrors(
+                    $exception,
+                    'Error while dispatching ApprovalSync'
+                );
 
                 return;
             }
+        } else {
+            legalEntity()->setEntityStatus(
+                JobStatus::COMPLETED,
+                LegalEntity::ENTITY_APPROVAL
+            );
 
-            $page++;
-        } while ($page <= $response->getPaging()['total_pages']);
+            Session::flash('success', __('patients.sync_success'));
+        }
 
         $this->loadFilterOptions();
-        $this->reset(['filterGrantedTo', 'filterGrantedResources', 'filterGrantedResourceType', 'filterIsVerified', 'filterIsExpired', 'filterReason', 'filterAccessLevel']);
+
+        $this->reset([
+            'filterGrantedTo',
+            'filterGrantedResources',
+            'filterGrantedResourceType',
+            'filterIsVerified',
+            'filterIsExpired',
+            'filterReason',
+            'filterAccessLevel',
+        ]);
+
         $this->search();
-        $this->dispatch('flashMessage', ['message' => __('patients.sync_success'), 'type' => 'success']);
     }
 
     public function resetFilters(): void
@@ -159,7 +254,7 @@ class ApprovalIndex extends Component
 
         try {
             $response = EHealth::approval()->getPatientApprovals($this->filterPatientId, $this->buildSearchParams());
-            $approvals = Arr::toCamelCase($response->getData());
+            $approvals = Arr::toCamelCase($response->validate());
             $total = $response->getPaging()['total_entries'];
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while loading approvals');
@@ -188,7 +283,7 @@ class ApprovalIndex extends Component
         $this->reasons = $approvals->pluck('reason')->filter()->map(static fn ($reason): array => ['uuid' => $reason->value, 'name' => $reason->displayValue ?: $reason->value])
             ->unique('uuid')->sortBy('name')->values()->all();
         $this->resourceTypes = collect(__('approval.resource_types'))->map(static fn ($name, $code): array => ['code' => $code, 'name' => $name])->values()->all();
-        $this->booleanOptions = [['code' => 'true', 'name' => __('approval.yes')], ['code' => 'false', 'name' => __('approval.no')]];
+        $this->booleanOptions = [['code' => 'true', 'name' => __('forms.yes')], ['code' => 'false', 'name' => __('forms.no')]];
         $this->accessLevels = [['code' => 'read', 'name' => __('patients.read')], ['code' => 'write', 'name' => __('patients.write')]];
     }
 

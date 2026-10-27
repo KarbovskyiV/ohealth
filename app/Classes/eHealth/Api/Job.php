@@ -10,6 +10,9 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use GuzzleHttp\Promise\PromiseInterface;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class Job extends Request
 {
@@ -27,6 +30,8 @@ class Job extends Request
      */
     public function getDetails(string $uuid, array $query = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateDetails(...));
+
         return $this->get(self::URL . "/$uuid", $query);
     }
 
@@ -42,5 +47,32 @@ class Job extends Request
     public function getDetailsByHref(string $href, array $query = []): PromiseInterface|EHealthResponse
     {
         return $this->get($href, $query);
+    }
+
+    /**
+     * Validate the async job processing details from eHealth API.
+     *
+     * @param  EHealthResponse  $response
+     * @return array
+     * @throws ValidationException
+     */
+    protected function validateDetails(EHealthResponse $response): array
+    {
+        $validator = Validator::make($response->getData(), [
+            'id' => ['nullable', 'string'],
+            'status' => ['required', 'string'],
+            'status_code' => ['nullable', 'integer'],
+            'eta' => ['nullable', 'string'],
+            'error' => ['nullable'],
+            'links' => ['nullable', 'array'],
+            'links.*.entity' => ['required', 'string'],
+            'links.*.href' => ['required', 'string']
+        ]);
+
+        if ($validator->fails()) {
+            Log::channel('e_health_errors')->error('Job details validation failed: ' . implode(', ', $validator->errors()->all()));
+        }
+
+        return $validator->validate();
     }
 }

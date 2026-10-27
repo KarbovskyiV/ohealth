@@ -15,7 +15,7 @@
                 class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
             >
                 @icon('plus', 'w-4 h-4')
-                {{ __('encounters.new') }}
+                {{ __('diagnostic-reports.new') }}
             </a>
         @endcan
 
@@ -124,7 +124,7 @@
                             <button
                                 type="button"
                                 @click="openGroupActions = false"
-                                class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                class="dropdown-button flex! w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                             >
                                 <span class="text-gray-500">
                                     @icon('close', 'w-4 h-4')
@@ -177,12 +177,15 @@
                                     }
                                 "
                                 type="text"
+                                id="filterIssuedRange"
                                 class="daterangepicker-uk with-leading-icon input peer w-full"
                                 placeholder=" "
                                 autocomplete="off"
                             />
 
-                            <label class="wrapped-label"> {{ __('forms.filter_date_range') }} </label>
+                            <label for="filterIssuedRange" class="wrapped-label">
+                                {{ __('forms.filter_date_range') }}
+                            </label>
                         </div>
                     </div>
 
@@ -230,6 +233,16 @@
                         bindValue="uuid"
                         bindParam="name"
                         :label="__('diagnostic-reports.encounter_id')"
+                    />
+                </div>
+
+                <div class="form-row-3 mb-9">
+                    <x-forms.combobox
+                        :options="$managingOrganizations"
+                        bind="filterManagingOrganizationId"
+                        bindValue="uuid"
+                        bindParam="name"
+                        :label="__('diagnostic-reports.managing_organization_id')"
                     />
                 </div>
             </div>
@@ -317,17 +330,19 @@
                                             {{ __('forms.view_details') }}
                                         </button>
 
-                                        <button
-                                            type="button"
-                                            @click="close($refs.button)"
-                                            wire:click="openDiagnosticReportCancellation('{{ data_get($diagnosticReport, 'uuid') }}')"
-                                            wire:loading.attr="disabled"
-                                            wire:target="openDiagnosticReportCancellation"
-                                            class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                        >
-                                            @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                            {{ __('medical-events.mark_as_error') }}
-                                        </button>
+                                        @unless (data_get($diagnosticReport, 'status') === DiagnosticReportStatus::DRAFT->value)
+                                            <button
+                                                type="button"
+                                                @click="close($refs.button)"
+                                                wire:click="openDiagnosticReportCancellation('{{ data_get($diagnosticReport, 'uuid') }}')"
+                                                wire:loading.attr="disabled"
+                                                wire:target="openDiagnosticReportCancellation"
+                                                class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                            >
+                                                @icon('alert-circle', 'w-5 h-5 text-gray-500')
+                                                {{ __('medical-events.mark_as_error') }}
+                                            </button>
+                                        @endunless
                                     </div>
                                 </div>
                             </div>

@@ -1,7 +1,23 @@
+@php
+    use App\Livewire\Procedure\ProcedureView;
+    use App\Models\MedicalEvents\Sql\Procedure;
+@endphp
+
 <section class="section-form">
     <x-header-navigation class="breadcrumb-form">
         <x-slot name="title">{{ __('procedures.plural') }} - {{ $patientFullName }}</x-slot>
     </x-header-navigation>
+
+    @if ($this instanceof ProcedureView)
+        <div class="form mb-4">
+            <livewire:components.submission-status
+                :recordType="Procedure::class"
+                :recordId="$procedureId"
+                :recordStatusLabel="$statusLabel"
+                :editUrl="$editUrl"
+            />
+        </div>
+    @endif
 
     <form
         class="form"
@@ -91,8 +107,8 @@
         @procedure-service-selected.window="selectProcedureService($event.detail.service)"
     >
         <fieldset @disabled($isReadonly) @class(['pointer-events-none opacity-80' => $isReadonly])>
-            @include('livewire.encounter.procedure-parts.main-information', ['context' => 'procedure'])
-            @include('livewire.encounter.procedure-parts.additional-information', ['context' => 'procedure'])
+            @include('livewire.encounter-package.procedure-parts.main-information', ['context' => 'procedure'])
+            @include('livewire.encounter-package.procedure-parts.additional-information', ['context' => 'procedure'])
             @if ($isReadonly && !empty(data_get($this->form->procedure, 'encounterId')) && !empty(data_get($this->form->procedure, 'focalDevice')))
                 <fieldset class="fieldset">
                     <legend class="legend">{{ __('procedures.associated_medical_device') }}</legend>
@@ -139,10 +155,10 @@
                     </div>
                 </fieldset>
             @endif
-            @include('livewire.encounter.procedure-parts.reason-references')
-            @include('livewire.encounter.procedure-parts.used-codes')
+            @include('livewire.encounter-package.procedure-parts.reason-references')
+            @include('livewire.encounter-package.procedure-parts.used-codes')
             @if (!empty(data_get($this->form->procedure, 'encounterId')))
-                @include('livewire.encounter.procedure-parts.complication-details', ['context' => 'procedure'])
+                @include('livewire.encounter-package.procedure-parts.complication-details', ['context' => 'procedure'])
             @endif
         </fieldset>
 

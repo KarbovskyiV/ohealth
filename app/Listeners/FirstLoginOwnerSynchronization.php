@@ -6,25 +6,16 @@ namespace App\Listeners;
 
 use Throwable;
 use App\Enums\JobStatus;
-use App\Enums\User\Role;
-use App\Jobs\DivisionSync;
-use App\Jobs\EmployeeSync;
-use App\Jobs\EquipmentSync;
-use App\Models\LegalEntity;
-use App\Jobs\ConnectionSync;
-use App\Jobs\LegalEntitySync;
-use App\Jobs\DeclarationsSync;
-use App\Jobs\EmployeeRoleSync;
+use App\Enums\Status;
 use App\Events\EHealthUserLogin;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
-use App\Jobs\PartyVerificationSync;
 use Illuminate\Support\Facades\Auth;
-use App\Jobs\EmployeeRequestsSyncAll;
+use App\Jobs\LegalEntityDetailsSync;
 use App\Notifications\SyncNotification;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use App\Services\Party\PartyVerificationBulkAccess;
+use App\Listeners\Synchronization\FirstLoginSyncChain;
 
 class FirstLoginOwnerSynchronization implements ShouldQueue
 {
@@ -49,85 +40,32 @@ class FirstLoginOwnerSynchronization implements ShouldQueue
 
         $user = $event->user->load('roles', 'permissions', 'party');
 
-        // Check if it's the first login to the Legal Entity
-        if ($event->legalEntity->syncStatus) {
+        $needsDetailsSync = $event->legalEntity->status === Status::NEW->value;
+
+        // A NEW entity needs a full synchronization after creating or reconnecting a connection.
+        if ($event->legalEntity->syncStatus
+            && (!$needsDetailsSync || $event->legalEntity->syncStatus !== JobStatus::COMPLETED->value)
+        ) {
             return;
         }
 
         // TODO: remove it after testing
         echo 'First login synchronization started. ' . 'legalEntity:' . $event->legalEntity->id. PHP_EOL;
 
-        $legalEntityType = $event->legalEntity->type->name;
-
-        // Create a chain of jobs for synchronization
-
-        // This is the last job in the chain
-        $nextJob = new ConnectionSync(
-            legalEntity: $event->legalEntity,
-            isFirstLogin: true
-        );
-
-        $nextJob = new LegalEntitySync(
-            legalEntity: $event->legalEntity,
-            nextEntity: $nextJob,
-            isFirstLogin: true
-        );
-
-        if ($legalEntityType !== LegalEntity::TYPE_PHARMACY && !$event->user->hasAllowedRole(Role::REORGANIZATION_OWNER)) {
-            $nextJob = new EquipmentSync(
+        $initialJob = $needsDetailsSync
+            ? new LegalEntityDetailsSync(
                 legalEntity: $event->legalEntity,
-                nextEntity: $nextJob,
-                isFirstLogin: true
-            );
-        }
-
-        if ($legalEntityType !== LegalEntity::TYPE_PHARMACY && $legalEntityType !== LegalEntity::TYPE_EMERGENCY) {
-            $nextJob = new DeclarationsSync(
-                legalEntity: $event->legalEntity,
-                nextEntity: $nextJob,
-                isFirstLogin: true
-            );
-        }
-
-        $nextJob = new EmployeeRoleSync(
-            legalEntity: $event->legalEntity,
-            nextEntity: $nextJob,
-            isFirstLogin: true
-        );
-
-        // Run after EmployeeSync so parties already exist locally for cache updates.
-        if (PartyVerificationBulkAccess::canBulkSync($event->scopes)) {
-            $nextJob = new PartyVerificationSync(
-                legalEntity: $event->legalEntity,
-                nextEntity: $nextJob,
-                isFirstLogin: true
-            );
-            PartyVerificationBulkAccess::markSynced($event->legalEntity);
-        }
-
-        $nextJob = new EmployeeSync(
-            legalEntity: $event->legalEntity,
-            nextEntity: $nextJob,
-            isFirstLogin: true
-        );
-
-        $nextJob = new EmployeeRequestsSyncAll(
-            legalEntity: $event->legalEntity,
-            nextEntity: $nextJob,
-            isFirstLogin: true
-        );
-
-        $initialJob = new DivisionSync(
-            legalEntity: $event->legalEntity,
-            nextEntity: $nextJob,
-            isFirstLogin: true
-        );
+                isFirstLogin: true,
+                scopes: $event->scopes
+            )
+            : app(FirstLoginSyncChain::class)->build($event->legalEntity, $event->scopes);
 
         Bus::batch([$initialJob])
             ->name('FirstLoginSync')
             ->withOption('legal_entity_id', $event->legalEntity->id)
             ->withOption('token', $event->token) // Here token is encrypted
             ->withOption('user', $user)
+            ->withOption('sync_entity', '') // Complete the overall sync only after the final job.
             ->onQueue('sync')
             ->dispatch();
 

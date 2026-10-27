@@ -15,9 +15,22 @@ function reviewEnv(string $name): string
     return $value;
 }
 
+function reviewApiFailure(bool $isGitHub, int $status, string $response): string
+{
+    $service = $isGitHub ? 'GitHub' : 'Azure OpenAI';
+    $data = json_decode($response, true);
+    $error = is_array($data) ? ($data['error'] ?? null) : null;
+    $code = is_array($error) ? ($error['code'] ?? null) : null;
+    // Error messages/bodies can contain prompts or credentials. Only a bounded code is safe to log.
+    $suffix = is_string($code) && preg_match('/^[A-Za-z0-9_.-]{1,80}$/D', $code) ? ", code=$code" : '';
+
+    return "$service API request failed (HTTP $status$suffix). Check access, quota and service availability.";
+}
+
 function reviewRequest(string $method, string $url, ?array $payload = null): array
 {
-    $isGitHub = str_starts_with($url, 'https://api.github.com/repos/'.REVIEW_REPOSITORY.'/');
+    $isGitHub = str_starts_with($url, 'https://api.github.com/repos/'.REVIEW_REPOSITORY.'/')
+        || $url === 'https://api.github.com/graphql';
     if ($isGitHub) {
         $token = reviewEnv('GITHUB_TOKEN');
     } else {
@@ -60,10 +73,10 @@ function reviewRequest(string $method, string $url, ?array $payload = null): arr
     curl_close($handle);
     if ($success === false || $status < 200 || $status >= 300) {
         // Do not log credentials, diff contents, or full API error bodies.
-        throw new RuntimeException("API request failed (HTTP $status). Check access, quota and service availability.");
+        throw new RuntimeException(reviewApiFailure($isGitHub, $status, $response));
     }
 
-    return json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+    return $status === 204 ? [] : json_decode($response, true, 512, JSON_THROW_ON_ERROR);
 }
 
 function reviewPages(string $url, callable $request): array
@@ -92,7 +105,8 @@ function reviewDiffs(array $files): array
         $path = $file['filename'];
         $patch = $file['patch'] ?? '';
         $containsKeyMaterial = preg_match('~-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----|^[-+ ]?PuTTY-User-Key-File-\d+:~m', $patch) === 1;
-        if ($patch === '' || reviewKeyFile($path) || reviewKeyFile($file['previous_filename'] ?? '')
+        if ($patch === '' || str_starts_with($path, 'docs/technical-requirements/')
+            || reviewKeyFile($path) || reviewKeyFile($file['previous_filename'] ?? '')
             || $containsKeyMaterial
             || preg_match('~(^|/)(vendor|node_modules|build)/|(^|/)\.env(?!\.example$)|\.lock$|(^|/)package-lock\.json$~', $path)) {
             continue;

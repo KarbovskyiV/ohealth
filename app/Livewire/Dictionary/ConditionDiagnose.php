@@ -60,16 +60,21 @@ class ConditionDiagnose extends Component
 
         try {
             $details = EHealth::diagnoseGroup()->getDetails($this->selectedDiagnoseGroup)->getData();
+            $codes = collect($details['diagnoses_group_codes']);
 
-            // Get only the codes we need descriptions for
-            $codes = collect($details['diagnoses_group_codes'])->pluck('code')->toArray();
+            // A group holds either ICD-10 or ICPC-2 codes, and the same code means a different diagnosis in each
+            $descriptions = [
+                'eHealth/ICD10_AM/condition_codes' => Icd10::whereIn(
+                    'code',
+                    $codes->where('system', 'eHealth/ICD10_AM/condition_codes')->pluck('code')
+                )->pluck('description', 'code'),
+                'eHealth/ICPC2/condition_codes' => dictionary()->basics()
+                    ->byName('eHealth/ICPC2/condition_codes', false)
+                    ->asCodeDescription()
+            ];
 
-            // Get descriptions only for these specific codes
-            $descriptions = Icd10::whereIn('code', $codes)->pluck('description', 'code');
-
-            // Add descriptions to each code
             foreach ($details['diagnoses_group_codes'] as &$codeItem) {
-                $codeItem['description'] = $descriptions->get($codeItem['code'], '');
+                $codeItem['description'] = $descriptions[$codeItem['system']][$codeItem['code']] ?? '';
             }
 
             return $details;

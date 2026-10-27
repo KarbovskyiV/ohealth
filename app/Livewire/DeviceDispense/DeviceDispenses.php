@@ -8,13 +8,14 @@ use App\Core\Arr;
 use App\Enums\JobStatus;
 use App\Enums\DeviceDispense\Status;
 use App\Models\CarePlanActivity;
+use App\Models\Declaration;
 use App\Models\LegalEntity;
 use App\Models\CarePlan;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Procedure;
 use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\DeviceDispense;
 use App\Models\MedicalEvents\Sql\DeviceRequestRequest;
-use App\Models\MedicalEvents\Sql\Identifier;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Classes\eHealth\EHealth;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -25,6 +26,7 @@ use App\Livewire\Person\Records\BasePatientComponent;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesSyncBatch;
 use App\Rules\InDictionary;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
@@ -104,6 +106,19 @@ class DeviceDispenses extends BasePatientComponent
     }
 
     /**
+     * Whether the user has access to all the patient's device dispenses: an active declaration (ABAC rule 1) or an
+     * active approval on the patient's data (ABAC rule 4).
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function hasPatientAccess(): bool
+    {
+        return Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            || Approval::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists();
+    }
+
+    /**
      * Device dispenses for the current page, either from eHealth search or from the local database.
      *
      * @return LengthAwarePaginator
@@ -147,7 +162,8 @@ class DeviceDispenses extends BasePatientComponent
 
     public function openDeviceDispenseView(string $deviceDispenseUuid): void
     {
-        $deviceDispense = DeviceDispense::forPatient($this->patient())
+        // The records of the persons merged into the patient count too
+        $deviceDispense = DeviceDispense::readableFor($this->patient(), true)
             ->whereUuid($deviceDispenseUuid)
             ->first();
 
@@ -156,6 +172,12 @@ class DeviceDispenses extends BasePatientComponent
                 'error',
                 __('device-dispenses.messages.not_found_in_db')
             );
+
+            return;
+        }
+
+        if (Auth::user()->cannot('view', [$deviceDispense, $this->patient()])) {
+            Session::flash('error', __('device-dispenses.policy.view'));
 
             return;
         }
@@ -200,7 +222,7 @@ class DeviceDispenses extends BasePatientComponent
         try {
             $response = EHealth::deviceDispense()->getBySearchParams(
                 $this->uuid,
-                ['performer_legal_entity' => legalEntity()->uuid]
+                $this->hasPatientAccess ? [] : ['performer_legal_entity' => legalEntity()->uuid]
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing device dispense');
@@ -232,7 +254,8 @@ class DeviceDispenses extends BasePatientComponent
 
     protected function paginateLocalDeviceDispenses(): LengthAwarePaginator
     {
-        $paginator = DeviceDispense::forPatient($this->patient())
+        $paginator = DeviceDispense::readableFor($this->patient(), $this->hasPatientAccess)
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->latest()
             ->paginate(config('pagination.per_page'));
@@ -365,7 +388,7 @@ class DeviceDispenses extends BasePatientComponent
                 static function (array $deviceDispense) use ($employeeNames, $legalEntityNames, $deviceNames): array {
                     $deviceUuid = data_get($deviceDispense, 'details.0.device.identifier.value');
 
-                    if ($deviceUuid  && !data_get($deviceDispense, 'details.0.device.displayValue') && isset($deviceNames[$deviceUuid])) {
+                    if ($deviceUuid && !data_get($deviceDispense, 'details.0.device.displayValue') && isset($deviceNames[$deviceUuid])) {
                         data_set($deviceDispense, 'details.0.device.displayValue', $deviceNames[$deviceUuid]);
                     }
 
@@ -458,12 +481,7 @@ class DeviceDispenses extends BasePatientComponent
 
     private function getOrganizationsFromDb(): void
     {
-        $this->organizations = [
-            [
-                'uuid' => legalEntity()->uuid,
-                'name' => legalEntity()->name
-            ]
-        ];
+        $this->organizations = LegalEntity::get()->map->only(['uuid', 'name'])->toArray();
     }
 
     private function getPractitionersFromDb(): void
@@ -553,16 +571,18 @@ class DeviceDispenses extends BasePatientComponent
             ->filter()
             ->toArray();
     }
-    
+
     private function buildSearchParams(): array
     {
+        $performerLegalEntityId = $this->hasPatientAccess ? null : legalEntity()->uuid;
+
         return array_filter([
             'device' => $this->filterDeviceId ?: null,
             'device_code' => $this->filterDeviceCode ?: null,
             'encounter' => $this->filterEncounterId ?: null,
             'status' => $this->filterStatus ?: null,
             'context_episode_id' => $this->filterEpisodeId ?: null,
-            'performer_legal_entity' => $this->filterOrganization ?: legalEntity()->uuid,
+            'performer_legal_entity' => $this->filterOrganization ?: $performerLegalEntityId,
             'performer' => $this->filterPractitioner ?: null,
             'part_of' => $this->filterProcedureId ?: null,
             'origin_episode_id' => $this->filterRelatedEpisodeId ?: null,
@@ -583,7 +603,7 @@ class DeviceDispenses extends BasePatientComponent
             'filterEncounterId' => ['nullable', 'uuid'],
             'filterStatus' => ['nullable', Rule::in(Status::values())],
             'filterEpisodeId' => ['nullable', 'uuid'],
-            'filterOrganization' => ['nullable', 'string', 'max:255'],
+            'filterOrganization' => ['nullable', 'uuid'],
             'filterPractitioner' => ['nullable', 'uuid'],
             'filterProcedureId' => ['nullable', 'uuid'],
             'filterCarePlanId' => ['nullable', 'uuid'],

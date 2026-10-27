@@ -5,6 +5,7 @@ declare(strict_types=1);
 $uuid = 'Унікальний ідентифікатор';
 
 return [
+    'create_and_sign' => 'Створити та підписати',
     // General Actions & Navigation
     'home' => 'Головна',
     'action' => 'Дія',
@@ -12,6 +13,7 @@ return [
     'group_actions' => 'Групові дії',
     'activate' => 'Активувати',
     'add' => 'Додати',
+    'add_to_search' => 'Додати до пошуку',
     'back' => 'Назад',
     'back_to_list' => 'Назад до списку',
     'cancel' => 'Скасувати',
@@ -119,6 +121,7 @@ return [
     'created' => 'Створено',
     'created_at' => 'Дата створення',
     'employee_uuid' => 'ID працівника',
+    'employee_request_identifier' => 'Ідентифікатор запиту',
     'inserted_at' => 'Дата створення',
     'created_time' => 'Час створення',
     'created_by' => 'Ким створено',
@@ -304,7 +307,7 @@ return [
     'work_schedule' => 'Графік роботи',
     'opening' => 'Відчиняється:',
     'closing' => 'Зачиняється:',
-    'remove_work_schedule' => 'Прибрати графік роботи',
+    'remove_work_schedule' => 'Згорнути графік роботи',
 
     // Doctor Specific
     'education' => 'Освіта',
@@ -383,7 +386,8 @@ return [
     'addSpeciality' => 'Додати спеціальність',
     'addQualification' => 'Додати кваліфікацію',
     'addScienceDegree' => 'Додати науковий ступінь',
-    'workingExperience_hint' => 'Обов\'язково. Вкажіть досвід у роках — ціле число більше 0.',
+    'workingExperience_hint' => 'Необов\'язково. Якщо вказуєте досвід, це ціле число років більше 0.',
+    'position_custom_toggle' => 'Ввести вручну',
     'form_required_note' => '* Поля, позначені зірочкою, є обов’язковими для заповнення.',
     'contracts' => 'Договори',
     'medical_service' => 'Медична послуга',
@@ -463,6 +467,7 @@ return [
         'cancelled' => 'Скасовано',
         'revoked' => 'Відкликано',
         'terminated' => 'Припинено',
+        'connected' => 'Під\'єднано'
     ],
 
     // Reorganization types
@@ -511,9 +516,12 @@ return [
         'remove' => 'Видалити адресу',
 
         'error' => [
+            'type' => "Поле 'Тип адреси' є обов'язковим",
+            'country' => "Поле 'Країна' є обов'язковим",
             'area' => "Поле 'Область' є обов'язковим",
             'settlementType' => "Поле 'Тип населеного пункту' є обов'язковим",
             'settlement' => "Поле 'Населений пункт' є обов'язковим",
+            'settlementId' => "Поле 'ID населеного пункту' є обов'язковим",
             'street_required_with' => "Поле 'Вулиця' є обов'язковим, якщо вказано номер будинку",
             'building_required_with' => "Поле 'Будинок' є обов'язковим, якщо вказано номер квартири",
             'building' => "Неправильний формат номеру будинка",

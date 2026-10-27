@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\MedicalEvents\Sql;
 
+use App\Enums\Person\EncounterStatus;
 use App\Casts\EHealthTimestampCast;
 use App\Models\Person\Person;
 use App\Models\Preperson;
@@ -181,6 +182,26 @@ class DetectedIssue extends Model
     protected function forPatient(Builder $query, Person|Preperson $patient): Builder
     {
         return $patient instanceof Preperson ? $query->wherePrepersonId($patient->id) : $query->wherePersonId($patient->id);
+    }
+
+    /**
+     * Leave out the records of an encounter package eHealth has not accepted yet, which is still a draft, including the
+     * draft encounters of the persons and prepersons merged into a person.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function notInDraftEncounter(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->whereDoesntHave(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::readableFor($patient, true)->whereStatus(EncounterStatus::DRAFT)->pluck('uuid')
+            )
+        );
     }
 
     /**

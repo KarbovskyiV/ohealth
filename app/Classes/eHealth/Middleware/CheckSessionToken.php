@@ -38,35 +38,43 @@ class CheckSessionToken
      */
     public function handle(Request $request, Closure $next)
     {
+        // Preserve the selected role in sessions created before the key was renamed.
+        if (!Session::exists('single_role_login') && Session::exists('first_login_role')) {
+            Session::put('single_role_login', Session::get('first_login_role'));
+        }
+        Session::forget('first_login_role');
+
         // Skip check
         if ($request->routeIs(['login', 'dev.login', 'logout'])) {
             return $next($request);
         }
 
-        if (Auth::check() && Auth::guard('ehealth')->check()) {
+        // Guards are checked explicitly: Livewire requests run this middleware before the route's auth middleware
+        // switches the default guard, so Auth::check() would only see the web guard there
+        $isEHealthSession = Auth::guard('ehealth')->check();
+
+        // Tokens are dropped when eHealth answers 401, leaving the user signed in with nothing to call eHealth with
+        if ($isEHealthSession && !$this->tokenStorage->hasBearerToken()) {
+            $this->terminateSession();
+
+            return Redirect::route('login')->with('error', __('auth.login.error.legal_entity.invalid_session'));
+        }
+
+        if ($isEHealthSession || Auth::guard('web')->check()) {
             $lastActivityKey = 'last_activity';
             $lastActivityTime = Session::get($lastActivityKey);
             $now = now()->timestamp;
 
-            // If this is the first request, just set the timestamp
-            if ($lastActivityTime === null) {
-                Session::put($lastActivityKey, $now);
-
-                return $next($request);
-            }
-
-            // Checking if more than 60 minutes of inactivity have passed
-            $inactivityLimitSeconds = self::INACTIVITY_LIMIT_MINUTES * 60;
-            $timeSinceLastActivity = $now - $lastActivityTime;
-
-            //  If time expired, log out and redirect with an error
-            if ($timeSinceLastActivity > $inactivityLimitSeconds) {
-                try {
-                    EHealth::auth()->logout($this->tokenStorage->getBearerToken());
-                } catch (EHealthConnectionException|EHealthValidationException|EHealthResponseException $exception) {
-                    Log::channel('e_health_errors')->error("Error while logout: {$exception->getMessage()}", [
-                        'exception' => $exception
-                    ]);
+            // Log out after more than 60 minutes of inactivity; the first request of a session has nothing to compare with
+            if ($lastActivityTime !== null && $now - $lastActivityTime > self::INACTIVITY_LIMIT_MINUTES * 60) {
+                if ($isEHealthSession) {
+                    try {
+                        EHealth::auth()->logout($this->tokenStorage->getBearerToken());
+                    } catch (EHealthConnectionException|EHealthValidationException|EHealthResponseException $exception) {
+                        Log::channel('e_health_errors')->error("Error while logout: {$exception->getMessage()}", [
+                            'exception' => $exception
+                        ]);
+                    }
                 }
 
                 $this->terminateSession();
@@ -76,15 +84,13 @@ class CheckSessionToken
             }
 
             // Extend the token lifetime if the lifetime is 20 minutes or less
-            $expiresAt = $this->tokenStorage->getExpiresAt();
-
-            if (now()->addMinutes(20)->greaterThanOrEqualTo($expiresAt)) {
+            if ($isEHealthSession && now()->addMinutes(20)->greaterThanOrEqualTo($this->tokenStorage->getExpiresAt())) {
                 $refreshed = $this->tokenStorage->refreshBearerToken();
 
                 if (!$refreshed) {
                     $this->terminateSession();
 
-                    return Redirect::route('login')->with('error', 'Could not refresh eHealth session.');
+                    return Redirect::route('login')->with('error', __('auth.session_refresh_failed'));
                 }
             }
 
@@ -102,7 +108,7 @@ class CheckSessionToken
      */
     private function terminateSession(): void
     {
-        $user = Auth::guard('ehealth')->user();
+        $user = Auth::guard('ehealth')->user() ?? Auth::guard('web')->user();
 
         if ($user instanceof User) {
             new SessionBinder()->release($user);

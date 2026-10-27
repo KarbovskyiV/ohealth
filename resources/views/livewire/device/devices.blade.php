@@ -1,5 +1,6 @@
 @php
     use App\Enums\Device\Status;
+    use App\Models\MedicalEvents\Sql\Device;
     use App\Models\MedicalEvents\Sql\DeviceProperty;
 @endphp
 
@@ -256,6 +257,14 @@
                             <label for="filterInsertedAt" class="wrapped-label">{{ __('devices.inserted_at') }}</label>
                         </div>
                     </div>
+
+                    <x-forms.combobox
+                        :options="$recorderLegalEntities"
+                        bind="filterRecorderLegalEntityId"
+                        bindValue="uuid"
+                        bindParam="name"
+                        :label="__('devices.recorder_legal_entity_id')"
+                    />
                 </div>
             </div>
 
@@ -359,17 +368,19 @@
                                             </button>
                                         @endif
 
-                                        @if (data_get($device, 'status') !== Status::ENTERED_IN_ERROR->value)
-                                            <button
-                                                type="button"
-                                                wire:click="openRecordCancellation('devices', '{{ data_get($device, 'uuid') }}')"
-                                                @click="close($refs.button)"
-                                                class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
-                                            >
-                                                @icon('alert-circle', 'w-5 h-5 text-gray-500')
-                                                {{ __('medical-events.mark_as_error') }}
-                                            </button>
-                                        @endif
+                                        @can('cancel', Device::class)
+                                            @if (data_get($device, 'status') !== Status::ENTERED_IN_ERROR->value)
+                                                <button
+                                                    type="button"
+                                                    wire:click="openRecordCancellation('devices', '{{ data_get($device, 'uuid') }}')"
+                                                    @click="close($refs.button)"
+                                                    class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                                >
+                                                    @icon('alert-circle', 'w-5 h-5 text-gray-500')
+                                                    {{ __('medical-events.mark_as_error') }}
+                                                </button>
+                                            @endif
+                                        @endcan
                                     </div>
                                 </div>
                             </div>
@@ -475,7 +486,7 @@
                                         <div class="record-inner-value wrap-break-word">
                                             @forelse ($deviceProperties as $property)
                                                 <div>
-                                                    {{ $this->dictionaryLabel($property, 'code') }}: {{ DeviceProperty::displayValue($property) }}
+                                                    {{ $this->dictionaryLabel($property, 'code') }} : {{ DeviceProperty::displayValue($property) }}
                                                 </div>
                                             @empty
                                                 -
@@ -528,7 +539,7 @@
         </div>
     </div>
 
-    @include('livewire.encounter.encounter-cancellation', [
+    @include('livewire.encounter-package.encounter-cancellation', [
         'note' => __('medical-events.messages.cancel_device_group_warning')
     ])
 

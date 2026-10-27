@@ -31,7 +31,7 @@ return new class extends Migration
             $table->boolean('nhs_verified')->default(false);
             $table->string('receiver_funds_code')->nullable();
             $table->string('status')->nullable();
-            $table->foreignId('legal_entity_type_id')->constrained('legal_entity_types')->cascadeOnDelete();
+            $table->foreignId('legal_entity_type_id')->nullable()->constrained('legal_entity_types')->cascadeOnDelete();
             $table->uuid('updated_by')->nullable();
             $table->string('client_id')->nullable();
             $table->string('client_secret')->nullable();
@@ -64,6 +64,7 @@ return new class extends Migration
             $table->enum('detected_issue_sync_status', JobStatus::values())->nullable();
             $table->enum('device_association_sync_status', JobStatus::values())->nullable();
             $table->enum('device_dispense_sync_status', JobStatus::values())->nullable();
+            $table->enum('approval_sync_status', JobStatus::values())->nullable();
 
             $table->timestamp('inserted_at')->nullable();
             $table->date('ehealth_inserted_at')->nullable();

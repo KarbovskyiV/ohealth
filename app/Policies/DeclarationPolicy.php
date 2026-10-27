@@ -6,7 +6,10 @@ namespace App\Policies;
 
 use App\Enums\Status as LegalEntityStatus;
 use App\Enums\User\Role;
+use App\Enums\Declaration\Status;
 use App\Models\Declaration;
+use App\Models\LegalEntity;
+use App\Models\Employee\Employee;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -14,7 +17,7 @@ class DeclarationPolicy
 {
     /**
      * Deny every ability when the current legal entity is not eligible to operate with declarations.
-     * The legal entity must be active and have a type allowed for declaration requests.
+     * The legal entity must be active or reorganized and have a type allowed for declaration requests.
      *
      * @param  User  $user
      * @param  string  $ability
@@ -49,7 +52,7 @@ class DeclarationPolicy
     /**
      * Determine whether the user can view declaration.
      *
-     * A doctor sees the declarations of every doctor of their legal entity, the deactivated ones included.
+     * Owners, administrators and doctors see all declarations of their legal entity, regardless of status.
      */
     public function view(User $user, Declaration $declaration): Response
     {
@@ -63,8 +66,19 @@ class DeclarationPolicy
             return Response::allow();
         }
 
-        // Can only view their own
+        // Outside the current legal entity, a doctor sees only their own ACTIVE declarations in a connected legator.
         return $user->party->employees->contains('id', $declaration->employeeId)
+            && (
+                $declaration->legalEntityId === legalEntity()->id
+                || (
+                    $user->hasAllowedRole(Role::DOCTOR)
+                    && $declaration->status === Status::ACTIVE
+                    && $declaration->reorganizedEmployeeDeclaration()
+                        ->hasConnectionTo(legalEntity())
+                        ->where('party_id', $user->partyId)
+                        ->exists()
+                )
+            )
             ? Response::allow()
             : Response::denyWithStatus(404);
     }
@@ -72,13 +86,32 @@ class DeclarationPolicy
     /**
      * Determine whether the user can resign declaration request.
      */
-    public function resign(User $user): Response
+    public function resign(User $user, ?Declaration $declaration = null): Response
     {
-        if ($user->cannot('declaration_request:sign')) {
+        if (
+            legalEntity()->status !== LegalEntityStatus::ACTIVE->value
+            || $user->cannot('declaration_request:write')
+            || $user->cannot('declaration_request:approve')
+            || $user->cannot('declaration_request:sign')
+        ) {
             return Response::denyWithStatus(404);
         }
 
         if (!$user->hasAllowedRole(Role::DOCTOR, true)) {
+            return Response::denyWithStatus(404);
+        }
+
+        if (!Employee::forUserInLegalEntity($user, legalEntity())->doctor()->whereHas('division')->exists()) {
+            return Response::denyWithStatus(404);
+        }
+
+        if ($declaration && (
+            $declaration->status !== Status::ACTIVE
+            || !$declaration->reorganizedEmployeeDeclaration()
+                ->hasConnectionTo(legalEntity())
+                ->where('party_id', $user->partyId)
+                ->exists()
+        )) {
             return Response::denyWithStatus(404);
         }
 

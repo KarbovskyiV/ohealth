@@ -6,7 +6,9 @@ namespace App\Livewire\Person\Records;
 
 use App\Classes\eHealth\EHealth;
 use App\Enums\JobStatus;
+use App\Enums\Person\DiagnosticReportStatus;
 use App\Enums\Person\MergedPersonStatus;
+use App\Enums\Person\ProcedureStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Exceptions\EHealth\EHealthResponseException;
@@ -413,9 +415,14 @@ class PatientSummary extends BasePatientComponent
 
     public function getClinicalImpressions(): void
     {
+        // Short clinical impressions are open by a declaration (rule 1) only
+        $clinicalImpressions = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? ClinicalImpression::readableFor($this->patient(), true)
+            : ClinicalImpression::whereRaw('1 = 0');
+
         $this->setPaginatedRecords(
             'clinicalImpressions',
-            ClinicalImpression::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            $clinicalImpressions->notInDraftEncounter($this->patient())->allowedForSummary()->withAllRelations(),
             'clinicalImpressions'
         );
     }
@@ -463,7 +470,7 @@ class PatientSummary extends BasePatientComponent
     {
         $this->setPaginatedRecords(
             'immunizations',
-            Immunization::forPatient($this->patient())->withAllRelations(),
+            Immunization::forPatient($this->patient())->notInDraftEncounter($this->patient())->withAllRelations(),
             'immunizations'
         );
     }
@@ -512,12 +519,12 @@ class PatientSummary extends BasePatientComponent
     {
         // Short observations are open by a declaration (rule 1) or by the managing organization (rule 2) only
         $observations = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
-            ? Observation::readableFor($this->patient(), true)
+            ? Observation::readableFor($this->patient(), true, Auth::user())
             : Observation::forLegalEntity($this->patient());
 
         $this->setPaginatedRecords(
             'observations',
-            $observations->allowedForSummary()->withAllRelations(),
+            $observations->notInDraftEncounter($this->patient())->notInDraftDiagnosticReport($this->patient())->allowedForSummary()->withAllRelations(),
             'observations'
         );
     }
@@ -598,9 +605,14 @@ class PatientSummary extends BasePatientComponent
 
     public function getConditions(): void
     {
+        // Short conditions are open by a declaration (rule 1) or by the managing organization (rule 2) only
+        $conditions = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? Condition::readableFor($this->patient(), true)
+            : Condition::forLegalEntity($this->patient());
+
         $this->setPaginatedRecords(
             'conditions',
-            Condition::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            $conditions->notInDraftEncounter($this->patient())->allowedForSummary()->withAllRelations(),
             'conditions',
             fn (array $conditions) => $this->populateIcd10Descriptions($conditions)
         );
@@ -648,9 +660,17 @@ class PatientSummary extends BasePatientComponent
 
     public function getDiagnosticReports(): void
     {
+        // Short diagnostic reports are open by a declaration (rule 1) or by the managing organization (rule 2) only
+        $diagnosticReports = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? DiagnosticReport::readableFor($this->patient(), true)
+            : DiagnosticReport::forLegalEntity($this->patient());
+
         $this->setPaginatedRecords(
             'diagnosticReports',
-            DiagnosticReport::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            $diagnosticReports->whereNot('status', DiagnosticReportStatus::DRAFT)
+                ->notInDraftEncounter($this->patient())
+                ->allowedForSummary()
+                ->withAllRelations(),
             'diagnosticReports'
         );
     }
@@ -737,9 +757,14 @@ class PatientSummary extends BasePatientComponent
 
     public function getDevices(): void
     {
+        // Short devices are open by a declaration (rule 1) or by the recorder's legal entity (rule 2) only
+        $devices = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? Device::readableFor($this->patient(), true)
+            : Device::forLegalEntity($this->patient());
+
         $this->setPaginatedRecords(
             'devices',
-            Device::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            $devices->notInDraftEncounter($this->patient())->allowedForSummary()->withAllRelations(),
             'devices'
         );
     }
@@ -785,9 +810,17 @@ class PatientSummary extends BasePatientComponent
 
     public function getProcedures(): void
     {
+        // Short procedures are open by a declaration (rule 1) or by the managing organization (rule 2) only
+        $procedures = Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            ? Procedure::readableFor($this->patient(), true)
+            : Procedure::forLegalEntity($this->patient());
+
         $this->setPaginatedRecords(
             'procedures',
-            Procedure::forPatient($this->patient())->allowedForSummary()->withAllRelations(),
+            $procedures->whereNot('status', ProcedureStatus::DRAFT)
+                ->notInDraftEncounter($this->patient())
+                ->allowedForSummary()
+                ->withAllRelations(),
             'procedures'
         );
     }

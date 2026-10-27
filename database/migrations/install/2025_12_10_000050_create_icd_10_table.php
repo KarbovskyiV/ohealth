@@ -52,6 +52,11 @@ return new class extends Migration
      */
     protected function setData(): void
     {
+        // CI prepares an empty schema. A real install still loads ICD-10 when this flag stays on.
+        if (!config('ehealth.api.seed_icd10_from_api')) {
+            return;
+        }
+
         $response = EHealth::dictionary()->getMany(['name' => 'eHealth/ICD10_AM/condition_codes']);
 
         $dictionary = BasicDictionaryCollection::make($response->getData())

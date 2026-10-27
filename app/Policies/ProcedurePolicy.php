@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\JobStatus;
+use App\Enums\Person\ProcedureStatus;
 use App\Enums\Status;
 use App\Enums\User\Role;
+use App\Models\Declaration;
 use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Procedure;
+use App\Models\Person\Person;
+use App\Models\Preperson;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,19 +21,38 @@ use Illuminate\Database\Eloquent\Builder;
 class ProcedurePolicy
 {
     /**
-     * Determine whether the user can view the procedure.
+     * Determine whether the user can view the list of procedures.
      */
-    public function view(User $user, Procedure $procedure): Response
+    public function viewAny(User $user): Response
     {
         if ($user->cannot('procedure:read')) {
             return Response::denyWithStatus(404);
         }
 
-        if ($procedure->managingOrganization->value !== legalEntity()->uuid) {
+        return Response::allow();
+    }
+
+    /**
+     * Determine whether the user can view the procedure of the patient: one of the procedures the user may read, the
+     * patient's procedure with an approval on it, or the procedure based on a care plan the user has an approval on or
+     * the current legal entity manages.
+     */
+    public function view(User $user, Procedure $procedure, Person|Preperson $patient): Response
+    {
+        if ($user->cannot('procedure:read')) {
             return Response::denyWithStatus(404);
         }
 
-        return Response::allow();
+        $hasPatientAccess = Declaration::accessGrantedTo($user, $patient, legalEntity())->exists()
+            || Approval::accessGrantedTo($user, $patient, legalEntity())->exists();
+
+        $isReadable = Procedure::readableFor($patient, $hasPatientAccess)->whereKey($procedure->id)->exists()
+            || (Approval::procedureAccessGrantedTo($user, $procedure, legalEntity())->exists()
+                && Procedure::forPatient($patient)->whereKey($procedure->id)->exists())
+            || Procedure::basedOnApprovedCarePlan($patient, $user, legalEntity())->whereKey($procedure->id)->exists()
+            || Procedure::basedOnCarePlanOfLegalEntity($patient)->whereKey($procedure->id)->exists();
+
+        return $isReadable ? Response::allow() : Response::denyWithStatus(404);
     }
 
     /**
@@ -37,6 +61,23 @@ class ProcedurePolicy
     public function create(User $user): Response
     {
         if ($user->cannot('procedure:write')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Determine whether the user can change the procedure and sign it: a draft that is not waiting for eHealth.
+     */
+    public function update(User $user, Procedure $procedure): Response
+    {
+        if ($user->cannot('procedure:write')) {
+            return Response::denyWithStatus(404);
+        }
+
+        if ($procedure->status !== ProcedureStatus::DRAFT->value
+            || $procedure->ehealthLinks()->latest('id')->value('status') === JobStatus::PENDING->value) {
             return Response::denyWithStatus(404);
         }
 

@@ -158,7 +158,8 @@ class DeclarationForm extends BaseForm
         return static function (string $attribute, string $value, Closure $fail): void {
             $patient = Person::whereUuid($value)->first();
 
-            if ($patient === null) {
+            // Synced patient data may omit documents; eHealth validates them when creating the request.
+            if ($patient === null || !$patient->documents()->exists()) {
                 return;
             }
 
@@ -168,8 +169,10 @@ class DeclarationForm extends BaseForm
 
             if (!$patient->documents()->whereIn('type', $allowedTypes)->exists()) {
                 $fail(__('declarations.validation.document_type_not_allowed', [
-                    'types' => collect($allowedTypes)
-                        ->map(static fn (string $type): string => __("patients.documents.$type"))
+                    'types' => dictionary()->basics()
+                        ->byName('DOCUMENT_TYPE', false)
+                        ->asCodeDescription()
+                        ->only($allowedTypes)
                         ->implode(', ')
                 ]));
 

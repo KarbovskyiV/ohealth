@@ -33,6 +33,8 @@ return [
         'page_size' => env('EHEALTH_PAGE_SIZE', 300),
         'page_size_max' => env('EHEALTH_PAGE_SIZE_MAX', 500),
         'page_size_le_connections_max' => env('EHEALTH_MIS_CONNECTIONS_PAGE_SIZE_MAX', 100),
+        // Install seeds icd_10 from the live dictionary. CI has no PSK; the public mock returns 403.
+        'seed_icd10_from_api' => filter_var(env('EHEALTH_SEED_ICD10', true), FILTER_VALIDATE_BOOL),
     ],
 
     'party_verification' => [
@@ -41,8 +43,9 @@ return [
     ],
 
     'auth' => [
-        'delay_seconds' => 900,     // Amount of the seconds to another login attempt
-        'max_login_attempts' => 5   // Amount of the wrong attempt before locking out
+        'delay_seconds' => 900,     // Window in seconds within which failed login attempts are counted
+        'max_login_attempts' => 5,  // Amount of the wrong attempt before locking out
+        'lockout_seconds' => 300    // Amount of the seconds the account stays locked out
     ],
 
     'legal_entity_localized_names' => [
@@ -95,6 +98,7 @@ return [
     'reimbursement_contract_max_period_day' => env('EHEALTH_REIMBURSEMENT_CONTRACT_MAX_PERIOD_DAY', 1096),
 
     'rate_limit' => [
+        'approval' => 5,
         'employee_request' => 19,
         'employee' => 29,
         'division_request' => 50,
@@ -123,6 +127,7 @@ return [
             'hour' => 149
         ],
         'legal_entity_legators' => 2,
+        'legal_entity_by_id' => 200,
         'person_authentication_method' => 20,
         'remote_job' => 1399
     ],
@@ -167,7 +172,7 @@ return [
         ],
         'ADMIN' => [
             'position' => [
-                ' P5', 'P6', 'P14', 'P18', 'P19'
+                'P5', 'P6', 'P14', 'P18', 'P19'
             ]
         ],
         'HR' => [
@@ -558,7 +563,7 @@ return [
 
     // https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/583402009/Medical+Events+Dictionaries+and+configurations#episode_type_%3CeHealth%2Fepisode_types%3E_encounter_classes--dynamic-configuration-for-episode-types
     'episode_type_encounter_classes' => [
-        'TREATMENT' => ['AMD', 'PHC', 'INPATIENT'],
+        'TREATMENT' => ['AMB', 'PHC', 'INPATIENT'],
         'PREVENTION' => ['PHC', 'INPATIENT', 'AMB'],
         'DG' => ['AMB', 'INPATIENT'],
         'REHAB' => ['AMB', 'INPATIENT'],
@@ -657,6 +662,9 @@ return [
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20214317118/DRAFT+Config+params+Person+ENT-050#VALIDATE_PERSON_TAX_ID_UNIQUENESS
     'validate_person_tax_id_uniqueness' => true,
     'third_person_limit' => 150,
+    'no_tax_id_document_types' => [
+        'PASSPORT', 'NATIONAL_ID', 'REFUGEE_CERTIFICATE', 'PERMANENT_RESIDENCE_PERMIT',
+    ],
     'employee_identity_document_types' => [
         // EMPLOYEE_IDENTITY_DOCUMENT_TYPES — chart parameter, API-005-024-0001 §9 Validate request (Logic)
         // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/17570365551/DRAFT+REST+API+Create+Employee+Request+v2+API-005-024-0001
@@ -688,6 +696,7 @@ return [
 
     // Config params Preperson
     // https://e-health-ua.atlassian.net/wiki/spaces/ESOZ/pages/20233683284/DRAFT+Config+params+Preperson+ENT-057
+    'preperson_legal_entities_allowed_types' => ['OUTPATIENT', 'EMERGENCY'],
     'preperson_healthcare_services_speciality_types' => [
         'ADOLESCENT_MEDICINE', 'AEROSPACE_MEDICINE', 'ALLERGOLOGY', 'ANAESTHETICS', 'ANALYTICAL_AND_CONTROL_PHARMACY',
         'AUDIOLOGY', 'BACTERIOLOGY', 'CARDIOLOGY', 'CARDIOVASCULAR_SURGERY', 'CLINICAL_BIOCHEMISTRY',

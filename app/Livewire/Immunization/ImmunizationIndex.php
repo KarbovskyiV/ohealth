@@ -10,7 +10,7 @@ use App\Enums\JobStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\ImmunizationSync;
-use App\Livewire\Encounter\Forms\EncounterCancellationForm;
+use App\Livewire\EncounterPackage\Forms\EncounterCancellationForm;
 use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Immunization;
@@ -20,6 +20,7 @@ use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -168,6 +169,45 @@ class ImmunizationIndex extends BasePatientComponent
         $this->resetPage();
     }
 
+    /**
+     * Open the page of an immunization from the list or the eHealth search, storing it first when it is not in the
+     * database yet.
+     *
+     * @param  string  $immunizationId
+     * @return void
+     */
+    public function view(string $immunizationId): void
+    {
+        $immunization = Immunization::forPatient($this->patient())->whereUuid($immunizationId)->first()
+            ?? $this->storeSearchedImmunization($immunizationId);
+
+        if ($immunization === null) {
+            return;
+        }
+
+        if (Auth::user()->cannot('view', [$immunization, $this->patient()])) {
+            Session::flash('error', __('immunizations.policy.view'));
+
+            return;
+        }
+
+        if ($this->prepersonId !== null) {
+            $this->redirectRoute(
+                'prepersons.immunizations.view',
+                [legalEntity(), 'preperson' => $this->prepersonId, 'immunization' => $immunization->id],
+                navigate: true
+            );
+
+            return;
+        }
+
+        $this->redirectRoute(
+            'persons.immunizations.view',
+            [legalEntity(), 'person' => $this->personId, 'immunization' => $immunization->id],
+            navigate: true
+        );
+    }
+
     public function resetFilters(): void
     {
         $this->reset([
@@ -183,6 +223,33 @@ class ImmunizationIndex extends BasePatientComponent
     }
 
     /**
+     * Store an immunization found through the eHealth search, so that it has a page to open.
+     *
+     * @param  string  $immunizationId
+     * @return Immunization|null
+     */
+    protected function storeSearchedImmunization(string $immunizationId): ?Immunization
+    {
+        try {
+            $response = EHealth::immunization()->getById($this->uuid, $immunizationId);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error while loading the immunization');
+
+            return null;
+        }
+
+        try {
+            Repository::immunization()->sync($this->patient(), $response->validate());
+
+            return Immunization::forPatient($this->patient())->whereUuid($immunizationId)->firstOrFail();
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Error while storing the immunization');
+
+            return null;
+        }
+    }
+
+    /**
      * Paginate locally stored (synced) immunizations straight from the database.
      *
      * @return LengthAwarePaginator
@@ -190,6 +257,7 @@ class ImmunizationIndex extends BasePatientComponent
     protected function paginateLocalImmunizations(): LengthAwarePaginator
     {
         $paginator = Immunization::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

@@ -16,13 +16,15 @@ enum ProcedureStatus: string
     case COMPLETED = 'completed';
     case ENTERED_IN_ERROR = 'entered_in_error';
     case NOT_DONE = 'not_done';
+    case DRAFT = 'draft';
 
     public function label(): string
     {
         return match ($this) {
             self::COMPLETED => __('procedures.status.completed'),
             self::ENTERED_IN_ERROR => __('procedures.status.entered_in_error'),
-            self::NOT_DONE => __('procedures.status.not_done')
+            self::NOT_DONE => __('procedures.status.not_done'),
+            self::DRAFT => __('procedures.status.draft')
         };
     }
 
@@ -31,7 +33,7 @@ enum ProcedureStatus: string
         return match($this) {
             self::COMPLETED => 'badge-green',
             self::ENTERED_IN_ERROR => 'badge-red',
-            self::NOT_DONE => 'badge-dark',
+            self::NOT_DONE, self::DRAFT => 'badge-dark',
         };
     }
 }

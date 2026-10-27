@@ -1,8 +1,16 @@
 {{-- Expects: $connection (App\Models\Connection) --}}
 {{-- Requires host x-data with: openUpdateSecretDrawer, isSecretUpdated, openUpdateCallbackDrawer, isCallbackUpdated --}}
 
+@use('App\Classes\eHealth\Api\Connection')
+
 {{-- UPDATE CLIENT SECRET --}}
-<x-dialog-drawer x-model="openUpdateSecretDrawer" maxWidth="4/5" overlayWidth="100%">
+@can('updateSecret', $connection)
+<div x-data="{ updatedSecret: '' }"
+     x-init="$watch('openUpdateSecretDrawer', value => { if (!value) { updatedSecret = ''; isSecretUpdated = false; } })"
+>
+<x-dialog-drawer x-model="openUpdateSecretDrawer" maxWidth="4/5" overlayWidth="100%"
+    x-on:connection-secret-updated.window="if ($event.detail.connectionId === {{ $connection->id }} && openUpdateSecretDrawer) { updatedSecret = $event.detail.secret; isSecretUpdated = true; }"
+>
     <x-slot name="title">
         <span class="text-xl font-semibold">
             <span x-show="isSecretUpdated" x-cloak>{{ __('legal-entity-connection.secret_updated_title') }}</span>
@@ -19,7 +27,7 @@
                         id="updated_secret_{{ $connection->id }}"
                         class="input peer"
                         placeholder=" "
-                        value="{{ $connection->secret ?? $connection->legalEntity->clientSecret }}"
+                        x-model="updatedSecret"
                         disabled
                     >
                     <label for="updated_secret_{{ $connection->id }}" class="label">{{ __('legal-entity-connection.secret_string_label') }}</label>
@@ -126,8 +134,9 @@
                 @can('updateSecret', $connection)
                     <button
                         type="button"
-                        @click="isSecretUpdated = true"
                         wire:click="refreshSecret({{ $connection->id }})"
+                        wire:loading.attr="disabled"
+                        wire:target="refreshSecret"
                         class="button-primary px-6"
                     >
                         {{ __('legal-entity-connection.btn_update') }}
@@ -137,9 +146,13 @@
         </div>
     </div>
 </x-dialog-drawer>
+</div>
+@endcan
 
 {{-- UPDATE CALLBACK URI --}}
-<x-dialog-drawer x-model="openUpdateCallbackDrawer" maxWidth="4/5" overlayWidth="100%">
+<x-dialog-drawer x-model="openUpdateCallbackDrawer" maxWidth="4/5" overlayWidth="100%"
+    x-on:connection-callback-updated.window="if ($event.detail.connectionId === {{ $connection->id }}) isCallbackUpdated = true"
+>
     <x-slot name="title">
         <span class="text-xl font-semibold">
             <span x-show="isCallbackUpdated" x-cloak>{{ __('legal-entity-connection.callback_updated_title') }}</span>
@@ -150,7 +163,7 @@
     <div
         class="mt-6 max-w-5xl"
         wire:key="connection-callback-{{ $connection->id }}-{{ $connection->updated_at?->timestamp }}"
-        x-data="{redirectUri: @js($connection->redirectUri)}"
+        x-init="$watch('openUpdateCallbackDrawer', value => { if (value) { isCallbackUpdated = false; } })"
     >
         <div x-show="isCallbackUpdated" x-cloak>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
@@ -160,8 +173,7 @@
                         id="updated_callback_url_{{ $connection->id }}"
                         class="input peer"
                         placeholder=" "
-                        {{-- value="{{ $connection->redirectUri }}" --}}
-                        x-model="redirectUri"
+                        value="{{ $connection->redirectUri }}"
                         disabled
                     >
                     <label for="updated_callback_url_{{ $connection->id }}" class="label">{{ __('legal-entity-connection.callback_url_label') }}</label>
@@ -246,7 +258,8 @@
                         id="callback_url_input_{{ $connection->uuid }}"
                         class="input peer"
                         placeholder=" "
-                        x-model="redirectUri"
+                        value="{{ Connection::redirectUri() }}"
+                        disabled
                     >
                     <label for="callback_url_input_{{ $connection->uuid }}" class="label">{{ __('legal-entity-connection.callback_url_label') }}</label>
                 </div>
@@ -264,8 +277,9 @@
                 @can('update', $connection)
                     <button
                         type="button"
-                        @click="isCallbackUpdated = true"
-                        wire:click="update({{ $connection->id }}, redirectUri)"
+                        wire:click="update({{ $connection->id }})"
+                        wire:loading.attr="disabled"
+                        wire:target="update"
                         class="button-primary px-6"
                     >
                         {{ __('legal-entity-connection.btn_update') }}

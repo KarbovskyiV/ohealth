@@ -10,6 +10,7 @@ use App\Enums\Person\ApprovalStatus;
 use App\Classes\eHealth\EHealth;
 use App\Models\EhealthJob;
 use App\Models\EhealthLink;
+use App\Models\Person\Person;
 use App\Models\MedicalEvents\Mongo\Approval as MongoApproval;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -333,6 +334,7 @@ class ApprovalRepository extends BaseRepository
                     static fn ($query) => $query->where('uuid', $approvalModelUuid)
                 )
                 ->withAllRelations()
+                ->with('grantedResourceIdentifiers.type.coding')
                 ->first();
 
             $createdBy = $this->syncIdentifier($existing, $modelData['created_by'] ?? null, 'createdBy');
@@ -341,8 +343,7 @@ class ApprovalRepository extends BaseRepository
 
             $reason = $this->syncIdentifier($existing, $modelData['reason'] ?? null, 'reason');
 
-            $grantedToType = $grantedTo?->type->first()?->coding->first()?->code
-                ?? Arr::get($modelData, 'granted_to.identifier.type.coding.0.code')
+            $grantedToType = Arr::get($modelData, 'granted_to.identifier.type.coding.0.code')
                 ?? $existing?->grantedToType
                 ?? 'legal_entity';
 
@@ -394,6 +395,34 @@ class ApprovalRepository extends BaseRepository
             }
 
             $approval->refresh();
+        });
+    }
+
+    /**
+     * Sync approvals data and related data by updating or creating.
+     *
+     * @param  Person  $patient
+     * @param  array  $approvals
+     * @return void
+     */
+    public function syncMany(Person $patient, array $approvals): void
+    {
+        DB::transaction(function () use ($patient, $approvals): void {
+            $existing = Approval::query()
+                ->with('approvable')
+                ->whereIn('uuid', array_column($approvals, 'id'))
+                ->get()
+                ->keyBy('uuid');
+
+            foreach ($approvals as $data) {
+                $approval = $existing->get($data['id']);
+
+                $this->sync(
+                    $data,
+                    $approval?->approvable ?? $patient,
+                    $approval
+                );
+            }
         });
     }
 

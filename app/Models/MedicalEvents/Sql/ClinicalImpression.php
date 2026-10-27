@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models\MedicalEvents\Sql;
 
+use App\Enums\Person\EncounterStatus;
 use App\Casts\EHealthDateCast;
+use App\Casts\EHealthTimestampCast;
 use App\Enums\ClinicalImpression\Status;
 use App\Models\Person\Person;
 use App\Models\Preperson;
@@ -33,6 +35,7 @@ class ClinicalImpression extends Model
         'encounter_id',
         'assessor_id',
         'previous_id',
+        'effective_date_time',
         'summary',
         'note',
         'explanatory_letter',
@@ -54,16 +57,33 @@ class ClinicalImpression extends Model
 
     protected $casts = [
         'status' => Status::class,
+        'effective_date_time' => EHealthTimestampCast::class,
         'ehealth_inserted_at' => EHealthDateCast::class,
         'ehealth_updated_at' => EHealthDateCast::class
     ];
 
     protected $appends = [
+        'effective_date',
+        'effective_time',
         'effective_period_start_date',
         'effective_period_start_time',
         'effective_period_end_date',
         'effective_period_end_time'
     ];
+
+    protected function effectiveDate(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => $this->effectiveDateTime ? convertToAppDateFormat($this->effectiveDateTime) : '',
+        );
+    }
+
+    protected function effectiveTime(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => $this->effectiveDateTime ? CarbonImmutable::parse($this->effectiveDateTime)->format('H:i') : '',
+        );
+    }
 
     protected function effectivePeriodStartDate(): Attribute
     {
@@ -114,6 +134,70 @@ class ClinicalImpression extends Model
         return $patient instanceof Preperson
             ? $query->wherePrepersonId($patient->id)
             : $query->wherePersonId($patient->id);
+    }
+
+    /**
+     * Leave out the records of an encounter package eHealth has not accepted yet, which is still a draft, including the
+     * draft encounters of the persons and prepersons merged into a person.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function notInDraftEncounter(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->whereDoesntHave(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::readableFor($patient, true)->whereStatus(EncounterStatus::DRAFT)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's clinical impressions created within an encounter whose episode is managed by the current
+     * legal entity.
+     *
+     * ABAC rule 3.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function inEpisodeOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'encounter',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                Encounter::inEpisodeOfLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Clinical impressions of the patient the user may read: with access to all the patient's data (an active
+     * declaration or approval) all of them, including the ones of the persons and prepersons merged into a person,
+     * otherwise only the patient's own ones created within an encounter of an episode of the current legal entity.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  bool  $hasPatientAccess
+     * @return Builder
+     */
+    #[Scope]
+    protected function readableFor(Builder $query, Person|Preperson $patient, bool $hasPatientAccess): Builder
+    {
+        if ($hasPatientAccess) {
+            return $patient instanceof Person
+                ? $patient->filterRecordsWithMerged($query)
+                : $query->forPatient($patient);
+        }
+
+        return $query->inEpisodeOfLegalEntity($patient);
     }
 
     /**

@@ -10,18 +10,23 @@ use App\Enums\ClinicalImpression\Status;
 use App\Enums\JobStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
-use App\Jobs\ClinicalImpressionSync;
-use App\Livewire\Encounter\Forms\EncounterCancellationForm;
+use App\Jobs\ClinicalImpressionFullSync;
+use App\Livewire\EncounterPackage\Forms\EncounterCancellationForm;
 use App\Livewire\Person\Records\BasePatientComponent;
+use App\Models\Declaration;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\ClinicalImpression;
 use App\Repositories\MedicalEvents\Repository;
 use App\Rules\InDictionary;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -74,12 +79,12 @@ class ClinicalImpressionIndex extends BasePatientComponent
 
     protected function getBatchName(string $entityType): string
     {
-        return ClinicalImpressionSync::BATCH_NAME;
+        return ClinicalImpressionFullSync::BATCH_NAME;
     }
 
     protected function getJobClass(string $entityType): string
     {
-        return ClinicalImpressionSync::class;
+        return ClinicalImpressionFullSync::class;
     }
 
     protected function getEntityConstant(string $entityType): string
@@ -100,6 +105,19 @@ class ClinicalImpressionIndex extends BasePatientComponent
     }
 
     /**
+     * Whether the user has access to all the patient's clinical impressions: an active declaration (ABAC rule 1) or an
+     * active approval on the patient's data (ABAC rule 4).
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function hasPatientAccess(): bool
+    {
+        return Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            || Approval::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists();
+    }
+
+    /**
      * Paginator switching between local (synced) and eHealth search results.
      *
      * @return LengthAwarePaginator
@@ -114,6 +132,13 @@ class ClinicalImpressionIndex extends BasePatientComponent
 
     public function search(): void
     {
+        // eHealth searches the clinical impressions only with access to all the patient's data
+        if (!$this->hasPatientAccess) {
+            Session::flash('error', __('clinical-impressions.policy.search'));
+
+            return;
+        }
+
         $this->validate($this->filterValidationRules());
 
         $this->isSearching = true;
@@ -122,6 +147,13 @@ class ClinicalImpressionIndex extends BasePatientComponent
 
     public function sync(): void
     {
+        // eHealth returns the clinical impressions only with access to all the patient's data
+        if (!$this->hasPatientAccess) {
+            Session::flash('error', __('clinical-impressions.policy.sync'));
+
+            return;
+        }
+
         if ($this->cannotStartSync('clinical_impression')) {
             return;
         }
@@ -133,10 +165,7 @@ class ClinicalImpressionIndex extends BasePatientComponent
         }
 
         try {
-            $response = EHealth::clinicalImpression()->getBySearchParams(
-                $this->uuid,
-                ['managing_organization_id' => legalEntity()->uuid]
-            );
+            $response = EHealth::clinicalImpression()->getBySearchParams($this->uuid);
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing clinical impressions');
 
@@ -165,6 +194,46 @@ class ClinicalImpressionIndex extends BasePatientComponent
         $this->resetPage();
     }
 
+    /**
+     * Open the page of a clinical impression from the list or the eHealth search, storing it first when it is not in
+     * the database yet.
+     *
+     * @param  string  $clinicalImpressionId
+     * @return void
+     */
+    public function view(string $clinicalImpressionId): void
+    {
+        // The records of the persons merged into the patient count too, so a stored one is not pulled in again under this patient
+        $clinicalImpression = ClinicalImpression::readableFor($this->patient(), true)->whereUuid($clinicalImpressionId)->first()
+            ?? $this->storeSearchedClinicalImpression($clinicalImpressionId);
+
+        if ($clinicalImpression === null) {
+            return;
+        }
+
+        if (Auth::user()->cannot('view', [$clinicalImpression, $this->patient()])) {
+            Session::flash('error', __('clinical-impressions.policy.view'));
+
+            return;
+        }
+
+        if ($this->prepersonId !== null) {
+            $this->redirectRoute(
+                'prepersons.clinical-impressions.view',
+                [legalEntity(), 'preperson' => $this->prepersonId, 'clinicalImpression' => $clinicalImpression->id],
+                navigate: true
+            );
+
+            return;
+        }
+
+        $this->redirectRoute(
+            'persons.clinical-impressions.view',
+            [legalEntity(), 'person' => $this->personId, 'clinicalImpression' => $clinicalImpression->id],
+            navigate: true
+        );
+    }
+
     public function resetFilters(): void
     {
         $this->reset([
@@ -187,13 +256,56 @@ class ClinicalImpressionIndex extends BasePatientComponent
     }
 
     /**
+     * Store a clinical impression found through the eHealth search, so that it has a page to open. It is kept only when
+     * the user may read it, so a record the access rules hide is not left behind in the database.
+     *
+     * @param  string  $clinicalImpressionId
+     * @return ClinicalImpression|null
+     */
+    protected function storeSearchedClinicalImpression(string $clinicalImpressionId): ?ClinicalImpression
+    {
+        try {
+            $response = EHealth::clinicalImpression()->getById($this->uuid, $clinicalImpressionId);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error while loading the clinical impression');
+
+            return null;
+        }
+
+        try {
+            return DB::transaction(function () use ($response, $clinicalImpressionId): ClinicalImpression {
+                Repository::clinicalImpression()->sync($this->patient(), [$response->validate()]);
+
+                $clinicalImpression = ClinicalImpression::forPatient($this->patient())
+                    ->whereUuid($clinicalImpressionId)
+                    ->firstOrFail();
+
+                if (Auth::user()->cannot('view', [$clinicalImpression, $this->patient()])) {
+                    throw new AuthorizationException();
+                }
+
+                return $clinicalImpression;
+            });
+        } catch (AuthorizationException) {
+            Session::flash('error', __('clinical-impressions.policy.view'));
+
+            return null;
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Error while storing the clinical impression');
+
+            return null;
+        }
+    }
+
+    /**
      * Paginate locally stored (synced) clinical impressions straight from the database.
      *
      * @return LengthAwarePaginator
      */
     protected function paginateLocalClinicalImpressions(): LengthAwarePaginator
     {
-        $paginator = ClinicalImpression::forPatient($this->patient())
+        $paginator = ClinicalImpression::readableFor($this->patient(), $this->hasPatientAccess)
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

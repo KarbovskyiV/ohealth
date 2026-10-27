@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Core\EHealthJob;
-use App\Models\Declaration;
+use App\Core\PatientEHealthJob;
 use App\Models\LegalEntity;
-use App\Models\MedicalEvents\Sql\Approval;
-use App\Models\Person\Person;
-use App\Models\Preperson;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\MedicalEvents\Repository;
 use GuzzleHttp\Promise\PromiseInterface;
@@ -17,7 +14,7 @@ use App\Classes\eHealth\EHealthResponse;
 use Illuminate\Queue\Middleware\RateLimited;
 use Throwable;
 
-class EncounterFullSync extends EHealthJob
+class EncounterFullSync extends PatientEHealthJob
 {
     public const string BATCH_NAME = 'EncounterFullSync';
 
@@ -25,32 +22,12 @@ class EncounterFullSync extends EHealthJob
 
     public const string ENTITY = LegalEntity::ENTITY_ENCOUNTER;
 
-    protected ?string $patientUuid = null;
-    protected ?int $personId = null;
-    protected ?int $prepersonId = null;
-    protected Person|Preperson $patient;
-
-    public function handle(): void
-    {
-        $this->patientUuid = $this->batch()->options['patient_uuid'] ?? null;
-        $this->personId = $this->batch()->options['person_id'] ?? null;
-        $this->prepersonId = $this->batch()->options['preperson_id'] ?? null;
-        $this->patient = $this->prepersonId !== null
-            ? Preperson::findOrFail($this->prepersonId)
-            : Person::findOrFail($this->personId);
-
-        parent::handle();
-    }
-
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse
     {
-        $hasPatientAccess = Declaration::accessGrantedTo($this->user, $this->patient, $this->legalEntity)->exists()
-            || Approval::accessGrantedTo($this->user, $this->patient, $this->legalEntity)->exists();
-
         return EHealth::encounter()
             ->withToken($token)
             ->getBySearchParams($this->patientUuid, array_filter([
-                'managing_organization_id' => $hasPatientAccess ? null : $this->legalEntity->uuid,
+                'managing_organization_id' => $this->hasPatientAccess ? null : $this->legalEntity->uuid,
                 'page' => $this->page
             ]));
     }
@@ -66,7 +43,7 @@ class EncounterFullSync extends EHealthJob
             return;
         }
 
-        Repository::encounter()->sync($this->patient, $validatedData);
+        Repository::encounter()->sync($this->patient(), $validatedData);
     }
 
     protected function getNextEntityJob(): ?EHealthJob

@@ -2,17 +2,21 @@
     use App\Models\{Contracts\Contract,Contracts\ContractRequest,Declaration,DeclarationRequest,Division,Equipment,HealthcareService,LegalEntity,License};
     use App\Models\Employee\{Employee,EmployeeRequest};
     use App\Models\Person\{Person,PersonRequest};
-    use App\Models\Connection\Connection;
+    use App\Models\Connection;
     use App\Models\Preperson;
     use App\Models\Relations\PersonVerificationDetail;
+    use App\Enums\Status;
+    use Illuminate\Support\Facades\Auth;
+
+    $isLegalEntityNew = legalEntity()?->status === Status::NEW->value;
 @endphp
 
 <aside
     id="drawer-navigation"
-    class="fixed top-0 left-0 z-40 h-screen w-64 -translate-x-full border-r border-gray-200 bg-white pt-14 transition-transform md:translate-x-0 dark:border-gray-700 dark:bg-gray-800"
+    class="fixed top-0 left-0 z-40 h-screen w-78 -translate-x-full border-r border-gray-200 bg-white pt-14 transition-transform md:translate-x-0 dark:border-gray-700 dark:bg-gray-800"
     aria-label="Sidebar"
 >
-    <div class="h-full overflow-y-auto bg-white px-3 py-5 dark:bg-gray-800">
+    <div class="h-full overflow-y-auto bg-white px-3 py-5 scheme-light dark:bg-gray-800 dark:scheme-dark">
         <ul class="space-y-2">
             @if (Auth::user()->can('viewAny', LegalEntity::class) || Auth::user()->can('limitedAction', LegalEntity::class))
                 <li x-data="{ open: {{ request()->routeIs('legal-entity.*') ? 'true' : 'false' }} }" class="space-y-2">
@@ -20,8 +24,13 @@
                         @click="open = ! open"
                         type="button"
                         class="menu-item"
+                        @style([
+                            'cursor: default' => $isLegalEntityNew,
+                            'pointer-events: none' => $isLegalEntityNew,
+                        ])
                         aria-controls="dropdown-legal-entity"
                         :aria-expanded="open"
+                        @disabled($isLegalEntityNew)
                     >
                         @icon('institution')
                         <span>{{ __('forms.institution') }}</span>
@@ -101,19 +110,25 @@
                 </li>
             @endif
 
-            @if (legalEntity() && Auth::user()->cannot('limitedAction', LegalEntity::class))
-                @can('viewAny', Connection::class)
+            @if (legalEntity())
+                @canany(['create', 'viewAny'], Connection::class)
                     <li>
                         <a
-                            href="{{ route('connection.index', [legalEntity()]) }}"
-                            class="menu-item-simple {{ request()->routeIs('legal-entity-connection.*') ? 'menu-item-active' : '' }}"
+                            href="{{
+                                Auth::user()->can('viewAny', Connection::class)
+                                ? route('connection.index', [legalEntity()])
+                                : route('connection.legal-entity.create', [legalEntity()])
+                            }}"
+                            class="menu-item-simple {{ request()->routeIs('connection.*') ? 'menu-item-active' : '' }}"
                         >
                             @icon('connection-two-way')
-                            <span>{{ __('Зв\'язки МІС та СГуСОЗ') }}</span>
+                            <span>{{ __('legal-entity-connection.connection_sidebar') }}</span>
                         </a>
                     </li>
-                @endcan
+                @endcanany
+            @endif
 
+            @if (legalEntity() && Auth::user()->cannot('limitedAction', LegalEntity::class))
                 @can('viewAny', Division::class)
                     <li>
                         <a
@@ -446,7 +461,10 @@
                 @endcan
 
                 <li>
-                    <a href="{{ route('data-access.index', [legalEntity()]) }}" class="menu-item-simple {{ request()->routeIs('data-access.*') ? 'menu-item-active' : '' }}">
+                    <a
+                        href="{{ route('data-access.index', [legalEntity()]) }}"
+                        class="menu-item-simple {{ request()->routeIs('data-access.*') ? 'menu-item-active' : '' }}"
+                    >
                         @icon('hugeicons-access')
                         <span>{{ __('patients.data_access') }}</span>
                     </a>
@@ -520,15 +538,17 @@
                             </li>
                         @endcan
 
-                        <li>
-                            <a
-                                href="{{ route('dictionaries.service-catalog.index', [legalEntity()]) }}"
-                                class="submenu-item {{ request()->routeIs('dictionaries.service-catalog.*') ? 'submenu-item-active' : '' }}"
-                            >
-                                @icon('boxicons-file')
-                                <span>{{ __('dictionaries.service_catalog.title') }}</span>
-                            </a>
-                        </li>
+                        @can('view-service-catalog')
+                            <li>
+                                <a
+                                    href="{{ route('dictionaries.service-catalog.index', [legalEntity()]) }}"
+                                    class="submenu-item {{ request()->routeIs('dictionaries.service-catalog.*') ? 'submenu-item-active' : '' }}"
+                                >
+                                    @icon('boxicons-file')
+                                    <span>{{ __('dictionaries.service_catalog.title') }}</span>
+                                </a>
+                            </li>
+                        @endcan
                         <li>
                             <a
                                 href="{{ route('dictionaries.condition-diagnose.index', [legalEntity()]) }}"
@@ -568,6 +588,19 @@
                             </li>
                         @endcan
                     </ul>
+                </li>
+            @endif
+
+            {{-- Create connection for unauthorized (by eHealth) user --}}
+            @if (!legalEntity() && Auth::user()->can('create', Connection::class))
+                <li>
+                    <a
+                        href="{{ route('connection.create') }}"
+                        class="menu-item-simple {{ request()->routeIs('connection.*') ? 'menu-item-active' : '' }}"
+                    >
+                        @icon('connection-two-way')
+                        <span>{{ __('legal-entity-connection.connection_sidebar') }}</span>
+                    </a>
                 </li>
             @endif
         </ul>

@@ -15,6 +15,8 @@ use App\Exceptions\Cipher\CipherConnectionException;
 use App\Exceptions\Cipher\CipherException;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
+use App\Jobs\RemoteEHealthLinksProcessing;
+use App\Models\MedicalEvents\Sql\DiagnosticReport;
 use App\Services\MedicalEvents\Fhir;
 use App\Livewire\DiagnosticReport\Forms\DiagnosticReportForm as Form;
 use App\Models\Employee\Employee;
@@ -48,6 +50,14 @@ abstract class DiagnosticReportComponent extends Component
     public Form $form;
 
     public bool $showSignatureModal = false;
+
+    /**
+     * Whether the report can't be changed: it is viewed, accepted by eHealth or waiting for it.
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $isReadonly = false;
 
     /**
      * UUID of an existing report to reuse, or null to generate a new one.
@@ -432,6 +442,10 @@ abstract class DiagnosticReportComponent extends Component
      */
     public function save(array $diagnosticReportData): void
     {
+        if ($this->isReadonly) {
+            return;
+        }
+
         $formattedData = $this->buildFormattedData($diagnosticReportData, DiagnosticReportStatus::DRAFT);
 
         if ($formattedData === null) {
@@ -448,30 +462,20 @@ abstract class DiagnosticReportComponent extends Component
 
         Session::flash('success', __('diagnostic-reports.messages.draft_saved'));
 
-        if ($this->prepersonId !== null) {
-            $this->redirectRoute(
-                'prepersons.diagnostic-report.edit',
-                [legalEntity(), 'preperson' => $this->prepersonId, 'diagnosticReportId' => $diagnosticReportId],
-                navigate: true
-            );
-
-            return;
-        }
-
-        $this->redirectRoute(
-            'diagnostic-report.edit',
-            [legalEntity(), 'person' => $this->personId, 'diagnosticReportId' => $diagnosticReportId],
-            navigate: true
-        );
+        $this->redirectToPage($diagnosticReportId, 'edit');
     }
 
     /**
-     * Validate, sign with Cipher, submit to eHealth and persist the report.
+     * Validate, sign with Cipher, persist the report as a draft and submit it to eHealth, which accepts it later.
      *
      * @return void
      */
     public function sign(): void
     {
+        if ($this->isReadonly) {
+            return;
+        }
+
         try {
             $validatedCipher = $this->form->validate($this->form->signingRules());
         } catch (ValidationException $exception) {
@@ -487,9 +491,11 @@ abstract class DiagnosticReportComponent extends Component
             return;
         }
 
+        $requestData = Arr::toSnakeCase($formattedData);
+
         try {
             $signedContent = new CipherRequest()->signData(
-                Arr::toSnakeCase($formattedData),
+                $requestData,
                 $validatedCipher['knedp'],
                 $validatedCipher['keyContainerUpload'],
                 $validatedCipher['password'],
@@ -501,37 +507,77 @@ abstract class DiagnosticReportComponent extends Component
             return;
         }
 
+        // The report is kept as a draft until eHealth accepts it
+        $formattedData['diagnosticReport']['status'] = DiagnosticReportStatus::DRAFT->value;
+
         try {
-            EHealth::diagnosticReport()->create($this->patientUuid, ['signed_data' => $signedContent->getBase64Data()]);
-
             $diagnosticReportId = $this->persist($formattedData);
-
-            Session::flash('success', __('diagnostic-reports.messages.create_request_sent'));
-
-            if ($this->prepersonId !== null) {
-                $this->redirectRoute(
-                    'prepersons.diagnostic-report.view',
-                    [legalEntity(), 'preperson' => $this->prepersonId, 'diagnosticReportId' => $diagnosticReportId],
-                    navigate: true
-                );
-
-                return;
-            }
-
-            $this->redirectRoute(
-                'diagnostic-report.view',
-                [legalEntity(), 'person' => $this->personId, 'diagnosticReportId' => $diagnosticReportId],
-                navigate: true
-            );
-        } catch (EHealthException|EHealthConnectionException $exception) {
-            $exception->handle('Error when signing diagnostic report');
-
-            return;
         } catch (Throwable $exception) {
             $this->handleDatabaseErrors($exception, 'Error while saving diagnostic report');
 
             return;
         }
+
+        try {
+            $submission = RemoteEHealthLinksProcessing::startSubmission(DiagnosticReport::findOrFail($diagnosticReportId), $requestData);
+        } catch (Throwable $exception) {
+            $this->handleDatabaseErrors($exception, 'Error while starting diagnostic report submission');
+            $this->redirectToPage($diagnosticReportId, 'view');
+
+            return;
+        }
+
+        try {
+            $response = EHealth::diagnosticReport()->create($this->patientUuid, ['signed_data' => $signedContent->getBase64Data()]);
+        } catch (EHealthException|EHealthConnectionException $exception) {
+            $exception->handle('Error when signing diagnostic report');
+            RemoteEHealthLinksProcessing::markSubmissionFailed($submission);
+            $this->redirectToPage($diagnosticReportId, 'view');
+
+            return;
+        }
+
+        // eHealth received the report already, so it stays submitted and locked even if following it fails
+        try {
+            RemoteEHealthLinksProcessing::track($submission, $response->validate());
+
+            Session::flash('success', __('diagnostic-reports.messages.create_request_sent'));
+        } catch (Throwable $exception) {
+            Log::channel('e_health_errors')->error('Submitted diagnostic report is not tracked', [
+                'diagnosticReportId' => $diagnosticReportId,
+                'response' => $response->getData(),
+                'exception' => $exception->getMessage()
+            ]);
+            Session::flash('error', __('errors.ehealth.messages.submission_not_tracked'));
+        }
+
+        $this->redirectToPage($diagnosticReportId, 'view');
+    }
+
+    /**
+     * Open the given page, 'edit' or 'view', of the stored report.
+     *
+     * @param  int|string  $diagnosticReportId
+     * @param  string  $page
+     * @return void
+     */
+    protected function redirectToPage(int|string $diagnosticReportId, string $page): void
+    {
+        if ($this->prepersonId !== null) {
+            $this->redirectRoute(
+                "prepersons.diagnostic-report.$page",
+                [legalEntity(), 'preperson' => $this->prepersonId, 'diagnosticReport' => $diagnosticReportId],
+                navigate: true
+            );
+
+            return;
+        }
+
+        $this->redirectRoute(
+            "diagnostic-report.$page",
+            [legalEntity(), 'person' => $this->personId, 'diagnosticReport' => $diagnosticReportId],
+            navigate: true
+        );
     }
 
     /**

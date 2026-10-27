@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\MedicalEvents\Sql;
 
 use App\Enums\Person\ApprovalStatus;
+use App\Models\CarePlan;
 use App\Models\EhealthLink;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
@@ -181,6 +182,20 @@ class Approval extends Model
     }
 
     /**
+     * Filter approvals that are active, verified and not expired yet.
+     *
+     * @param  Builder  $query
+     * @return Builder
+     */
+    #[Scope]
+    protected function active(Builder $query): Builder
+    {
+        return $query->whereStatus(ApprovalStatus::ACTIVE)
+            ->isVerified()
+            ->whereFuture('expires_at');
+    }
+
+    /**
      * Active approvals on the patient's data granted to one of the user's employees in the legal entity, which open
      * all the patient's data.
      *
@@ -195,9 +210,38 @@ class Approval extends Model
     #[Scope]
     protected function accessGrantedTo(Builder $query, User $user, Person|Preperson $patient, LegalEntity $legalEntity): Builder
     {
-        return $query->isAlive($patient)
-            ->isVerified()
-            ->whereStatus(ApprovalStatus::ACTIVE)
+        return $query->whereMorphedTo('approvable', $patient)
+            ->active()
+            ->grantedToEmployees($user, $legalEntity);
+    }
+
+    /**
+     * Active approvals on a type of the patient's records granted to one of the user's employees in the legal entity,
+     * which open all the patient's records of that type.
+     *
+     * ABAC rule 16.
+     *
+     * @param  Builder  $query
+     * @param  User  $user
+     * @param  Person|Preperson  $patient
+     * @param  string  $resourceType
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function resourceTypeAccessGrantedTo(
+        Builder $query,
+        User $user,
+        Person|Preperson $patient,
+        string $resourceType,
+        LegalEntity $legalEntity
+    ): Builder {
+        return $query->whereMorphedTo('approvable', $patient)
+            ->active()
+            ->whereHas(
+                'grantedResourceTypes.codeableConcept.coding',
+                static fn (Builder $coding): Builder => $coding->whereCode($resourceType)
+            )
             ->grantedToEmployees($user, $legalEntity);
     }
 
@@ -205,7 +249,7 @@ class Approval extends Model
      * Active approvals on the resource granted to one of the user's employees in the legal entity or to the legal
      * entity itself, which open that resource.
      *
-     * ABAC rule 5.
+     * ABAC rules 5 and 11.
      *
      * @param  Builder  $query
      * @param  User  $user
@@ -216,21 +260,75 @@ class Approval extends Model
     #[Scope]
     protected function resourceAccessGrantedTo(Builder $query, User $user, Model $resource, LegalEntity $legalEntity): Builder
     {
-        return $query->isAlive($resource)
-            ->isVerified()
-            ->whereStatus(ApprovalStatus::ACTIVE)
-            ->where(
-                static fn (Builder $approval): Builder => $approval
-                    ->grantedToEmployees($user, $legalEntity)
-                    ->orWhere(
-                        static fn (Builder $toLegalEntity): Builder => $toLegalEntity
-                            ->whereGrantedToType('legal_entity')
-                            ->whereHas(
-                                'grantedTo',
-                                static fn (Builder $identifier): Builder => $identifier->whereValue($legalEntity->uuid)
-                            )
-                    )
-            );
+        return $query->whereMorphedTo('approvable', $resource)
+            ->active()
+            ->grantedToEmployeesOrLegalEntity($user, $legalEntity);
+    }
+
+    /**
+     * Active approvals on diagnostic reports granted to one of the user's employees in the legal entity or to the legal
+     * entity itself, which open those reports.
+     *
+     * ABAC rule 11.
+     *
+     * @param  Builder  $query
+     * @param  User  $user
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function diagnosticReportAccessGrantedTo(Builder $query, User $user, LegalEntity $legalEntity): Builder
+    {
+        return $query->whereApprovableType(DiagnosticReport::class)
+            ->active()
+            ->grantedToEmployeesOrLegalEntity($user, $legalEntity);
+    }
+
+    /**
+     * Active read approvals on care plans granted by the patient to one of the user's employees in the legal entity,
+     * which open the records based on those care plans.
+     *
+     * ABAC rule 14.
+     *
+     * @param  Builder  $query
+     * @param  User  $user
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function carePlanAccessGrantedTo(Builder $query, User $user, LegalEntity $legalEntity): Builder
+    {
+        return $query->whereApprovableType(CarePlan::class)
+            ->active()
+            ->whereAccessLevel('read')
+            ->grantedToEmployees($user, $legalEntity);
+    }
+
+    /**
+     * Active verified approvals on the procedure granted to one of the user's employees in the legal entity, which
+     * open that procedure.
+     *
+     * ABAC rule 15.
+     *
+     * @param  Builder  $query
+     * @param  User  $user
+     * @param  Procedure  $procedure
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function procedureAccessGrantedTo(
+        Builder $query,
+        User $user,
+        Procedure $procedure,
+        LegalEntity $legalEntity
+    ): Builder {
+        return $query->whereHas(
+            'grantedResources.grantedTo',
+            static fn (Builder $identifier): Builder => $identifier->whereValue($procedure->uuid)
+        )
+            ->active()
+            ->grantedToEmployees($user, $legalEntity);
     }
 
     /**
@@ -252,6 +350,31 @@ class Approval extends Model
                     Employee::forUserInLegalEntity($user, $legalEntity)->pluck('uuid')
                 )
             );
+    }
+
+    /**
+     * Filter approvals granted to one of the user's employees in the legal entity or to the legal entity itself.
+     *
+     * @param  Builder  $query
+     * @param  User  $user
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function grantedToEmployeesOrLegalEntity(Builder $query, User $user, LegalEntity $legalEntity): Builder
+    {
+        return $query->where(
+            static fn (Builder $approval): Builder => $approval
+                ->grantedToEmployees($user, $legalEntity)
+                ->orWhere(
+                    static fn (Builder $toLegalEntity): Builder => $toLegalEntity
+                        ->whereGrantedToType('legal_entity')
+                        ->whereHas(
+                            'grantedTo',
+                            static fn (Builder $identifier): Builder => $identifier->whereValue($legalEntity->uuid)
+                        )
+                )
+        );
     }
 
     #[Scope]

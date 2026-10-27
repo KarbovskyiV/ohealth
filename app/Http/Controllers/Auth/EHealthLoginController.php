@@ -10,13 +10,16 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\LegalEntity;
 use Illuminate\Support\Str;
+use App\Auth\SessionBinder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Events\EHealthUserLogin;
+use App\Classes\eHealth\EHealth;
 use App\Mail\UserCredentialsMail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\RedirectResponse;
@@ -24,10 +27,11 @@ use Illuminate\Support\Facades\Session;
 use App\Classes\eHealth\Api\EmployeeApi;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
-use App\Auth\SessionBinder;
 use App\Auth\EHealth\Services\TokenStorage;
+use App\Exceptions\EHealth\EHealthException;
 use App\Classes\eHealth\Exceptions\ApiException;
-use App\Classes\eHealth\Request as EHealthRequest;
+use App\Http\Middleware\EnsureMisTwoFactorPassed;
+use App\Exceptions\EHealth\EHealthConnectionException;
 use Illuminate\Contracts\Validation\Validator as ResponseValidator;
 
 class EHealthLoginController extends Controller
@@ -57,6 +61,16 @@ class EHealthLoginController extends Controller
 
         if (!$request->has('code')) {
             return Redirect::route('login');
+        }
+
+        // Only a user who has recently passed the MIS two-factor step may finish the eHealth login.
+        // The local dev login authenticates against eHealth directly and has no such step.
+        $misTwoFactorUserId = Session::get('mis_2fa.user_id');
+
+        if (!App::isLocal() && !EnsureMisTwoFactorPassed::isGateValid(Session::get('mis_2fa'))) {
+            Log::warning('eHealth login callback reached without a recent MIS two-factor step');
+
+            return $this->breakAuth('auth.login.error.legal_entity.invalid_session');
         }
 
         $loginedGuard = Session::get('logined_guard', 'web');
@@ -113,7 +127,7 @@ class EHealthLoginController extends Controller
 
         Auth::shouldUse($loginedGuard);
 
-        $user = $this->findOrCreateUser($legalEntity, $authUserUUID);
+        $user = $this->findOrCreateUser($legalEntity, $authUserUUID, App::isLocal() ? null : $misTwoFactorUserId);
 
         if (!$user) {
             Log::error(__('auth.login.error.user_authentication', [], 'en'));
@@ -149,7 +163,11 @@ class EHealthLoginController extends Controller
             Log::error('EHealth login post-auth listener failed', [
                 'user_id' => $user->id,
                 'legal_entity_id' => $legalEntity->id,
+                'selected_role' => Session::get('single_role_login'),
                 'exception' => $message,
+                'exception_class' => $exception::class,
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
             ]);
 
             return $this->breakAuth($message);
@@ -188,12 +206,22 @@ class EHealthLoginController extends Controller
      *
      * @param  LegalEntity  $legalEntity
      * @param  string  $authUserUUID
+     * @param  int|null  $expectedUserId  User who passed the MIS two-factor step; anyone else is rejected before being created or bound
      * @return User|null
      * @throws ApiException
      */
-    protected function findOrCreateUser(LegalEntity $legalEntity, string $authUserUUID): ?User
+    protected function findOrCreateUser(LegalEntity $legalEntity, string $authUserUUID, ?int $expectedUserId): ?User
     {
         $user = User::with('party')->where('uuid', $authUserUUID)->first();
+
+        if ($user && $expectedUserId !== null && $user->id !== $expectedUserId) {
+            Log::warning('eHealth returned a different user than the one who passed the MIS two-factor step', [
+                'mis_user_id' => $expectedUserId,
+                'ehealth_user_id' => $user->id
+            ]);
+
+            return null;
+        }
 
         $syncStatus = $legalEntity->getEntityStatus();
 
@@ -230,6 +258,16 @@ class EHealthLoginController extends Controller
 
         // If user exist in DB but not logged in before
         $user = User::where('email', $ehealthEmail)->first();
+
+        // The user who passed the MIS two-factor step already exists, so nobody else may be created or bound here
+        if ($expectedUserId !== null && $user?->id !== $expectedUserId) {
+            Log::warning('eHealth returned a different user than the one who passed the MIS two-factor step', [
+                'mis_user_id' => $expectedUserId,
+                'ehealth_email' => $ehealthEmail
+            ]);
+
+            return null;
+        }
 
         if (!$user) {
             $password = Str::random(8);
@@ -297,33 +335,41 @@ class EHealthLoginController extends Controller
      *
      * @param  string  $err  Text error message via translation
      * @return RedirectResponse
-     * @throws ApiException
      */
     protected function breakAuth(string $err = ''): RedirectResponse
     {
-        $authEhealth = config('ehealth.api.auth_ehealth');
-
-        // Logout user from the system
-        if (Session::has($authEhealth) || Session::has(config('ehealth.api.oauth.bearer_token'))) {
-            new EHealthRequest('POST', config('ehealth.api.oauth.logout'), [])->sendRequest();
-
-            // Forget bearer token and other token's data
-            app(TokenStorage::class)->clear();
-        }
-
-        // Forget session data
-        Session::forget([$authEhealth, 'logined_guard', 'mis_2fa']);
-
-        // Redirect to login page with error message
         $err = $err ?: 'auth.login.error.common';
 
-        $logMessage = __($err, [], 'en');
+        Log::error(__($err, [], 'en'));
 
-        Log::error($logMessage);
+        // A failed revocation must not hide the error that caused the login to fail.
+        $token = app(TokenStorage::class)->getBearerToken();
 
-        $errorMessage = __($err);
+        if (\is_string($token) && $token !== '') {
+            try {
+                EHealth::legalEntity()->logout();
+            } catch (EHealthException|EHealthConnectionException $exception) {
+                Log::warning('eHealth logout failed while aborting login', [
+                    'exception' => $exception->getMessage(),
+                ]);
+            }
+        }
 
-        return Redirect::to('/login')->with('error', $errorMessage);
+        $user = Auth::guard('ehealth')->user() ?? Auth::guard('web')->user();
+
+        if ($user instanceof User) {
+            new SessionBinder()->release($user);
+        }
+
+        // Clearing only the token leaves the guard authenticated, so the next request
+        // replaces the original error with CheckSessionToken's "Invalid session" message.
+        Auth::guard('ehealth')->logout();
+        Auth::guard('web')->logout();
+
+        Session::invalidate();
+        Session::regenerateToken();
+
+        return Redirect::route(App::isLocal() ? 'dev.login' : 'login')->with('error', __($err));
     }
 
     /**

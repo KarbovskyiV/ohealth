@@ -144,7 +144,7 @@
                             <button
                                 type="button"
                                 @click="openGroupActions = false"
-                                class="dropdown-button !flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
+                                class="dropdown-button flex! w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                             >
                                 <span class="text-gray-500">
                                     @icon('close', 'w-4 h-4')
@@ -197,12 +197,15 @@
                                     }
                                 "
                                 type="text"
+                                id="filterIssuedRange"
                                 class="daterangepicker-uk with-leading-icon input peer w-full"
                                 placeholder=" "
                                 autocomplete="off"
                             />
 
-                            <label class="wrapped-label"> {{ __('forms.filter_date_range') }} </label>
+                            <label for="filterIssuedRange" class="wrapped-label">
+                                {{ __('forms.filter_date_range') }}
+                            </label>
                         </div>
                     </div>
 
@@ -213,9 +216,7 @@
                         bindParam="name"
                         :label="__('episodes.plural')"
                     />
-                </div>
 
-                <div class="form-row-3 mb-6">
                     <x-forms.combobox
                         :options="$encounters"
                         bind="filterEncounterId"
@@ -223,7 +224,9 @@
                         bindParam="name"
                         :label="__('encounters.label')"
                     />
+                </div>
 
+                <div class="form-row-3 mb-9">
                     <x-forms.combobox
                         :options="$diagnosticReports"
                         bind="filterDiagnosticReportId"
@@ -239,15 +242,13 @@
                         bindParam="name"
                         :label="__('devices.plural')"
                     />
-                </div>
 
-                <div class="form-row-3 mb-9">
                     <x-forms.combobox
                         :options="$specimens"
                         bind="filterSpecimenId"
                         bindValue="uuid"
-                        bindParam="uuid"
-                        :label="__('observations.specimen_id')"
+                        bindParam="name"
+                        :label="__('observations.specimen')"
                     />
                 </div>
             </div>
@@ -260,7 +261,7 @@
                                 <input type="checkbox" class="default-checkbox h-5 w-5" />
                             </div>
 
-                            <div class="record-inner-column flex-1 !pl-4">
+                            <div class="record-inner-column flex-1 pl-4!">
                                 <div class="record-inner-label">{{ __('observations.category_and_code') }}</div>
                                 <div class="record-inner-value text-[17px] font-semibold text-gray-900 dark:text-gray-100">
                                     {{ $this->dictionaryLabel($observation, 'categories.0') }} | {{ $this->dictionaryLabel($observation, 'code') }}
@@ -456,7 +457,7 @@
         </div>
     </div>
 
-    @include('livewire.encounter.encounter-cancellation')
+    @include('livewire.encounter-package.encounter-cancellation')
 
     <x-forms.loading />
 </x-layouts.patient>

@@ -59,7 +59,16 @@ class PartyRepository
 
         $guards = collect(array_keys((array) config('auth.guards')))->values();
         $savedGuard = Auth::getDefaultDriver();
-        $loginedRole = Session::get('first_login_role');
+        $loginedRole = Session::get('single_role_login');
+
+        // REORGANIZATION_OWNER is an access role; the underlying employee remains OWNER.
+        $loginedEmployeeType = $loginedRole === Role::REORGANIZATION_OWNER->value
+            ? Role::OWNER->value
+            : $loginedRole;
+
+        $loginedEmployee = $loginedEmployeeType
+            ? $partyEmployees->firstWhere('employee_type', $loginedEmployeeType)
+            : null;
 
         setPermissionsTeamId($legalEntity->id);
 
@@ -81,7 +90,7 @@ class PartyRepository
             $employeesCandidatesToSync = array_merge($employeesCandidatesToSync, $employeesFiltered->map(fn(Employee $employee) => ['employee_id' => $employee->id, 'user_id' => $user->id])->all());
 
             // Current Roles for the $user
-            $oldRoles = $user->loadMissing('roles')->roles->pluck('name')->all();
+            $oldRoles = $user->loadMissing('roles')->roles;
 
             // Get all suitable roles based on the employee types of the user's party employees,
             // limited the same way (older users inherit newer employees' roles, not vice versa).
@@ -101,17 +110,15 @@ class PartyRepository
                 $availRoles[] = Role::REORGANIZATION_OWNER->value;
             }
 
-            // Determine which roles are new and need to be assigned
-            $newRoles = collect($availRoles)->diff($oldRoles)->values()->toArray();
+            // Check which roles are missing separately for each guard below.
+            $newRoles = $availRoles;
 
             // Check if the user has an more than one employee with $loginedRole role in the same party.
             // If so, include the $loginedRole's role from the party to ensure proper access for users with multiple $loginedRole employees in the same party
             // NOTE: this case is possible when data of existent employee has been modified with changed an email.
             // Changing email causes to create a new user with the same email and assign the employee to this new user,
             // but the old user still exists with the old employee and role.
-            if ($loginedRole && $user->id === Auth::id()) {
-
-                $loginedEmployee = $partyEmployees->where('employee_type', $loginedRole)->first();
+            if ($loginedEmployee && $user->id === Auth::id()) {
 
                 // This need to save the pivot table data when the employee has been modified with changed email, (employee record has new 'user_id' value)
                 // so the new user is created and assigned to the employee, but the old user still exists with the old employee and role.
@@ -125,6 +132,11 @@ class PartyRepository
                 );
 
                 $newRoles = array_unique(array_merge($newRoles, [$loginedRole]));
+
+                // Preserve the alias when the logged-in OWNER changed email.
+                if ($loginedRole === Role::OWNER->value) {
+                    $newRoles = array_unique(array_merge($newRoles, [Role::REORGANIZATION_OWNER->value]));
+                }
             }
 
             if (empty($newRoles)) {
@@ -133,16 +145,20 @@ class PartyRepository
 
             $user->unsetRelation('roles')->unsetRelation('permissions');
 
-            // This only for case when the user has changed email and has the same employee with the same role in the same party, but with different user_id.
-            if($loginedRole === Role::OWNER->value) {
-                $newRoles = array_unique(array_merge($newRoles, [Role::REORGANIZATION_OWNER->value]));
-            }
-
             foreach ($guards as $guard) {
+                $rolesToAssign = array_values(array_diff(
+                    $newRoles,
+                    $oldRoles->where('guard_name', $guard)->pluck('name')->all()
+                ));
+
+                if (empty($rolesToAssign)) {
+                    continue;
+                }
+
                 Auth::shouldUse($guard);
 
                 // Set all roles for the all guards that have the same name as the new roles we want to assign (depends on guard)
-                $user->assignRole($newRoles);
+                $user->assignRole($rolesToAssign);
             }
         }
 

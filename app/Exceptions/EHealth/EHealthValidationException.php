@@ -16,7 +16,7 @@ class EHealthValidationException extends EHealthException
 {
     public function __construct(public readonly array $details)
     {
-        parent::__construct('eHealth API returned a validation error.');
+        parent::__construct(__('errors.ehealth.messages.validation_error'));
     }
 
     /**
@@ -109,11 +109,24 @@ class EHealthValidationException extends EHealthException
                     if (str_contains($description, 'At least one of action references, diagnostic reports or procedures should reference the same service')) {
                         return __('errors.ehealth.messages.referral_service_mismatch');
                     }
+                    // eHealth points entry at encounter, but the actionable field is care plan category.
+                    if (str_contains($description, 'Primary diagnosis condition codes and care plan category mismatch')) {
+                        return __('errors.ehealth.messages.care_plan_category_diagnosis_mismatch');
+                    }
+                    if (str_contains($description, 'End date must be greater than or equal the start date')) {
+                        return __('errors.ehealth.messages.period_end_before_start');
+                    }
                     if (str_contains($description, 'Category mismatch') || (str_contains($entry, 'code.identifier.value') && str_contains($description, 'Category mismatch'))) {
                         return __('Категорія послуги: обрана послуга не відповідає вказаній категорії в ЕСОЗ. Будь ласка, оберіть правильну категорію в полі «Категорія» (наприклад, Діагностична процедура / Процедура / Лабораторна діагностика тощо)');
                     }
 
-                    $ruleMessage = $this->translateRule($entry, $item['rules'][0]['rule'] ?? null);
+                    $translatedDescription = $this->translateRuleDescription($description);
+
+                    if ($translatedDescription !== null) {
+                        return "$entry: $translatedDescription";
+                    }
+
+                    $ruleMessage = $this->translateRule($entry, $item['rules'][0]['rule'] ?? null, $item['rules'][0]['params'] ?? []);
 
                     // Errors are joined by commas here, so the closing period of a validation message is dropped
                     return $ruleMessage !== null ? rtrim($ruleMessage, '.') : "$entry: $description";
@@ -141,6 +154,7 @@ class EHealthValidationException extends EHealthException
             'party.second_name' => __('forms.second_name'),
             'party.birth_date' => __('forms.birth_date'),
             'party.tax_id' => __('forms.tax_id'),
+            'party.email' => __('forms.email'),
             'party.working_experience' => __('forms.working_experience'),
             'doctor' => __('forms.doctor_data'),
             'start_date' => __('forms.start_date_work'),
@@ -174,6 +188,8 @@ class EHealthValidationException extends EHealthException
             'requester.identifier.value' => __('care-plan.ehealth_fields.requester'),
             'authored_on' => __('care-plan.ehealth_fields.authored_on'),
             '$.authored_on' => __('care-plan.ehealth_fields.authored_on'),
+            'period.end' => __('care-plan.date_and_time_end'),
+            '$.period.end' => __('care-plan.date_and_time_end'),
             'medical_programs.[0]' => __('Медична програма'),
             'medical_programs' => __('Медична програма'),
             'detail.product_reference.identifier.value' => __('Код медичного виробу'),
@@ -198,7 +214,8 @@ class EHealthValidationException extends EHealthException
                 return null;
             }
 
-            $ruleMessage = $this->translateRule($eHealthKey, $ruleName);
+            $translatedDescription = $this->translateRuleDescription($message);
+            $ruleMessage = $translatedDescription === null ? $this->translateRule($eHealthKey, $ruleName, Arr::get($detail, 'rules.0.params') ?? []) : null;
 
             if ($ruleMessage !== null) {
                 return $ruleMessage;
@@ -208,9 +225,11 @@ class EHealthValidationException extends EHealthException
             $normalizedKey = preg_replace('/\.?\[\d+\]/', '.*', $eHealthKey);
             $translatedKey = $eHealthFieldTranslations[$normalizedKey] ?? $eHealthFieldTranslations[$eHealthKey] ?? $eHealthKey;
 
-            $translatedMessage = '';
+            $translatedMessage = $translatedDescription ?? '';
 
-            if (str_contains($message, 'employee doesn\'t have speciality with active speciality_officio')) {
+            if ($translatedMessage !== '') {
+                // Known eHealth rule text is already Ukrainian.
+            } elseif (str_contains($message, 'employee doesn\'t have speciality with active speciality_officio')) {
                 $translatedMessage = __(
                     'errors.ehealth.messages.employee doesn\'t have speciality with active speciality_officio'
                 );
@@ -261,6 +280,13 @@ class EHealthValidationException extends EHealthException
                 $translatedMessage = __('Код одиниці добової дози (daily_amount) повинен збігатися з denumerator_unit одного з INNM обраного лікарського засобу');
             } elseif (str_contains($message, 'Activity can be completed only if it has in_progress status')) {
                 $translatedMessage = __('Призначення може бути виконане тільки якщо воно має статус "В процесі" (in_progress)');
+            } elseif (str_contains($message, 'Primary diagnosis condition codes and care plan category mismatch')) {
+                // Platform entry points at encounter; the form field to fix is category.
+                $translatedKey = __('care-plan.category');
+                $translatedMessage = __('errors.ehealth.messages.care_plan_category_diagnosis_mismatch');
+            } elseif (str_contains($message, 'End date must be greater than or equal the start date')) {
+                $translatedKey = __('care-plan.date_and_time_end');
+                $translatedMessage = __('errors.ehealth.messages.period_end_before_start');
             } elseif (str_contains($message, 'Category mismatch')) {
                 $translatedMessage = __('Категорія послуги не відповідає обраному коду в довіднику ЕСОЗ. Будь ласка, оберіть правильну категорію в полі «Категорія» (наприклад, Діагностична процедура / Процедура / Лабораторна діагностика тощо)');
             } elseif (!empty($message)) {
@@ -314,12 +340,73 @@ class EHealthValidationException extends EHealthException
             && str_contains($message, 'cancelled');
     }
 
+    /**
+     * Primary diagnosis ICD codes are incompatible with the selected care plan category.
+     */
+    public function isCarePlanCategoryDiagnosisMismatch(): bool
+    {
+        $invalidErrors = Arr::get($this->details, 'error.invalid') ?? Arr::get($this->details, 'invalid') ?? [];
+
+        foreach ($invalidErrors as $detail) {
+            $message = (string) (Arr::get($detail, 'rules.0.description') ?? Arr::get($detail, 'msg') ?? '');
+            if (str_contains($message, 'Primary diagnosis condition codes and care plan category mismatch')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Care plan period.end is earlier than period.start.
+     */
+    public function isCarePlanPeriodEndBeforeStart(): bool
+    {
+        $invalidErrors = Arr::get($this->details, 'error.invalid') ?? Arr::get($this->details, 'invalid') ?? [];
+
+        foreach ($invalidErrors as $detail) {
+            $message = (string) (Arr::get($detail, 'rules.0.description') ?? Arr::get($detail, 'msg') ?? '');
+            if (str_contains($message, 'End date must be greater than or equal the start date')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Ukrainian text for eHealth rule descriptions that otherwise stay in English.
+     */
+    private function translateRuleDescription(string $message): ?string
+    {
+        if (str_contains($message, 'to be an email address')) {
+            return __('errors.ehealth.messages.email_must_be_latin');
+        }
+
+        if (str_contains($message, 'No duplicate values')) {
+            return __('errors.ehealth.messages.no_duplicate_values');
+        }
+
+        if (str_contains($message, 'invalid tax_id')) {
+            return __('errors.ehealth.messages.invalid_tax_id');
+        }
+
+        return null;
+    }
+
     protected function translateTopLevelMessage(string $message): string
     {
+        $translated = EHealthException::translate($message);
+
+        if ($translated !== $message) {
+            return $translated;
+        }
+
         $exactMessages = [
             'Care plan has unfinished activities' => 'care_plan_has_unfinished_activities',
             'Confidant Person relationship does not belong to this person' => 'confidant_relationship_not_of_person',
             'Limit of confidant persons with this person is exhausted' => 'confidant_persons_limit_exhausted',
+            'client_id refers to legal entity that is not active' => 'legal_entity_not_active',
         ];
         if (isset($exactMessages[$message])) {
             return __('errors.ehealth.messages.'.$exactMessages[$message]);
@@ -373,10 +460,17 @@ class EHealthValidationException extends EHealthException
      *
      * @param  string  $entry
      * @param  string|null  $rule
+     * @param  array  $params  Fields the rule refers to, as oneOf lists the fields one of which is required
      * @return string|null
      */
-    protected function translateRule(string $entry, ?string $rule): ?string
+    protected function translateRule(string $entry, ?string $rule, array $params = []): ?string
     {
+        if ($rule === 'oneOf') {
+            return __('errors.ehealth.messages.one_of', [
+                'fields' => collect($params)->map($this->translateEntry(...))->implode(', ')
+            ]);
+        }
+
         $validationKey = match ($rule) {
             'required' => 'validation.required',
             'email' => 'validation.email',

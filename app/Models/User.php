@@ -10,11 +10,14 @@ use App\Enums\Status;
 use App\Enums\User\Role;
 use InvalidArgumentException;
 use App\Enums\EmployeeRole\Status as EmployeeRoleStatus;
+use App\Enums\Composition\CompositionCategory;
+use App\Enums\Composition\CompositionType;
 use App\Models\Person\Person;
 use App\Models\Relations\Party;
 use App\Models\Employee\Employee;
 use App\Models\Role as ModelsRole;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Traits\HasRoles;
@@ -511,6 +514,63 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Employee this user would author a medical conclusion as.
+     *
+     * Candidates are this party's DOCTOR/SPECIALIST records in the current legal entity
+     * — login merges every role's scopes, so the session is not a single employee.
+     * When a type is given, only the roles TV 3.8 permits for that conclusion here
+     * are considered.
+     *
+     * A birth conclusion is further restricted by position
+     * (EMAL_VALIDATION_AUTHOR_CATEGORIES_BY_POSITION: P5, P6, P8, P34, P103). Among
+     * those, an employee linked to this user is preferred so a pediatrician login is
+     * not overwritten by an earlier endocrinologist record on the same party.
+     */
+    public function getCompositionAuthorEmployee(?CompositionType $type = null): ?Employee
+    {
+        return $this->getCompositionAuthorEmployees($type)->first();
+    }
+
+    /** @return Collection<int, Employee> */
+    public function getCompositionAuthorEmployees(?CompositionType $type = null): Collection
+    {
+        $roles = $type === null
+            ? [Role::DOCTOR, Role::SPECIALIST]
+            : $type->allowedAuthorRoles(legalEntity()?->type?->name);
+
+        if ($roles === []) {
+            return collect();
+        }
+
+        $candidates = $this->getWriterEmployeeCandidates(...$roles);
+        $linked = $this->linkedEmployeesAmong($candidates);
+        $pool = $linked->concat($candidates)->unique('id')->values();
+
+        if ($type === CompositionType::NEWBORN) {
+            $allowedPositions = CompositionCategory::LIVE_BIRTH->allowedAuthorPositions();
+            $pool = $this->employeesWithAuthorPositions($pool, $allowedPositions);
+        }
+
+        return $pool;
+    }
+
+    /**
+     * Every employee of this user that may act on a medical conclusion here.
+     *
+     * Authorship is compared against all of them, because the conclusion may have been
+     * authored under a different one of this user's roles than the one currently in play.
+     *
+     * @return array<int, string>
+     */
+    public function getCompositionEmployeeUuids(): array
+    {
+        return $this->getWriterEmployeeCandidates(Role::DOCTOR, Role::SPECIALIST)
+            ->pluck('uuid')
+            ->filter()
+            ->all();
+    }
+
+    /**
      * Get main speciality for this user within a legal entity.
      *
      * @param  LegalEntity  $legalEntity
@@ -636,6 +696,57 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Employees in $candidates that belong to this user (pivot or employees.user_id).
+     *
+     * @param  Collection<int, Employee>  $candidates
+     * @return Collection<int, Employee>
+     */
+    private function linkedEmployeesAmong(Collection $candidates): Collection
+    {
+        if ($candidates->isEmpty()) {
+            return $candidates;
+        }
+
+        $legalEntityId = legalEntity()?->id;
+
+        if ($legalEntityId === null) {
+            return $candidates;
+        }
+
+        $linkedIds = $this->employees()
+            ->where('employees.legal_entity_id', $legalEntityId)
+            ->pluck('employees.id')
+            ->merge(
+                Employee::query()
+                    ->where('user_id', $this->id)
+                    ->where('legal_entity_id', $legalEntityId)
+                    ->pluck('id')
+            )
+            ->unique()
+            ->all();
+
+        return $candidates
+            ->filter(static fn (Employee $employee): bool => in_array($employee->id, $linkedIds, true))
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, Employee>  $employees
+     * @param  list<string>  $positions
+     * @return Collection<int, Employee>
+     */
+    private function employeesWithAuthorPositions(Collection $employees, array $positions): Collection
+    {
+        return $employees
+            ->filter(static fn (Employee $employee): bool => in_array(
+                (string) $employee->position,
+                $positions,
+                true
+            ))
+            ->values();
+    }
+
+    /**
      * Get all of this user's employees (within the current legal entity) matching any of the given
      * roles, ordered by role priority (most valuable role first).
      *
@@ -677,7 +788,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         // If teams are disabled, fallback to original behavior
         if (!config('permission.teams')) {
-            return $this->syncPermissionsParent(...$permissions);
+            return $this->syncPermissionsAtomically(...$permissions);
         }
 
         $teamId = getPermissionsTeamId();
@@ -685,7 +796,7 @@ class User extends Authenticatable implements MustVerifyEmail
         // Team context is mandatory when teams are enabled
         if (!$teamId) {
             // Calling original syncPermissions with empty set
-            return $this->syncPermissionsParent([]);
+            return $this->syncPermissionsAtomically([]);
         }
 
         // Normalize inputs to unique, non-empty permission names (strings):
@@ -711,7 +822,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
         // Calling original syncPermissions with empty set
         if ($incoming->isEmpty()) {
-            return $this->syncPermissionsParent([]);
+            return $this->syncPermissionsAtomically([]);
         }
 
         // Allowed permissions for those roles AND for this LegalEntity type
@@ -721,13 +832,40 @@ class User extends Authenticatable implements MustVerifyEmail
         $filtered = $incoming->intersect($allowed)->values()->all();
 
         // Delegate to original syncPermissions for the filtered set
-        $result = $this->syncPermissionsParent($filtered);
+        $result = $this->syncPermissionsAtomically($filtered);
 
         // Refresh caches and relations
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->unsetRelation('permissions');
 
         return $result;
+    }
+
+    /**
+     * Serialize permission replacement for the same user across login requests and queued jobs.
+     */
+    protected function syncPermissionsAtomically(...$permissions)
+    {
+        if (!$this->exists) {
+            return $this->syncPermissionsParent(...$permissions);
+        }
+
+        // Spatie replaces permissions by deleting existing pivot rows and then inserting new ones.
+        // Login requests and queued synchronization jobs can otherwise interleave these operations
+        // for the same user and attempt to insert duplicate model_has_permissions keys.
+        //
+        // Every synchronization through this helper locks the same user row before changing the
+        // permissions pivot. Another synchronization for this user waits until the transaction
+        // commits or rolls back. Locking the user also works when no permission rows exist yet.
+        // The transaction restores the previous permissions if replacement fails; a transaction
+        // without this shared row lock would not prevent concurrent replacements.
+        return DB::transaction(function () use ($permissions) {
+            // Execute the query to acquire the lock; its result is intentionally unused.
+            // Avoid eager loading relationships and fail if the user no longer exists.
+            $this->newModelQuery()->whereKey($this->getKey())->lockForUpdate()->firstOrFail();
+
+            return $this->syncPermissionsParent(...$permissions);
+        });
     }
 
     /**
@@ -922,7 +1060,7 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         // If user is in the "single role login" state with a temporary role, only check direct permissions
-        if (session('first_login_role')) {
+        if (session('single_role_login')) {
             return $this->getDirectPermissions()
                 ->pluck('name')
                 ->contains($name);

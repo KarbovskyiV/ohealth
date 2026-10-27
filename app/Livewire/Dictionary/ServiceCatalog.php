@@ -19,11 +19,11 @@ class ServiceCatalog extends Component
     use WithPagination;
     use FormTrait;
 
-    public string $searchBy = '';
-    public string $serviceCategory = '';
-    public string $serviceActive = '';
-    public string $serviceGroupActive = '';
-    public string $allowedForEn = '';
+    public string $filterCodeOrName = '';
+    public string $filterCategory = '';
+    public string $filterServiceIsActive = '';
+    public string $filterGroupIsActive = '';
+    public string $filterRequestAllowed = '';
     public bool $selectionMode = false;
     public string $selectionEvent = 'service-selected';
     public array $allowedCategories = [];
@@ -42,10 +42,6 @@ class ServiceCatalog extends Component
         $this->selectionEvent = $selectionEvent;
         $this->allowedCategories = $allowedCategories;
         $this->requestAllowedOnly = $requestAllowedOnly;
-
-        if ($this->requestAllowedOnly) {
-            $this->allowedForEn = '1';
-        }
 
         $this->getDictionary();
     }
@@ -70,49 +66,9 @@ class ServiceCatalog extends Component
                 ->values();
         }
 
-        // Apply filters
-        $filteredServices = $allServices->filter(function ($item) {
-            // Search filter
-            if (!empty($this->searchBy)) {
-                $searchTerm = trim($this->searchBy);
-                if (!$this->searchInItem($item, $searchTerm)) {
-                    return false;
-                }
-            }
-
-            // Category filter
-            if (!empty($this->serviceCategory)) {
-                if (!$this->itemHasCategory($item, $this->serviceCategory)) {
-                    return false;
-                }
-            }
-
-            // Group active filter (is_active parameter for groups)
-            if ($this->serviceGroupActive !== '') {
-                $isActiveRequired = (bool) $this->serviceGroupActive;
-                if (!$this->itemMatchesActiveStatus($item, $isActiveRequired)) {
-                    return false;
-                }
-            }
-
-            // Request allowed filter for groups (request_allowed parameter)
-            if ($this->allowedForEn !== '') {
-                $requestAllowedRequired = (bool) $this->allowedForEn;
-                if (!$this->itemMatchesRequestAllowed($item, $requestAllowedRequired)) {
-                    return false;
-                }
-            }
-
-            // Service active filter (is_active parameter for services)
-            if ($this->serviceActive !== '') {
-                $serviceActiveRequired = (bool) $this->serviceActive;
-                if (!$this->itemHasActiveServices($item, $serviceActiveRequired)) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
+        $filteredServices = $this->hasActiveFilters()
+            ? $allServices->map(fn (array $item): ?array => $this->pruneItem($item))->filter()->values()
+            : $allServices;
 
         // Apply pagination
         $perPage = config('pagination.per_page');
@@ -137,183 +93,127 @@ class ServiceCatalog extends Component
     public function resetFilters(): void
     {
         $this->reset([
-            'searchBy',
-            'serviceCategory',
-            'serviceActive',
-            'serviceGroupActive',
+            'filterCodeOrName',
+            'filterCategory',
+            'filterServiceIsActive',
+            'filterGroupIsActive',
+            'filterRequestAllowed'
         ]);
-
-        $this->allowedForEn = $this->requestAllowedOnly ? '1' : '';
 
         $this->resetPage();
     }
 
-    public function selectSearchSuggestion(int $index): void
+    /**
+     * Whether a search or a filter narrows the catalog, so the found branches are shown expanded.
+     *
+     * @return bool
+     */
+    public function hasActiveFilters(): bool
     {
-        $suggestions = $this->searchSuggestions;
-
-        if (isset($suggestions[$index])) {
-            $this->searchBy = $suggestions[$index];
-        }
-    }
-
-    public function getSearchSuggestionsProperty(): array
-    {
-        return [];
+        return trim($this->filterCodeOrName) !== ''
+            || $this->filterCategory !== ''
+            || $this->filterServiceIsActive !== ''
+            || $this->filterGroupIsActive !== ''
+            || $this->filterRequestAllowed !== '';
     }
 
     /**
-     * Search in the entire item structure (recursive search)
+     * Keep only the part of a catalog node that matches the search and the filters, along with the path to it.
+     * A group found by code or name keeps all of its content, a group without matches inside is dropped.
+     *
+     * @param  array  $item
+     * @param  bool  $isFoundByAncestor  Whether a group above was found by code or name
+     * @return array|null
      */
-    private function searchInItem(array $item, string $searchTerm): bool
+    private function pruneItem(array $item, bool $isFoundByAncestor = false): ?array
     {
-        // Search in main item
-        if ($this->itemMatches($item, $searchTerm)) {
-            return true;
+        // Only a service carries a category, and one outside any group can't match a group filter
+        if (array_key_exists('category', $item)) {
+            $hasGroupFilters = $this->filterGroupIsActive !== '' || $this->filterRequestAllowed !== '';
+
+            return !$hasGroupFilters && $this->serviceMatches($item, $isFoundByAncestor) ? $item : null;
         }
 
-        // Search in direct services
-        if (!empty($item['services'])) {
-            foreach ($item['services'] as $service) {
-                if ($this->itemMatches($service, $searchTerm)) {
-                    return true;
-                }
-            }
+        $isFound = $isFoundByAncestor || $this->matchesCodeOrName($item);
+        $isGroupMatched = $this->groupMatches($item);
+
+        $item['services'] = $isGroupMatched
+            ? collect($item['services'] ?? [])
+                ->filter(fn (array $service): bool => $this->serviceMatches($service, $isFound))
+                ->values()
+                ->all()
+            : [];
+
+        $item['groups'] = collect($item['groups'] ?? [])
+            ->map(fn (array $group): ?array => $this->pruneItem($group, $isFound))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($item['services'] !== [] || $item['groups'] !== []) {
+            return $item;
         }
 
-        // Search in groups
-        if (!empty($item['groups'])) {
-            foreach ($item['groups'] as $group) {
-                if ($this->itemMatches($group, $searchTerm)) {
-                    return true;
-                }
+        // A group without content of its own stays when it matches and no service filter is set
+        $hasServiceFilters = $this->filterCategory !== '' || $this->filterServiceIsActive !== '';
+        $isSearchMatched = trim($this->filterCodeOrName) === '' || $isFound;
 
-                // Search in subgroups
-                if (!empty($group['groups'])) {
-                    foreach ($group['groups'] as $subgroup) {
-                        if ($this->itemMatches($subgroup, $searchTerm)) {
-                            return true;
-                        }
-
-                        // Search in subgroup services
-                        if (!empty($subgroup['services'])) {
-                            foreach ($subgroup['services'] as $service) {
-                                if ($this->itemMatches($service, $searchTerm)) {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Search in group services (if no subgroups)
-                if (!empty($group['services'])) {
-                    foreach ($group['services'] as $service) {
-                        if ($this->itemMatches($service, $searchTerm)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        return false;
+        return $isGroupMatched && $isSearchMatched && !$hasServiceFilters ? $item : null;
     }
 
     /**
-     * Check if item matches search term by code and name
+     * Check a service against the search and the service filters.
+     *
+     * @param  array  $service
+     * @param  bool  $isFoundByAncestor  Whether a group above was found by code or name
+     * @return bool
      */
-    private function itemMatches(array $item, string $searchTerm): bool
+    private function serviceMatches(array $service, bool $isFoundByAncestor): bool
     {
-        $searchTerm = mb_strtolower($searchTerm);
-
-        // Search by code
-        if (!empty($item['code']) && mb_stripos($item['code'], $searchTerm) !== false) {
-            return true;
+        if (!$isFoundByAncestor && trim($this->filterCodeOrName) !== '' && !$this->matchesCodeOrName($service)) {
+            return false;
         }
 
-        // Search by name
-        if (!empty($item['name']) && mb_stripos($item['name'], $searchTerm) !== false) {
-            return true;
+        if ($this->filterCategory !== '' && ($service['category'] ?? null) !== $this->filterCategory) {
+            return false;
         }
 
-        return false;
+        return $this->filterServiceIsActive === ''
+            || (bool) ($service['is_active'] ?? false) === (bool) $this->filterServiceIsActive;
     }
 
     /**
-     * Check if item has services with the specified category
+     * Check a group against the group filters.
+     *
+     * @param  array  $group
+     * @return bool
      */
-    private function itemHasCategory(array $item, string $category): bool
+    private function groupMatches(array $group): bool
     {
-        // Check direct services
-        if (!empty($item['services'])) {
-            foreach ($item['services'] as $service) {
-                if (!empty($service['category']) && $service['category'] === $category) {
-                    return true;
-                }
-            }
+        if ($this->filterGroupIsActive !== '' && (bool) ($group['is_active'] ?? false) !== (bool) $this->filterGroupIsActive) {
+            return false;
         }
 
-        // Check services in groups
-        if (!empty($item['groups'])) {
-            foreach ($item['groups'] as $group) {
-                // Check group services
-                if (!empty($group['services'])) {
-                    foreach ($group['services'] as $service) {
-                        if (!empty($service['category']) && $service['category'] === $category) {
-                            return true;
-                        }
-                    }
-                }
-
-                // Check subgroups
-                if (!empty($group['groups'])) {
-                    foreach ($group['groups'] as $subgroup) {
-                        if (!empty($subgroup['services'])) {
-                            foreach ($subgroup['services'] as $service) {
-                                if (!empty($service['category']) && $service['category'] === $category) {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return false;
+        return $this->filterRequestAllowed === ''
+            || (bool) ($group['request_allowed'] ?? false) === (bool) $this->filterRequestAllowed;
     }
 
     /**
-     * Check if item matches the specified active status
+     * Whether the code or the name of a catalog node contains the searched text.
+     *
+     * @param  array  $item
+     * @return bool
      */
-    private function itemMatchesActiveStatus(array $item, bool $isActiveRequired): bool
+    private function matchesCodeOrName(array $item): bool
     {
-        // Check main item active status
-        if (isset($item['is_active']) && (bool) $item['is_active'] === $isActiveRequired) {
-            return true;
+        $searchTerm = trim($this->filterCodeOrName);
+
+        if ($searchTerm === '') {
+            return false;
         }
 
-        // Check services in groups
-        if (!empty($item['groups'])) {
-            foreach ($item['groups'] as $group) {
-                // Check group active status
-                if (isset($group['is_active']) && (bool) $group['is_active'] === $isActiveRequired) {
-                    return true;
-                }
-
-                // Check subgroups
-                if (!empty($group['groups'])) {
-                    foreach ($group['groups'] as $subgroup) {
-                        if (isset($subgroup['is_active']) && (bool) $subgroup['is_active'] === $isActiveRequired) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        return false;
+        return mb_stripos((string) ($item['code'] ?? ''), $searchTerm) !== false
+            || mb_stripos((string) ($item['name'] ?? ''), $searchTerm) !== false;
     }
 
     private function filterItemByRequestAllowed(array $item): ?array
@@ -342,82 +242,6 @@ class ServiceCatalog extends Component
         }
 
         return null;
-    }
-
-    /**
-     * Check if item matches the specified request_allowed status for groups
-     */
-    private function itemMatchesRequestAllowed(array $item, bool $requestAllowedRequired): bool
-    {
-        // Check main item request_allowed status
-        if (isset($item['request_allowed']) && (bool) $item['request_allowed'] === $requestAllowedRequired) {
-            return true;
-        }
-
-        // Check groups
-        if (!empty($item['groups'])) {
-            foreach ($item['groups'] as $group) {
-                // Check group request_allowed status
-                if (isset($group['request_allowed']) && (bool) $group['request_allowed'] === $requestAllowedRequired) {
-                    return true;
-                }
-
-                // Check subgroups
-                if (!empty($group['groups'])) {
-                    foreach ($group['groups'] as $subgroup) {
-                        if (isset($subgroup['request_allowed']) && (bool) $subgroup['request_allowed'] === $requestAllowedRequired) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if item has services with the specified is_active status
-     */
-    private function itemHasActiveServices(array $item, bool $serviceActiveRequired): bool
-    {
-        // Check direct services
-        if (!empty($item['services'])) {
-            foreach ($item['services'] as $service) {
-                if (isset($service['is_active']) && (bool) $service['is_active'] === $serviceActiveRequired) {
-                    return true;
-                }
-            }
-        }
-
-        // Check services in groups
-        if (!empty($item['groups'])) {
-            foreach ($item['groups'] as $group) {
-                // Check group services
-                if (!empty($group['services'])) {
-                    foreach ($group['services'] as $service) {
-                        if (isset($service['is_active']) && (bool) $service['is_active'] === $serviceActiveRequired) {
-                            return true;
-                        }
-                    }
-                }
-
-                // Check subgroups
-                if (!empty($group['groups'])) {
-                    foreach ($group['groups'] as $subgroup) {
-                        if (!empty($subgroup['services'])) {
-                            foreach ($subgroup['services'] as $service) {
-                                if (isset($service['is_active']) && (bool) $service['is_active'] === $serviceActiveRequired) {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return false;
     }
 
     private function filterItemByAllowedCategories(array $item): ?array

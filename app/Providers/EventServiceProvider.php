@@ -7,15 +7,17 @@ namespace App\Providers;
 use App\Listeners\LogLockout;
 use App\Events\EHealthUserLogin;
 use App\Events\LegalEntityCreate;
+use App\Listeners\OwnerNewReplace;
 use Illuminate\Auth\Events\Lockout;
 use App\Events\EhealthUserVerified;
 use App\Listeners\eHealth\EmployeeCreate;
+use App\Listeners\VerifyCreatedConnection;
 use App\Listeners\SendUserCredentialsListener;
 use App\Listeners\OnRegularLoginSyncronization;
 use App\Listeners\SyncUserRolesAfterVerification;
 use App\Listeners\FirstLoginOwnerSynchronization;
 use App\Listeners\eHealth\EmployeeRequestActualize;
-use App\Listeners\OwnerNewReplace;
+use App\Listeners\eHealth\EmployeePendingEditApply;
 use App\Listeners\PartyVerificationSyncStatusOnLogin;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -37,9 +39,12 @@ class EventServiceProvider extends ServiceProvider
             SyncUserRolesAfterVerification::class
         ],
         EHealthUserLogin::class => [
+            VerifyCreatedConnection::class,
             FirstLoginOwnerSynchronization::class,
             OnRegularLoginSyncronization::class,
             EmployeeCreate::class,
+            // After EmployeeCreate skip-gate: apply pending edits only when scoped (getById).
+            EmployeePendingEditApply::class,
             OwnerNewReplace::class,
             EmployeeRequestActualize::class,
             PartyVerificationSyncStatusOnLogin::class

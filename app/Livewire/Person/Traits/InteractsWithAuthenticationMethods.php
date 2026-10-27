@@ -15,15 +15,12 @@ use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\Person\Person;
 use App\Models\Relations\AuthenticationMethod as AuthenticationMethodModel;
-use App\Models\Relations\ConfidantPerson;
-use App\Models\Relations\Document;
 use App\Repositories\Repository;
 use App\Rules\PhoneNumber;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -45,9 +42,7 @@ trait InteractsWithAuthenticationMethods
             'confidantPersons.person.phones'
         ]);
 
-        $confidantPersons = $person->confidantPersons->keyBy(
-            static fn (ConfidantPerson $confidantPerson): string => $confidantPerson->person->uuid
-        );
+        $confidantPersons = collect($this->loadConfidantPersons($person))->keyBy('person.uuid');
 
         $this->authenticationMethods = $person->authenticationMethods
             ->map(static function (AuthenticationMethodModel $authenticationMethod) use ($confidantPersons): array {
@@ -63,22 +58,14 @@ trait InteractsWithAuthenticationMethods
                     return $method;
                 }
 
-                $confidant = $relationship->person;
+                $confidant = $relationship['person'];
                 $method['confidantPerson'] = [
-                    'name' => $confidant->fullName,
-                    // Masked the way the registry returns them, only the last two characters stay visible
-                    'taxId' => $confidant->taxId === null ? null : Str::mask($confidant->taxId, '*', 0, -2),
-                    'unzr' => $confidant->unzr === null ? null : Str::mask($confidant->unzr, '*', 0, -2),
-                    'documentsPerson' => $confidant->documents
-                        ->map(static fn (Document $document): array => [
-                            'type' => $document->type,
-                            'number' => Str::mask($document->number, '*', 0, -2)
-                        ])
-                        ->all(),
-                    'phones' => $confidant->phones->first() === null
-                        ? null
-                        : ['number' => $confidant->phones->first()->number],
-                    'relationshipIsActive' => $relationship->isActive
+                    'name' => $confidant['name'],
+                    'taxId' => $confidant['taxId'],
+                    'unzr' => $confidant['unzr'],
+                    'documentsPerson' => $confidant['documents'],
+                    'phones' => $confidant['phones'][0] ?? null,
+                    'relationshipIsActive' => $relationship['isActive']
                 ];
 
                 return $method;
@@ -126,7 +113,17 @@ trait InteractsWithAuthenticationMethods
      */
     public function canAddThirdPersonAuthenticationMethod(): bool
     {
-        return !$this->form->hasLegalCapacityDocument();
+        return !$this->hasLegalCapacityDocument();
+    }
+
+    /**
+     * Whether the documents of the patient prove their own legal capacity.
+     *
+     * @return bool
+     */
+    public function hasLegalCapacityDocument(): bool
+    {
+        return $this->form->hasLegalCapacityDocument();
     }
 
     /**
@@ -242,7 +239,7 @@ trait InteractsWithAuthenticationMethods
                     $person = Person::whereUuid($this->uuid)->firstOrFail();
 
                     if ($value === AuthenticationMethod::THIRD_PERSON->value
-                        && $this->form->hasLegalCapacityDocument()) {
+                        && $this->hasLegalCapacityDocument()) {
                         $fail(__('patients.errors.authMethod.no_third_person_for_legally_capable_person'));
 
                         return;

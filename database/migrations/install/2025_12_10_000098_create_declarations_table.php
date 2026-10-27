@@ -20,7 +20,7 @@ return new class extends Migration
             $table->uuid();
             $table->string('declaration_number')->unique();
             $table->foreignId('declaration_request_id')->constrained();
-            $table->foreignId('division_id')->constrained();
+            $table->foreignId('division_id')->nullable()->constrained();
             $table->foreignId('employee_id')->constrained();
             $table->foreignId('legal_entity_id')->constrained();
             $table->foreignId('person_id')->constrained('persons');

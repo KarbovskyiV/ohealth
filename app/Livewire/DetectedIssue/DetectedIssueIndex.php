@@ -10,7 +10,7 @@ use App\Enums\JobStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\DetectedIssueSync;
-use App\Livewire\Encounter\Forms\EncounterCancellationForm;
+use App\Livewire\EncounterPackage\Forms\EncounterCancellationForm;
 use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
@@ -322,6 +322,7 @@ class DetectedIssueIndex extends BasePatientComponent
     protected function paginateLocalIssues(): LengthAwarePaginator
     {
         $paginator = DetectedIssue::forPatient($this->patient())
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));

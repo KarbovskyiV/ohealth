@@ -25,6 +25,9 @@ use App\Livewire\ContractRequest\ContractRequestIndex;
 use App\Livewire\ContractRequest\ContractRequestShow;
 use App\Models\Contracts\ContractRequest;
 use App\Livewire\Dashboard;
+use App\Livewire\DeviceRequest\DeviceRequestForm;
+use App\Livewire\DeviceRequest\DeviceRequestIndex;
+use App\Models\MedicalEvents\Sql\DeviceRequestRequest;
 use App\Livewire\Declaration\DeclarationIndex;
 use App\Livewire\Division\DivisionCreate;
 use App\Livewire\Division\DivisionEdit;
@@ -66,6 +69,7 @@ use App\Livewire\Specimen\SpecimenCreate;
 use App\Livewire\Specimen\SpecimenIndex;
 use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Relations\Party;
+use App\Models\Connection;
 use App\Models\Declaration;
 use App\Models\Division;
 use App\Models\EmployeeRole;
@@ -74,8 +78,9 @@ use App\Models\HealthcareService;
 use App\Models\LegalEntity;
 use App\Models\License;
 use Illuminate\Support\Facades\Route;
-use App\Livewire\LegalEntity\Connections\LegalEntityConnectionIndex;
 use App\Livewire\LegalEntity\Connections\LegalEntityConnectionShow;
+use App\Livewire\LegalEntity\Connections\LegalEntityConnectionIndex;
+use App\Livewire\LegalEntity\Connections\LegalEntityConnectionCreate;
 
 /*
 |--------------------------------------------------------------------------
@@ -129,6 +134,10 @@ Route::middleware(['auth:web', 'verified'])->group(function () {
         Route::get('/legal-entities/create', CreateLegalEntity::class)
             ->can('limitedAction', LegalEntity::class)
             ->name('legal-entity.new.create');
+
+        Route::get('/connection/create', LegalEntityConnectionCreate::class)
+            ->can('create', Connection::class)
+            ->name('connection.create');
     });
 });
 
@@ -153,22 +162,26 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
                 ->can('viewAny', LegalEntity::class)
                 ->name('legal-entity.details');
 
+            Route::get('/connection/create', LegalEntityConnectionCreate::class)
+                ->can('create', Connection::class)
+                ->name('connection.legal-entity.create');
+
             Route::prefix('connection')->name('connection.')->middleware(['permission:connection:read|client:read'])->group(function () {
-                Route::get('/', LegalEntityConnectionIndex::class)->name('index');
-                Route::get('/{connection}', LegalEntityConnectionShow::class)->name('show');
+                Route::get('/', LegalEntityConnectionIndex::class)->can('viewAny', Connection::class)->name('index');
+                Route::get('/{connection}', LegalEntityConnectionShow::class)->can('view', 'connection')->name('show');
             });
 
             Route::get('/healthcare-service', HealthcareServiceIndex::class)
                 ->name('healthcare-service.index')
                 ->can('viewAny', HealthcareService::class);
 
-            Route::prefix('division')->middleware(['permission:division:read|division:details'])->group(function () {
+            Route::prefix('division')->scopeBindings()->whereNumber('division')->group(function () {
                 Route::get('/', DivisionIndex::class)->name('division.index')->can('viewAny', Division::class);
                 Route::get('/create', DivisionCreate::class)->name('division.create')->can('create', Division::class);
                 Route::get('/{division}', DivisionView::class)->name('division.view')->can('view', 'division');
                 Route::get('/{division}/edit', DivisionEdit::class)->name('division.edit')->can('update', 'division');
 
-                Route::prefix('{division}/healthcare-service')->name('healthcare-service.')->group(static function () {
+                Route::prefix('{division}/healthcare-service')->name('healthcare-service.')->scopeBindings()->whereNumber('healthcareService')->middleware(['permission:division:read|division:details'])->group(static function () {
                     Route::get('/create', HealthcareServiceCreate::class)
                         ->name('create')
                         ->can('create', HealthcareService::class);
@@ -263,7 +276,10 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
 
             // --- Device Requests (Медичні Вироби) ---
             Route::prefix('device-requests')->name('device-requests.')->group(function () {
-                Route::get('/', \App\Livewire\DeviceRequest\DeviceRequestIndex::class)->name('index');
+                Route::get('/{person}/create', DeviceRequestForm::class)
+                    ->middleware('can:create,'.DeviceRequestRequest::class.',legalEntity')->name('create');
+                Route::get('/{person?}', DeviceRequestIndex::class)
+                    ->middleware('can:viewAny,'.DeviceRequestRequest::class.',legalEntity')->name('index');
             });
 
             // --- Group of Contracts (Already signed/active) ---

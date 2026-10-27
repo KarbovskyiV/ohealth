@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Models\MedicalEvents\Sql;
 
 use App\Casts\EHealthTimestampCast;
+use App\Contracts\SubmittedToEHealth;
 use App\Enums\Person\EncounterStatus;
+use App\Models\EhealthLink;
+use App\Models\LegalEntity;
 use App\Models\Person\Person;
 use App\Models\Preperson;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -15,9 +19,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
-class Encounter extends Model
+class Encounter extends Model implements SubmittedToEHealth
 {
     protected $fillable = [
         'uuid',
@@ -166,9 +171,24 @@ class Encounter extends Model
         return $this->hasOne(EncounterHospitalization::class);
     }
 
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(Person::class);
+    }
+
     public function preperson(): BelongsTo
     {
         return $this->belongsTo(Preperson::class);
+    }
+
+    /**
+     * eHealth jobs the signed encounter package was submitted with, the latest one telling how the last submission went.
+     *
+     * @return MorphMany
+     */
+    public function ehealthLinks(): MorphMany
+    {
+        return $this->morphMany(EhealthLink::class, 'linkable');
     }
 
     /**
@@ -303,6 +323,55 @@ class Encounter extends Model
     }
 
     /**
+     * Filter the patient's encounters based on a referral issued under a care plan one of the user's employees has
+     * an active read approval on.
+     *
+     * ABAC rule 14.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @param  User  $user
+     * @param  LegalEntity  $legalEntity
+     * @return Builder
+     */
+    #[Scope]
+    protected function basedOnApprovedCarePlan(
+        Builder $query,
+        Person|Preperson $patient,
+        User $user,
+        LegalEntity $legalEntity
+    ): Builder {
+        return $query->forPatient($patient)->whereHas(
+            'incomingReferral',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnApprovedCarePlan($patient, $user, $legalEntity)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
+     * Filter the patient's encounters based on a referral issued under a care plan managed by the current legal entity.
+     *
+     * ABAC rule 17.
+     *
+     * @param  Builder  $query
+     * @param  Person|Preperson  $patient
+     * @return Builder
+     */
+    #[Scope]
+    protected function basedOnCarePlanOfLegalEntity(Builder $query, Person|Preperson $patient): Builder
+    {
+        return $query->forPatient($patient)->whereHas(
+            'incomingReferral',
+            static fn (Builder $identifier): Builder => $identifier->whereIn(
+                'value',
+                ServiceRequestRequest::basedOnCarePlanOfLegalEntity($patient)->pluck('uuid')
+            )
+        );
+    }
+
+    /**
      * Filter encounters belonging to the given episode, which is stored as an identifier holding its eHealth ID.
      *
      * @param  Builder  $query
@@ -319,7 +388,8 @@ class Encounter extends Model
     }
 
     /**
-     * Order by most recently updated in eHealth first, keeping records without a timestamp last.
+     * Order by most recently updated in eHealth first, keeping records without a timestamp last. Drafts lead the list,
+     * by their local update time, as they are not in eHealth yet.
      *
      * @param  Builder  $query
      * @return Builder
@@ -327,8 +397,10 @@ class Encounter extends Model
     #[Scope]
     protected function recentlyUpdatedFirst(Builder $query): Builder
     {
-        return $query->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
-            ->orderByDesc('ehealth_updated_at');
+        return $query->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [EncounterStatus::DRAFT->value])
+            ->orderByRaw('CASE WHEN ehealth_updated_at IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('ehealth_updated_at')
+            ->orderByDesc('updated_at');
     }
 
     /**

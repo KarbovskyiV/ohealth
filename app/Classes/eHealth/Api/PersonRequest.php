@@ -180,12 +180,7 @@ class PersonRequest extends Request
             // Part of the address schema for Ukrainian addresses only
             'person.addresses.*.settlement_id' => ['nullable', 'uuid'],
             'person.addresses.*.street_type' => ['nullable', new InDictionary('STREET_TYPE')],
-            'person.addresses.*.street' => [
-                'nullable',
-                'required_if:person.addresses.*.country,UA',
-                'string',
-                'max:255'
-            ],
+            'person.addresses.*.street' => ['nullable', 'string', 'max:255'],
             'person.addresses.*.building' => ['nullable', 'string', 'max:255'],
             'person.addresses.*.apartment' => ['nullable', 'string', 'max:255'],
             'person.addresses.*.zip' => ['nullable', new Zip()],
@@ -204,7 +199,7 @@ class PersonRequest extends Request
             'person.documents.*.issuing_country' => ['nullable', new InDictionary('ISSUING_COUNTRY')],
             'person.documents.*.expiration_date' => ['nullable', 'date'],
             'person.emergency_contact.first_name' => ['required', 'string', 'max:255'],
-            'person.emergency_contact.last_name' => ['required', 'string', 'max:255'],
+            'person.emergency_contact.last_name' => ['nullable', 'string', 'max:255'],
             'person.emergency_contact.second_name' => ['nullable', 'string', 'max:255'],
             'person.emergency_contact.phones.*.type' => ['required', new InDictionary('PHONE_TYPE')],
             'person.emergency_contact.phones.*.number' => ['required', 'regex:/^\+[0-9]{11,12}$/'],

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Traits;
 
 use App\Enums\JobStatus;
+use App\Models\Declaration;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\User;
 use App\Notifications\SyncNotification;
 use Illuminate\Bus\Batch;
@@ -64,6 +66,19 @@ trait HandlesSyncBatch
      */
     protected function onSyncStatusChanged(string $entityType, JobStatus $status): void
     {
+    }
+
+    /**
+     * Whether the user has access to all the patient's records being synced: an active declaration (ABAC rule 1) or an
+     * active approval on the patient's data (ABAC rule 4). Override when another rule opens all the records of the type.
+     *
+     * @param  User  $user
+     * @return bool
+     */
+    protected function hasPatientAccessForSync(User $user): bool
+    {
+        return Declaration::accessGrantedTo($user, $this->patient(), legalEntity())->exists()
+            || Approval::accessGrantedTo($user, $this->patient(), legalEntity())->exists();
     }
 
     /**
@@ -217,6 +232,13 @@ trait HandlesSyncBatch
         $jobClass = $this->getJobClass($entityType);
         $entityConstant = $this->getEntityConstant($entityType);
 
+        // Decided once for the whole batch, so every page is fetched with the same filter
+        $hasPatientAccess = $this->hasPatientAccessForSync($user);
+
+        // The callbacks are stored with the batch and restored on every read of it, so they keep only plain values
+        $userId = $user->id;
+        $patientUuid = $this->uuid;
+
         Bus::batch([new $jobClass(legalEntity(), page: 2)])
             ->withOption('legal_entity_id', legalEntity()->id)
             ->withOption('token', Crypt::encryptString($token))
@@ -224,14 +246,15 @@ trait HandlesSyncBatch
             ->withOption('patient_uuid', $this->uuid)
             ->withOption('person_id', $this->personId)
             ->withOption('preperson_id', $this->prepersonId)
-            ->then(fn () => $user->notify(new SyncNotification($entityType, 'completed')))
-            ->catch(function (Batch $batch, Throwable $exception) use ($user, $entityType) {
+            ->withOption('has_patient_access', $hasPatientAccess)
+            ->then(static fn () => User::find($userId)?->notify(new SyncNotification($entityType, 'completed')))
+            ->catch(static function (Batch $batch, Throwable $exception) use ($userId, $entityType, $patientUuid): void {
                 Log::error(ucfirst($entityType) . ' sync batch failed.', [
                     'batch_id' => $batch->id,
-                    'patient_uuid' => $this->uuid,
-                    'exception' => $exception,
+                    'patient_uuid' => $patientUuid,
+                    'exception' => $exception
                 ]);
-                $user->notify(new SyncNotification($entityType, 'failed'));
+                User::find($userId)?->notify(new SyncNotification($entityType, 'failed'));
             })
             ->onQueue('sync')
             ->name($batchName . '_' . $this->uuid)

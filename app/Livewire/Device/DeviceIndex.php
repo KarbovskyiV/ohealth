@@ -11,17 +11,23 @@ use App\Enums\JobStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthException;
 use App\Jobs\DeviceSync;
-use App\Livewire\Encounter\Forms\EncounterCancellationForm;
+use App\Livewire\EncounterPackage\Forms\EncounterCancellationForm;
 use App\Livewire\Person\Records\BasePatientComponent;
+use App\Models\Declaration;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
+use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Device;
+use App\Models\User;
 use App\Repositories\MedicalEvents\Repository;
 use App\Rules\InDictionary;
 use App\Traits\BatchLegalEntityQueries;
 use App\Traits\HandlesEncounterCancellation;
 use App\Traits\HandlesSyncBatch;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -49,6 +55,8 @@ class DeviceIndex extends BasePatientComponent
 
     public array $employees = [];
 
+    public array $recorderLegalEntities = [];
+
     /**
      * Bound search filter values applied when querying devices.
      *
@@ -73,6 +81,8 @@ class DeviceIndex extends BasePatientComponent
     public string $filterSerialNumber = '';
 
     public string $filterRecorder = '';
+
+    public string $filterRecorderLegalEntityId = '';
 
     public string $filterInsertedAtFrom = '';
 
@@ -119,6 +129,14 @@ class DeviceIndex extends BasePatientComponent
         $this->syncStatus = $status->value;
     }
 
+    /**
+     * @inheritDoc
+     */
+    protected function hasPatientAccessForSync(User $user): bool
+    {
+        return $this->hasPatientAccess;
+    }
+
     protected function initializeComponent(): void
     {
         $this->getDictionary();
@@ -126,6 +144,20 @@ class DeviceIndex extends BasePatientComponent
         $this->syncStatus = legalEntity()->getEntityStatus(LegalEntity::ENTITY_DEVICE) ?? '';
 
         $this->loadFilterOptions();
+    }
+
+    /**
+     * Whether the user has access to all the patient's devices: an active declaration (ABAC rule 1), an active approval
+     * on the patient's data (ABAC rule 4) or an active approval on the patient's devices (ABAC rule 16).
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function hasPatientAccess(): bool
+    {
+        return Declaration::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            || Approval::accessGrantedTo(Auth::user(), $this->patient(), legalEntity())->exists()
+            || Approval::resourceTypeAccessGrantedTo(Auth::user(), $this->patient(), 'device', legalEntity())->exists();
     }
 
     #[Computed]
@@ -159,7 +191,7 @@ class DeviceIndex extends BasePatientComponent
         try {
             $response = EHealth::device()->getBySearchParams(
                 $this->uuid,
-                ['recorder_legal_entity_id' => legalEntity()->uuid]
+                $this->hasPatientAccess ? [] : ['recorder_legal_entity_id' => legalEntity()->uuid]
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error while synchronizing devices');
@@ -198,10 +230,17 @@ class DeviceIndex extends BasePatientComponent
      */
     public function view(string $deviceId): void
     {
-        $device = Device::forPatient($this->patient())->whereUuid($deviceId)->first()
+        // The records of the persons merged into the patient count too, so a stored one is not pulled in again under this patient
+        $device = Device::readableFor($this->patient(), true)->whereUuid($deviceId)->first()
             ?? $this->storeSearchedDevice($deviceId);
 
         if ($device === null) {
+            return;
+        }
+
+        if (Auth::user()->cannot('view', [$device, $this->patient()])) {
+            Session::flash('error', __('devices.policy.view'));
+
             return;
         }
 
@@ -223,7 +262,8 @@ class DeviceIndex extends BasePatientComponent
     }
 
     /**
-     * Store a device found through the eHealth search, so that it has a page to open.
+     * Store a device found through the eHealth search, so that it has a page to open. It is kept only when the user
+     * may read it, so a record the access rules hide is not left behind in the database.
      *
      * @param  string  $deviceId
      * @return Device|null
@@ -239,14 +279,26 @@ class DeviceIndex extends BasePatientComponent
         }
 
         try {
-            Repository::device()->sync($this->patient(), [$response->validate()]);
+            return DB::transaction(function () use ($response, $deviceId): Device {
+                Repository::device()->sync($this->patient(), [$response->validate()]);
+
+                $device = Device::forPatient($this->patient())->whereUuid($deviceId)->firstOrFail();
+
+                if (Auth::user()->cannot('view', [$device, $this->patient()])) {
+                    throw new AuthorizationException();
+                }
+
+                return $device;
+            });
+        } catch (AuthorizationException) {
+            Session::flash('error', __('devices.policy.view'));
+
+            return null;
         } catch (Throwable $exception) {
             $this->handleDatabaseErrors($exception, 'Error while storing the device');
 
             return null;
         }
-
-        return Device::forPatient($this->patient())->whereUuid($deviceId)->first();
     }
 
     public function resetFilters(): void
@@ -262,6 +314,7 @@ class DeviceIndex extends BasePatientComponent
             'filterManufacturer',
             'filterSerialNumber',
             'filterRecorder',
+            'filterRecorderLegalEntityId',
             'filterInsertedAtFrom',
             'filterInsertedAtTo',
             'isSearching'
@@ -277,7 +330,8 @@ class DeviceIndex extends BasePatientComponent
      */
     protected function paginateLocalDevices(): LengthAwarePaginator
     {
-        $paginator = Device::forPatient($this->patient())
+        $paginator = Device::readableFor($this->patient(), $this->hasPatientAccess)
+            ->notInDraftEncounter($this->patient())
             ->withAllRelations()
             ->recentlyUpdatedFirst()
             ->paginate(config('pagination.per_page'));
@@ -299,8 +353,8 @@ class DeviceIndex extends BasePatientComponent
     {
         $perPage = config('pagination.per_page');
         $page = $this->getPage();
+        $recorderLegalEntityId = $this->hasPatientAccess ? null : legalEntity()->uuid;
 
-        // Devices are only readable within the legal entity that recorded them, so the search is scoped to it
         $params = array_filter([
             'name' => $this->filterName ?: null,
             'type' => $this->filterType ?: null,
@@ -314,7 +368,7 @@ class DeviceIndex extends BasePatientComponent
             'recorder' => $this->filterRecorder ?: null,
             'inserted_at_from' => $this->filterInsertedAtFrom ?: null,
             'inserted_at_to' => $this->filterInsertedAtTo ?: null,
-            'recorder_legal_entity_id' => legalEntity()->uuid,
+            'recorder_legal_entity_id' => $this->filterRecorderLegalEntityId ?: $recorderLegalEntityId,
             'page' => $page,
             'page_size' => $perPage
         ]);
@@ -350,6 +404,8 @@ class DeviceIndex extends BasePatientComponent
                     . ($this->dictionaries['POSITION'][$employee->position] ?? $employee->position)
             ])
             ->toArray();
+
+        $this->recorderLegalEntities = LegalEntity::get()->map->only(['uuid', 'name'])->toArray();
     }
 
     protected function filterValidationRules(): array
@@ -365,6 +421,7 @@ class DeviceIndex extends BasePatientComponent
             'filterManufacturer' => ['nullable', 'string', 'max:255'],
             'filterSerialNumber' => ['nullable', 'string', 'max:255'],
             'filterRecorder' => ['nullable', 'uuid'],
+            'filterRecorderLegalEntityId' => ['nullable', 'uuid'],
             'filterInsertedAtFrom' => ['nullable', 'date_format:' . config('app.date_format')],
             'filterInsertedAtTo' => ['nullable', 'date_format:' . config('app.date_format')]
         ];

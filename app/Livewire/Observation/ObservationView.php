@@ -11,9 +11,11 @@ use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Observation;
+use App\Models\MedicalEvents\Sql\ObservationComponent;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Repositories\MedicalEvents\Repository;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
@@ -80,6 +82,22 @@ class ObservationView extends BasePatientComponent
     ): void {
         parent::mount($legalEntity, $person, $preperson);
 
+        $this->observationId = $observation->id;
+        $this->observationUuid = $observation->uuid;
+
+        // Each component names the dictionaries of its code and coded result in their system
+        $this->dictionaryNames = [
+            ...$this->dictionaryNames,
+            ...$this->observation()->components
+                ->flatMap(static fn (ObservationComponent $component): array => [
+                    $component->code?->coding->first()?->system,
+                    $component->value?->valueCodeableConcept?->coding->first()?->system
+                ])
+                ->filter()
+                ->unique()
+                ->all()
+        ];
+
         $this->getDictionary();
 
         // ICF codes are nested under their groups, while the observation refers to them by the code alone
@@ -87,11 +105,6 @@ class ObservationView extends BasePatientComponent
             ->byName('eHealth/ICF/classifiers')
             ->flattenedChildValues()
             ->toArray();
-
-        $this->observationId = $observation->id;
-        $this->observationUuid = $observation->uuid;
-
-        $this->observation();
     }
 
     /**
@@ -109,8 +122,15 @@ class ObservationView extends BasePatientComponent
             return;
         }
 
+        $observation = $this->observation();
+
+        // A record of a person merged into the patient stays with its own owner
+        $owner = $observation->prepersonId !== null
+            ? Preperson::findOrFail($observation->prepersonId)
+            : Person::findOrFail($observation->personId);
+
         try {
-            Repository::observation()->sync($this->patient(), [$response->validate()]);
+            Repository::observation()->sync($owner, [$response->validate()]);
         } catch (Throwable $exception) {
             $this->handleDatabaseErrors($exception, 'Error while synchronizing the observation');
 
@@ -124,14 +144,15 @@ class ObservationView extends BasePatientComponent
     }
 
     /**
-     * Resolve the observation being displayed, scoped to the patient so that a record belonging to somebody else
-     * is not reachable by its ID. Loaded again on later requests, where Livewire hydrates without mount().
+     * Resolve the observation being displayed, scoped to the patient and the persons merged into it so that a record
+     * belonging to somebody else is not reachable by its ID. Loaded again on later requests, where Livewire hydrates
+     * without mount().
      *
      * @return Observation
      */
     protected function observation(): Observation
     {
-        return $this->observationModel ??= Observation::forPatient($this->patient())
+        return $this->observationModel ??= Observation::readableFor($this->patient(), true, Auth::user())
             ->withAllRelations()
             ->whereId($this->observationId)
             ->firstOrFail();

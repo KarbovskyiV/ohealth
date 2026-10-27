@@ -39,10 +39,7 @@ class DocumentNumber implements ValidationRule
 
     private function formatErrorMessage(): string
     {
-        $documentLabel = __('patients.documents.' . $this->type);
-        if ($documentLabel === 'patients.documents.' . $this->type) {
-            $documentLabel = $this->type;
-        }
+        $documentLabel = dictionary()->basics()->byName('DOCUMENT_TYPE', false)->asCodeDescription()->get($this->type);
 
         $messageKey = 'validation.custom.document_number_format.' . $this->type;
         $message = __($messageKey, ['document' => $documentLabel]);

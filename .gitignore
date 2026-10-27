@@ -43,3 +43,10 @@ opencode.json
 /storage/personal/
 /storage/cli-testing/
 /storage/db-dumps/
+
+# CI PHPUnit artifacts
+/storage/ci/
+
+# Local git worktrees (never belong in a feature PR)
+.worktrees/
+.codex/config.toml

@@ -148,12 +148,15 @@
                                     }
                                 "
                                 type="text"
+                                id="filterDateRange"
                                 class="daterangepicker-uk with-leading-icon input peer w-full"
                                 placeholder=" "
                                 autocomplete="off"
                             />
 
-                            <label class="wrapped-label"> {{ __('forms.filter_date_range') }} </label>
+                            <label for="filterDateRange" class="wrapped-label">
+                                {{ __('forms.filter_date_range') }}
+                            </label>
                         </div>
                     </div>
 
@@ -191,7 +194,7 @@
                                 </div>
                             </div>
 
-                            <div class="record-inner-column-bordered w-full shrink-0 md:w-45">
+                            <div class="record-inner-column-bordered w-full shrink-0 md:w-36">
                                 <div class="record-inner-label">{{ __('forms.status.label') }}</div>
 
                                 <div>
@@ -200,7 +203,7 @@
                                 </div>
                             </div>
 
-                            <div class="record-inner-action-col relative flex h-full w-16 shrink-0 items-center justify-center border-l border-gray-200 dark:border-gray-700">
+                            <div class="record-inner-action-col">
                                 <div
                                     x-data="{
                                         open: false,
@@ -245,6 +248,7 @@
                                         class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
                                     >
                                         <button
+                                            wire:click="view('{{ data_get($immunization, 'uuid') }}')"
                                             @click="close($refs.button)"
                                             class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
@@ -493,7 +497,7 @@
         </div>
     </div>
 
-    @include('livewire.encounter.encounter-cancellation')
+    @include('livewire.encounter-package.encounter-cancellation')
 
     <x-forms.loading />
 </x-layouts.patient>

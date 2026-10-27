@@ -1,154 +1,221 @@
-<x-layouts.patient :showLegacyMessages="false" :personId="$personId" :patientFullName="$patientFullName">
+<x-layouts.patient
+    :showLegacyMessages="false"
+    :personId="$personId"
+    :patientFullName="$patientFullName"
+    activeTab="referrals"
+>
     @assets
         <script src="{{ asset('js/print-sandboxed.js') }}"></script>
     @endassets
-    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
+    <livewire:components.x-message
+        :consume-messages="true"
+        :key="(string) str()->uuid()"
+    />
 
     <x-slot name="headerActions">
-        <button
-            wire:click.prevent="applyFilters"
-            type="button"
-            class="button-primary flex items-center gap-2 px-5 py-2 text-sm shadow-sm"
-        >
-            @icon('search-outline', 'w-4 h-4')
-            {{ __('Пошук') }}
-        </button>
-        <button
-            wire:click.prevent="resetFilters"
-            type="button"
-            class="button-primary-outline px-5 py-2 text-sm whitespace-nowrap"
-        >
-            {{ __('Скинути фільтри') }}
-        </button>
+        @can('viewAny', [\App\Models\MedicalEvents\Sql\DeviceRequestRequest::class, legalEntity()])
+            <a
+                href="{{ route('device-requests.index', ['legalEntity' => legalEntity(), 'person' => $personId]) }}"
+                class="button-primary-outline"
+            >{{ __('device-requests.labels.registry') }}</a>
+        @endcan
     </x-slot>
 
     <div class="breadcrumb-form shift-content p-4">
         <div class="mt-6 w-full">
-            <div class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100">
-                @icon('search-outline', 'w-4.5 h-4.5')
-                <p>{{ __('Реєстр електронних направлень пацієнта') }}</p>
+            <div
+                class="mb-4 flex items-center gap-1 font-semibold text-gray-900 dark:text-gray-100"
+            >
+                @icon ('search-outline', 'w-4.5 h-4.5')
+                <p>{{ __('referrals.search') }}</p>
             </div>
 
-            <div class="form-row-3 mb-6">
-                <div class="form-group group">
-                    <label class="label" for="filterStatus">{{ __('Статус') }}</label>
-                    <select id="filterStatus" wire:model="filterStatus" class="input-select peer w-full">
-                        <option value="">{{ __('Усі') }}</option>
-                        <option value="draft">{{ __('Чернетка') }}</option>
-                        <option value="new">{{ __('Новий (заявка)') }}</option>
-                        <option value="active">{{ __('Активний') }}</option>
-                        <option value="in_progress">{{ __('В роботі') }}</option>
-                        <option value="completed">{{ __('Виконаний') }}</option>
-                        <option value="recalled">{{ __('Відкликаний') }}</option>
-                        <option value="entered-in-error">{{ __('Внесено помилково') }}</option>
-                    </select>
-                </div>
-                <div class="form-group group">
-                    <label class="label" for="filterStartedAtFrom">{{ __('Початок з') }}</label>
-                    <input id="filterStartedAtFrom" type="date" class="input peer" wire:model="filterStartedAtFrom" />
-                </div>
-                <div class="form-group group">
-                    <label class="label" for="filterStartedAtTo">{{ __('Початок по') }}</label>
-                    <input id="filterStartedAtTo" type="date" class="input peer" wire:model="filterStartedAtTo" />
-                </div>
-            </div>
-
-            <div class="form-row-3 mb-8">
-                <div class="form-group group">
-                    <label class="label" for="filterEndedAtFrom">{{ __('Кінець з') }}</label>
-                    <input id="filterEndedAtFrom" type="date" class="input peer" wire:model="filterEndedAtFrom" />
-                </div>
-                <div class="form-group group">
-                    <label class="label" for="filterEndedAtTo">{{ __('Кінець по') }}</label>
-                    <input id="filterEndedAtTo" type="date" class="input peer" wire:model="filterEndedAtTo" />
-                </div>
-            </div>
-
-            <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-                <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
-                    <thead class="bg-gray-50 dark:bg-gray-900/40">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-medium">{{ __('Номер') }}</th>
-                            <th class="px-4 py-3 text-left font-medium">UUID</th>
-                            <th class="px-4 py-3 text-left font-medium">{{ __('Статус') }}</th>
-                            <th class="px-4 py-3 text-left font-medium">{{ __('Послуга / виріб') }}</th>
-                            <th class="px-4 py-3 text-left font-medium">{{ __('Кількість') }}</th>
-                            <th class="px-4 py-3 text-left font-medium">{{ __('Період') }}</th>
-                            <th class="px-4 py-3 text-left font-medium">{{ __('Основа') }}</th>
-                            <th class="px-4 py-3 text-left font-medium">{{ __('Дії') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        @forelse ($referrals as $referral)
-                            <tr wire:key="sr-{{ $referral['kind'] }}-{{ $referral['id'] ?? $referral['uuid'] }}">
-                                <td class="px-4 py-3">
-                                    <div class="font-semibold text-gray-900 dark:text-white">
-                                        {{ filled($referral['requestNumber'] ?? null) ? $referral['requestNumber'] : '—' }}
+            <form wire:submit="applyFilters">
+                <div class="form-row-3 mb-6">
+                    @foreach ([
+                    ['from' => 'filterStartedAtFrom', 'to' => 'filterStartedAtTo', 'label' => __('forms.filter_period_start_range')],
+                    ['from' => 'filterEndedAtFrom', 'to' => 'filterEndedAtTo', 'label' => __('forms.filter_period_end_range')],
+                ] as $dateRange)
+                        <fieldset class="min-w-0">
+                            <legend
+                                class="mb-2 text-sm text-gray-900 dark:text-gray-100"
+                            >
+                                {{ $dateRange['label'] }}
+                            </legend>
+                            <div class="grid grid-cols-2 gap-2">
+                                @foreach (['from' => __('referrals.registry.from'), 'to' => __('referrals.registry.to')] as $boundary => $boundaryLabel)
+                                    <div class="form-group group">
+                                        <input
+                                            id="{{ $dateRange[$boundary] }}"
+                                            type="date"
+                                            class="input peer w-full"
+                                            wire:model="{{ $dateRange[$boundary] }}"
+                                            placeholder=" "
+                                        />
+                                        <label
+                                            class="wrapped-label"
+                                            for="{{ $dateRange[$boundary] }}"
+                                        >
+                                            {{ $boundaryLabel }}
+                                        </label>
                                     </div>
-                                    <div class="mt-0.5 text-xs text-gray-400">
-                                        {{ $referral['categoryLabel'] ?? '' }}
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 font-mono text-xs break-all text-gray-600 dark:text-gray-300">
-                                    {{ $referral['uuid'] ?? '—' }}
-                                </td>
-                                <td class="px-4 py-3">
-                                    <span class="badge {{ $referral['statusBadge'] ?? 'badge-dark' }}">
+                                @endforeach
+                            </div>
+                        </fieldset>
+                    @endforeach
+                    <div class="form-group group">
+                        <select
+                            id="filterStatus"
+                            wire:model="filterStatus"
+                            class="input-select peer w-full"
+                        >
+                            <option value="">{{ __('referrals.registry.all') }}</option>
+                            <option value="draft">{{ __('forms.draft') }}</option>
+                            <option value="new">
+                                {{ __('referrals.registry.new_request') }}
+                            </option>
+                            <option value="active">{{ __('forms.status.active') }}</option>
+                            <option value="in_progress">
+                                {{ __('referrals.statuses.in_progress') }}
+                            </option>
+                            <option value="completed">
+                                {{ __('referrals.registry.completed') }}
+                            </option>
+                            <option value="recalled">
+                                {{ __('referrals.registry.recalled') }}
+                            </option>
+                            <option value="entered-in-error">
+                                {{ __('forms.status.entered_in_error') }}
+                            </option>
+                        </select>
+                        <label
+                            class="label"
+                            for="filterStatus"
+                            >{{ __('forms.status.label') }}</label
+                        >
+                    </div>
+                </div>
+
+                <div class="mb-9 flex flex-wrap gap-2">
+                    <button
+                        type="submit"
+                        class="button-primary flex items-center gap-2 px-5 py-2.5 text-sm shadow-sm"
+                    >
+                        @icon ('search', 'w-4 h-4')
+                        <span>{{ __('forms.search') }}</span>
+                    </button>
+                    <button
+                        wire:click.prevent="resetFilters"
+                        type="button"
+                        class="button-primary-outline-red px-5 py-2.5 text-sm"
+                    >
+                        {{ __('forms.reset_all_filters') }}
+                    </button>
+                </div>
+            </form>
+
+            <div class="space-y-4">
+                @forelse ($referrals as $referral)
+                    <div
+                        class="record-inner-card"
+                        wire:key="sr-{{ $referral['kind'] }}-{{ $referral['id'] ?? $referral['uuid'] }}"
+                    >
+                        <div class="record-inner-header">
+                            <div class="record-inner-column min-w-0 flex-1">
+                                <div class="record-inner-label">
+                                    {{ __('referrals.requisition') }}
+                                </div>
+                                <div
+                                    class="record-inner-value break-words text-[16px]"
+                                >
+                                    {{ filled($referral['requestNumber'] ?? null) ? $referral['requestNumber'] : '—' }}
+                                </div>
+                                <div class="record-inner-label mt-1">
+                                    {{ $referral['categoryLabel'] ?? '' }}
+                                </div>
+                            </div>
+                            <div
+                                class="record-inner-column-bordered w-full shrink-0 md:w-64"
+                            >
+                                <div class="record-inner-label">
+                                    {{ __('referrals.period') }}
+                                </div>
+                                <div class="record-inner-value">
+                                    {{ $referral['periodLabel'] ?? '—' }}
+                                </div>
+                            </div>
+                            <div
+                                class="record-inner-column-bordered w-full shrink-0 md:w-36"
+                            >
+                                <div class="record-inner-label">
+                                    {{ __('forms.status.label') }}
+                                </div>
+                                <div>
+                                    <span
+                                        class="badge {{ $referral['statusBadge'] ?? 'badge-dark' }}"
+                                    >
                                         {{ $referral['statusLabel'] ?? ($referral['status'] ?? '—') }}
                                     </span>
-                                </td>
-                                <td class="px-4 py-3 text-gray-900 dark:text-gray-100">
-                                    {{ $referral['itemName'] ?? '—' }}
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap">{{ $referral['quantity'] ?? '—' }}</td>
-                                <td class="px-4 py-3 whitespace-nowrap">{{ $referral['periodLabel'] ?? '—' }}</td>
-                                <td class="px-4 py-3">
-                                    @if (!empty($referral['carePlanId']) && !empty($referral['activityId']))
-                                        <a
-                                            href="{{ route('care-plans.activities.show', [legalEntity(), $referral['carePlanId'], $referral['activityId']]) }}"
-                                            class="text-link"
-                                        >
-                                            {{ $referral['basisLabel'] }}
-                                        </a>
-                                    @elseif (!empty($referral['carePlanId']))
-                                        <a
-                                            href="{{ route('care-plans.show', [legalEntity(), $referral['carePlanId']]) }}"
-                                            class="text-link"
-                                        >
-                                            {{ $referral['basisLabel'] }}
-                                        </a>
-                                    @elseif (!empty($referral['encounterId']) && $personId)
-                                        <a
-                                            href="{{ route('encounter.edit', [legalEntity(), 'person' => $personId, 'encounterId' => $referral['encounterId']]) }}"
-                                            class="text-link"
-                                        >
-                                            {{ $referral['basisLabel'] }}
-                                        </a>
-                                    @else
-                                        {{ $referral['basisLabel'] ?? '—' }}
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <button
-                                            type="button"
-                                            class="text-xs text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                                            wire:click="toggleDetails('{{ $referral['uuid'] }}')"
-                                        >
-                                            {{ $expandedUuid === $referral['uuid'] ? __('Сховати') : __('Деталі') }}
-                                        </button>
-
-                                        @if (!empty($referral['canSign']))
+                                </div>
+                            </div>
+                            <div class="record-inner-action-col">
+                                <div
+                                    x-data="{
+                                        open: false,
+                                        toggle() {
+                                            if (this.open) return this.close();
+                                            this.$refs.button.focus();
+                                            this.open = true;
+                                        },
+                                        close(focusAfter) {
+                                            if (!this.open) return;
+                                            this.open = false;
+                                            focusAfter && focusAfter.focus();
+                                        },
+                                    }"
+                                    @keydown.escape.prevent.stop="
+                                        close($refs.button)
+                                    "
+                                    @focusin.window="
+                                        !$refs.panel.contains($event.target) &&
+                                            close()
+                                    "
+                                    x-id="['referral-actions']"
+                                    class="relative"
+                                >
+                                    <button
+                                        @click="toggle()"
+                                        x-ref="button"
+                                        :aria-expanded="open"
+                                        :aria-controls="$id('referral-actions')"
+                                        aria-label="{{ __('forms.actions') }}"
+                                        type="button"
+                                        class="record-inner-action-btn cursor-pointer rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                                    >
+                                        @icon ('edit-user-outline', 'w-6 h-6 text-gray-700 dark:text-gray-300')
+                                    </button>
+                                    <div
+                                        x-show="open"
+                                        x-cloak
+                                        x-ref="panel"
+                                        x-transition.origin.top.right
+                                        @click.outside="close($refs.button)"
+                                        :id="$id('referral-actions')"
+                                        class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
+                                    >
+                                        <div class="py-1">
                                             <button
                                                 type="button"
-                                                class="text-xs text-green-600 hover:text-green-700 dark:text-green-400"
-                                                wire:click="openSign('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
+                                                class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                @click="close($refs.button)"
+                                                wire:click="toggleDetails('{{ $referral['uuid'] }}')"
                                             >
-                                                {{ __('Підписати') }}
+                                                @icon ('eye', 'w-5 h-5 text-gray-500')
+                                                {{ $expandedUuid === $referral['uuid'] ? __('referrals.registry.hide') : __('forms.view_details') }}
                                             </button>
                                             @if (!empty($referral['encounterId']) && $personId)
                                                 <a
-                                                    href="{{ route('encounter.edit', [legalEntity(), 'person' => $personId, 'encounterId' => $referral['encounterId']]) }}"
+                                                    href="{{ route('encounter.view', [legalEntity(), 'person' => $personId, 'encounter' => $referral['encounterId']]) }}"
                                                     class="text-link text-xs"
                                                 >
                                                     {{ __('Редагувати') }}
@@ -161,31 +228,68 @@
                                                     {{ __('Редагувати') }}
                                                 </a>
                                             @endif
-                                        @endif
 
-                                        @if (!empty($referral['canOperate']))
-                                            @if (!empty($referral['canRecall']))
+                                            @if (!empty($referral['canSign']))
                                                 <button
                                                     type="button"
-                                                    class="text-xs text-amber-600 hover:text-amber-500 dark:text-amber-400"
-                                                    wire:click="recallReferral('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
+                                                    class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                    @click="close($refs.button)"
+                                                    wire:click="openSign('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
                                                 >
-                                                    {{ __('Відкликати') }}
+                                                    @icon ('Edit3', 'w-5 h-5 text-gray-500')
+                                                    {{ __('forms.sign') }}
                                                 </button>
+                                                @if (!empty($referral['encounterId']) && $personId)
+                                                    <a
+                                                        href="{{ route('encounter.edit', [legalEntity(), 'person' => $personId, 'encounterId' => $referral['encounterId']]) }}"
+                                                        class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                    >
+                                                        @icon ('edit', 'w-5 h-5 text-gray-500')
+                                                        {{ __('forms.edit') }}
+                                                    </a>
+                                                @elseif (!empty($referral['carePlanId']))
+                                                    <a
+                                                        href="{{ route('care-plans.show', [legalEntity(), $referral['carePlanId']]) }}"
+                                                        class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                    >
+                                                        @icon ('edit', 'w-5 h-5 text-gray-500')
+                                                        {{ __('forms.edit') }}
+                                                    </a>
+                                                @endif
                                             @endif
-                                            @if (!empty($referral['canCancel']))
+
+                                            @if (!empty($referral['canOperate']))
+                                                @if (!empty($referral['canRecall']))
+                                                    <button
+                                                        type="button"
+                                                        class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                        @click="
+                                                            close($refs.button)
+                                                        "
+                                                        wire:click="recallReferral('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
+                                                    >
+                                                        @icon ('close', 'w-5 h-5 text-gray-500')
+                                                        {{ __('referrals.actions.recall') }}
+                                                    </button>
+                                                @endif
+                                                @if (!empty($referral['canCancel']))
+                                                    <button
+                                                        type="button"
+                                                        class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                        @click="
+                                                            close($refs.button)
+                                                        "
+                                                        wire:click="cancelReferral('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
+                                                    >
+                                                        @icon ('alert-circle', 'w-5 h-5 text-gray-500')
+                                                        {{ __('medical-events.mark_as_error') }}
+                                                    </button>
+                                                @endif
                                                 <button
                                                     type="button"
-                                                    class="text-xs text-red-600 hover:text-red-500 dark:text-red-400"
-                                                    wire:click="cancelReferral('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
-                                                >
-                                                    {{ __('Внесено помилково') }}
-                                                </button>
-                                            @endif
-                                            <button
-                                                type="button"
-                                                class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                                                @click="
+                                                    class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                    @click="
+ close($refs.button);
                                                     $wire.loadReferralPrintoutForm('{{ $referral['uuid'] }}').then((html) => {
                                                         if (! html) {
                                                             return;
@@ -193,61 +297,147 @@
                                                         window.printSandboxedHtml(html);
                                                     });
                                                 "
-                                            >
-                                                {{ __('Пам\'ятка') }}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="text-xs text-yellow-600 hover:text-yellow-700 dark:text-yellow-400"
-                                                wire:click="resendSms('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
-                                            >
-                                                SMS
-                                            </button>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                            @if ($expandedUuid === $referral['uuid'])
-                                <tr wire:key="sr-details-{{ $referral['uuid'] }}">
-                                    <td colspan="8" class="bg-gray-50 px-4 py-3 text-sm dark:bg-gray-900/30">
-                                        <div class="grid gap-3 sm:grid-cols-3">
-                                            <div>
-                                                <div class="text-[10px] text-gray-400 uppercase">{{ __('Пріоритет') }}</div>
-                                                <div class="font-medium">{{ $referral['priorityLabel'] ?? '—' }}</div>
-                                            </div>
-                                            <div>
-                                                <div class="text-[10px] text-gray-400 uppercase">{{ __('Програма') }}</div>
-                                                <div class="font-medium">{{ $referral['programName'] ?? '—' }}</div>
-                                            </div>
-                                            <div>
-                                                <div class="text-[10px] text-gray-400 uppercase">eHealth ID</div>
-                                                <div class="font-medium break-all">{{ $referral['uuid'] }}</div>
-                                            </div>
-                                            <div class="sm:col-span-3">
-                                                <div class="text-[10px] text-gray-400 uppercase">{{ __('Примітка') }}</div>
-                                                <div>{{ $referral['note'] !== '' ? $referral['note'] : '—' }}</div>
-                                            </div>
-                                            <div class="sm:col-span-3">
-                                                <div class="text-[10px] text-gray-400 uppercase">
-                                                    {{ __('Інструкція пацієнту') }}
-                                                </div>
-                                                <div>
-                                                    {{ $referral['patientInstruction'] !== '' ? $referral['patientInstruction'] : '—' }}
-                                                </div>
-                                            </div>
+                                                >
+                                                    @icon ('printer', 'w-5 h-5 text-gray-500')
+                                                    {{ __('referrals.actions.print_memo') }}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                    @click="close($refs.button)"
+                                                    wire:click="resendSms('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
+                                                >
+                                                    @icon ('refresh', 'w-5 h-5 text-gray-500')
+                                                    SMS
+                                                </button>
+                                            @endif
                                         </div>
-                                    </td>
-                                </tr>
-                            @endif
-                        @empty
-                            <tr>
-                                <td colspan="8" class="px-4 py-8 text-center text-gray-500">
-                                    {{ __('Направлень за обраними фільтрами не знайдено.') }}
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="record-inner-body">
+                            <div class="record-inner-grid-container md:!pl-4">
+                                <div
+                                    class="grid grid-cols-1 gap-4 sm:grid-cols-3"
+                                >
+                                    <div class="min-w-0">
+                                        <div class="record-inner-label">
+                                            {{ __('referrals.registry.service_or_device') }}
+                                        </div>
+                                        <div
+                                            class="record-inner-value break-words"
+                                        >
+                                            {{ $referral['itemName'] ?? '—' }}
+                                        </div>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="record-inner-label">
+                                            {{ __('referrals.quantity') }}
+                                        </div>
+                                        <div class="record-inner-value">
+                                            {{ $referral['quantity'] ?? '—' }}
+                                        </div>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="record-inner-label">
+                                            {{ __('referrals.registry.basis') }}
+                                        </div>
+                                        <div class="record-inner-value">
+                                            @if (!empty($referral['carePlanId']) && !empty($referral['activityId']))
+                                                <a
+                                                    href="{{ route('care-plans.activities.show', [legalEntity(), $referral['carePlanId'], $referral['activityId']]) }}"
+                                                    class="text-link"
+                                                >
+                                                    {{ $referral['basisLabel'] }}
+                                                </a>
+                                            @elseif (!empty($referral['carePlanId']))
+                                                <a
+                                                    href="{{ route('care-plans.show', [legalEntity(), $referral['carePlanId']]) }}"
+                                                    class="text-link"
+                                                >
+                                                    {{ $referral['basisLabel'] }}
+                                                </a>
+                                            @elseif (!empty($referral['encounterId']) && $personId)
+                                                <a
+                                                    href="{{ route('encounter.edit', [legalEntity(), 'person' => $personId, 'encounterId' => $referral['encounterId']]) }}"
+                                                    class="text-link"
+                                                >
+                                                    {{ $referral['basisLabel'] }}
+                                                </a>
+                                            @else
+                                                {{ $referral['basisLabel'] ?? '—' }}
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="record-inner-id-col">
+                                <div class="record-inner-label">
+                                    {{ __('forms.ehealth_id') }}
+                                </div>
+                                <div class="record-inner-id-value">
+                                    {{ $referral['uuid'] ?? '—' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        @if ($expandedUuid === $referral['uuid'])
+                            <div
+                                class="border-t border-gray-200 p-4 dark:border-gray-700"
+                                wire:key="sr-details-{{ $referral['uuid'] }}"
+                            >
+                                <div
+                                    class="grid grid-cols-1 gap-4 sm:grid-cols-3"
+                                >
+                                    <div>
+                                        <div class="record-inner-label">
+                                            {{ __('encounters.priority') }}
+                                        </div>
+                                        <div class="record-inner-value">
+                                            {{ $referral['priorityLabel'] ?? '—' }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="record-inner-label">
+                                            {{ __('care-plan.program') }}
+                                        </div>
+                                        <div class="record-inner-value">
+                                            {{ $referral['programName'] ?? '—' }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="record-inner-label">
+                                            {{ __('forms.ehealth_id') }}
+                                        </div>
+                                        <div class="record-inner-id-value">
+                                            {{ $referral['uuid'] }}
+                                        </div>
+                                    </div>
+                                    <div class="sm:col-span-3">
+                                        <div class="record-inner-label">
+                                            {{ __('referrals.registry.note') }}
+                                        </div>
+                                        <div class="record-inner-value">
+                                            {{ $referral['note'] !== '' ? $referral['note'] : '—' }}
+                                        </div>
+                                    </div>
+                                    <div class="sm:col-span-3">
+                                        <div class="record-inner-label">
+                                            {{ __('referrals.registry.patient_instruction') }}
+                                        </div>
+                                        <div class="record-inner-value">
+                                            {{ $referral['patientInstruction'] !== '' ? $referral['patientInstruction'] : '—' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                @empty
+                    <x-nothing-found :description="null" />
+                @endforelse
             </div>
         </div>
     </div>
@@ -256,4 +446,5 @@
         method="sign"
         :only-actions="['sign_referral', 'sign_devicerequest', 'recall_referral', 'cancel_referral']"
     />
+    <x-forms.loading />
 </x-layouts.patient>

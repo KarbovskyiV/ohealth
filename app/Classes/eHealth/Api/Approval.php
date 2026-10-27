@@ -11,6 +11,7 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use GuzzleHttp\Promise\PromiseInterface;
+use Illuminate\Support\Facades\Validator;
 
 class Approval extends Request
 {
@@ -42,6 +43,10 @@ class Approval extends Request
      */
     public function getPatientApprovals(string $patientId, array $query = []): PromiseInterface|EHealthResponse
     {
+        $this->setDefaultPageSize();
+
+        $this->setValidator($this->validateApprovalList(...));
+
         return $this->get(self::APPROVAL_URL . "/{$patientId}/approvals", $query);
     }
 
@@ -55,6 +60,8 @@ class Approval extends Request
      */
     public function getApprovalDetails(string $patientId, string $approvalUuid, array $query = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateApproval(...));
+
         return $this->get(self::APPROVAL_URL . "/{$patientId}/approvals/{$approvalUuid}", $query);
     }
 
@@ -184,5 +191,31 @@ class Approval extends Request
         ];
 
         return $payload;
+    }
+
+    protected function validateApprovalList(EHealthResponse $response): array
+    {
+        $data = $response->getData();
+
+        Validator::make(['items' => $data], [
+            'items' => ['present', 'array'],
+            'items.*.id' => ['required', 'uuid'],
+            'items.*.granted_to.identifier.value' => ['required', 'uuid'],
+        ])->validate();
+
+        return $data;
+    }
+
+    protected function validateApproval(EHealthResponse $response): array
+    {
+        $data = $response->getData();
+
+        Validator::make($data, [
+            'id' => ['required', 'uuid'],
+            'granted_to.identifier.value' => ['required', 'uuid'],
+            'access_level' => ['required', 'string'],
+        ])->validate();
+
+        return $data;
     }
 }

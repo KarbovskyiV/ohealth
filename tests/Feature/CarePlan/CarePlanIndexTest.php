@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Tests\Concerns\MocksBasicDictionaries;
 use Mockery;
 use Illuminate\Support\Str;
 use App\Classes\eHealth\EHealth;
@@ -21,10 +22,12 @@ use App\Classes\eHealth\EHealthResponse;
 class CarePlanIndexTest extends TestCase
 {
     use DatabaseTransactions;
+    use MocksBasicDictionaries;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->mockBasicDictionaries();
 
         config(['cipher.api.domain' => 'https://cipher.invalid']);
         \Illuminate\Support\Facades\Cache::put('knedp_certificate_authority', [], 60);
@@ -264,8 +267,18 @@ class CarePlanIndexTest extends TestCase
             'episode_id' => $identifierId,
             'class_id' => $codingId,
             'type_id' => $ccId,
-            'ehealth_inserted_at' => now(),
+            'ehealth_inserted_at' => null,
         ]);
+
+        $syncedEncounter = $encounter->replicate();
+        $syncedEncounter->uuid = (string) Str::uuid();
+        $syncedEncounter->setAttribute('ehealth_inserted_at', now());
+        $syncedEncounter->save();
+
+        $draftEncounter = $encounter->replicate();
+        $draftEncounter->uuid = (string) Str::uuid();
+        $draftEncounter->status = 'draft';
+        $draftEncounter->save();
 
         $this->actingAs($user);
 
@@ -279,8 +292,14 @@ class CarePlanIndexTest extends TestCase
             ->assertCount('patientSearchResults', 1)
             ->call('selectPatient', $person->id)
             ->assertSet('personId', $person->id)
-            ->assertCount('availableEncounters', 1)
-            ->assertSet('availableEncounters.0.uuid', $encounter->uuid);
+            ->assertCount('availableEncounters', 2)
+            ->assertSet(
+                'availableEncounters',
+                static fn (array $availableEncounters): bool =>
+                in_array($encounter->uuid, array_column($availableEncounters, 'uuid'), true)
+                && in_array($syncedEncounter->uuid, array_column($availableEncounters, 'uuid'), true)
+                && !in_array($draftEncounter->uuid, array_column($availableEncounters, 'uuid'), true)
+            );
     }
 
     /**

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Jobs\ApprovalSync;
+use App\Jobs\ClinicalImpressionFullSync;
 use App\Jobs\ClinicalImpressionSync;
 use App\Jobs\ConditionSync;
 use App\Jobs\DetectedIssueSync;
@@ -18,6 +20,7 @@ use App\Jobs\EpisodeSync;
 use App\Jobs\EquipmentSync;
 use App\Jobs\HealthcareServiceSync;
 use App\Jobs\ImmunizationSync;
+use App\Jobs\LegalEntityDetailsSync;
 use App\Jobs\LegalEntitySync;
 use App\Jobs\ObservationSync;
 use App\Jobs\PersonAuthMethodSync;
@@ -152,7 +155,7 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for(
             'ehealth-clinical-impression-get',
-            static fn (ClinicalImpressionSync $job) => Limit::perMinute(config('ehealth.rate_limit.clinical_impression'))->by($job->user->id)
+            static fn (ClinicalImpressionFullSync|ClinicalImpressionSync $job) => Limit::perMinute(config('ehealth.rate_limit.clinical_impression'))->by($job->user->id)
         );
 
         RateLimiter::for(
@@ -206,6 +209,16 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for(
             'legal-entity-legators-get',
             static fn (LegalEntitySync $job) => Limit::perMinute(config('ehealth.rate_limit.legal_entity_legators'))->by($job->user->id)
+        );
+
+        RateLimiter::for(
+            'ehealth-approval-get',
+            static fn (ApprovalSync $job) => Limit::perMinute(config('ehealth.rate_limit.approval'))->by($job->user->id)
+        );
+
+        RateLimiter::for(
+            'legal-entity-legal-entity-by-id',
+            static fn (LegalEntityDetailsSync $job) => Limit::perMinute(config('ehealth.rate_limit.legal_entity_by_id'))->by($job->user->id)
         );
 
         RateLimiter::for(

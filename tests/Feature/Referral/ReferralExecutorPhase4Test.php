@@ -17,6 +17,7 @@ use App\Models\Person\Person;
 use App\Models\User;
 use App\Services\MedicalEvents\Mappers\ServiceRequestMapper;
 use App\Services\MedicalEvents\ReferralRequestLifecycleService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -105,6 +106,313 @@ class ReferralExecutorPhase4Test extends TestCase
             'patient_signed' => true,
             'process_disclosure_data_consent' => true,
         ]);
+
+        $patientApi = Mockery::mock(PatientServiceRequestApi::class)->makePartial();
+        $patientApi->shouldReceive('getById')->andReturnUsing(function (string $patientUuid, string $uuid): EHealthResponse {
+            $record = ServiceRequestRequest::where('uuid', $uuid)->firstOrFail();
+
+            return $this->remoteResponse([
+                'id' => $uuid,
+                'status' => 'active',
+                'program_processing_status' => 'new',
+                'subject' => ['identifier' => ['value' => $patientUuid]],
+                'program' => ['identifier' => ['value' => $record->programId]],
+            ]);
+        })->byDefault();
+        $this->instance(PatientServiceRequestApi::class, $patientApi);
+    }
+
+    public function test_qualify_sends_a_medical_program_identifier_before_use(): void
+    {
+        $record = $this->createActiveReferral();
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldReceive('qualify')->once()->ordered()->with($record->uuid, [
+            'programs' => [[
+                'identifier' => [
+                    'type' => ['coding' => [['system' => 'eHealth/resources', 'code' => 'medical_program']]],
+                    'value' => $record->programId,
+                ],
+            ]],
+        ])->andReturn($this->remoteResponse([['status' => 'VALID']]));
+        $api->shouldReceive('process')->once()->ordered()->andReturn($this->remoteResponse(['status' => 'active']));
+        $this->instance(ServiceRequestApi::class, $api);
+
+        app(ReferralRequestLifecycleService::class)->takeIntoWork($record->uuid, $this->employee, $this->person->uuid);
+
+        $this->assertSame('in_progress', $record->fresh()->status);
+    }
+
+    public function test_already_used_by_our_facility_skips_qualify_and_use_even_with_stale_local_status(): void
+    {
+        $record = $this->createActiveReferral();
+        $remote = $this->remoteReferral($record, [
+            'program_processing_status' => 'in_progress',
+            'used_by_legal_entity' => ['identifier' => ['value' => $this->legalEntity->uuid]],
+        ]);
+        app(PatientServiceRequestApi::class)->shouldReceive('getById')->once()->andReturn($this->remoteResponse($remote));
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldNotReceive('qualify', 'process');
+        $this->instance(ServiceRequestApi::class, $api);
+
+        $result = app(ReferralRequestLifecycleService::class)->takeIntoWork($record->uuid, $this->employee, $this->person->uuid);
+
+        $this->assertSame($remote, $result);
+        $this->assertSame('in_progress', $record->fresh()->status);
+    }
+
+    public function test_another_facility_is_not_treated_as_already_prepared(): void
+    {
+        $record = $this->createActiveReferral();
+        $record->update(['status' => 'in_progress']);
+        app(PatientServiceRequestApi::class)->shouldReceive('getById')->once()->andReturn($this->remoteResponse(
+            $this->remoteReferral($record, [
+                'program_processing_status' => 'in_progress',
+                'used_by_legal_entity' => ['identifier' => ['value' => (string) Str::uuid()]],
+            ])
+        ));
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldReceive('qualify')->once()->andReturn($this->remoteResponse([['status' => 'VALID']]));
+        $api->shouldReceive('process')->once()->andThrow(new \RuntimeException('Reuse is temporarily blocked'));
+        $this->instance(ServiceRequestApi::class, $api);
+
+        $this->expectExceptionMessage('Reuse is temporarily blocked');
+        app(ReferralRequestLifecycleService::class)->takeIntoWork($record->uuid, $this->employee, $this->person->uuid);
+    }
+
+    public function test_terminal_remote_referral_is_rejected_before_any_mutation(): void
+    {
+        $record = $this->createActiveReferral();
+        app(PatientServiceRequestApi::class)->shouldReceive('getById')->once()->andReturn($this->remoteResponse(
+            $this->remoteReferral($record, ['status' => 'recalled'])
+        ));
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldNotReceive('qualify', 'process');
+        $this->instance(ServiceRequestApi::class, $api);
+
+        $this->expectExceptionMessage('Направлення недоступне для взяття в роботу.');
+        app(ReferralRequestLifecycleService::class)->takeIntoWork($record->uuid, $this->employee, $this->person->uuid);
+    }
+
+    public function test_remote_patient_mismatch_is_rejected_before_any_mutation(): void
+    {
+        $record = $this->createActiveReferral();
+        app(PatientServiceRequestApi::class)->shouldReceive('getById')->once()->andReturn($this->remoteResponse(
+            $this->remoteReferral($record, ['subject' => ['identifier' => ['value' => (string) Str::uuid()]]])
+        ));
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldNotReceive('qualify', 'process');
+        $this->instance(ServiceRequestApi::class, $api);
+
+        $this->expectException(\InvalidArgumentException::class);
+        app(ReferralRequestLifecycleService::class)->takeIntoWork($record->uuid, $this->employee, $this->person->uuid);
+    }
+
+    public function test_local_patient_mismatch_does_not_even_fetch_remote_referral(): void
+    {
+        $record = $this->createActiveReferral();
+        app(PatientServiceRequestApi::class)->shouldNotReceive('getById');
+
+        $this->expectException(\InvalidArgumentException::class);
+        app(ReferralRequestLifecycleService::class)->takeIntoWork($record->uuid, $this->employee, (string) Str::uuid());
+    }
+
+    private function createActiveReferral(): ServiceRequestRequest
+    {
+        return ServiceRequestRequest::create([
+            'uuid' => (string) Str::uuid(), 'employee_id' => $this->employee->id,
+            'person_id' => $this->person->id, 'status' => 'active',
+            'service_id' => '59300-00', 'quantity' => 1, 'program_id' => (string) Str::uuid(),
+        ]);
+    }
+
+    private function remoteReferral(ServiceRequestRequest $record, array $overrides = []): array
+    {
+        return array_replace([
+            'id' => $record->uuid, 'status' => 'active', 'program_processing_status' => 'new',
+            'subject' => ['identifier' => ['value' => $this->person->uuid]],
+            'program' => ['identifier' => ['value' => $record->programId]],
+        ], $overrides);
+    }
+
+    public function test_encounter_selection_prepares_once_and_repeated_selection_does_not_use_again(): void
+    {
+        $this->actingAs($this->user);
+        $record = $this->createActiveReferral();
+        $component = $this->encounterCreateComponent($record);
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldReceive('qualify')->once()->andReturn($this->remoteResponse([['status' => 'VALID']]));
+        $api->shouldReceive('process')->once()->andReturn($this->remoteResponse(['status' => 'active']));
+        $this->instance(ServiceRequestApi::class, $api);
+        app(PatientServiceRequestApi::class)->shouldReceive('getById')->twice()->andReturn(
+            $this->remoteResponse($this->remoteReferral($record)),
+            $this->remoteResponse($this->remoteReferral($record, [
+                'program_processing_status' => 'in_progress',
+                'used_by_legal_entity' => ['identifier' => ['value' => $this->legalEntity->uuid]],
+            ])),
+        );
+        $lifecycle = app(ReferralRequestLifecycleService::class);
+
+        $component->selectElectronicReferral($record->uuid, $lifecycle);
+        $this->assertSame($record->uuid, $component->confirmedElectronicReferralUuid);
+        $component->selectElectronicReferral($record->uuid, $lifecycle);
+        $this->assertSame($record->uuid, $component->confirmedElectronicReferralUuid);
+
+        $validated = ['encounter' => ['referralType' => 'electronic', 'referralNumber' => $record->uuid]];
+        $method = new \ReflectionMethod($component, 'resolveAllReferrals');
+        $method->invokeArgs($component, [&$validated, true]);
+        $this->assertSame($record->uuid, $validated['encounter']['referralNumber']);
+    }
+
+    public function testEncounterSelectionWithoutUsePermissionIsDeniedByPolicyWith404(): void
+    {
+        $this->user->revokePermissionTo('service_request:use');
+        $this->actingAs($this->user);
+        $record = $this->createActiveReferral();
+        $component = $this->encounterCreateComponent($record);
+        $component->confirmedElectronicReferralUuid = $record->uuid;
+        $lifecycle = Mockery::mock(ReferralRequestLifecycleService::class);
+        $lifecycle->shouldNotReceive('takeIntoWork');
+        app(PatientServiceRequestApi::class)->shouldNotReceive('getById');
+
+        try {
+            $component->selectElectronicReferral($record->uuid, $lifecycle);
+            $this->fail('Referral selection must be denied by the policy before preparation.');
+        } catch (AuthorizationException $exception) {
+            $this->assertSame(404, $exception->status());
+            $this->assertSame(404, $exception->response()->status());
+        }
+
+        $this->assertSame($record->uuid, $component->confirmedElectronicReferralUuid);
+        $this->assertSame('active', $record->fresh()->status);
+    }
+
+    public function testRedeemModalAfterSignedEncounterCompletesWithoutRepeatingQualifyOrUse(): void
+    {
+        $this->actingAs($this->user);
+        $record = $this->createActiveReferral();
+        $component = $this->encounterCreateComponent($record);
+        $encounter = $this->finishedEncounterForReferral($record);
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldReceive('qualify')->once()->ordered()->with($record->uuid, [
+            'programs' => [[
+                'identifier' => [
+                    'type' => ['coding' => [['system' => 'eHealth/resources', 'code' => 'medical_program']]],
+                    'value' => $record->programId,
+                ],
+            ]],
+        ])->andReturn($this->remoteResponse([['status' => 'VALID']]));
+        $api->shouldReceive('process')->once()->ordered()->andReturn($this->remoteResponse(['status' => 'active']));
+        $api->shouldReceive('complete')->once()->ordered()->with($record->uuid, [
+            'based_on' => [[
+                'identifier' => [
+                    'type' => ['coding' => [['system' => 'eHealth/resources', 'code' => 'encounter']]],
+                    'value' => $encounter->uuid,
+                ],
+            ]],
+        ])->andReturn($this->remoteResponse(['status' => 'completed']));
+        $this->instance(ServiceRequestApi::class, $api);
+        app(PatientServiceRequestApi::class)->shouldReceive('getById')->once()
+            ->with($this->person->uuid, $record->uuid)
+            ->andReturn($this->remoteResponse($this->remoteReferral($record)));
+        $lifecycle = app(ReferralRequestLifecycleService::class);
+
+        $component->selectElectronicReferral($record->uuid, $lifecycle);
+        $this->assertSame($record->uuid, $component->confirmedElectronicReferralUuid);
+        $this->assertSame('in_progress', $record->fresh()->status);
+
+        // The async submission has been accepted; completion now runs on the encounter view.
+        $view = new \App\Livewire\EncounterPackage\EncounterPackageView();
+        $view->referralToRedeemId = $record->uuid;
+        $view->encounterUuid = $encounter->uuid;
+        $view->showReferralRedeemModal = true;
+        $view->redeemReferral($lifecycle);
+
+        $this->assertFalse($view->showReferralRedeemModal);
+        $this->assertSame('completed', $record->fresh()->status);
+        $this->assertSame(__('encounters.messages.referral_redeemed'), session('success'));
+        $this->assertNull(session('error'));
+    }
+
+    public function testRedeemModalCannotPrepareAnUnconfirmedReferralAfterSigning(): void
+    {
+        $this->actingAs($this->user);
+        $record = $this->createActiveReferral();
+        $encounter = $this->finishedEncounterForReferral($record);
+        $component = new \App\Livewire\EncounterPackage\EncounterPackageView();
+        $component->referralToRedeemId = $record->uuid;
+        $component->encounterUuid = $encounter->uuid;
+        $component->showReferralRedeemModal = true;
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $api->shouldNotReceive('qualify', 'process', 'complete');
+        $this->instance(ServiceRequestApi::class, $api);
+        app(PatientServiceRequestApi::class)->shouldNotReceive('getById');
+
+        $component->redeemReferral(app(ReferralRequestLifecycleService::class));
+
+        $this->assertFalse($component->showReferralRedeemModal);
+        $this->assertSame('active', $record->fresh()->status);
+        $this->assertStringContainsString(__('Направлення не було підтверджено перед підписанням взаємодії.'), session('error'));
+    }
+
+    public function test_failed_selection_clears_previous_confirmation_and_shows_a_field_error(): void
+    {
+        $this->actingAs($this->user);
+        $record = $this->createActiveReferral();
+        $component = $this->encounterCreateComponent($record);
+        $component->confirmedElectronicReferralUuid = (string) Str::uuid();
+        $lifecycle = Mockery::mock(ReferralRequestLifecycleService::class);
+        $lifecycle->shouldReceive('takeIntoWork')->once()->andThrow(new \RuntimeException('Not allowed'));
+
+        $component->selectElectronicReferral($record->uuid, $lifecycle);
+
+        $this->assertNull($component->confirmedElectronicReferralUuid);
+        $this->assertNull($component->selectedReferralUuid);
+        $this->assertTrue($component->getErrorBag()->has('form.encounter.referralNumber'));
+        $this->assertStringContainsString('Not allowed', session('error'));
+    }
+
+    public function test_client_prepared_uuid_does_not_bypass_confirmation(): void
+    {
+        $record = $this->createActiveReferral();
+        $component = $this->encounterCreateComponent($record);
+        $component->preparedElectronicReferralUuid = $record->uuid;
+        $validated = ['encounter' => ['referralType' => 'electronic', 'referralNumber' => $record->uuid]];
+        $method = new \ReflectionMethod($component, 'resolveAllReferrals');
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $method->invokeArgs($component, [&$validated, true]);
+    }
+
+    public function test_local_referral_list_includes_in_progress_but_excludes_terminal_statuses(): void
+    {
+        $record = $this->createActiveReferral();
+        $record->update(['status' => 'in_progress']);
+        $terminal = $this->createActiveReferral();
+        $terminal->update(['status' => 'completed']);
+        $component = $this->encounterCreateComponent($record);
+
+        (new \ReflectionMethod($component, 'loadAvailableReferrals'))->invoke($component);
+
+        $this->assertSame([$record->uuid], array_column($component->availableReferrals, 'id'));
+    }
+
+    private function encounterCreateComponent(ServiceRequestRequest $record): \App\Livewire\EncounterPackage\EncounterPackageCreate
+    {
+        $component = new \App\Livewire\EncounterPackage\EncounterPackageCreate();
+        $component->form = new \App\Livewire\EncounterPackage\Forms\EncounterForm($component, 'form');
+        $component->personId = $this->person->id;
+        $component->patientUuid = $this->person->uuid;
+        $component->availableReferrals = [['id' => $record->uuid, 'requisition' => '0000-1111-2222-3333']];
+
+        return $component;
+    }
+
+    private function remoteResponse(array $data): EHealthResponse
+    {
+        $response = Mockery::mock(EHealthResponse::class);
+        $response->shouldReceive('getData')->andReturn($data);
+
+        return $response;
     }
 
     public function test_take_into_work_blocks_when_qualify_fails(): void
@@ -353,7 +661,9 @@ class ReferralExecutorPhase4Test extends TestCase
             ->assertSet('selectedEmzType', 'encounter')
             ->set('selectedEmzUuid', $encounterUuid)
             ->call('confirmComplete')
-            ->assertDispatched('notify');
+            ->assertSet('searchResults.0.status', 'completed')
+            ->assertSee(__('referrals.messages.complete_success'))
+            ->assertNotDispatched('notify');
     }
 
     public function test_search_results_translate_diagnostic_procedure_category(): void
@@ -419,5 +729,20 @@ class ReferralExecutorPhase4Test extends TestCase
         $this->assertSame(['auth_method_id' => $authUuid], $sr['inform_with']);
         $this->assertSame($conditionUuid, $sr['reason_reference'][0]['identifier']['value']);
         $this->assertSame('condition', $sr['reason_reference'][0]['identifier']['type']['coding'][0]['code']);
+    }
+
+    private function finishedEncounterForReferral(ServiceRequestRequest $record): Encounter
+    {
+        $class = \App\Models\MedicalEvents\Sql\Coding::create(['code' => 'AMB', 'system' => 'eHealth/encounter_classes']);
+        $type = \App\Models\MedicalEvents\Sql\CodeableConcept::create();
+        $episode = Identifier::create(['value' => (string) Str::uuid()]);
+        $incoming = Identifier::create(['value' => $record->uuid]);
+
+        return Encounter::create([
+            'uuid' => (string) Str::uuid(), 'person_id' => $this->person->id,
+            'status' => 'finished', 'episode_id' => $episode->id,
+            'class_id' => $class->id, 'type_id' => $type->id,
+            'incoming_referral_id' => $incoming->id, 'ehealth_inserted_at' => now(),
+        ]);
     }
 }

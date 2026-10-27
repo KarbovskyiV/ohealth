@@ -75,6 +75,23 @@ class Immunization extends PatientApiBase
     }
 
     /**
+     * Get immunization by ID. The validator returns it as a list of one, the shape sync() takes.
+     *
+     * @param  string  $patientId
+     * @param  string  $immunizationId
+     * @return PromiseInterface|EHealthResponse
+     * @throws EHealthConnectionException|EHealthValidationException|EHealthResponseException
+     *
+     * @see https://medicaleventsmisapi.docs.apiary.io/#reference/medical-events/immunization/get-immunization-by-id
+     */
+    public function getById(string $patientId, string $immunizationId): PromiseInterface|EHealthResponse
+    {
+        $this->setValidator($this->validateImmunizations(...));
+
+        return $this->get(self::URL . "/$patientId/immunizations/$immunizationId");
+    }
+
+    /**
      * Validate immunizations collection from eHealth API.
      *
      * @param  EHealthResponse  $response

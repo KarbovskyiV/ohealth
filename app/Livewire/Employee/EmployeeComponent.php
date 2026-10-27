@@ -125,6 +125,39 @@ abstract class EmployeeComponent extends Component
         );
     }
 
+    /**
+     * Dictionary label for a stored position code. Free text is shown as entered.
+     */
+    public function positionDisplayLabel(): string
+    {
+        $code = (string) $this->form->position;
+
+        if ($code === '') {
+            return '';
+        }
+
+        return $this->dictionaries['POSITION'][$code] ?? $code;
+    }
+
+    public function updatedFormEmployeeType(): void
+    {
+        if ($this->isPositionDataLocked || $this->isCorePositionDataLocked) {
+            return;
+        }
+
+        $this->form->position = '';
+        $this->form->positionIsCustom = false;
+    }
+
+    public function updatedFormPositionIsCustom(): void
+    {
+        if ($this->isPositionDataLocked || $this->isCorePositionDataLocked) {
+            return;
+        }
+
+        $this->form->position = '';
+    }
+
     #[Computed]
     public function employeeFullName(): string
     {
@@ -289,10 +322,22 @@ abstract class EmployeeComponent extends Component
         return array_any(
             $this->form->documents,
             fn ($document) => !empty($document['number']) && in_array(
-                $document['type'],
-                ['PASSPORT', 'NATIONAL_ID', 'REFUGEE_CERTIFICATE', 'PERMANENT_RESIDENCE_PERMIT']
+                $document['type'] ?? null,
+                config('ehealth.no_tax_id_document_types', []),
+                true
             )
         );
+    }
+
+    public function updatedFormDocuments(): void
+    {
+        unset($this->canEnableNoTaxId);
+
+        $this->syncTaxIdFromDocument();
+
+        if (($this->form->party['noTaxId'] ?? false) && $this->canEnableNoTaxId) {
+            $this->resetValidation('form.party.taxId');
+        }
     }
 
     /**
@@ -320,7 +365,7 @@ abstract class EmployeeComponent extends Component
         }
 
         foreach ($this->form->documents as $document) {
-            if (!empty($document['number']) && in_array($document['type'], ['PASSPORT', 'NATIONAL_ID', 'REFUGEE_CERTIFICATE', 'PERMANENT_RESIDENCE_PERMIT'])) {
+            if (!empty($document['number']) && in_array($document['type'] ?? null, config('ehealth.no_tax_id_document_types', []), true)) {
                 $this->form->party['taxId'] = $document['number'];
 
                 return;

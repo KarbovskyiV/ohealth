@@ -61,7 +61,15 @@ class EHealthResponseException extends EHealthException
             return;
         }
 
-        $message = $flashMessage ?? __('messages.ehealth_error', ['message' => $this->getMessage()]);
+        $extracted = $this->response->json('error.message')
+            ?? $this->response->json('details.errorMessage')
+            ?? $this->response->json('description');
+
+        $translationKey = \is_string($extracted) ? $this->getErrorTranslationKey($extracted) : null;
+
+        $message = $flashMessage ?? ($extracted !== null
+            ? $this->response->status() . ': ' . ($translationKey !== null ? __($translationKey) : $extracted)
+            : __('messages.ehealth_error', ['message' => $this->getMessage()]));
 
         if ($flashMessage === null && $this->response->status() === 409) {
             $raw = $this->response->json('error.message') ?? $this->getMessage();
@@ -70,6 +78,12 @@ class EHealthResponseException extends EHealthException
 
         if ($flashMessage === null && $this->response->json('error.message') === 'Invalid verification code') {
             $message = __('errors.ehealth.messages.invalid_verification_code');
+        }
+
+        if ($flashMessage === null
+            && $this->response->status() === 403
+            && $this->response->json('error.message') === 'Access denied') {
+            $message = __('errors.ehealth.messages.access_denied');
         }
 
         Session::flash('error', $message);
@@ -89,6 +103,7 @@ class EHealthResponseException extends EHealthException
         }
 
         return match ($message) {
+            'client_id refers to legal entity that is not active' => __('errors.ehealth.messages.legal_entity_not_active'),
             'Legal entity type and license type mismatch' => __('errors.ehealth.messages.license_type_mismatch'),
             'License is expired' => __('errors.ehealth.messages.license_expired'),
             'No active primary license found for legal entity' => __('errors.ehealth.messages.no_active_primary_license'),
@@ -139,10 +154,27 @@ class EHealthResponseException extends EHealthException
      */
     protected function extractErrorMessage(Response $response): string
     {
-        $errorMessage = $response->json('error.message') ?? $response->reason();
+        $errorMessage = $response->json('error.message')
+            ?? $response->json('details.errorMessage')
+            ?? $response->json('description')
+            ?? $response->json('message')
+            ?? $response->reason();
 
         if ($errorMessage === 'Invalid signature') {
             return __('forms.invalid_kep_password');
+        }
+
+        $translationKey = $this->getErrorTranslationKey($errorMessage);
+
+        if ($translationKey !== null) {
+            return $response->status() . ': ' . __($translationKey);
+        }
+
+        if ($response->status() === 409) {
+            $translated = $this->translateConflictMessage((string) $errorMessage);
+            if ($translated !== $errorMessage) {
+                return $translated;
+            }
         }
 
         // Hide detailed technical errors in production unless debug is enabled
@@ -151,5 +183,18 @@ class EHealthResponseException extends EHealthException
         }
 
         return $response->status() . ': ' . $errorMessage;
+    }
+
+    /**
+     * Get the translation key for a known eHealth error message.
+     */
+    protected function getErrorTranslationKey(string $message): ?string
+    {
+        return match ($message) {
+            'Active parent declaration was not found' => 'errors.ehealth.messages.active_parent_declaration_not_found',
+            'Identity, password combination is wrong.' => 'auth.login.error.validation.credentials',
+            'The redirection URI provided does not match a pre-registered value.' => 'errors.ehealth.messages.redirect_uri_mismatch',
+            default => null,
+        };
     }
 }

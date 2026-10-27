@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Core\EHealthJob;
+use App\Core\PatientEHealthJob;
 use App\Models\LegalEntity;
-use App\Models\Person\Person;
-use App\Models\Preperson;
 use App\Classes\eHealth\EHealth;
 use App\Repositories\MedicalEvents\Repository;
 use GuzzleHttp\Promise\PromiseInterface;
@@ -15,27 +14,13 @@ use App\Classes\eHealth\EHealthResponse;
 use Illuminate\Queue\Middleware\RateLimited;
 use Throwable;
 
-class ConditionSync extends EHealthJob
+class ConditionSync extends PatientEHealthJob
 {
     public const string BATCH_NAME = 'ConditionSync';
 
     public const string SCOPE_REQUIRED = 'condition:read';
 
     public const string ENTITY = LegalEntity::ENTITY_CONDITION;
-
-    protected ?string $patientUuid = null;
-    protected ?int $personId = null;
-    protected ?int $prepersonId = null;
-
-    public function handle(): void
-    {
-        // Get patient info from batch options
-        $this->patientUuid = $this->batch()->options['patient_uuid'] ?? null;
-        $this->personId = $this->batch()->options['person_id'] ?? null;
-        $this->prepersonId = $this->batch()->options['preperson_id'] ?? null;
-
-        parent::handle();
-    }
 
     /**
      * {@inheritDoc}
@@ -44,10 +29,10 @@ class ConditionSync extends EHealthJob
     {
         return EHealth::condition()
             ->withToken($token)
-            ->getBySearchParams($this->patientUuid, [
-                'managing_organization_id' => $this->legalEntity->uuid,
+            ->getBySearchParams($this->patientUuid, array_filter([
+                'managing_organization_id' => $this->hasPatientAccess ? null : $this->legalEntity->uuid,
                 'page' => $this->page
-            ]);
+            ]));
     }
 
     /**
@@ -63,11 +48,7 @@ class ConditionSync extends EHealthJob
             return;
         }
 
-        $patient = $this->prepersonId !== null
-            ? Preperson::findOrFail($this->prepersonId)
-            : Person::findOrFail($this->personId);
-
-        Repository::condition()->sync($patient, $validatedData);
+        Repository::condition()->sync($this->patient(), $validatedData);
     }
 
     /**

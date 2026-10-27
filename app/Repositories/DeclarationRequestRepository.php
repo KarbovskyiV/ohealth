@@ -19,7 +19,6 @@ use App\Models\Relations\AuthenticationMethod;
 use App\Models\Relations\Document;
 use App\Models\Relations\Party;
 use App\Models\Relations\Phone;
-use App\Models\ReorganizationEmployeeDeclaration;
 use BackedEnum;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -142,7 +141,9 @@ class DeclarationRequestRepository
 
         $isUpdated = false;
 
-        $isUpdated |= $this->syncJsonField($person, 'emergency_contact', $personData['emergency_contact']);
+        if (isset($personData['emergency_contact'])) {
+            $isUpdated |= $this->syncJsonField($person, 'emergency_contact', $personData['emergency_contact']);
+        }
 
         // Emergency contact has been updated, so delete it.
         unset($personData['emergency_contact']);
@@ -244,17 +245,30 @@ class DeclarationRequestRepository
      */
     public function syncDivisionData(array $divisionData): bool
     {
+        if (empty($divisionData['id'])) {
+            return false;
+        }
+
         $division = Division::where('uuid', $divisionData['id'])
             ->with(['addresses', 'phones'])
             ->select(['id', 'email', 'external_id', 'name', 'type'])
-            ->firstOrFail();
+            ->first();
+
+        if (!$division) {
+            return false;
+        }
+
         $isUpdated = false;
         unset($divisionData['legal_entity_id']);
 
+        if (\array_key_exists('name', $divisionData) && $divisionData['name'] === null) {
+            unset($divisionData['name']);
+        }
+
         $isUpdated |= $this->syncBasicData($division, $divisionData);
 
-        $isUpdated |= $this->syncRelatedData($division, 'addresses', $divisionData['addresses'], Address::class);
-        $isUpdated |= $this->syncRelatedData($division, 'phones', $divisionData['phones'], Phone::class);
+        $isUpdated |= $this->syncRelatedData($division, 'addresses', $divisionData['addresses'] ?? [], Address::class);
+        $isUpdated |= $this->syncRelatedData($division, 'phones', $divisionData['phones'] ?? [], Phone::class);
 
         return (bool)$isUpdated;
     }
@@ -441,9 +455,15 @@ class DeclarationRequestRepository
             ->pluck('id')
             ->firstOrFail();
         $data['person_id'] = Person::where('uuid', $data['person_id'])->pluck('id')->firstOrFail();
-        $data['division_id'] = Division::where('uuid', $data['division_id'])
-            ->pluck('id')
-            ->firstOrFail();
+        $divisionId = !empty($data['division_id'])
+            ? Division::where('uuid', $data['division_id'])->value('id')
+            : null;
+
+        if ($divisionId !== null) {
+            $data['division_id'] = $divisionId;
+        } else {
+            unset($data['division_id']);
+        }
 
         if ($includeLegalEntity && isset($data['legal_entity_id'])) {
             $data['legal_entity_id'] = LegalEntity::where('uuid', $data['legal_entity_id'])
@@ -451,16 +471,12 @@ class DeclarationRequestRepository
                 ->firstOrFail();
         }
 
-        $data['parent_declaration_uuid'] = Arr::pull($data, 'parent_declaration_id', null);
+        $parentDeclarationUuid = Arr::pull($data, 'parent_declaration_id');
+
+        if ($parentDeclarationUuid) {
+            $data['parent_declaration_uuid'] = $parentDeclarationUuid;
+        }
 
         return $data;
-    }
-
-    public function checkIfNeedToResign(string $personUuid): bool
-    {
-        return DeclarationRequest::whereNotNull('parent_declaration_uuid')
-            ->whereIn('parent_declaration_uuid', ReorganizationEmployeeDeclaration::where('person_uuid', $personUuid)->selectRaw('declaration_uuid::text'))
-            ->whereIn('status', [Status::NEW->value, Status::APPROVED->value])
-            ->exists();
     }
 }

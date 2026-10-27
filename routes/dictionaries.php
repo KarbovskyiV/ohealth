@@ -35,6 +35,7 @@ Route::prefix('dictionaries')->name('dictionaries.')
             ->name('drug-list.index');
 
         Route::get('/service-catalog', ServiceCatalog::class)
+            ->can('view-service-catalog')
             ->name('service-catalog.index');
 
         Route::get('/condition-diagnose', ConditionDiagnose::class)

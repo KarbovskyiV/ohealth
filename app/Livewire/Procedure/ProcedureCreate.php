@@ -19,7 +19,7 @@ class ProcedureCreate extends ProcedureComponent
     /**
      * Validate and save data.
      *
-     * @param  array  $data
+     * @param  array  $procedureData
      * @return void
      */
     public function save(array $procedureData): void
@@ -42,7 +42,6 @@ class ProcedureCreate extends ProcedureComponent
     /**
      * Submit encrypted data.
      *
-     * @param  array  $data
      * @return void
      */
     public function sign(): void

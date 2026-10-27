@@ -145,8 +145,9 @@ class DictionaryManager
         $rules = $this->get(RuleEngineRuleDictionary::KEY);
         $details = Cache::get(RuleEngineRuleDictionary::DETAILS_CACHE_KEY, []);
 
+        // A failed details fetch keeps the previous details, which may miss the rules added to the list since
         return RuleEngineRuleCollection::make(
-            $rules->map(static fn (array $rule) => array_merge($rule, ['details' => $details[data_get($rule, 'code.code')]]))
+            $rules->map(static fn (array $rule) => array_merge($rule, ['details' => $details[data_get($rule, 'code.code')] ?? null]))
         );
     }
 

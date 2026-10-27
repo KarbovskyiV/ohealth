@@ -4,6 +4,7 @@
 @use(Carbon\Carbon)
 
 <section class="section-form">
+    <livewire:components.x-message :key="time()" />
     <div class="flex items-center justify-between gap-4 flex-wrap">
         <x-header-navigation class="breadcrumb-form flex-1 min-w-0"
             :breadcrumbs="[
@@ -17,6 +18,9 @@
             <div class="mt-3 ml-0 flex flex-col gap-2 self-start sm:flex-row sm:flex-wrap">
                 <button
                     type="button"
+                    wire:click="sync"
+                    wire:loading.attr="disabled"
+                    wire:target="sync"
                     class="button-sync flex items-center gap-2 whitespace-nowrap"
                 >
                     @icon('refresh', 'w-4 h-4')
@@ -38,7 +42,7 @@
                 <div class="form-group group">
                     <span class="label">{{ __('approval.data_type') }}</span>
                     <div class="input h-auto min-h-10.5 py-2.5 wrap-break-word whitespace-normal text-sm">
-                        {{ match ($approval->approvable_type) {
+                        {{ match ($approval->approvableType) {
                             Person::class => __('patients.data_access_types.all'),
                             CarePlan::class => __('care-plan.care_plan'),
                         } }}
@@ -50,7 +54,7 @@
                 <div class="form-group group">
                     <span class="label">{{ __('approval.access_level') }}</span>
                     <div class="input h-auto min-h-10.5 py-2.5 wrap-break-word whitespace-normal text-sm">
-                        {{ __('patients.'.$approval->access_level) }}
+                        {{ __('patients.'.$approval->accessLevel) }}
                     </div>
                 </div>
                 <div class="form-group group">

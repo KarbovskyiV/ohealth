@@ -24,8 +24,8 @@ return new class extends Migration
             $table->string('redirect_uri')->nullable();
             $table->string('status')->default(ConnectionStatus::ACTIVE)->comment('Connection status at the MIS side');
 
-            $table->date('ehealth_inserted_at')->nullable();
-            $table->date('ehealth_updated_at')->nullable();
+            $table->timestamp('ehealth_inserted_at')->nullable();
+            $table->timestamp('ehealth_updated_at')->nullable();
 
             $table->timestamps();
 

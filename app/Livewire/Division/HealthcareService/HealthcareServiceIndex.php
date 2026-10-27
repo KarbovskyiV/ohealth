@@ -9,6 +9,7 @@ use App\Exceptions\EHealth\EHealthException;
 use Exception;
 use Throwable;
 use App\Classes\eHealth\EHealth;
+use App\Dto\HealthcareService\Model as HealthcareServiceData;
 use App\Enums\JobStatus;
 use App\Enums\Status;
 use App\Jobs\HealthcareServiceSync;
@@ -29,6 +30,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -41,8 +43,10 @@ class HealthcareServiceIndex extends Component
 
     protected const string BATCH_NAME = 'HealthcareServiceSync';
 
+    #[Locked]
     public ?int $divisionId = null;
 
+    #[Locked]
     public ?string $divisionUuid = null;
 
     public ?Status $divisionStatus;
@@ -165,7 +169,9 @@ class HealthcareServiceIndex extends Component
         }
 
         try {
-            Repository::healthcareService()->updateStatus($healthcareService->uuid, $response->validate());
+            $healthcareServiceData = HealthcareServiceData::fromSource($response->validate());
+
+            Repository::healthcareService()->saveMapped($healthcareServiceData, $healthcareService, legalEntity());
 
             Session::flash('success', __('healthcare-services.success.activated'));
         } catch (Throwable $exception) {
@@ -192,7 +198,9 @@ class HealthcareServiceIndex extends Component
         }
 
         try {
-            Repository::healthcareService()->updateStatus($healthcareService->uuid, $response->validate());
+            $healthcareServiceData = HealthcareServiceData::fromSource($response->validate());
+
+            Repository::healthcareService()->saveMapped($healthcareServiceData, $healthcareService, legalEntity());
 
             Session::flash('success', __('healthcare-services.success.deactivated'));
         } catch (Throwable $exception) {
@@ -328,7 +336,7 @@ class HealthcareServiceIndex extends Component
         // Filters
         if ($this->divisionFilter) {
             $this->divisionId = $this->divisionFilter;
-            $this->divisionUuid = Division::whereId($this->divisionId)->value('uuid');
+            $this->divisionUuid = legalEntity()->divisions()->findOrFail($this->divisionId)->uuid;
             $query->whereDivisionId($this->divisionFilter);
         } else {
             $this->divisionUuid = null;

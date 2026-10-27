@@ -10,6 +10,7 @@ use App\Livewire\CarePlan\Concerns\ManagesCarePlanEPrescription;
 use App\Livewire\CarePlan\Concerns\ManagesCarePlanReferrals;
 use App\Models\CarePlan;
 use App\Repositories\CarePlanActivityRepository;
+use Livewire\Attributes\Locked;
 
 class CarePlanShow extends CarePlanComponent
 {
@@ -17,6 +18,9 @@ class CarePlanShow extends CarePlanComponent
     use ManagesCarePlanActivities;
     use ManagesCarePlanEPrescription;
     use ManagesCarePlanReferrals;
+
+    #[Locked]
+    public array $remotePlanDetails = [];
 
     /**
      * Activity form keeps device/medication unit fields used by drawers on the plan page.
@@ -46,6 +50,7 @@ class CarePlanShow extends CarePlanComponent
     public function mount(CarePlan $carePlan): void
     {
         $this->bootCarePlan($carePlan);
+        $this->refreshDisplayedDetails();
 
         $editActivityId = request()->query('edit_activity');
         if (is_numeric($editActivityId)) {
@@ -60,5 +65,11 @@ class CarePlanShow extends CarePlanComponent
         $this->carePlan->load(['person', 'author.party', 'categoryConcept', 'activities.kindConcept.coding']);
 
         return view('livewire.care-plan.care-plan-show');
+    }
+
+    protected function refreshCarePlan(): void
+    {
+        parent::refreshCarePlan();
+        $this->refreshDisplayedDetails();
     }
 }

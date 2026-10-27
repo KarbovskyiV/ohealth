@@ -8,6 +8,7 @@ use Log;
 use Throwable;
 use App\Core\Arr;
 use App\Models\LegalEntity;
+use App\Models\User;
 use App\Models\Relations\Party;
 use App\Models\Employee\Employee;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,11 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 
 readonly class EmployeeRepository
 {
+    public function activeForLegalEntity(User $user, LegalEntity $legalEntity, array $employeeTypes): ?Employee
+    {
+        return $user->employees()->whereLegalEntityId($legalEntity->id)->active()->whereIn('employee_type', $employeeTypes)->first();
+    }
+
     /**
      * Creates a new EmployeeRequest draft from prepared data.
      * This is a universal method that only handles database persistence.
@@ -132,7 +138,11 @@ readonly class EmployeeRepository
     {
         unset($party['email']);
         $partyUuid = Arr::get($party, 'uuid');
-        $partyByUuid = Party::where('uuid', $partyUuid)->first();
+        // A missing uuid must not become WHERE uuid IS NULL: that row is a different person
+        // created moments earlier, and the next hire would overwrite their name.
+        $partyByUuid = is_string($partyUuid) && $partyUuid !== ''
+            ? Party::whereUuid($partyUuid)->first()
+            : null;
 
         // If the model doesn't have a party and party doesn't exist, create new one. It's a brand-new person
         if (!$partyByUuid && !$model->party) {

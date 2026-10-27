@@ -18,7 +18,8 @@ class PersonVerificationDetailPolicy
      */
     public function viewAny(User $user): Response
     {
-        if ($user->cannot('person_verification:read')) {
+        // The scope alone is held by more roles than may look through the patients with an unverified death
+        if ($user->cannot('person_verification:read') || !$user->hasAllowedRole([Role::DOCTOR])) {
             return Response::denyWithStatus(404);
         }
 

@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Casts\EHealthDateCast;
 use App\Enums\Person\Gender;
 use App\Enums\Preperson\Status;
+use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\DetectedIssue;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\DeviceAssociation;
@@ -15,6 +16,8 @@ use App\Models\MedicalEvents\Sql\Episode;
 use App\Models\MedicalEvents\Sql\Observation;
 use App\Models\MedicalEvents\Sql\Specimen;
 use Eloquence\Behaviours\HasCamelCasing;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +31,7 @@ class Preperson extends Model
 
     protected $fillable = [
         'uuid',
+        'created_by',
         'external_id',
         'first_name',
         'last_name',
@@ -152,6 +156,16 @@ class Preperson extends Model
     }
 
     /**
+     * Employee who created the preperson in this system.
+     *
+     * @return BelongsTo
+     */
+    public function createdByEmployee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'created_by');
+    }
+
+    /**
      * User who registered the preperson in eHealth, resolved from the inserted_by UUID.
      *
      * @return BelongsTo
@@ -169,6 +183,22 @@ class Preperson extends Model
     public function updatedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'ehealth_updated_by', 'uuid');
+    }
+
+    /**
+     * Prepersons created by employees of the given legal entity.
+     *
+     * @param  Builder  $query
+     * @param  int  $legalEntityId
+     * @return Builder
+     */
+    #[Scope]
+    protected function forLegalEntity(Builder $query, int $legalEntityId): Builder
+    {
+        return $query->whereHas(
+            'createdByEmployee',
+            static fn (Builder $employeeQuery): Builder => $employeeQuery->whereLegalEntityId($legalEntityId)
+        );
     }
 
     /**

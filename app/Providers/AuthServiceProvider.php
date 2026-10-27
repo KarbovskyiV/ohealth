@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Policies\DeviceDefinitionPolicy;
 use App\Policies\DrugPolicy;
+use App\Policies\ServiceCatalogPolicy;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use App\Auth\EHealth\Guards\EHealthGuard;
@@ -46,5 +47,6 @@ class AuthServiceProvider extends ServiceProvider
         // Register policies for dictionary access
         Gate::define('view-drugs', [DrugPolicy::class, 'view']);
         Gate::define('view-device-definitions', [DeviceDefinitionPolicy::class, 'view']);
+        Gate::define('view-service-catalog', [ServiceCatalogPolicy::class, 'view']);
     }
 }
