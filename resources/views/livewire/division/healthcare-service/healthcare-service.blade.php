@@ -100,6 +100,7 @@
                         name="specialityType"
                         id="specialityType"
                         class="input-select @error('form.specialityType') input-error @enderror"
+                        x-bind:required="isRequired('speciality')"
                         x-bind:disabled="isDisabled"
                     >
                         <option value="" selected>{{ __('forms.select') }}</option>
@@ -122,6 +123,7 @@
                         name="providingCondition"
                         id="providingCondition"
                         class="input-select @error('form.providingCondition') input-error @enderror"
+                        x-bind:required="isRequired('providingCondition')"
                         x-bind:disabled="isDisabled"
                     >
                         <option value="" selected>{{ __('forms.select') }}</option>

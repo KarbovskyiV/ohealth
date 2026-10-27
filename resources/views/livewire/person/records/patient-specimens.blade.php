@@ -418,7 +418,7 @@
                             <div class="record-inner-id-col md:w-64!">
                                 <div class="min-w-0">
                                     <div class="record-inner-label">{{ __('specimens.encounter') }}</div>
-                                    <div class="record-inner-id-value font-semibold whitespace-nowrap">
+                                    <div class="record-inner-id-value font-semibold">
                                         {{ data_get($specimen, 'context.identifier.value') ?? '-' }}
                                     </div>
                                 </div>

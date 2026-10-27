@@ -35,7 +35,7 @@
 
             @livewire('components.sidebar')
 
-            <main id="main-content" class="p-4 md:ml-64 h-auto pt-20">
+            <main id="main-content" class="p-4 md:ml-78 h-auto pt-20">
                 @hasSection('content')
                     @yield('content')
                 @else
