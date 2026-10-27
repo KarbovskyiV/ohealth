@@ -8,6 +8,7 @@ use App\Enums\Person\AuthenticationMethod;
 use App\Enums\Person\MergedPersonStatus;
 use App\Models\ConfidantPersonRelationshipRequest;
 use App\Models\Declaration;
+use App\Models\DeclarationRequest;
 use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\DetectedIssue;
 use App\Models\MedicalEvents\Sql\Encounter;
@@ -98,6 +99,11 @@ class Person extends BasePerson
     public function declarations(): HasMany
     {
         return $this->hasMany(Declaration::class);
+    }
+
+    public function declarationRequests(): HasMany
+    {
+        return $this->hasMany(DeclarationRequest::class);
     }
 
     public function employee(): HasOne

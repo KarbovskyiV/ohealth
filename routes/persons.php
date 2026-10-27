@@ -243,7 +243,8 @@ Route::prefix('persons')->whereNumber('person')
             Route::get('/{person}/declaration/create', DeclarationCreate::class)
                 ->name('create')
                 ->can('create', DeclarationRequest::class);
-            Route::get('/{person}/declaration/{declarationRequest}', DeclarationEdit::class)
+            // The explicit key scopes only the declaration request to its person.
+            Route::get('/{person}/declaration/{declarationRequest:id}', DeclarationEdit::class)
                 ->name('edit')
                 ->can('update', 'declarationRequest')
                 ->whereNumber('declarationRequest');

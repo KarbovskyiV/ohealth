@@ -88,9 +88,9 @@ class Declaration extends Request
             '*.declaration_number' => 'required|string',
             '*.declaration_request_uuid' => 'required|uuid',
 
-            '*.division' => 'required|array',
-            '*.division.uuid' => 'required|uuid',
-            '*.division.name' => 'required|string',
+            '*.division' => 'nullable|array',
+            '*.division.uuid' => 'nullable|uuid',
+            '*.division.name' => 'nullable|string',
 
             '*.employee' => 'required|array',
             '*.employee.employee_type' => 'required|string',
@@ -158,9 +158,9 @@ class Declaration extends Request
             'declaration_number' => 'required|string',
             'declaration_request_uuid' => 'required|uuid',
 
-            'division' => 'required|array',
-            'division.uuid' => 'required|uuid',
-            'division.name' => 'required|string',
+            'division' => 'nullable|array',
+            'division.uuid' => 'nullable|uuid',
+            'division.name' => 'nullable|string',
 
             'employee' => 'required|array',
             'employee.employee_type' => 'required|string',
@@ -224,6 +224,7 @@ class Declaration extends Request
             'person.gender' => 'required|string',
             'person.uuid' => 'required|uuid',
             'person.last_name' => 'nullable|string',
+            'person.tax_id' => 'nullable|string',
             'person.phones' => 'nullable|array',
             'person.phones.*.type' => 'required_with:person.phones|string',
             'person.phones.*.number' => 'required_with:person.phones|string',
@@ -267,7 +268,7 @@ class Declaration extends Request
                     $replaced['declaration_request_uuid'] = $value;
                     break;
                 case 'division':
-                    if (is_array($value)) {
+                    if (\is_array($value) && \array_key_exists('id', $value)) {
                         $value['uuid'] = $value['id'];
                         unset($value['id']);
                     }

@@ -45,17 +45,16 @@ class DeclarationRepository
         $data['uuid'] = $data['id'];
         unset($data['id']);
 
-        $data['declaration_request_id'] = DeclarationRequest::where('uuid', $data['declaration_request_id'])
-            ->pluck('id')
-            ->firstOrFail();
+        $declarationRequest = DeclarationRequest::where('uuid', $data['declaration_request_id'])->firstOrFail();
+        $data['declaration_request_id'] = $declarationRequest->id;
         $data['employee_id'] = Employee::withoutEagerLoads()
             ->where('uuid', $data['employee_id'])
             ->pluck('id')
             ->firstOrFail();
         $data['person_id'] = Person::where('uuid', $data['person_id'])->pluck('id')->firstOrFail();
-        $data['division_id'] = Division::where('uuid', $data['division_id'])
-            ->pluck('id')
-            ->firstOrFail();
+        $data['division_id'] = !empty($data['division_id'])
+            ? Division::where('uuid', $data['division_id'])->value('id') ?? $declarationRequest->divisionId
+            : $declarationRequest->divisionId;
         $data['legal_entity_id'] = LegalEntity::where('uuid', $data['legal_entity_id'])
             ->pluck('id')
             ->firstOrFail();
@@ -99,7 +98,9 @@ class DeclarationRepository
         $relationData = [];
 
         foreach ($declarations as $declaration) {
-            $relationData['division'][$declaration['division']['uuid']] = Division::where('uuid', $declaration['division']['uuid'])->firstOrFail()?->id;
+            if (!empty($declaration['division']['uuid'])) {
+                $relationData['division'][$declaration['division']['uuid']] = Division::where('uuid', $declaration['division']['uuid'])->value('id');
+            }
 
             $relationData['employee'][$declaration['employee']['uuid']] = Employee::where('uuid', $declaration['employee']['uuid'])->firstOrFail()?->id;
 
@@ -146,7 +147,10 @@ class DeclarationRepository
 
             $data['uuid'] = $declaration['declaration_request_uuid'];
             $data['legal_entity_id'] = $legalEntity->id;
-            $data['division_id'] = $relationData['division'][$declaration['division']['uuid']];
+            // A shortened response must not erase an already known division.
+            $data['division_id'] = $relationData['division'][$declaration['division']['uuid'] ?? '']
+                ?? DeclarationRequest::where('uuid', $data['uuid'])->value('division_id')
+                ?? Declaration::where('uuid', $declaration['uuid'])->value('division_id');
             $data['employee_id'] = $relationData['employee'][$declaration['employee']['uuid']];
             $data['person_id'] = $relationData['person'][$declaration['person']['uuid']];
             $data['sync_status'] = JobStatus::PARTIAL->value;
@@ -166,10 +170,14 @@ class DeclarationRepository
         foreach ($declarations as $declaration) {
             $data = [];
 
+            $declarationRequest = DeclarationRequest::where('uuid', $declaration['declaration_request_uuid'])->firstOrFail();
+
             $data['uuid'] = $declaration["uuid"];
             $data['declaration_number'] = $declaration['declaration_number'];
-            $data['declaration_request_id'] = DeclarationRequest::where('uuid', $declaration['declaration_request_uuid'])->firstOrFail()?->id;
-            $data['division_id'] = $relationData['division'][$declaration['division']['uuid']];
+            $data['declaration_request_id'] = $declarationRequest->id;
+            $data['division_id'] = $relationData['division'][$declaration['division']['uuid'] ?? '']
+                ?? $declarationRequest->divisionId
+                ?? Declaration::where('uuid', $data['uuid'])->value('division_id');
             $data['employee_id'] = $relationData['employee'][$declaration['employee']['uuid']];
             $data['legal_entity_id'] = $legalEntity->id;
             $data['person_id'] = $relationData['person'][$declaration['person']['uuid']];

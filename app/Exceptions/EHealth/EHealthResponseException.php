@@ -65,8 +65,10 @@ class EHealthResponseException extends EHealthException
             ?? $this->response->json('details.errorMessage')
             ?? $this->response->json('description');
 
+        $translationKey = \is_string($extracted) ? $this->getErrorTranslationKey($extracted) : null;
+
         $message = $flashMessage ?? ($extracted !== null
-            ? $this->response->status() . ': ' . $extracted
+            ? $this->response->status() . ': ' . ($translationKey !== null ? __($translationKey) : $extracted)
             : __('messages.ehealth_error', ['message' => $this->getMessage()]));
 
         if ($flashMessage === null && $this->response->status() === 409) {
@@ -189,6 +191,7 @@ class EHealthResponseException extends EHealthException
     protected function getErrorTranslationKey(string $message): ?string
     {
         return match ($message) {
+            'Active parent declaration was not found' => 'errors.ehealth.messages.active_parent_declaration_not_found',
             'Identity, password combination is wrong.' => 'auth.login.error.validation.credentials',
             'The redirection URI provided does not match a pre-registered value.' => 'errors.ehealth.messages.redirect_uri_mismatch',
             default => null,
