@@ -20,6 +20,7 @@ use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
@@ -205,7 +206,10 @@ class PersonIndex extends Component
             // Otherwise search in eHealth
             $buildSearchRequest = removeEmptyKeys($validated);
             try {
-                $validatedEhealth = EHealth::person()->searchForPersonByParams($buildSearchRequest)->validate();
+                $validatedEhealth = $this->filterByAdditionalParams(
+                    EHealth::person()->searchForPersonByParams($buildSearchRequest)->validate(),
+                    $validated
+                );
                 $validatedEhealth = $this->setPersonSource($validatedEhealth, 'ehealth');
             } catch (EHealthException|EHealthConnectionException $exception) {
                 $exception->handle('Error while submitting encounter');
@@ -344,6 +348,52 @@ class PersonIndex extends Component
      * @param  string  $source
      * @return array
      */
+    /**
+     * Keep only the persons matching every additional search parameter the user entered, since the search response
+     * also contains persons matched by the mandatory parameters alone.
+     *
+     * @param  array  $persons
+     * @param  array  $searchParams
+     * @return array
+     */
+    private function filterByAdditionalParams(array $persons, array $searchParams): array
+    {
+        $documentType = $searchParams['documentType'] ?? null;
+        $language = $searchParams['language'];
+
+        return collect($persons)
+            ->when(
+                $searchParams['taxId'] ?? null,
+                static fn (Collection $persons, string $taxId): Collection => $persons->where('tax_id', $taxId)
+            )
+            ->when(
+                $searchParams['phoneNumber'] ?? null,
+                static fn (Collection $persons, string $phoneNumber): Collection => $persons->filter(
+                    static fn (array $person): bool => collect($person['phones'] ?? [])->contains('number', $phoneNumber)
+                )
+            )
+            ->when(
+                $searchParams['documentNumber'] ?? null,
+                static fn (Collection $persons, string $documentNumber): Collection => $persons->filter(
+                    static fn (array $person): bool => collect($person['documents'] ?? [])->contains(
+                        static fn (array $document): bool => $document['type'] === $documentType
+                            && mb_strtolower($document['number']) === mb_strtolower($documentNumber)
+                    )
+                )
+            )
+            ->when(
+                $searchParams['secondName'] ?? null,
+                static fn (Collection $persons, string $secondName): Collection => $persons->filter(
+                    static fn (array $person): bool => collect($person['names'])->contains(
+                        static fn (array $name): bool => $name['language'] === $language
+                            && mb_strtolower($name['second_name'] ?? '') === mb_strtolower($secondName)
+                    )
+                )
+            )
+            ->values()
+            ->all();
+    }
+
     private function setPersonSource(array $persons, string $source): array
     {
         return array_map(static function ($patient) use ($source) {
