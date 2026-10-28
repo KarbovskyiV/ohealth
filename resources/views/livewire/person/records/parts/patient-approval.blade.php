@@ -1,0 +1,996 @@
+@use(App\Models\MedicalEvents\Sql\Approval)
+
+<div
+    x-data="{
+        visible: $wire.entangle('open'),
+        groupSearch: '',
+        groupExpanded: false
+    }"
+>
+    @can('create', Approval::class)
+        <button
+            type="button"
+            wire:click="openDrawer"
+            class="button-primary-outline px-4 py-2 text-sm shadow-sm"
+        >
+            {{ __('patients.data_access') }}
+        </button>
+    @endcan
+
+    <div
+        x-show="visible"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        x-cloak
+        @click="$wire.closeDrawer()"
+        class="fixed inset-0 bg-gray-900/50"
+        style="z-index: {{ $step === 'form' ? 45 : 50 }};"
+    ></div>
+
+    <div
+        x-show="visible"
+        x-transition:enter="transition ease-out duration-300 transform"
+        x-transition:enter-start="{{ $step === 'form' ? 'translate-x-full' : 'opacity-0' }}"
+        x-transition:enter-end="{{ $step === 'form' ? 'translate-x-0' : 'opacity-100' }}"
+        x-transition:leave="transition ease-in duration-200 transform"
+        x-transition:leave-start="{{ $step === 'form' ? 'translate-x-0' : 'opacity-100' }}"
+        x-transition:leave-end="{{ $step === 'form' ? 'translate-x-full' : 'opacity-0' }}"
+        x-cloak
+        class="{{ $step === 'form'
+            ? 'fixed top-0 right-0 h-screen w-4/5 overflow-y-auto bg-white p-4 pt-20 shadow-2xl dark:bg-gray-800'
+            : 'fixed inset-0 flex items-center justify-center p-4'
+        }}"
+        style="z-index: {{ $step === 'form' ? 46 : 51 }};"
+        role="dialog"
+        aria-modal="true"
+        @keydown.escape.prevent.stop="$wire.closeDrawer()"
+        @click.self="if ($wire.step !== 'form') $wire.closeDrawer()"
+    >
+        <div
+            class="{{ $step === 'form'
+                ? 'w-full'
+                : 'modal-content mx-auto w-full max-w-4xl max-h-[90vh] overflow-y-auto'
+            }}"
+            @click.stop
+            x-trap.noscroll.inert="visible && $wire.step !== 'form'"
+        >
+                    <div class="{{ $step === 'form' ? '' : 'mb-8 flex items-center justify-between' }}">
+                        <h2 class="{{ $step === 'form' ? 'modal-header' : 'legend !mb-0' }}">
+                            @if($step === 'form')
+                                {{ __('patients.get_data_access') }}
+                            @elseif($step === 'methods')
+                                {{ __('patients.authentication_methods') }}
+                            @elseif($step === 'processing')
+                                {{ __('approval.create.request_title') }}
+                            @elseif($step === 'verifying')
+                                {{ __('approval.create.verification_processing_title') }}
+                            @else
+                                {{ __('approval.create.confirmation_title') }}
+                            @endif
+                        </h2>
+                    </div>
+
+                    @error('approvalCreation')
+                        <p class="text-error mt-3 mb-4">
+                            {{ $message }}
+                        </p>
+                    @enderror
+
+                    @if($step !== 'form')
+                        @error('resourceIds')
+                            <p class="text-error mt-3 mb-4">
+                                {{ $message }}
+                            </p>
+                        @enderror
+                    @endif
+                    
+                    @if($step === 'form')
+                        <div class="mt-8 max-w-md space-y-6">
+                            <div class="form-group group max-w-xl">
+                                <select
+                                    wire:model.live="mode"
+                                    @change="groupSearch = ''; groupExpanded = false"
+                                    class="input-select peer w-full"
+                                >
+                                    <option value="" disabled>
+                                        {{ __('forms.select') }}
+                                    </option>
+
+                                    <option value="patient">
+                                        {{ __('approval.create.mode_patient') }}
+                                    </option>
+                                    <option value="person">
+                                        {{ __('approval.create.mode_person') }}
+                                    </option>
+                                    <option value="resource">
+                                        {{ __('approval.create.mode_resource') }}
+                                    </option>
+                                    <option value="child">
+                                        {{ __('approval.create.mode_child') }}
+                                    </option>
+                                    <option value="service_request">
+                                        {{ __('approval.create.service_request') }}
+                                    </option>
+                                    <option value="service_group">
+                                        {{ __('approval.resource_types.service_group') }}
+                                    </option>
+                                    <option value="diagnoses_group">
+                                        {{ __('approval.resource_types.diagnoses_group') }}
+                                    </option>
+                                    <option value="forbidden_group">
+                                        {{ __('approval.create.mode_forbidden_group') }}
+                                    </option>
+                                    <option value="resource_types">
+                                        {{ __('approval.create.mode_resource_types') }}
+                                    </option>
+                                </select>
+
+                                <label class="label">{{ __('approval.data_type') }}</label>
+
+                                @error('mode')
+                                    <p class="text-error">{{ $message }}</p>
+                                @enderror
+
+                            </div>
+
+                            @if(in_array($mode, ['resource', 'child', 'service_request'], true))
+                                @if($mode === 'resource')
+                                    <div class="form-group group max-w-xl">
+                                        <select
+                                            wire:model.live="resourceType"
+                                            class="input-select peer w-full"
+                                        >
+                                            <option value="episode_of_care">
+                                                {{ __('approval.create.episode_of_care') }}
+                                            </option>
+                                            <option value="diagnostic_report">
+                                                {{ __('approval.create.diagnostic_report') }}
+                                            </option>
+                                            <option value="encounter">
+                                                {{ __('approval.create.encounter') }}
+                                            </option>
+                                            <option value="procedure">
+                                                {{ __('approval.create.procedure') }}
+                                            </option>
+                                            <option value="care_plan">
+                                                {{ __('approval.create.care_plan') }}
+                                            </option>
+                                            <option value="specimen">
+                                                {{ __('approval.create.specimen') }}
+                                            </option>
+                                        </select>
+
+                                        <label class="label">
+                                            {{ __('approval.create.record_type') }}
+                                        </label>
+                                    </div>
+                                @elseif($mode === 'child')
+                                    <div class="form-group group max-w-xl">
+                                        <select
+                                            wire:model.live="childType"
+                                            class="input-select peer w-full"
+                                        >
+                                            <option value="encounter">
+                                                {{ __('approval.create.encounter') }}
+                                            </option>
+                                            <option value="diagnostic_report">
+                                                {{ __('approval.create.diagnostic_report') }}
+                                            </option>
+                                            <option value="procedure">
+                                                {{ __('approval.create.procedure') }}
+                                            </option>
+                                        </select>
+
+                                        <label class="label">
+                                            {{ __('approval.create.child_record') }}
+                                        </label>
+                                    </div>
+                                @endif
+
+                                <div
+                                    wire:key="approval-record-picker-{{ $mode }}-{{ $mode === 'child' ? $childType : $resourceType }}"
+                                    x-data="{ recordExpanded: false }"
+                                    @pointerdown.window="if (!$el.contains($event.target)) recordExpanded = false"
+                                    @focusin.window="if (!$el.contains($event.target)) recordExpanded = false"
+                                    @keydown.escape.stop="recordExpanded = false"
+                                    class="relative max-w-xl"
+                                >
+                                    <label class="mb-2 block text-sm text-gray-500 dark:text-gray-400">
+                                        {{ __('approval.create.select_record') }}
+                                    </label>
+
+                                    <div class="relative">
+                                        <input
+                                            x-ref="recordInput"
+                                            type="search"
+                                            wire:model.live.debounce.1000ms="search"
+                                            @focus="recordExpanded = true"
+                                            @input="recordExpanded = true"
+                                            autocomplete="off"
+                                            placeholder="{{ __('approval.create.search_record') }}"
+                                            role="combobox"
+                                            aria-autocomplete="list"
+                                            :aria-expanded="recordExpanded.toString()"
+                                            class="input w-full pl-1 pr-9 dark:border-gray-700 dark:bg-gray-800 placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                                        >
+
+                                        <button
+                                            type="button"
+                                            tabindex="-1"
+                                            class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 dark:text-gray-400"
+                                            @click="recordExpanded = !recordExpanded; if (recordExpanded) $nextTick(() => $refs.recordInput.focus())"
+                                            aria-label="{{ __('forms.select') }}"
+                                        >
+                                            <svg
+                                                class="h-4 w-4"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                aria-hidden="true"
+                                            >
+                                                <path d="m6 9 6 6 6-6" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <div
+                                        x-show="recordExpanded"
+                                        x-cloak
+                                        class="absolute left-0 right-0 z-50 mt-2 rounded-xl border border-gray-200 bg-white p-3 shadow-xl dark:border-gray-600 dark:bg-gray-800"
+                                    >
+                                        <div class="max-h-80 space-y-2 overflow-y-auto">
+                                            @forelse($this->availableRecords as $record)
+                                                @php
+                                                    $uuid = $record['uuid'];
+                                                    $disabled = !$record['selectable'];
+
+                                                    $selected = match ($mode) {
+                                                        'child' => $childUuid === $uuid,
+                                                        'service_request' => ($resourceIds[0] ?? null) === $uuid,
+                                                        default => in_array($uuid, $resourceIds, true),
+                                                    };
+                                                @endphp
+
+                                                <div
+                                                    wire:key="approval-record-{{ $mode }}-{{ $uuid }}"
+                                                    class="rounded-lg p-2"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        wire:click="selectRecord('{{ $uuid }}')"
+                                                        @click="recordExpanded = {{ $mode === 'resource' ? 'true' : 'false' }}"
+                                                        aria-pressed="{{ $selected ? 'true' : 'false' }}"
+                                                        @disabled($disabled)
+                                                        @class([
+                                                            'flex w-full items-center gap-3 rounded-lg text-left transition-colors',
+                                                            'cursor-not-allowed opacity-50 grayscale' => $disabled,
+                                                            'cursor-pointer bg-blue-500/10' => !$disabled && $selected,
+                                                            'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' => !$disabled && !$selected,
+                                                        ])
+                                                    >
+                                                        <span
+                                                            @class([
+                                                                'flex h-5 w-5 shrink-0 items-center justify-center border text-xs font-bold',
+                                                                'rounded-full' => in_array($mode, ['child', 'service_request'], true),
+                                                                'rounded' => $mode === 'resource',
+                                                                'border-blue-600 bg-blue-600 text-white' => $selected && !$disabled,
+                                                                'border-blue-500' => !$selected || $disabled,
+                                                            ])
+                                                        >
+                                                            {{ $selected && !$disabled ? '✓' : '' }}
+                                                        </span>
+
+                                                        <span class="min-w-0 flex-1 space-y-1">
+                                                            <span class="block text-sm text-gray-900 dark:text-gray-100">
+                                                                {{ $record['name'] }}
+                                                            </span>
+
+                                                            @if($record['date'] !== '')
+                                                                <span class="block text-sm text-gray-600 dark:text-gray-300">
+                                                                    {{ $record['date'] }}
+                                                                </span>
+                                                            @endif
+
+                                                            <span class="block break-all text-xs text-gray-500 dark:text-gray-400">
+                                                                ID {{ $uuid }}
+                                                            </span>
+                                                        </span>
+                                                    </button>
+
+                                                    @if($mode === 'service_request' && $disabled)
+                                                        <p class="mt-2 pl-8 text-xs text-red-600 dark:text-red-400">
+                                                            {{ $record['availability_known'] ? __('approval.create.referral_no_resources') : __('approval.create.referral_check_failed') }}
+                                                        </p>
+                                                    @endif
+                                                </div>
+                                            @empty
+                                                <p class="p-2 text-sm text-gray-500 dark:text-gray-400">
+                                                    {{ __('approval.create.no_records') }}
+                                                </p>
+                                            @endforelse
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if($this->selectedRecords !== [])
+                                    <div class="max-w-xl space-y-2">
+                                        <p class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                            {{ __('approval.create.selected_records') }}
+                                        </p>
+
+                                        @foreach($this->selectedRecords as $record)
+                                            <div
+                                                wire:key="approval-selected-record-{{ $record['uuid'] }}"
+                                                class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-600"
+                                            >
+                                                <span class="min-w-0 space-y-1">
+                                                    <span class="block text-sm text-gray-900 dark:text-gray-100">
+                                                        {{ $record['name'] }}
+                                                    </span>
+
+                                                    @if($record['date'] !== '')
+                                                        <span class="block text-sm text-gray-600 dark:text-gray-300">
+                                                            {{ $record['date'] }}
+                                                        </span>
+                                                    @endif
+
+                                                    <span class="block break-all text-xs text-gray-500 dark:text-gray-400">
+                                                        ID {{ $record['uuid'] }}
+                                                    </span>
+                                                </span>
+
+                                                <button
+                                                    type="button"
+                                                    wire:click="selectRecord('{{ $record['uuid'] }}')"
+                                                    class="shrink-0 text-gray-500 hover:text-red-600 dark:text-gray-400"
+                                                    aria-label="{{ __('approval.create.remove_selection') }}"
+                                                >
+                                                    &times;
+                                                </button>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+
+                                @error('resourceIds')
+                                    <p class="text-error">{{ $message }}</p>
+                                @enderror
+
+                                @error('childUuid')
+                                    <p class="text-error">{{ $message }}</p>
+                                @enderror
+
+                            @endif
+                                                     
+                            @if(in_array($mode, ['service_group', 'diagnoses_group', 'forbidden_group'], true))
+                                <div
+                                    class="relative max-w-xl"
+                                    @click.outside="groupExpanded = false"
+                                    @keydown.escape.stop="groupExpanded = false"
+                                >
+                                    <label class="mb-2 block text-sm text-gray-500 dark:text-gray-400">
+                                        {{ __('approval.create.catalog_group') }}
+                                    </label>
+
+                                    <div class="relative">
+                                        <input
+                                            x-ref="groupInput"
+                                            type="search"
+                                            x-model="groupSearch"
+                                            @focus="groupExpanded = true"
+                                            @input="
+                                                groupExpanded = true;
+
+                                                if ($wire.groupId) {
+                                                    $wire.set('groupId', '');
+                                                }
+                                            "
+                                            placeholder="{{ __('approval.create.search_group') }}"
+                                            autocomplete="off"
+                                            role="combobox"
+                                            aria-autocomplete="list"
+                                            aria-controls="approval-group-options"
+                                            :aria-expanded="groupExpanded.toString()"
+                                            class="w-full border-b-2 border-gray-300 bg-transparent py-2 pr-10 pl-2 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-600 focus:outline-none dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                                        >
+
+                                        <button
+                                            type="button"
+                                            tabindex="-1"
+                                            class="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-gray-500 dark:text-gray-400"
+                                            @click="
+                                                groupExpanded = !groupExpanded;
+
+                                                if (groupExpanded) {
+                                                    $nextTick(() => $refs.groupInput.focus());
+                                                }
+                                            "
+                                            aria-label="{{ __('forms.select') }}"
+                                        >
+                                            <svg
+                                                class="h-4 w-4"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                aria-hidden="true"
+                                            >
+                                                <path d="m6 9 6 6 6-6" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <div
+                                        id="approval-group-options"
+                                        x-show="groupExpanded"
+                                        x-cloak
+                                        class="absolute left-0 right-0 z-50 mt-3 rounded-xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-600 dark:bg-gray-800"
+                                    >
+                                        <div
+                                            x-ref="groupOptions"
+                                            class="max-h-80 space-y-6 overflow-y-auto"
+                                        >
+                                            @forelse($this->selectableGroups as $group)
+                                                <div
+                                                    wire:key="approval-group-option-{{ $mode }}-{{ $group['id'] }}"
+                                                    data-search="{{ trim(($group['code'] ?? '').' '.$group['name']) }}"
+                                                    x-show="$el.dataset.search.toLocaleLowerCase().includes(groupSearch.trim().toLocaleLowerCase())"
+                                                    class="space-y-1"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        data-label="{{ trim(($group['code'] ?? '').' '.$group['name']) }}"
+                                                        wire:click="$set('groupId', '{{ $group['id'] }}')"
+                                                        @click="
+                                                            groupSearch = $el.dataset.label;
+                                                            groupExpanded = false;
+                                                        "
+                                                        class="block w-full text-left text-base font-normal text-gray-900 hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400"
+                                                    >
+                                                        @if(!empty($group['code']))
+                                                            <span class="mr-1">
+                                                                {{ $group['code'] }}
+                                                            </span>
+                                                        @endif
+
+                                                        {{ $group['name'] }}
+                                                    </button>
+
+                                                    <div class="flex flex-col items-start gap-1">
+                                                        @if(in_array($mode, ['diagnoses_group', 'forbidden_group'], true))
+                                                            <button
+                                                                type="button"
+                                                                wire:click="showGroupDetails('codes', '{{ $group['id'] }}')"
+                                                                @click.stop="groupExpanded = true"
+                                                                wire:loading.attr="disabled"
+                                                                wire:target="showGroupDetails"
+                                                                class="text-left text-sm text-gray-900 underline hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400"
+                                                            >
+                                                                {{ __('patients.list_of_diagnosis_codes') }}
+                                                            </button>
+                                                        @endif
+
+                                                        @if(in_array($mode, ['forbidden_group', 'service_group'], true))
+                                                            <button
+                                                                type="button"
+                                                                wire:click="showGroupDetails('services', '{{ $group['id'] }}')"
+                                                                @click.stop="groupExpanded = true"
+                                                                wire:loading.attr="disabled"
+                                                                wire:target="showGroupDetails"
+                                                                class="text-left text-sm text-gray-900 underline hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400"
+                                                            >
+                                                                {{ __('patients.list_of_services') }}
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @empty
+                                                <p class="p-2 text-sm text-gray-500 dark:text-gray-400">
+                                                    {{ __('approval.create.no_groups') }}
+                                                </p>
+                                            @endforelse
+                                        </div>
+
+                                        @if($this->selectableGroups !== [])
+                                            <p
+                                                x-show="!Array.from($refs.groupOptions.querySelectorAll('[data-search]')).some(item => item.dataset.search.toLocaleLowerCase().includes(groupSearch.trim().toLocaleLowerCase()))"
+                                                x-cloak
+                                                class="p-2 text-sm text-gray-500 dark:text-gray-400"
+                                            >
+                                                {{ __('approval.create.no_search_matches') }}
+                                            </p>
+                                        @endif
+                                    </div>
+
+                                    @error('groupId')
+                                        <p class="text-error">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            @endif
+                     
+                            @if($mode === 'resource_types')
+                                <p class="text-sm text-gray-700 dark:text-gray-300">
+                                    {{ __('approval.create.device_types_notice') }}
+                                </p>
+
+                                <label
+                                    wire:key="approval-detected-issue-checkbox"
+                                    class="flex cursor-pointer items-center gap-3 text-left text-sm"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        wire:model="includeDetectedIssue"
+                                        class="default-checkbox h-5 w-5 shrink-0 cursor-pointer"
+                                    >
+
+                                    <span>{{ __('approval.create.include_detected_issue') }}</span>
+                                </label>
+                            @endif
+
+                            @if(
+                                $mode === 'resource'
+                                && in_array($resourceType, ['diagnostic_report', 'care_plan'], true)
+                            )
+                                <div class="form-group group max-w-xl">
+                                    <select
+                                        wire:model="accessLevel"
+                                        class="input-select peer w-full"
+                                    >
+                                        <option value="read">{{ __('approval.create.read') }}</option>
+                                        <option value="write">{{ __('approval.create.write') }}</option>
+                                    </select>
+
+                                    <label class="label">
+                                        {{ __('approval.access_level') }}
+                                    </label>
+
+                                    @error('accessLevel')
+                                        <p class="text-error">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            @else
+                                <div class="space-y-2">
+                                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                                        {{ __('approval.access_level') }}:
+                                        <strong>
+                                            {{
+                                                $mode === 'resource'
+                                                && in_array($resourceType, ['encounter', 'procedure', 'specimen'], true) ? __('approval.create.write') : __('approval.create.read')
+                                            }}
+                                        </strong>
+                                    </p>
+
+                                    @if($mode === 'resource' && in_array($resourceType, ['encounter', 'procedure'], true))
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                            {{ __('approval.create.write_only_resource_note') }}
+                                        </p>
+                                    @endif
+
+                                    @error('accessLevel')
+                                        <p class="text-error">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            @endif
+
+                            @if($mode === 'service_request')
+                                <div class="space-y-2">
+                                    <label
+                                        wire:key="approval-legal-entity-checkbox"
+                                        class="flex cursor-pointer items-center gap-3 text-left text-sm"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            wire:model="grantToLegalEntity"
+                                            class="default-checkbox h-5 w-5 shrink-0 cursor-pointer"
+                                        >
+
+                                        <span>{{ __('approval.create.grant_to_legal_entity') }}</span>
+                                    </label>
+
+                                    @error('grantToLegalEntity')
+                                        <p class="text-error">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            @endif
+
+                            <div class="flex gap-3">
+                                <button
+                                    type="button"
+                                    class="button-minor"
+                                    wire:click="closeDrawer"
+                                >
+                                    {{ __('forms.cancel') }}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="button-primary"
+                                    wire:click="chooseAuthentication"
+                                    wire:loading.attr="disabled"
+                                    wire:target="chooseAuthentication"
+                                >
+                                    {{ __('patients.get_access') }}
+                                </button>
+                            </div>
+                        </div>
+
+                    @elseif($step === 'methods')
+                        <div class="space-y-4">
+                            @forelse($authMethods as $method)
+                                <div
+                                    class="rounded-2xl border border-gray-300 p-5 dark:border-gray-600"
+                                    wire:key="auth-{{ $method['uuid'] }}"
+                                >
+                                    <div class="flex flex-wrap items-start justify-between gap-4">
+                                        <div class="space-y-2">
+                                            <h3 class="font-semibold text-lg">
+                                                @if($method['type'] === 'OTP')
+                                                    {{ __('patients.authentication_SMS') }}
+                                                @elseif($method['type'] === 'OFFLINE')
+                                                    {{ __('patients.authentication_documents') }}
+                                                @else
+                                                    {{ __('patients.authentication_third_person') }}
+                                                @endif
+                                            </h3>
+
+                                            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">
+                                                {{ $method['alias'] ?? __('forms.auth_method') }}
+                                            </p>
+
+                                            @if($method['type'] === 'OTP')
+                                                <p class="text-sm">
+                                                    {{ __('approval.create.phone_number') }}:
+                                                    {{ $method['phone_number'] ?? '—' }}
+                                                </p>
+                                            @endif
+                                        </div>
+
+                                        <div class="flex items-center gap-4">
+                                            <button
+                                                type="button"
+                                                class="text-blue-600 text-sm hover:underline"
+                                                @click="visible = false; $wire.$parent.openAuthMethodModal()"
+                                            >
+                                                {{ __('patients.change') }}
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                class="button-primary"
+                                                wire:click="$set('selectedAuthUuid', '{{ $method['uuid'] }}')"
+                                            >
+                                                {{ $selectedAuthUuid === $method['uuid'] ? __('approval.create.selected') : __('forms.select') }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <p class="text-error">
+                                    {{ __('approval.create.no_active_auth_methods') }}
+                                </p>
+                            @endforelse
+
+                            <button
+                                type="button"
+                                class="text-blue-600 hover:underline text-sm"
+                                @click="visible = false; $wire.$parent.openAuthMethodModal()"
+                            >
+                                {{ __('approval.create.manage_auth_methods') }}
+                            </button>
+
+                            @if((collect($authMethods)->firstWhere('uuid', $selectedAuthUuid)['type'] ?? null) === 'OFFLINE')
+                                <div class="space-y-3 rounded-xl border p-4">
+                                    <p class="text-sm">
+                                        {{ __('approval.create.recommend_otp') }}
+                                    </p>
+
+                                    <p class="text-sm">
+                                        {{ __('approval.create.offline_leaflet_notice') }}
+                                    </p>
+
+                                    <a
+                                        href="https://ehealth.gov.ua/privacy_access.html"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="text-blue-600 text-sm underline"
+                                    >
+                                        {{ __('approval.create.open_leaflet') }}
+                                    </a>
+
+                                    <label class="flex items-start gap-2 text-sm">
+                                        <input
+                                            type="checkbox"
+                                            wire:model="leafletConfirmed"
+                                        >
+                                        {{ __('approval.create.leaflet_confirmed') }}
+                                    </label>
+
+                                    @error('leafletConfirmed')
+                                        <p class="text-error">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            @endif
+
+                            @error('selectedAuthUuid')
+                                <p class="text-error">{{ $message }}</p>
+                            @enderror
+
+                            <div class="mt-8 flex gap-3">
+                                <button
+                                    type="button"
+                                    class="button-minor"
+                                    wire:click="$set('step', 'form')"
+                                >
+                                    {{ __('forms.back') }}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="button-primary"
+                                    wire:click="create"
+                                    wire:loading.attr="disabled"
+                                    wire:target="create"
+                                    @disabled($selectedAuthUuid === '')
+                                >
+                                    {{ __('approval.create.submit_request') }}
+                                </button>
+                            </div>
+                        </div>
+
+                    @elseif($step === 'processing')
+                        <div
+                            wire:poll.2s="poll"
+                            class="py-12 text-center text-gray-600 dark:text-gray-300"
+                        >
+                            {{ __('approval.create.processing_request') }}
+                        </div>
+
+                    @elseif($step === 'verifying')
+                        <div
+                            wire:poll.2s="poll"
+                            class="py-12 text-center text-gray-600 dark:text-gray-300"
+                        >
+                            {{ __('approval.create.processing_verification') }}
+                        </div>
+
+                    @elseif($step === 'confirming')
+                        <div class="space-y-4">
+                            <p class="text-sm">
+                                {{ __('approval.create.request_created') }}
+                            </p>
+
+                            <button
+                                type="button"
+                                class="button-primary"
+                                wire:click="continueAfterCreation"
+                                wire:loading.attr="disabled"
+                                wire:target="continueAfterCreation"
+                            >
+                                {{ $selectedAuthType === 'OFFLINE' ? __('approval.create.verify_offline') : __('approval.create.to_sms') }}
+                            </button>
+                        </div>
+
+                    @elseif($step === 'code')
+                        <form
+                            wire:submit.prevent="verifyCode"
+                            class="space-y-6 max-w-lg"
+                            x-data="{
+                                secondsLeft: 0,
+                                interval: null,
+
+                                updateCountdown() {
+                                    const target = @js($smsResendAvailableAt ?? 0) * 1000;
+
+                                    this.secondsLeft = Math.max(
+                                        0,
+                                        Math.ceil((target - Date.now()) / 1000)
+                                    );
+                                },
+
+                                init() {
+                                    this.updateCountdown();
+
+                                    this.interval = setInterval(() => {
+                                        this.updateCountdown();
+
+                                        if (this.secondsLeft === 0) {
+                                            clearInterval(this.interval);
+                                            this.interval = null;
+                                        }
+                                    }, 1000);
+                                },
+
+                                destroy() {
+                                    if (this.interval !== null) {
+                                        clearInterval(this.interval);
+                                    }
+                                }
+                            }"
+                        >
+
+                            <p class="text-gray-600 dark:text-gray-300">
+                                {{ __('approval.create.enter_code_description') }}
+                            </p>
+
+                            @if($smsPhone)
+                                <p class="text-sm">
+                                    {{ __('approval.create.phone_number') }}: {{ $smsPhone }}
+                                </p>
+                            @endif
+
+                            <div class="form-group group">
+                                <input
+                                    id="approval-verification-code"
+                                    type="text"
+                                    wire:model="verificationCode"
+                                    inputmode="numeric"
+                                    maxlength="4"
+                                    autocomplete="one-time-code"
+                                    class="input peer w-full"
+                                    placeholder=" "
+                                >
+
+                                <label
+                                    for="approval-verification-code"
+                                    class="label"
+                                >
+                                    {{ __('approval.create.verification_code') }}
+                                </label>
+
+                                @error('verificationCode')
+                                    <p class="text-error">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="flex flex-wrap gap-3">
+                                <button
+                                    type="submit"
+                                    class="button-primary"
+                                    wire:loading.attr="disabled"
+                                    wire:submit.prevent="verifyCode"
+                                >
+                                    {{ __('forms.confirm') }}
+                                </button>
+                                
+                                <button
+                                    type="button"
+                                    class="button items-center transition-colors"
+                                    :class="secondsLeft > 0 || $wire.smsResent
+                                        ? 'cursor-not-allowed border border-gray-300 bg-gray-100 text-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                                        : 'button-minor'"
+                                    wire:click="resendSms"
+                                    wire:loading.attr="disabled"
+                                    wire:target="resendSms"
+                                    disabled
+                                    :disabled="secondsLeft > 0 || $wire.smsResent"
+                                >
+
+                                    {{
+                                        $smsResent
+                                            ? __('approval.create.sms_already_resent')
+                                            : __('approval.create.resend_sms')
+                                    }}
+                                </button>
+                            </div>
+
+                            @if($smsResent)
+                                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                    {{ __('approval.create.sms_request_accepted') }}
+                                </p>
+                            @else
+                                <p
+                                    x-show="secondsLeft > 0"
+                                    x-cloak
+                                    class="mt-2 text-sm text-gray-500 dark:text-gray-400"
+                                >
+                                    {{ __('approval.create.resend_wait') }}
+                                    <span x-text="secondsLeft"></span>
+                                    {{ __('approval.create.seconds_short') }}
+                                </p>
+                            @endif
+
+                            @error('smsResend')
+                                <p class="text-error mt-2">{{ $message }}</p>
+                            @enderror
+                        </form>
+                
+                @endif
+        </div>
+    </div>
+
+    @if($step === 'form' && $previewSection !== '')
+        <div
+            wire:key="approval-preview-backdrop"
+            class="fixed inset-0 bg-gray-900/30"
+            style="z-index: 47;"
+            wire:click="closePreview"
+            @click.stop="groupExpanded = true"
+        ></div>
+
+        <div
+            wire:key="approval-preview-drawer"
+            class="fixed top-0 right-0 h-screen overflow-y-auto bg-white p-4 pt-20 shadow-2xl dark:bg-gray-800"
+            style="width: 74%; z-index: 48;"
+            role="dialog"
+            aria-modal="true"
+            aria-label="{{ $previewTitle }}"
+            tabindex="-1"
+            @keydown.escape.prevent.stop="$wire.closePreview()"
+        >
+            <h2 class="modal-header">
+                {{ $previewTitle }}
+            </h2>
+
+            <div class="mt-8 max-w-4xl space-y-6">
+                @if($previewSection === 'codes' && $mode === 'forbidden_group')
+                    <div class="flex flex-wrap items-center gap-4 text-sm">
+                        <span class="font-semibold">
+                            {{ __('patients.coding') }}
+                        </span>
+
+                        @foreach([
+                            'all' => __('approval.create.all_coding_systems'),
+                            'eHealth/ICPC2/condition_codes' => 'ICPC',
+                            'eHealth/ICD10_AM/condition_codes' => __('medical-events.icd_10'),
+                        ] as $system => $label)
+                            <label
+                                @class([
+                                    'flex cursor-pointer items-center gap-2',
+                                    'font-medium text-blue-600 dark:text-blue-400' => $previewCodingSystem === $system,
+                                ])
+                            >
+                                <input
+                                    type="radio"
+                                    name="approval-preview-coding"
+                                    wire:model.live="previewCodingSystem"
+                                    value="{{ $system }}"
+                                    class="default-radio h-4 w-4 cursor-pointer"
+                                    @checked($previewCodingSystem === $system)
+                                >
+
+                                <span>{{ $label }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                @endif
+
+                <div class="space-y-2 text-sm text-gray-900 dark:text-gray-100">
+                    @forelse($previewRows as $row)
+                        @if(
+                            $previewCodingSystem === 'all'
+                            || ($row['system'] ?? null) === $previewCodingSystem
+                        )
+                            <p wire:key="preview-row-{{ $loop->index }}">
+                                <span class="font-semibold">
+                                    {{ $row['code'] }}
+                                </span>
+
+                                @if($row['name'] !== '')
+                                    — {{ $row['name'] }}
+                                @endif
+                            </p>
+                        @endif
+                    @empty
+                        <p>
+                            {{ __('approval.create.no_group_details') }}
+                        </p>
+                    @endforelse
+                </div>
+
+                <button
+                    type="button"
+                    class="button-minor"
+                    wire:click="closePreview"
+                    @click.stop="groupExpanded = true"
+                >
+                    {{ __('forms.back') }}
+                </button>
+            </div>
+        </div>
+    @endif
+</div>

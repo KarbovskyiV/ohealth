@@ -1,0 +1,357 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\MedicalEvents;
+
+use App\Classes\eHealth\EHealth;
+use App\Exceptions\EHealth\EHealthResponseException;
+use App\Exceptions\EHealth\EHealthValidationException;
+use App\Exceptions\EHealth\EHealthConnectionException;
+use App\Jobs\RemoteEHealthLinksProcessing;
+use App\Models\EhealthLink;
+use App\Models\CarePlan;
+use App\Models\MedicalEvents\Sql\Approval;
+use App\Models\MedicalEvents\Sql\DiagnosticReport;
+use App\Models\MedicalEvents\Sql\Encounter;
+use App\Models\MedicalEvents\Sql\Episode;
+use App\Models\MedicalEvents\Sql\Procedure;
+use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
+use App\Models\MedicalEvents\Sql\Specimen;
+use App\Models\Person\Person;
+use App\Models\User;
+use App\Enums\JobStatus;
+use App\Enums\Person\AuthenticationMethod;
+use App\Enums\Specimen\Status as SpecimenStatus;
+use App\Repositories\MedicalEvents\Repository;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
+
+class PatientApprovalService
+{
+    public const array RESOURCE_MODELS = [
+        'episode_of_care' => Episode::class,
+        'diagnostic_report' => DiagnosticReport::class,
+        'encounter' => Encounter::class,
+        'procedure' => Procedure::class,
+        'care_plan' => CarePlan::class,
+        'specimen' => Specimen::class,
+        'service_request' => ServiceRequestRequest::class,
+    ];
+
+    public const array ALLOWED_STATUSES = [
+        'episode_of_care' => ['active', 'closed'],
+        'diagnostic_report' => ['final'],
+        'encounter' => ['finished'],
+        'procedure' => ['completed', 'not_done'],
+        'specimen' => [SpecimenStatus::AVAILABLE->value],
+    ];
+
+    public static function approvalStatusAllowed(string $type, ?string $status): bool
+    {
+        return !isset(self::ALLOWED_STATUSES[$type]) || in_array($status, self::ALLOWED_STATUSES[$type], true);
+    }
+
+    // прибрати після додавання permitted_resources в ЕН
+    /** @return array<string, bool> */
+    public function referralAvailability(Person $person): array
+    {
+        $availability = [];
+        $page = 1;
+
+        do {
+            $response = EHealth::serviceRequest()->getBySearchParams(
+                $person->uuid,
+                ['page' => $page]
+            );
+
+            foreach ($response->getData() as $referral) {
+                $availability[$referral['id']] = !empty($referral['permitted_resources']);
+            }
+
+            $page++;
+        } while ($response->isNotLast());
+
+        return $availability;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function availableAuthenticationMethods(Person $person): array
+    {
+        return $person->authenticationMethods()
+            ->whereNull('ehealth_ended_at')
+            ->whereIn('type', array_column(AuthenticationMethod::cases(), 'value'))
+            ->get()
+            ->toArray();
+    }
+
+    //повністю видалити/замінити після додавання permitted_resources в ЕН
+    public function referralHasPermittedResources(Person $person, string $uuid): bool 
+    {
+        $response = EHealth::serviceRequest()->getById($person->uuid, $uuid);
+
+        return !empty($response->getData()['permitted_resources']);
+    }
+
+    /** @return array{approval_id: ?string, link_id: ?int} */
+    public function create(Person $person, array $payload): array
+    {
+        $user = Auth::user();
+
+        try {
+            $response = EHealth::approval()->createApproval($person->uuid, $payload);
+
+            if (!$response->successful()) {
+                throw new EHealthResponseException($response);
+            }
+        } catch (EHealthConnectionException|EHealthValidationException|EHealthResponseException $exception) {
+            throw $exception;
+        }
+
+        $data = $response->getData();
+
+        if ($response->getStatusCode() !== 202) {
+            Repository::approval()->sync($data, $person);
+
+            return [
+                'approval_id' => $data['id'],
+                'link_id' => null,
+            ];
+        }
+
+        $creator = $user->employees()
+            ->with('party')
+            ->where('uuid', $payload['created_by']['identifier']['value'])
+            ->firstOrFail();
+
+        $approval = Repository::approval()->storePending(
+            $person,
+            $payload,
+            $creator
+        );
+
+        $link = Repository::approval()->attachEhealthLink($approval, ['href' => $data['links'][0]['href']]);
+        $this->dispatchJob($link, $user, Session::get(config('ehealth.api.oauth.bearer_token')));
+
+        return [
+            'approval_id' => null,
+            'link_id' => $link->id,
+        ];
+    }
+
+    private function dispatchJob(EhealthLink $link, User $user, string $token): void
+    {
+        $legalEntity = legalEntity();
+
+        Bus::batch([
+            new RemoteEHealthLinksProcessing(
+                eHealthLink: $link,
+                legalEntity: $legalEntity,
+                standalone: true
+            ),
+        ])
+            ->withOption('legal_entity_id', $legalEntity->id)
+            ->withOption('token', Crypt::encryptString($token))
+            ->withOption('user', $user)
+            ->onQueue('sync')
+            ->name(RemoteEHealthLinksProcessing::BATCH_NAME)
+            ->dispatch();
+    }
+
+    /** @return array{status: string, approval_id?: string, message?: string} */
+    public function jobStatus(int $linkId, Person $person): array
+    {
+        $link = EhealthLink::with(['job', 'linkable'])
+            ->findOrFail($linkId);
+
+        if ($link->linkable?->approvable_type !== Person::class || $link->linkable?->approvable_id !== $person->id) {
+            throw new RuntimeException('Approval does not belong to this patient.');
+        }
+
+        $status = strtoupper((string) $link->job?->status);
+
+        if ($status === JobStatus::FAILED->value) {
+            return [
+                'status' => 'failed',
+                'message' => __('approval.create.rejected'),
+            ];
+        }
+
+        if ($status !== JobStatus::PROCESSED->value) {
+            return ['status' => 'pending'];
+        }
+
+        $approvalId = $link->linkable?->fresh()?->uuid;
+
+        if (!$approvalId) {
+            throw new RuntimeException('Processed approval is missing its ID.');
+        }
+
+        return [
+            'status' => 'ready',
+            'approval_id' => $approvalId,
+        ];
+    }
+
+    public function details(Person $person, string $approvalId): array
+    {
+        try {
+            $response = EHealth::approval()->getApprovalDetails($person->uuid, $approvalId);
+
+            if (!$response->successful()) {
+                throw new EHealthResponseException($response);
+            }
+
+            return $response->getData();
+        } catch (EHealthConnectionException|EHealthValidationException|EHealthResponseException $exception) {
+            throw $exception;
+        }
+    }
+
+    /**
+     * Returns a job link ID if verification is asynchronous.
+     * Returns null when the approval is already verified.
+     */
+    public function verify(Person $person, string $approvalId, ?int $code): ?int
+    {
+        try {
+            $response = EHealth::approval()->verify(
+                $person->uuid,
+                $approvalId,
+                $code === null ? [] : ['code' => $code]
+            );
+
+            if (!$response->successful()) {
+                throw new EHealthResponseException($response);
+            }
+        } catch (EHealthResponseException $exception) {
+            if ($exception->response->status() !== 409) {
+                throw $exception;
+            }
+
+            $data = $this->details($person, $approvalId);
+
+            if (($data['is_verified'] ?? false) !== true) {
+                throw $exception;
+            }
+
+            Repository::approval()->sync($data, $person);
+
+            return null;
+        }
+
+        if ($response->getStatusCode() === 202) {
+            $approval = Approval::query()
+                ->where('approvable_type', Person::class)
+                ->where('approvable_id', $person->id)
+                ->where('uuid', $approvalId)
+                ->firstOrFail();
+
+            $link = Repository::approval()->attachEhealthLink($approval, ['href' => $response->getData()['links'][0]['href']]);
+
+            $this->dispatchJob(
+                $link,
+                Auth::user(),
+                Session::get(config('ehealth.api.oauth.bearer_token'))
+            );
+
+            return $link->id;
+        }
+
+        $this->syncVerified($person, $approvalId);
+
+        return null;
+    }
+
+    public function syncVerified(Person $person, string $approvalId): void
+    {
+        $data = $this->details($person, $approvalId);
+
+        if (($data['is_verified'] ?? false) !== true) {
+            throw new RuntimeException('eHealth has not verified this approval.');
+        }
+
+        Repository::approval()->sync($data, $person);
+    }
+
+    public function smsResendAvailableAt(Person $person, string $approvalId): int
+    {
+        $approval = Approval::query()
+            ->where('approvable_type', Person::class)
+            ->where('approvable_id', $person->id)
+            ->where('uuid', $approvalId)
+            ->firstOrFail();
+
+        return $this->smsResendTimestamp($approval);
+    }
+
+    private function smsResendTimestamp(Approval $approval): int
+    {
+        $timestamp = $approval->updated_at ?? $approval->created_at;
+
+        return $timestamp->copy()->addMinute()->timestamp;
+    }
+    
+    public function resendSms(Person $person, string $approvalId): void
+    {
+        $approval = Approval::query()
+            ->where('approvable_type', Person::class)
+            ->where('approvable_id', $person->id)
+            ->where('uuid', $approvalId)
+            ->firstOrFail();
+
+        if ($approval->isVerified) {
+            throw ValidationException::withMessages([
+                'smsResend' => __('approval.create.resend_verified'),
+            ]);
+        }
+
+        if ($approval->smsResentAt !== null) {
+            throw ValidationException::withMessages([
+                'smsResend' => __('approval.create.resend_limit'),
+            ]);
+        }
+
+        if (now()->timestamp < $this->smsResendTimestamp($approval)) {
+            throw ValidationException::withMessages([
+                'smsResend' => __('approval.create.resend_too_early'),
+            ]);
+        }
+
+        $reservedAt = now()->startOfSecond();
+
+        $reserved = Approval::query()
+            ->whereKey($approval->id)
+            ->where('is_verified', false)
+            ->whereNull('sms_resent_at')
+            ->where('updated_at', '<=', $reservedAt->copy()->subMinute())
+            ->toBase()
+            ->update([
+                'sms_resent_at' => $reservedAt,
+            ]);
+
+        if ($reserved !== 1) {
+            throw ValidationException::withMessages([
+                'smsResend' => __('approval.create.resend_failed'),
+            ]);
+        }
+
+        try {
+            EHealth::approval()->resendSms($person->uuid, $approvalId);
+        } catch (EHealthValidationException|EHealthResponseException) {
+            Approval::query()
+                ->whereKey($approval->id)
+                ->where('sms_resent_at', $reservedAt)
+                ->toBase()
+                ->update(['sms_resent_at' => null]);
+
+            throw ValidationException::withMessages([
+                'smsResend' => __('approval.create.resend_failed'),
+            ]);
+        }
+    }
+}

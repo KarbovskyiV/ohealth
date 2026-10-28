@@ -36,6 +36,7 @@ return new class extends Migration
             $table->string('access_level')->default('read');
             $table->boolean('is_verified')->default(false);
             $table->timestamp('expires_at')->nullable();
+            $table->timestamp('sms_resent_at')->nullable();
 
             $table->timestamps();
         });

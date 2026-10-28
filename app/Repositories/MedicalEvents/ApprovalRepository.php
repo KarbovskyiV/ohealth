@@ -11,8 +11,10 @@ use App\Classes\eHealth\EHealth;
 use App\Models\EhealthJob;
 use App\Models\EhealthLink;
 use App\Models\Person\Person;
+use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Mongo\Approval as MongoApproval;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
@@ -410,6 +412,38 @@ class ApprovalRepository extends BaseRepository
         }
 
         return $payload;
+    }
+    
+    public function storePending(Person $person, array $payload, Employee $creator): Approval
+    {
+        return DB::transaction(function () use ($person, $payload, $creator): Approval {
+            $creatorUuid = $payload['created_by']['identifier']['value'];
+            $recipientUuid = $payload['granted_to']['identifier']['value'];
+            $recipientType = $payload['granted_to']['identifier']['type']['coding'][0]['code'];
+
+            $createdBy = Repository::identifier()->store(
+                $creatorUuid,
+                $creator->fullName
+            );
+
+            $grantedTo = Repository::identifier()->store(
+                $recipientUuid,
+                $recipientType === 'employee' ? $creator->fullName : legalEntity()->name
+            );
+
+            return $this->model->create([
+                'uuid' => (string) Str::uuid(),
+                'approvable_type' => Person::class,
+                'approvable_id' => $person->id,
+                'created_by_id' => $createdBy->id,
+                'granted_to_id' => $grantedTo->id,
+                'granted_to_type' => $recipientType,
+                'authorize_with' => $payload['authorize_with'],
+                'status' => ApprovalStatus::PENDING->value,
+                'access_level' => $payload['access_level'],
+                'is_verified' => false,
+            ]);
+        });
     }
 
     /**
