@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Classes\eHealth;
 
+use App\Classes\eHealth\Errors\BaseErrorTranslator;
+use App\Contracts\ApiErrorTranslator;
 use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
@@ -97,7 +99,7 @@ abstract class EHealthRequest extends PendingRequest
                 'request' => $this->sanitizeOptionsForLog($options),
                 'response' => $response->json()
             ]);
-            throw new EHealthValidationException($response->json());
+            throw new EHealthValidationException($response->json(), $this->errorTranslator());
         }
 
         Log::error('eHealth request failed', [
@@ -106,7 +108,7 @@ abstract class EHealthRequest extends PendingRequest
             'body' => $response->body()
         ]);
 
-        throw new EHealthResponseException($response);
+        throw new EHealthResponseException($response, $this->errorTranslator());
     }
 
     /**
@@ -170,6 +172,16 @@ abstract class EHealthRequest extends PendingRequest
         $this->withQueryParameters([
             self::QUERY_PARAM_PAGE_SIZE => config('ehealth.api.page_size'),
         ]);
+    }
+
+    /**
+     * Get the translator of the errors this resource returns. A resource with its own errors overrides it.
+     *
+     * @return ApiErrorTranslator
+     */
+    protected function errorTranslator(): ApiErrorTranslator
+    {
+        return new BaseErrorTranslator();
     }
 
     /**

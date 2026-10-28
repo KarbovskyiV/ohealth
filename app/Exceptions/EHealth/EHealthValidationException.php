@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Exceptions\EHealth;
 
+use App\Classes\eHealth\Errors\BaseErrorTranslator;
+use App\Contracts\ApiErrorTranslator;
 use App\Core\Arr;
 use App\Enums\CarePlanStatus;
 use App\Enums\EHealth\ErrorType;
@@ -14,9 +16,17 @@ use Illuminate\Support\Str;
 
 class EHealthValidationException extends EHealthException
 {
-    public function __construct(public readonly array $details)
+    private readonly ApiErrorTranslator $errorTranslator;
+
+    /**
+     * @param  array  $details
+     * @param  ApiErrorTranslator|null  $errorTranslator  Translator of the resource that returned the error, the base one when omitted
+     */
+    public function __construct(public readonly array $details, ?ApiErrorTranslator $errorTranslator = null)
     {
         parent::__construct(__('errors.ehealth.messages.validation_error'));
+
+        $this->errorTranslator = $errorTranslator ?? new BaseErrorTranslator();
     }
 
     /**
@@ -123,7 +133,7 @@ class EHealthValidationException extends EHealthException
                     $translatedDescription = $this->translateRuleDescription($description);
 
                     if ($translatedDescription !== null) {
-                        return "$entry: $translatedDescription";
+                        return "{$this->translateEntry($entry)}: $translatedDescription";
                     }
 
                     $ruleMessage = $this->translateRule($entry, $item['rules'][0]['rule'] ?? null, $item['rules'][0]['params'] ?? []);
@@ -379,6 +389,12 @@ class EHealthValidationException extends EHealthException
      */
     private function translateRuleDescription(string $message): ?string
     {
+        $translated = $this->errorTranslator->translate($message);
+
+        if ($translated !== null) {
+            return $translated;
+        }
+
         if (str_contains($message, 'to be an email address')) {
             return __('errors.ehealth.messages.email_must_be_latin');
         }
@@ -396,7 +412,7 @@ class EHealthValidationException extends EHealthException
 
     protected function translateTopLevelMessage(string $message): string
     {
-        $translated = EHealthException::translate($message);
+        $translated = $this->errorTranslator->translate($message) ?? EHealthException::translate($message);
 
         if ($translated !== $message) {
             return $translated;
