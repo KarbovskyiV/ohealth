@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Jobs\ApprovalSync;
 use App\Jobs\ClinicalImpressionFullSync;
 use App\Jobs\ClinicalImpressionSync;
 use App\Jobs\ConditionSync;
@@ -208,6 +209,11 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for(
             'legal-entity-legators-get',
             static fn (LegalEntitySync $job) => Limit::perMinute(config('ehealth.rate_limit.legal_entity_legators'))->by($job->user->id)
+        );
+
+        RateLimiter::for(
+            'ehealth-approval-get',
+            static fn (ApprovalSync $job) => Limit::perMinute(config('ehealth.rate_limit.approval'))->by($job->user->id)
         );
 
         RateLimiter::for(

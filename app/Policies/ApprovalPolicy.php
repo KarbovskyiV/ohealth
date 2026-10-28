@@ -20,4 +20,16 @@ class ApprovalPolicy
 
         return Response::allow();
     }
+
+    /**
+     * Determine whether the user can synchronize approvals.
+     */
+    public function sync(User $user): Response
+    {
+        if ($user->cannot('approval:read')) {
+            return Response::denyWithStatus(404);
+        }
+
+        return Response::allow();
+    }
 }

@@ -98,6 +98,7 @@ return [
     'reimbursement_contract_max_period_day' => env('EHEALTH_REIMBURSEMENT_CONTRACT_MAX_PERIOD_DAY', 1096),
 
     'rate_limit' => [
+        'approval' => 5,
         'employee_request' => 19,
         'employee' => 29,
         'division_request' => 50,
