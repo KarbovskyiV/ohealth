@@ -9,7 +9,6 @@
     :prepersonId="$prepersonId"
     :patientFullName="$patientFullName"
     :activeTab="'devices'"
-    :showLegacyMessages="false"
 >
     <x-slot name="headerActions">
         <div class="flex flex-wrap items-center gap-2">
@@ -544,5 +543,4 @@
     ])
 
     <x-forms.loading />
-    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
 </x-layouts.patient>

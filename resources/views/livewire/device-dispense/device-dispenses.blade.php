@@ -6,7 +6,6 @@
     :prepersonId="$prepersonId ?? null"
     :patientFullName="$patientFullName ?? ''"
     :activeTab="'device-dispenses'"
-    :showLegacyMessages="false"
 >
     <x-slot name="headerActions">
         @php
@@ -516,5 +515,4 @@
             <div class="mt-8">{{ $this->paginatedDeviceDispenses->links() }}</div>
         </div>
     </div>
-    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
 </x-layouts.patient>
