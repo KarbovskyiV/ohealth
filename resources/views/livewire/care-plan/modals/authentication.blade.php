@@ -4,6 +4,9 @@
         showMethodSelectionModal: $wire.entangle('showMethodSelectionModal'),
     }"
 >
+    @if ($smsResendLinkId !== null)
+        <div wire:poll.3s="checkSmsResendStatus" class="hidden"></div>
+    @endif
     <template x-teleport="body">
         <div
             x-show="showAuthModal"
@@ -52,8 +55,9 @@
                                         class="peer input @error('verificationCode') input-error @enderror"
                                         wire:model="verificationCode"
                                         id="verificationCode"
-                                        autocomplete="off"
+                                        autocomplete="one-time-code"
                                         inputmode="numeric"
+                                        maxlength="4"
                                     />
                                     <label class="label" for="verificationCode">
                                         {{ __('forms.confirmation_code_from_SMS') }}
@@ -72,6 +76,9 @@
                                             this.$watch('$wire.showAuthModal', (value) => {
                                                 if (value) this.startTimer();
                                             });
+                                            this.$watch('$wire.smsResent', (value) => {
+                                                if (value) this.startTimer();
+                                            });
                                         },
                                         startTimer() {
                                             this.timer = 60;
@@ -85,8 +92,7 @@
                                             }, 1000);
                                         },
                                         resetTimer() {
-                                            if (this.timer === 0) {
-                                                this.startTimer();
+                                            if (this.timer === 0 && ! $wire.isSmsResending && ! $wire.smsResent) {
                                                 $wire.resendSms();
                                             }
                                         },
@@ -95,19 +101,23 @@
                                 >
                                     <button
                                         type="button"
-                                        :disabled="timer > 0"
+                                        :disabled="timer > 0 || $wire.isSmsResending || $wire.smsResent"
                                         @click="resetTimer()"
+                                        wire:loading.attr="disabled"
+                                        wire:target="resendSms"
                                         class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm whitespace-nowrap transition-colors disabled:opacity-70 dark:border-gray-600 dark:bg-gray-700"
-                                        :class="timer > 0
+                                        :class="timer > 0 || $wire.isSmsResending || $wire.smsResent
                                             ? 'cursor-not-allowed text-gray-400 dark:text-gray-400'
                                             : 'hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 cursor-pointer'"
                                     >
                                         @icon('mail', 'w-4 h-4 text-gray-600 dark:text-gray-300')
                                         <span>
-                                            <span x-show="timer > 0"
+                                            <span x-show="$wire.isSmsResending">{{ __('care-plan.sms_resend_processing') }}</span>
+                                            <span x-show="$wire.smsResent && ! $wire.isSmsResending">{{ __('care-plan.sms_resent') }}</span>
+                                            <span x-show="timer > 0 && ! $wire.isSmsResending && ! $wire.smsResent"
                                                 >{{ __('patients.resend_again_in_seconds') }}
                                                 <span x-text="timer"></span> {{ __('patients.seconds_short') }}</span>
-                                            <span x-show="timer === 0">{{ __('forms.send_again') }}</span>
+                                            <span x-show="timer === 0 && ! $wire.isSmsResending && ! $wire.smsResent">{{ __('forms.send_again') }}</span>
                                         </span>
                                     </button>
                                 </div>
@@ -119,7 +129,14 @@
                                 {{ __('forms.cancel') ?? 'Скасувати' }}
                             </button>
 
-                            <button type="button" wire:click="verify" class="button-primary px-6 py-2.5">
+                            <button
+                                type="button"
+                                wire:click="verify"
+                                wire:loading.attr="disabled"
+                                wire:target="verify"
+                                @disabled($isSmsResending)
+                                class="button-primary px-6 py-2.5"
+                            >
                                 {{ __('forms.confirm') }}
                             </button>
                         </div>

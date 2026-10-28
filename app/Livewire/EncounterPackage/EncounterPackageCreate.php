@@ -176,7 +176,7 @@ class EncounterPackageCreate extends EncounterPackageComponent
         if ($this->prepersonId !== null) {
             $this->redirectRoute(
                 'prepersons.encounter.edit',
-                [legalEntity(), 'preperson' => $this->prepersonId, 'encounter' =>$encounterId],
+                [legalEntity(), 'preperson' => $this->prepersonId, 'encounter' => $encounterId],
                 navigate: true
             );
 
@@ -290,8 +290,8 @@ class EncounterPackageCreate extends EncounterPackageComponent
             $this->redirectRoute(
                 $this->prepersonId !== null ? 'prepersons.encounter.edit' : 'encounter.edit',
                 $this->prepersonId !== null
-                    ? [legalEntity(), 'preperson' => $this->prepersonId, 'encounter' =>$createdEncounterId]
-                    : [legalEntity(), 'person' => $this->personId, 'encounter' =>$createdEncounterId],
+                    ? [legalEntity(), 'preperson' => $this->prepersonId, 'encounter' => $createdEncounterId]
+                    : [legalEntity(), 'person' => $this->personId, 'encounter' => $createdEncounterId],
                 navigate: true
             );
 
@@ -316,13 +316,13 @@ class EncounterPackageCreate extends EncounterPackageComponent
         if ($this->prepersonId !== null) {
             $this->redirectRoute(
                 'prepersons.encounter.view',
-                [legalEntity(), 'preperson' => $this->prepersonId, 'encounter' =>$encounterId],
+                [legalEntity(), 'preperson' => $this->prepersonId, 'encounter' => $encounterId],
                 navigate: true
             );
         } else {
             $this->redirectRoute(
                 'encounter.view',
-                [legalEntity(), 'person' => $this->personId, 'encounter' =>$encounterId],
+                [legalEntity(), 'person' => $this->personId, 'encounter' => $encounterId],
                 navigate: true
             );
         }
@@ -475,7 +475,7 @@ class EncounterPackageCreate extends EncounterPackageComponent
             throw new RuntimeException(__('Не знайдено співробітника для взяття направлення в роботу.'));
         }
 
-        $service->takeIntoWork(
+        $response = $service->takeIntoWork(
             $referralUuid,
             $employee,
             $this->patientUuid ?: null,
@@ -483,6 +483,9 @@ class EncounterPackageCreate extends EncounterPackageComponent
                 'program_id' => $local?->programId,
             ])
         );
+        if ($response['submissionPending'] ?? false) {
+            throw ValidationException::withMessages(['referralNumber' => __('care-plan.submission_pending')]);
+        }
     }
 
     protected function resolveAllReferrals(array &$validated, bool $requirePreparation = false): void

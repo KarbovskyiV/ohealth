@@ -55,7 +55,7 @@ class InpatientApprovalHarness extends CarePlanApprovals
 {
     public bool $refreshed = false;
 
-    public function fetchApprovals(): void
+    public function fetchApprovals(bool $notifyErrors = true): void
     {
         $this->refreshed = true;
     }

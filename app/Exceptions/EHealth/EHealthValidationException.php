@@ -194,10 +194,19 @@ class EHealthValidationException extends EHealthException
             'based_on[1].identifier.value' => __('care-plan.ehealth_fields.based_on_activity'),
             'quantity.code' => __('care-plan.ehealth_fields.quantity_code'),
             'quantity.value' => __('care-plan.ehealth_fields.quantity_value'),
+            'detail.quantity.value' => __('care-plan.ehealth_fields.quantity_value'),
             '$.quantity.value' => __('care-plan.ehealth_fields.quantity_value'),
             'requester.identifier.value' => __('care-plan.ehealth_fields.requester'),
+            'context' => __('care-plan.encounter'),
+            '$.encounter.identifier.value' => __('care-plan.encounter'),
+            'encounter.identifier.value' => __('care-plan.encounter'),
+            'data.context' => __('care-plan.encounter'),
             'authored_on' => __('care-plan.ehealth_fields.authored_on'),
             '$.authored_on' => __('care-plan.ehealth_fields.authored_on'),
+            'occurrence.occurrence_period.start' => __('forms.start_date'),
+            'occurrence.occurrence_period.end' => __('forms.end_date'),
+            'occurrence_period.start' => __('forms.start_date'),
+            'occurrence_period.end' => __('forms.end_date'),
             'period.end' => __('care-plan.date_and_time_end'),
             '$.period.end' => __('care-plan.date_and_time_end'),
             'medical_programs.[0]' => __('Медична програма'),
@@ -395,6 +404,32 @@ class EHealthValidationException extends EHealthException
             return $translated;
         }
 
+        if (str_contains($message, 'Device request should include a parameter matching one of the values')) {
+            return __('device-requests.validation.model_property_required');
+        }
+        if (str_contains($message, 'Device request should include a parameter matching the device definition property')) {
+            return __('errors.ehealth.messages.device_parameter_property_mismatch');
+        }
+        if (str_contains($message, 'The quantity units must not differ from the quantity units in the activity')) {
+            return __('errors.ehealth.messages.quantity_unit_activity_mismatch');
+        }
+
+        if ($message === 'type mismatch. Expected integer but got number') {
+            return __('errors.ehealth.messages.integer_required');
+        }
+
+        if (str_contains($message, 'Encounter is from another legal entity')) {
+            return __('errors.ehealth.messages.encounter_other_legal_entity');
+        }
+
+        if (str_contains($message, 'Created_at must be within the encounter period')) {
+            return __('errors.ehealth.messages.prescription_created_outside_encounter');
+        }
+
+        if (str_contains($message, 'Occurrence period start date must be greater or equal to current time')) {
+            return __('errors.ehealth.messages.occurrence_start_in_past');
+        }
+
         if (str_contains($message, 'to be an email address')) {
             return __('errors.ehealth.messages.email_must_be_latin');
         }
@@ -511,6 +546,19 @@ class EHealthValidationException extends EHealthException
      */
     protected function translateEntry(string $entry): string
     {
+        if (in_array($entry, ['$.encounter.identifier.value', 'encounter.identifier.value'], true)) {
+            return __('care-plan.encounter');
+        }
+        if (in_array($entry, ['$.detail.quantity.value', 'detail.quantity.value', '$.quantity.value', 'quantity.value'], true)) {
+            return __('care-plan.ehealth_fields.quantity_value');
+        }
+        if (in_array($entry, ['$.occurrence.occurrence_period.start', '$.occurrence_period.start'], true)) {
+            return __('forms.start_date');
+        }
+        if (in_array($entry, ['$.occurrence.occurrence_period.end', '$.occurrence_period.end'], true)) {
+            return __('forms.end_date');
+        }
+
         $key = collect(explode('.', preg_replace(['/^\$\./', '/\[\d+]/'], ['', '.*'], $entry)))
             ->map(static fn (string $segment): string => Str::camel($segment))
             ->implode('.');

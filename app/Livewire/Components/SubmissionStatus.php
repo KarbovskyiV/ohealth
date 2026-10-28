@@ -52,7 +52,7 @@ class SubmissionStatus extends Component
      * @var string|null
      */
     #[Reactive]
-    public ?string $editUrl;
+    public ?string $editUrl = null;
 
     /**
      * Processing details of the submission job, fetched from eHealth each time they are opened.
@@ -64,6 +64,15 @@ class SubmissionStatus extends Component
 
     public bool $showDetails = false;
 
+    #[Locked]
+    public ?int $compositionOperationId = null;
+
+    #[Locked]
+    public ?int $carePlanId = null;
+
+    #[Locked]
+    public ?string $carePlanEditUrl = null;
+
     /**
      * @param  string  $recordType
      * @param  int  $recordId
@@ -71,14 +80,29 @@ class SubmissionStatus extends Component
      * @param  string|null  $editUrl
      * @return void
      */
-    public function mount(string $recordType, int $recordId, string $recordStatusLabel, ?string $editUrl = null): void
+    public function mount(string $recordType, int $recordId, string $recordStatusLabel, ?string $editUrl = null, ?int $compositionOperationId = null): void
     {
+        if ($recordType === \App\Models\CarePlan::class) {
+            $this->carePlanId = $recordId;
+            $this->refreshCarePlanSubmission(notifyParent: false);
+
+            return;
+        }
+        if ($compositionOperationId !== null) {
+            $this->compositionOperationId = $compositionOperationId;
+            $operation = $this->compositionOperation();
+            $this->jobId = $operation->remoteJobId;
+            $this->statusLabel = \App\Enums\Composition\CompositionJobStatus::from($operation->status)->label();
+            $this->editUrl = null;
+
+            return;
+        }
         $submission = EhealthLink::whereLinkableType($recordType)
             ->whereLinkableId($recordId)
             ->latest('id')
             ->first();
 
-        $this->statusLabel = $submission !== null ? JobStatus::from($submission->status)->label() : $recordStatusLabel;
+        $this->statusLabel = $submission !== null ? (JobStatus::tryFrom($submission->status ?? '')?->label() ?? $recordStatusLabel) : $recordStatusLabel;
         $this->editUrl = $editUrl;
 
         // A submission eHealth gave no job for has no details to fetch
@@ -95,6 +119,27 @@ class SubmissionStatus extends Component
      */
     public function openDetails(): void
     {
+        if ($this->carePlanId !== null) {
+            $this->refreshCarePlanSubmission();
+        }
+        if ($this->jobId === null) {
+            return;
+        }
+        if ($this->compositionOperationId !== null) {
+            $operation = $this->compositionOperation();
+            app(\App\Repositories\MedicalEvents\CompositionOperationRepository::class)->queue($operation);
+            $this->statusLabel = \App\Enums\Composition\CompositionJobStatus::from($operation->status)->label();
+            $this->job = [
+                'id' => $operation->remoteJobId,
+                'status' => $this->statusLabel,
+                'created' => $operation->composition ? [['entity' => __('compositions.medical_conclusion'), 'id' => $operation->composition->uuid]] : [],
+                'error' => $operation->error,
+            ];
+            $this->showDetails = true;
+            $this->dispatch('composition-submission-updated');
+
+            return;
+        }
         try {
             $job = EHealth::job()->getDetails($this->jobId)->validate();
         } catch (EHealthException|EHealthConnectionException $exception) {
@@ -131,7 +176,7 @@ class SubmissionStatus extends Component
             return;
         }
 
-        RemoteEHealthLinksProcessing::finishSubmission(EhealthLink::findOrFail($this->submissionId), $job, Auth::user());
+        RemoteEHealthLinksProcessing::finishSubmission(EhealthLink::findOrFail($this->submissionId), $job, Auth::user(), legalEntity(), session()->get(config('ehealth.api.oauth.bearer_token')));
 
         $this->dispatch(
             JobStatus::tryFrom(strtoupper($job['status'])) === JobStatus::PROCESSED
@@ -142,6 +187,39 @@ class SubmissionStatus extends Component
 
     public function render(): View
     {
-        return view('livewire.components.submission-status');
+        return view('livewire.components.submission-status', [
+            'recordEditUrl' => $this->carePlanId !== null ? $this->carePlanEditUrl : $this->editUrl,
+        ]);
+    }
+
+    public function checkStatus(): void
+    {
+        if ($this->carePlanId !== null) {
+            $this->refreshCarePlanSubmission();
+        }
+    }
+
+    protected function refreshCarePlanSubmission(bool $notifyParent = true): void
+    {
+        $snapshot = app(\App\Repositories\CarePlanRepository::class)->submissionForDisplay($this->carePlanId);
+        $plan = $snapshot['plan'];
+        abort_unless($plan !== null, 404);
+        $this->authorize('view', $plan);
+        $submission = $snapshot['submission'];
+        $this->statusLabel = JobStatus::tryFrom($submission['status'] ?? '')?->label() ?? \App\Enums\CarePlanStatus::labelFor($plan->status);
+        $this->submissionId = $submission['id'];
+        $this->jobId = $snapshot['jobId'];
+        $canEdit = \App\Enums\CarePlanStatus::fromStored($plan->status) === \App\Enums\CarePlanStatus::DRAFT
+            && !in_array($submission['status'], [JobStatus::PENDING->value, JobStatus::PROCESSING->value, JobStatus::PROCESSED->value], true)
+            && Auth::user()->can('update', $plan);
+        $this->carePlanEditUrl = $canEdit ? route('care-plans.edit', [legalEntity(), $plan->id]) : null;
+        if ($notifyParent) {
+            $this->dispatch('care-plan-submission-status-updated');
+        }
+    }
+
+    protected function compositionOperation(): \App\Models\MedicalEvents\Sql\CompositionOperation
+    {
+        return app(\App\Repositories\MedicalEvents\CompositionOperationRepository::class)->findForStatus($this->compositionOperationId, Auth::user());
     }
 }

@@ -6,10 +6,28 @@ namespace App\Repositories\MedicalEvents;
 
 use App\Models\MedicalEvents\Sql\CodeableConcept as SqlCodeableConcept;
 use App\Models\MedicalEvents\Sql\Identifier as SqlIdentifier;
-use InvalidArgumentException;
 
 class CodeableConceptRepository extends BaseRepository
 {
+    /** The caller must eager-load coding; serialization itself performs no query. */
+    public function toResource(?SqlCodeableConcept $concept): ?array
+    {
+        if ($concept === null) {
+            return null;
+        }
+
+        $data = ['coding' => []];
+        if ($concept->text !== null) {
+            $data['text'] = $concept->text;
+        }
+        foreach ($concept->getRelation('coding')->sortBy('id') as $coding) {
+            $item = ['system' => $coding->system, 'code' => $coding->code];
+            $data['coding'][] = $item;
+        }
+
+        return $data;
+    }
+
     /**
      * Create codeable concept in DB by provided data and attach coding.
      *
@@ -18,16 +36,9 @@ class CodeableConceptRepository extends BaseRepository
      */
     public function store(array $codeableConceptData): SqlCodeableConcept
     {
-        $codeableConcept = $this->model::create([
-            'text' => $codeableConceptData['text'] ?? null
-        ]);
+        $concept = new SqlCodeableConcept();
 
-        $codeableConcept->coding()->create([
-            'system' => $codeableConceptData['coding'][0]['system'],
-            'code' => $codeableConceptData['coding'][0]['code']
-        ]);
-
-        return $codeableConcept;
+        return $this->update($concept, $codeableConceptData);
     }
 
     /**
@@ -39,26 +50,21 @@ class CodeableConceptRepository extends BaseRepository
      */
     public function update(SqlCodeableConcept $codeableConcept, array $codeableConceptData): SqlCodeableConcept
     {
-        // Update text
-        $codeableConcept->update([
-            'text' => $codeableConceptData['text'] ?? $codeableConcept->text
-        ]);
-
-        // Update existed or create
-        if (!empty($codeableConceptData['coding'])) {
-            $coding = $codeableConcept->coding->first();
-
-            if ($coding) {
-                $coding->update([
-                    'system' => $codeableConceptData['coding'][0]['system'],
-                    'code' => $codeableConceptData['coding'][0]['code']
-                ]);
-            } else {
-                $codeableConcept->coding()->create([
-                    'system' => $codeableConceptData['coding'][0]['system'],
-                    'code' => $codeableConceptData['coding'][0]['code']
-                ]);
+        if (array_key_exists('text', $codeableConceptData) || !$codeableConcept->exists) {
+            $codeableConcept->text = $codeableConceptData['text'] ?? null;
+        }
+        $codeableConcept->save();
+        if (array_key_exists('coding', $codeableConceptData)) {
+            $existing = $codeableConcept->coding()->orderBy('id')->get();
+            $ids = [];
+            foreach (array_values($codeableConceptData['coding'] ?? []) as $index => $data) {
+                $coding = $existing->get($index) ?? $codeableConcept->coding()->make();
+                $coding->fill(['system' => $data['system'] ?? null, 'code' => $data['code']]);
+                $coding->save();
+                $ids[] = $coding->id;
             }
+            $codeableConcept->coding()->whereNotIn('id', $ids)->delete();
+            $codeableConcept->unsetRelation('coding');
         }
 
         return $codeableConcept;
@@ -71,25 +77,9 @@ class CodeableConceptRepository extends BaseRepository
      * @param  array  $data
      * @return mixed
      */
-    public function updateById(int $id, array $data)
+    public function updateById(int $id, array $data): SqlCodeableConcept
     {
-        if (empty($data) || empty($data['coding'][0]['code'])) {
-            throw new InvalidArgumentException("Invalid CodeableConcept data for update.");
-        }
-
-        $concept = $this->model::findOrFail($id);
-
-        $codingData = $data['coding'][0];
-        $text = $data['text'] ?? null;
-
-        $concept->update(['text' => $text]);
-
-        $concept->coding()->update([
-            'code' => $codingData['code'],
-            'system' => $codingData['system'] ?? null
-        ]);
-
-        return $concept;
+        return $this->update($this->model->findOrFail($id), $data);
     }
 
     /**
@@ -101,23 +91,11 @@ class CodeableConceptRepository extends BaseRepository
      */
     public function attach(SqlIdentifier $identifier, array $codeableConceptData): SqlCodeableConcept
     {
-        if (!$identifier->wasRecentlyCreated) {
-            $existing = $identifier->type()->first();
-            if ($existing) {
-                return $existing;
-            }
-        }
+        $concept = $identifier->type()->first() ?? new SqlCodeableConcept();
+        $this->update($concept, $codeableConceptData['identifier']['type']);
+        $identifier->type()->save($concept);
 
-        $codeableConcept = $identifier->type()->create([
-            'text' => $codeableConceptData['identifier']['type']['text'] ?? null
-        ]);
-
-        $codeableConcept->coding()->create([
-            'system' => $codeableConceptData['identifier']['type']['coding'][0]['system'],
-            'code' => $codeableConceptData['identifier']['type']['coding'][0]['code']
-        ]);
-
-        return $codeableConcept;
+        return $concept;
     }
 
     /**
@@ -132,4 +110,5 @@ class CodeableConceptRepository extends BaseRepository
 
         return $codeableConcept->delete();
     }
+
 }

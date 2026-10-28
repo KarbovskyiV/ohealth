@@ -165,6 +165,9 @@
                                     {{ $ePrescriptionForm['medication_unit'] ?? 'од.' }}
                                 </span>
                             </div>
+                            @error ('ePrescriptionForm.max_dose_per_administration')
+                                <p class="text-error">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Максимальна добова доза*</label>
@@ -180,6 +183,9 @@
                                     {{ $ePrescriptionForm['medication_unit'] ?? 'од.' }}
                                 </span>
                             </div>
+                            @error ('ePrescriptionForm.max_dose_per_period')
+                                <p class="text-error">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
 
@@ -210,6 +216,9 @@
                                     {{ $ePrescriptionForm['medication_unit'] ?? 'од.' }}
                                 </span>
                             </div>
+                            @error ('ePrescriptionForm.medication_qty')
+                                <p class="text-error">{{ $message }}</p>
+                            @enderror
                         </div>
 
                         @if (!empty($ePrescriptionPackages))
@@ -308,6 +317,9 @@
                                 @if (!$ePrescriptionSkipTreatmentPeriod) disabled @endif
                                 class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             />
+                            @error ('ePrescriptionForm.started_at')
+                                <p class="text-error">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Тривалість (дні)*</label>
@@ -317,6 +329,9 @@
                                 wire:model.live="ePrescriptionForm.duration"
                                 class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             />
+                            @error ('ePrescriptionForm.duration')
+                                <p class="text-error">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Діє до</label>

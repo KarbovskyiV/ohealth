@@ -9,6 +9,78 @@ use Tests\TestCase;
 
 class EHealthValidationExceptionCarePlanMessageTest extends TestCase
 {
+    public function test_referral_start_in_past_is_translated_with_a_field_label(): void
+    {
+        app()->setLocale('uk');
+        $exception = new EHealthValidationException(['error' => [
+            'type' => 'validation_failed',
+            'invalid' => [[
+                'entry' => '$.occurrence.occurrence_period.start',
+                'rules' => [['rule' => 'invalid', 'description' => 'Occurrence period start date must be greater or equal to current time']],
+            ]],
+        ]]);
+
+        foreach ([$exception->getFormattedMessage(), $exception->getTranslatedMessage()] as $message) {
+            $this->assertStringContainsString(__('errors.ehealth.messages.occurrence_start_in_past'), $message);
+            $this->assertStringContainsString(__('forms.start_date'), $message);
+            $this->assertStringNotContainsString('Occurrence period', $message);
+            $this->assertStringNotContainsString('$.occurrence', $message);
+        }
+    }
+
+    public function test_device_activity_integer_type_mismatch_is_translated_in_both_formats(): void
+    {
+        app()->setLocale('uk');
+        $exception = new EHealthValidationException(['error' => [
+            'type' => 'validation_failed',
+            'invalid' => [[
+                'entry' => '$.detail.quantity.value',
+                'rules' => [['description' => 'type mismatch. Expected integer but got number']],
+            ]],
+        ]]);
+        foreach ([$exception->getFormattedMessage(), $exception->getTranslatedMessage()] as $message) {
+            $this->assertStringContainsString('Кількість', $message);
+            $this->assertStringContainsString('Введіть ціле число без дробової частини.', $message);
+            $this->assertStringNotContainsString('$.detail', $message);
+            $this->assertStringNotContainsString('Expected integer', $message);
+        }
+    }
+
+    public function test_prescription_creation_outside_encounter_period_is_translated(): void
+    {
+        app()->setLocale('uk');
+        $exception = new EHealthValidationException(['error' => [
+            'type' => 'validation_failed',
+            'invalid' => [[
+                'entry' => 'data.context',
+                'rules' => [['description' => 'Created_at must be within the encounter period']],
+            ]],
+        ]]);
+
+        foreach ([$exception->getFormattedMessage(), $exception->getTranslatedMessage()] as $message) {
+            $this->assertStringContainsString('Дата створення рецепта має входити до періоду взаємодії.', $message);
+            $this->assertStringNotContainsString('Created_at must', $message);
+        }
+    }
+
+    public function test_encounter_from_another_legal_entity_is_translated_in_both_formats(): void
+    {
+        app()->setLocale('uk');
+        $exception = new EHealthValidationException(['error' => [
+            'type' => 'validation_failed',
+            'invalid' => [[
+                'entry' => '$.encounter.identifier.value',
+                'rules' => [['description' => 'Encounter is from another legal entity']],
+            ]],
+        ]]);
+
+        foreach ([$exception->getFormattedMessage(), $exception->getTranslatedMessage()] as $message) {
+            $this->assertStringContainsString(__('errors.ehealth.messages.encounter_other_legal_entity'), $message);
+            $this->assertStringNotContainsString('Encounter is from another legal entity', $message);
+            $this->assertStringNotContainsString('$.encounter', $message);
+        }
+    }
+
     public function test_unknown_error_type_keeps_the_existing_message_fallback(): void
     {
         $exception = new EHealthValidationException(['error' => ['type' => 'future_type', 'message' => 'Future API message']]);
@@ -207,5 +279,19 @@ class EHealthValidationExceptionCarePlanMessageTest extends TestCase
         $this->assertStringContainsString($expected, $translated);
         $this->assertStringContainsString(__('care-plan.date_and_time_end'), $translated);
         $this->assertStringNotContainsString('End date must be greater', $translated);
+    }
+
+    public function test_device_property_and_activity_unit_messages_are_translated(): void
+    {
+        foreach ([
+            'Device request should include a parameter matching one of the values' => __('device-requests.validation.model_property_required'),
+            'Device request should include a parameter matching the device definition property' => __('errors.ehealth.messages.device_parameter_property_mismatch'),
+            'The quantity units must not differ from the quantity units in the activity' => __('errors.ehealth.messages.quantity_unit_activity_mismatch'),
+        ] as $description => $expected) {
+            $exception = new EHealthValidationException(['error' => ['type' => 'validation_failed', 'invalid' => [['entry' => '$.quantity.code', 'rules' => [['description' => $description, 'params' => [], 'rule' => null]]]]]]);
+            $this->assertStringContainsString($expected, $exception->getFormattedMessage());
+            $this->assertStringContainsString($expected, $exception->getTranslatedMessage());
+            $this->assertStringNotContainsString($description, $exception->getTranslatedMessage());
+        }
     }
 }

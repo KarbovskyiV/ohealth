@@ -14,6 +14,7 @@ use App\Jobs\DeviceDispenseSync;
 use App\Jobs\DeviceSync;
 use App\Jobs\DiagnosticReportSync;
 use App\Jobs\EmployeeRoleSync;
+use App\Jobs\CarePlanFullSync;
 use App\Jobs\EncounterFullSync;
 use App\Jobs\EncounterShortSync;
 use App\Jobs\EpisodeSync;
@@ -150,7 +151,7 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for(
             'ehealth-encounter-get',
-            static fn (EncounterFullSync|EncounterShortSync $job) => Limit::perMinute(config('ehealth.rate_limit.encounter'))->by($job->user->id)
+            static fn (EncounterFullSync|EncounterShortSync|CarePlanFullSync $job) => Limit::perMinute(config('ehealth.rate_limit.encounter'))->by($job->user->id)
         );
 
         RateLimiter::for(

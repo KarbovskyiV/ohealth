@@ -25,19 +25,45 @@ class CarePlanActivityShow extends CarePlanComponent
 
     public string $activityProductLabel = '';
 
+    #[Locked]
+    public array $submissionStates = [];
+
     public function mount(CarePlan $carePlan, CarePlanActivity $activity): void
     {
         $this->bootCarePlan($carePlan);
 
-        $this->activity = $activity->load(['kindConcept.coding', 'reasonReferences', 'author.party']);
-        $this->activityProductLabel = $this->resolveActivityProductLabel($activity);
-        $this->scopeDocumentsToActivity($activity->uuid);
+        $this->activity = $this->ownedActivity($activity->id);
+        $this->refreshSubmissionStatus();
+    }
+
+    public function hydrate(): void
+    {
+        parent::hydrate();
+        $this->refreshSubmissionStatus();
+    }
+
+    public function checkSubmissionStatus(): void
+    {
+        $this->refreshCarePlan();
+    }
+
+    protected function refreshSubmissionStatus(): void
+    {
+        $this->submissionStates = app(\App\Repositories\CarePlanActivityRepository::class)->submissionStates($this->activity);
+        // Read the activity after its receipt: a committed PROCESSED receipt includes the status update.
+        $this->activity = $this->ownedActivity($this->activity->id);
+        $this->activityProductLabel = $this->resolveActivityProductLabel($this->activity);
+        $this->scopeDocumentsToActivity($this->activity->uuid);
+    }
+
+    protected function refreshCarePlan(): void
+    {
+        parent::refreshCarePlan();
+        $this->refreshSubmissionStatus();
     }
 
     protected function renderCarePlan()
     {
-        $this->carePlan->load(['person', 'author.party', 'categoryConcept']);
-
         return view('livewire.care-plan.activity.show.care-plan-activity-show');
     }
 
@@ -76,7 +102,7 @@ class CarePlanActivityShow extends CarePlanComponent
         }
 
         if (str_contains($kindLower, 'service') && !empty($activity->productReference)) {
-            return (string) $activity->productReference;
+            return $this->resolveReferralServiceLabel($activity);
         }
 
         if (!empty($activity->productCodeableConcept)) {

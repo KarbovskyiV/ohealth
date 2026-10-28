@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\CarePlan;
 
-use App\Models\CarePlan;
 use App\Models\CarePlanActivity;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
@@ -20,6 +19,8 @@ use Tests\TestCase;
 
 class CarePlanActivityValidationsTest extends TestCase
 {
+    use \Tests\Concerns\CreatesFhirCarePlans;
+
     use DatabaseTransactions;
 
     protected Person $person;
@@ -118,16 +119,17 @@ class CarePlanActivityValidationsTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->legalEntity->id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Providing Conditions Plan',
-            'status' => 'draft',
+            'status' => 'active',
             'terms_of_service' => 'OUTPATIENT',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         $programId = (string) Str::uuid();
         $medicationId = (string) Str::uuid();
@@ -169,16 +171,17 @@ class CarePlanActivityValidationsTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->legalEntity->id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Matching Conditions Plan',
-            'status' => 'draft',
+            'status' => 'active',
             'terms_of_service' => 'OUTPATIENT',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         $programId = (string) Str::uuid();
         $medicationId = (string) Str::uuid();
@@ -210,28 +213,29 @@ class CarePlanActivityValidationsTest extends TestCase
             ->call('saveActivity')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('care_plan_activities', [
-            'care_plan_id' => $carePlan->id,
-            'product_reference' => $medicationId,
-            'program' => $programId,
-        ]);
+        $activity = CarePlanActivity::whereCarePlanId($carePlan->id)->firstOrFail();
+        $resource = app(\App\Repositories\CarePlanActivityRepository::class)->getResource($activity->id);
+        $this->assertSame($medicationId, data_get($resource, 'detail.productReference.identifier.value'));
+        $this->assertSame($programId, data_get($resource, 'detail.program.identifier.value'));
+        $this->assertNull($activity->getRawOriginal('product_reference'));
     }
 
     public function test_blocks_activity_without_reason_reference_on_rehab_plan(): void
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->legalEntity->id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Rehab Plan',
-            'status' => 'draft',
+            'status' => 'active',
             'category' => 'CLASS 23',
             'terms_of_service' => 'OUTPATIENT',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $carePlan])
             ->call('initActivityForm', 'service_request')
@@ -253,19 +257,44 @@ class CarePlanActivityValidationsTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->legalEntity->id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Rehab Plan OK',
-            'status' => 'draft',
+            'status' => 'active',
             'category' => 'CLASS 25',
             'terms_of_service' => 'OUTPATIENT',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         $observationUuid = (string) Str::uuid();
+        $episode = \App\Models\MedicalEvents\Sql\Identifier::create(['value' => (string) Str::uuid()]);
+        $class = \App\Repositories\MedicalEvents\Repository::coding()->store([
+            'system' => 'eHealth/encounter_classes', 'code' => 'AMB',
+        ]);
+        $type = \App\Repositories\MedicalEvents\Repository::codeableConcept()->store([
+            'coding' => [['system' => 'eHealth/encounter_types', 'code' => 'TEST']],
+        ]);
+        $encounter = \App\Models\MedicalEvents\Sql\Encounter::create([
+            'uuid' => (string) Str::uuid(), 'person_id' => $this->person->id, 'status' => 'finished',
+            'episode_id' => $episode->id, 'class_id' => $class->id, 'type_id' => $type->id,
+        ]);
+        $carePlan->update(['encounter_id' => $encounter->id]);
+        $context = \App\Models\MedicalEvents\Sql\Identifier::create(['value' => $encounter->uuid]);
+        $code = \App\Repositories\MedicalEvents\Repository::codeableConcept()->store([
+            'coding' => [['system' => 'eHealth/ICF/classifiers', 'code' => 'b280']],
+        ]);
+        $observation = \App\Models\MedicalEvents\Sql\Observation::create([
+            'uuid' => $observationUuid, 'person_id' => $this->person->id, 'status' => 'valid',
+            'context_id' => $context->id, 'code_id' => $code->id, 'issued' => now(), 'primary_source' => true,
+        ]);
+        $category = \App\Repositories\MedicalEvents\Repository::codeableConcept()->store([
+            'coding' => [['system' => 'eHealth/ICF/observation_categories', 'code' => 'functions']],
+        ]);
+        $observation->categories()->attach($category->id);
 
         Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $carePlan])
             ->call('initActivityForm', 'service_request')
@@ -280,14 +309,16 @@ class CarePlanActivityValidationsTest extends TestCase
 
         $activity = CarePlanActivity::where('care_plan_id', $carePlan->id)->first();
         $this->assertNotNull($activity);
-        $this->assertContains('Observation/' . $observationUuid, $activity->reasonReference ?? []);
+        $resource = app(\App\Repositories\CarePlanActivityRepository::class)->getResource($activity->id);
+        $this->assertSame('observation', data_get($resource, 'detail.reasonReference.0.identifier.type.coding.0.code'));
+        $this->assertSame($observationUuid, data_get($resource, 'detail.reasonReference.0.identifier.value'));
     }
 
     public function test_activity_detail_card_renders_tv_fields(): void
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
@@ -296,8 +327,9 @@ class CarePlanActivityValidationsTest extends TestCase
             'title' => 'Display Plan',
             'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $activity = CarePlanActivity::create([
+        $activity = $this->createFhirCarePlanActivity([
             'uuid' => (string) Str::uuid(),
             'care_plan_id' => $carePlan->id,
             'author_id' => $this->employee->id,
@@ -337,20 +369,56 @@ class CarePlanActivityValidationsTest extends TestCase
             ->assertSee('TV detail coverage');
     }
 
+    public function test_edit_device_activity_loads_its_name_by_uuid_and_signs_integer_after_database_roundtrip(): void
+    {
+        $this->actingAs($this->user);
+        $plan = $this->createFhirCarePlan([
+            'person_id' => $this->person->id, 'author_id' => $this->employee->id,
+            'legal_entity_id' => $this->legalEntity->id, 'status' => 'active',
+        ]);
+        $this->grantCarePlanWriteApproval($plan, $this->employee);
+        $deviceUuid = (string) Str::uuid();
+        $activity = $this->createFhirCarePlanActivity([
+            'care_plan_id' => $plan->id, 'author_id' => $this->employee->id,
+            'kind' => 'device_request', 'status' => 'draft', 'product_reference' => $deviceUuid,
+            'quantity' => 1, 'quantity_system' => 'device_unit', 'quantity_code' => 'piece',
+        ]);
+        $api = \Mockery::mock(\App\Classes\eHealth\Api\DeviceDefinition::class);
+        $response = \Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
+        $response->shouldReceive('getData')->andReturn([
+            'id' => $deviceUuid, 'device_names' => [['name' => 'Тестова система контролю глюкози']],
+        ]);
+        $api->shouldReceive('getById')->once()->with($deviceUuid)->andReturn($response);
+        $api->shouldNotReceive('getMany');
+        $this->instance(\App\Classes\eHealth\Api\DeviceDefinition::class, $api);
+        Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $plan])
+            ->call('editActivity', $activity->id)
+            ->assertSet('selectedProduct.name', 'Тестова система контролю глюкози')
+            ->assertSee('Тестова система контролю глюкози')
+            ->assertSee('UUID: '.$deviceUuid);
+
+        $resource = app(\App\Repositories\CarePlanActivityRepository::class)->getResource($activity->id);
+        $payload = \App\Livewire\CarePlan\Forms\CarePlanActivityForm::buildCreateContent($resource);
+        $decoded = json_decode(json_encode($payload, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame(1, $decoded['detail']['quantity']['value']);
+        $this->assertSame($deviceUuid, $decoded['detail']['product_reference']['identifier']['value']);
+    }
+
     public function test_blocks_device_activity_when_providing_conditions_mismatch(): void
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->legalEntity->id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Inpatient Device Plan',
-            'status' => 'draft',
+            'status' => 'active',
             'terms_of_service' => 'INPATIENT',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         $programId = '85953838-1834-4ed6-8bf4-3f83057380ec';
         $deviceId = '0fa1e6cd-7066-4881-92a5-6d747a1128f7';
@@ -379,16 +447,17 @@ class CarePlanActivityValidationsTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->legalEntity->id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Inpatient No Default Program',
-            'status' => 'draft',
+            'status' => 'active',
             'terms_of_service' => 'INPATIENT',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         $this->seedMedicalProgram('85953838-1834-4ed6-8bf4-3f83057380ec', 'Glucose strips', [
             'providing_conditions_allowed' => ['OUTPATIENT'],

@@ -1,6 +1,8 @@
-<div>
+<div
+    @if (!$skipsPatientOtp) wire:init="loadAuthMethods" @endif
+    data-livewire-background-actions="checkApprovalJobStatus checkSmsResendStatus event:refreshApprovals"
+>
     <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
-
 
     @if ($isPolling)
         <div wire:poll.2s="checkApprovalJobStatus" class="hidden"></div>
@@ -56,7 +58,17 @@
                                 {{ isset($approval['createdAt']) || isset($approval['created_at']) ? \Carbon\Carbon::parse($approval['createdAt'] ?? $approval['created_at'])->format('d.m.Y H:i') : '-' }}
                             </td>
                             <td class="index-table-td-actions text-right">
-                                @if ($approvalStatus?->isGranted() && !$isReadOnly)
+                                @if ($approval['requestPending'] ?? false)
+                                    <button
+                                        type="button"
+                                        wire:click="resumeApprovalRequest('{{ $approval['uuid'] }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="resumeApprovalRequest"
+                                        class="button-minor"
+                                    >
+                                        {{ __('care-plan.submission_check') }}
+                                    </button>
+                                @elseif ($approvalStatus?->isGranted())
                                     <button
                                         type="button"
                                         wire:click="cancelApproval('{{ $approval['uuid'] }}')"
@@ -65,7 +77,7 @@
                                     >
                                         @icon('close-outline', 'w-4 h-4')
                                     </button>
-                                @elseif ($approvalStatus?->isAwaitingPatient() && !$isReadOnly)
+                                @elseif ($approvalStatus?->isAwaitingPatient())
                                     <div class="flex items-center justify-end gap-2">
                                         <button
                                             type="button"
@@ -75,21 +87,23 @@
                                         >
                                             {{ __('care-plan.revoke_approval') }}
                                         </button>
-                                        <button
-                                            type="button"
-                                            wire:click="recreateApproval('{{ $approval['uuid'] }}')"
-                                            class="button-secondary px-3 py-1 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-                                            title="Перестворити запит, якщо старий завис або СМС не приходить"
-                                        >
-                                            {{ __('care-plan.recreate_approval') ?? 'Запросити новий' }}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            wire:click="verifyExistingApproval('{{ $approval['uuid'] }}')"
-                                            class="button-primary px-3 py-1 text-xs"
-                                        >
-                                            {{ __('forms.confirm') }}
-                                        </button>
+                                        @if (!$isReadOnly)
+                                            <button
+                                                type="button"
+                                                wire:click="recreateApproval('{{ $approval['uuid'] }}')"
+                                                class="button-secondary px-3 py-1 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                                                title="Перестворити запит, якщо старий завис або СМС не приходить"
+                                            >
+                                                {{ __('care-plan.recreate_approval') ?? 'Запросити новий' }}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                wire:click="verifyExistingApproval('{{ $approval['uuid'] }}')"
+                                                class="button-primary px-3 py-1 text-xs"
+                                            >
+                                                {{ __('forms.confirm') }}
+                                            </button>
+                                        @endif
                                     </div>
                                 @endif
                             </td>
@@ -194,7 +208,7 @@
                                             @elseif (($method['type'] ?? '') === 'OFFLINE')
                                                 {{ __('care-plan.offline_paper') }}
                                             @else
-                                                {{ $method['type'] ?? __('care-plan.other') }}
+                                                {{ \App\Enums\Person\AuthenticationMethod::tryFrom($method['type'] ?? '')?->label() ?? __('care-plan.other') }}
                                             @endif
                                         </option>
                                     @endforeach
@@ -207,9 +221,18 @@
                     </div>
 
                     <div class="mt-4 flex justify-end">
-                        <button type="submit" class="button-primary" wire:loading.attr="disabled">
-                            <span wire:loading.remove>{{ __('care-plan.grant_access_btn') }}</span>
-                            <span wire:loading>{{ __('forms.loading') }}</span>
+                        <button
+                            type="submit"
+                            class="button-primary"
+                            wire:loading.attr="disabled"
+                            wire:target="createApproval"
+                            @disabled($this->selectedEmployeeHasAccess || $isPolling)
+                        >
+                            <span
+                                wire:loading.remove
+                                wire:target="createApproval"
+                            >{{ __($this->selectedEmployeeHasAccess ? 'care-plan.access_already_granted' : 'care-plan.grant_access_btn') }}</span>
+                            <span wire:loading wire:target="createApproval">{{ __('forms.loading') }}</span>
                         </button>
                     </div>
                 </form>

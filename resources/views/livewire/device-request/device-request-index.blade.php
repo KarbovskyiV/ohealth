@@ -10,8 +10,7 @@
     <x-forms.loading />
     <x-header-navigation class="items-start">
         <x-slot name="title">
-            {{ __('device-requests.labels.registry') }}
-            @if ($person) —{{ $person->fullName }} @endif
+            {{ __('device-requests.labels.registry') . ($person ? ' — ' . $person->fullName : '') }}
         </x-slot>
     </x-header-navigation>
     @if ($errors->any())
@@ -51,7 +50,27 @@
             </section>
         @endif
         <form wire:submit="search" class="grid gap-4 md:grid-cols-3">
-            @foreach (['requester_legal_entity' => __('device-requests.labels.requester_entity'), 'code' => __('device-requests.labels.device_code'), 'context_episode_id' => __('device-requests.labels.episode'), 'encounter' => __('device-requests.labels.encounter'), 'program' => __('device-requests.labels.program')] as $key => $label)
+            <div>
+                <label for="device-request-entity">{{ __('device-requests.labels.requester_entity') }}</label>
+                <input
+                    id="device-request-entity"
+                    class="input w-full @error('requesterEntitySearch') input-error @enderror"
+                    wire:model="requesterEntitySearch"
+                    list="device-request-entities"
+                    placeholder="{{ __('device-requests.labels.entity_search_placeholder') }}"
+                    autocomplete="off"
+                />
+                <datalist id="device-request-entities">
+                    @foreach ($legalEntityOptions as $entity)
+                        <option value="{{ $entity['name'] }}" label="{{ $entity['uuid'] }}"></option>
+                    @endforeach
+                </datalist>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {{ __('device-requests.labels.entity_search_hint') }}
+                </p>
+                <x-input-error for="requesterEntitySearch" />
+            </div>
+            @foreach (['code' => __('device-requests.labels.device_code'), 'context_episode_id' => __('device-requests.labels.episode'), 'encounter' => __('device-requests.labels.encounter'), 'program' => __('device-requests.labels.program')] as $key => $label)
                 <label>{{ $label }}<input class="input w-full" wire:model="filters.{{ $key }}" /></label>
             @endforeach
             <label

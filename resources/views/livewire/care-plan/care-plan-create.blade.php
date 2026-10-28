@@ -21,6 +21,10 @@
             @include('livewire.care-plan.parts.supporting_information')
             @include('livewire.care-plan.parts.additional_info', ['context' => 'create'])
 
+            @if ($errors->any())
+                <p role="alert" class="text-error mt-6">{{ $errors->first() }}</p>
+            @endif
+
             <div class="mt-8 flex items-center gap-4 pt-4">
                 <button
                     type="button"

@@ -9,6 +9,17 @@ use Tests\TestCase;
 
 class EHealthExceptionTranslateTest extends TestCase
 {
+    public function testTranslatesCompositionPeriodErrors(): void
+    {
+        $message = EHealthException::translate('1040: Invalid period start');
+
+        $this->assertSame('Некоректна дата початку періоду медичного висновку. Перевірте дату початку та повторіть спробу.', $message);
+        $this->assertSame(
+            'Тривалість медичного висновку перевищує максимально дозволену кількість днів. Скоротіть період дії висновку.',
+            EHealthException::translate('1031: Requested composition duration exceeds maximum allowed days')
+        );
+    }
+
     public function test_translates_rule_1172_by_code_prefix(): void
     {
         $this->assertSame(

@@ -30,10 +30,25 @@
             >
                 <option value="">{{ __('forms.select') }} ...</option>
                 @foreach ($categories as $categoryCode => $categoryName)
-                    <option value="{{ $categoryCode }}">{{ $categoryName }}</option>
+                    @if (in_array($categoryCode, $allowedCategoryCodes, true))
+                        <option value="{{ $categoryCode }}">{{ $categoryName }}</option>
+                    @endif
                 @endforeach
             </select>
             <label for="category" class="label"> {{ __('care-plan.category') }} </label>
+            @if (count($allowedCategoryCodes) === 1)
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    {{ __('care-plan.category_selected_from_diagnosis') }}
+                </p>
+            @elseif (count($allowedCategoryCodes) > 1)
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    {{ __('care-plan.category_choose_for_diagnosis') }}
+                </p>
+            @elseif ($form->encounter !== '')
+                <p class="mt-2 text-sm text-amber-700 dark:text-amber-300">
+                    {{ __('care-plan.category_diagnosis_unavailable') }}
+                </p>
+            @endif
             @error('form.category')
                 <p class="text-error" id="error-form-category">{{ $message }}</p>
             @enderror
@@ -59,11 +74,7 @@
 
     <div class="form-row-2 mt-5">
         <div class="form-group group">
-            <select id="intent" name="intent" class="input-select peer" wire:model="form.intent" required>
-                <option value="order">{{ __('care-plan.assignment') }}</option>
-                <option value="proposal">{{ __('care-plan.proposal') }}</option>
-                <option value="plan">{{ __('care-plan.plan') }}</option>
-            </select>
+            <input id="intent" class="input peer" value="{{ __('care-plan.assignment') }}" readonly />
             <label for="intent" class="label"> {{ __('care-plan.intention') }} </label>
             @error('form.intent')
                 <p class="text-error" id="error-form-intent">{{ $message }}</p>
@@ -71,21 +82,12 @@
         </div>
 
         <div class="form-group group">
-            <select
+            <input
                 id="termsOfService"
-                name="termsOfService"
-                class="input-select peer"
-                wire:model.live="form.termsOfService"
-                required
-            >
-                <option value="">{{ __('forms.select') }} ...</option>
-                @php
-                    $providingConditions = $dictionaries['PROVIDING_CONDITION'] ?? [];
-                @endphp
-                @foreach ($providingConditions as $key => $label)
-                    <option value="{{ $key }}">{{ $label }}</option>
-                @endforeach
-            </select>
+                class="input peer"
+                value="{{ $form->termsOfService === 'INPATIENT' ? __('care-plan.terms_inpatient') : ($form->termsOfService === 'OUTPATIENT' ? __('care-plan.terms_outpatient') : '') }}"
+                readonly
+            />
             <label for="termsOfService" class="label">
                 {{ __('forms.providing_condition') ?? __('care-plan.terms_of_service') }}
             </label>
@@ -139,7 +141,12 @@
     </div>
 
     {{-- Warning message (purely frontend) --}}
-    <div x-data="{ show: true }" x-show="show" class="relative mt-4 rounded-lg bg-red-50 p-4 dark:bg-red-900/20">
+    <div
+        x-data="{ show: true }"
+        x-show="show && $wire.form.periodEnd"
+        x-cloak
+        class="relative mt-4 rounded-lg bg-red-50 p-4 dark:bg-red-900/20"
+    >
         <div class="flex items-center gap-3 pr-8">
             <div class="flex-shrink-0">
                 @icon('alert-circle', 'w-5 h-5 text-red-700 dark:text-red-400')

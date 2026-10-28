@@ -46,7 +46,7 @@ class CarePlanApprovalSyncFiltersTest extends TestCase
         $carePlan = $this->makeCarePlan();
 
         $response = Mockery::mock(EHealthResponse::class);
-        $response->shouldReceive('getData')->andReturn([]);
+        $response->shouldReceive('validate')->andReturn([]);
 
         $api = Mockery::mock(ApprovalApi::class);
         $api->shouldReceive('getPatientApprovals')
@@ -66,7 +66,7 @@ class CarePlanApprovalSyncFiltersTest extends TestCase
         $carePlan = $this->makeCarePlan();
 
         $response = Mockery::mock(EHealthResponse::class);
-        $response->shouldReceive('getData')->andReturn([]);
+        $response->shouldReceive('validate')->andReturn([]);
 
         $api = Mockery::mock(ApprovalApi::class);
         $api->shouldReceive('getPatientApprovals')

@@ -114,6 +114,17 @@
                                         <h4 class="text-base font-semibold text-gray-900 dark:text-white">
                                             Категорія: {{ $categories[$referral['category']['coding'][0]['code'] ?? ''] ?? ($referral['category']['coding'][0]['code'] ?? 'Не вказана') }}
                                         </h4>
+                                        <p class="text-sm text-gray-900 dark:text-white">
+                                            {{ __('referrals.search_patient') }}:
+                                            {{ trim(($referral['identity']['last_name'] ?? '') . ' ' . \Illuminate\Support\Str::substr($referral['identity']['first_name'] ?? '', 0, 1) . (empty($referral['identity']['first_name']) ? '' : '.') . ' ' . \Illuminate\Support\Str::substr($referral['identity']['second_name'] ?? '', 0, 1) . (empty($referral['identity']['second_name']) ? '' : '.')) ?: '—' }}
+                                            @if (isset($referral['identity']['age']))
+                                                · {{ __('referrals.search_age', ['age' => $referral['identity']['age']]) }}
+                                            @endif
+                                        </p>
+                                        <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                                            {{ __('referrals.search_priority') }}:
+                                            {{ __('referrals.priorities.' . ($referral['priority'] ?? 'unknown')) }}
+                                        </p>
                                         <div class="flex flex-wrap items-center gap-2 pt-1">
                                             <span class="text-sm font-medium text-gray-900 dark:text-white">
                                                 Статус:

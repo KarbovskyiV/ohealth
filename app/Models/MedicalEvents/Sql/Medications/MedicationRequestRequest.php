@@ -9,10 +9,13 @@ use App\Enums\Medication\RequestSource;
 use App\Models\MedicalEvents\Sql\CodeableConcept;
 use App\Models\MedicalEvents\Sql\Coding;
 use App\Models\MedicalEvents\Sql\Identifier;
+use App\Models\MedicalEvents\Sql\Period;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class MedicationRequestRequest extends Model
 {
@@ -27,6 +30,11 @@ class MedicationRequestRequest extends Model
     public const TYPE_REQUEST = RequestResourceType::REQUEST->value;
 
     public const TYPE_PRESCRIPTION = RequestResourceType::PRESCRIPTION->value;
+
+    protected $attributes = [
+        'source' => self::SOURCE_LOCAL,
+        'resource_type' => self::TYPE_REQUEST,
+    ];
 
     /**
      * Add real attributes you allow for mass assignment.
@@ -55,14 +63,53 @@ class MedicationRequestRequest extends Model
         'ehealth_payload',
         'source',
         'resource_type',
+        'details_synced_at',
+        'signed_prescription_pending',
+        'authored_on',
+        'dispense_valid_from',
+        'dispense_valid_to',
+        'rejected_at',
+        'rejected_by_uuid',
+        'blocked_to',
+        'reject_reason',
+        'reject_reason_code',
+        'block_reason',
+        'block_reason_code',
+        'quantity_id',
+        'container_quantity_id',
+
     ];
 
     protected $casts = [
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
-        'medication_qty' => 'decimal:2',
+        'medication_qty' => 'decimal:10',
+        'details_synced_at' => 'datetime',
+        'signed_prescription_pending' => 'boolean',
+
         'ehealth_payload' => 'array',
     ];
+
+    public function quantityQuantity(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\MedicalEvents\Sql\Quantity::class, 'quantity_id');
+    }
+
+    public function containerQuantity(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\MedicalEvents\Sql\Quantity::class, 'container_quantity_id');
+    }
+
+    public function references(): BelongsToMany
+    {
+        return $this->belongsToMany(Identifier::class, 'medication_request_references', 'medication_request_id', 'identifier_id')
+            ->withPivot(['field', 'position'])->orderByPivot('position');
+    }
+
+    public function period(): MorphOne
+    {
+        return $this->morphOne(Period::class, 'periodable');
+    }
 
     public function dosageInstructions(): HasMany
     {

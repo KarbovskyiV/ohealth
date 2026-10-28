@@ -1,4 +1,4 @@
-<script>
+<script data-navigate-once>
     class SpecimenContainer {
         constructor(obj = null) {
             this.identifier = '';

@@ -4,79 +4,77 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\MedicalEvents;
 
-use App\Classes\eHealth\Api\CarePlanActivity as CarePlanActivityApi;
-use App\Classes\eHealth\EHealthResponse;
-use App\Services\MedicalEvents\CarePlanActivityLifecycleService;
+use App\Classes\eHealth\Api\CarePlanActivity;
 use App\Services\MedicalEvents\EHealthJobResolver;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Mockery;
 use Tests\TestCase;
 
 class CarePlanActivityLifecycleServiceTest extends TestCase
 {
-    public function test_submit_signed_create_posts_and_resolves_the_job(): void
+    public function test_signed_create_returns_the_job_without_polling_and_preserves_signed_data(): void
     {
-        $response = Mockery::mock(EHealthResponse::class);
-        $response->shouldReceive('getData')->once()->andReturn(['job_id' => 'job-a']);
-
-        $api = Mockery::mock(CarePlanActivityApi::class);
-        $api->shouldReceive('create')
-            ->once()
-            ->with('person-uuid', 'plan-uuid', [
-                'signed_data' => 'signed',
-                'signed_data_encoding' => 'base64',
-            ])
-            ->andReturn($response);
-        $this->instance(CarePlanActivityApi::class, $api);
-
+        config(['ehealth.api.domain' => 'https://ehealth.invalid']);
+        Http::fake(['*' => Http::response(['data' => ['job_id' => 'job-test']])]);
         $resolver = Mockery::mock(EHealthJobResolver::class);
-        $resolver->shouldReceive('resolve')->once()->with(['job_id' => 'job-a'])->andReturn([
-            'id' => 'activity-uuid',
-            'status' => 'scheduled',
-        ]);
-        $this->app->instance(EHealthJobResolver::class, $resolver);
+        $resolver->shouldNotReceive('resolve');
+        $this->instance(EHealthJobResolver::class, $resolver);
+        $factory = Http::getFacadeRoot();
+        $api = new CarePlanActivity($factory);
+        $stubs = (function () {
+            return $this->stubCallbacks;
+        })->call($factory);
+        $api->stub($stubs)->preventStrayRequests();
 
-        $result = app(CarePlanActivityLifecycleService::class)
-            ->submitSignedCreate('person-uuid', 'plan-uuid', 'signed');
+        $result = $api->create('patient-test', 'plan-test', ['signed_data' => 'unchanged-signature', 'signed_data_encoding' => 'base64'])->getData();
 
-        $this->assertSame('activity-uuid', $result['id']);
+        $this->assertSame('job-test', $result['job_id']);
+        Http::assertSentCount(1);
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST' && $request['signed_data'] === 'unchanged-signature' && $request['signed_data_encoding'] === 'base64');
     }
 
-    public function test_cancel_and_complete_resolve_jobs(): void
+    public function test_cancel_returns_the_job_without_polling_and_preserves_the_action_payload(): void
     {
-        $payload = ['signed_data' => 'signed', 'signed_data_encoding' => 'base64'];
-        $response = Mockery::mock(EHealthResponse::class);
-        $response->shouldReceive('getData')->twice()->andReturn(['job_id' => 'job-b'], ['job_id' => 'job-c']);
-
-        $api = Mockery::mock(CarePlanActivityApi::class);
-        $api->shouldReceive('cancel')
-            ->once()
-            ->with('person-uuid', 'plan-uuid', 'activity-uuid', $payload)
-            ->andReturn($response);
-        $api->shouldReceive('complete')
-            ->once()
-            ->with('person-uuid', 'plan-uuid', 'activity-uuid', ['detail' => []])
-            ->andReturn($response);
-        $this->instance(CarePlanActivityApi::class, $api);
-
+        config(['ehealth.api.domain' => 'https://ehealth.invalid']);
+        Http::fake(['*' => Http::response(['data' => ['job_id' => 'job-test']])]);
         $resolver = Mockery::mock(EHealthJobResolver::class);
-        $resolver->shouldReceive('resolve')
-            ->twice()
-            ->andReturn(['status' => 'cancelled'], ['status' => 'completed']);
-        $this->app->instance(EHealthJobResolver::class, $resolver);
+        $resolver->shouldNotReceive('resolve');
+        $this->instance(EHealthJobResolver::class, $resolver);
+        $factory = Http::getFacadeRoot();
+        $api = new CarePlanActivity($factory);
+        $stubs = (function () {
+            return $this->stubCallbacks;
+        })->call($factory);
+        $api->stub($stubs)->preventStrayRequests();
+        $payload = ['signed_data' => 'unchanged-signature', 'signed_data_encoding' => 'base64'];
 
-        $service = app(CarePlanActivityLifecycleService::class);
+        $result = $api->cancel('patient-test', 'plan-test', 'activity-test', $payload)->getData();
 
-        $this->assertSame('cancelled', $service->cancel(
-            'person-uuid',
-            'plan-uuid',
-            'activity-uuid',
-            $payload
-        )['status']);
-        $this->assertSame('completed', $service->complete(
-            'person-uuid',
-            'plan-uuid',
-            'activity-uuid',
-            ['detail' => []]
-        )['status']);
+        $this->assertSame('job-test', $result['job_id']);
+        Http::assertSentCount(1);
+        Http::assertSent(fn (Request $request) => $request->method() === 'PATCH' && str_ends_with(parse_url($request->url(), PHP_URL_PATH), '/actions/cancel') && $request->data() === $payload);
+    }
+
+    public function test_complete_returns_the_job_without_polling_and_preserves_the_action_payload(): void
+    {
+        config(['ehealth.api.domain' => 'https://ehealth.invalid']);
+        Http::fake(['*' => Http::response(['data' => ['job_id' => 'job-test']])]);
+        $resolver = Mockery::mock(EHealthJobResolver::class);
+        $resolver->shouldNotReceive('resolve');
+        $this->instance(EHealthJobResolver::class, $resolver);
+        $factory = Http::getFacadeRoot();
+        $api = new CarePlanActivity($factory);
+        $stubs = (function () {
+            return $this->stubCallbacks;
+        })->call($factory);
+        $api->stub($stubs)->preventStrayRequests();
+        $payload = ['detail' => ['status_reason' => ['coding' => [['system' => 'test', 'code' => 'reason']]]], 'outcome_codeable_concept' => [['coding' => [['system' => 'test', 'code' => 'outcome']]]]];
+
+        $result = $api->complete('patient-test', 'plan-test', 'activity-test', $payload)->getData();
+
+        $this->assertSame('job-test', $result['job_id']);
+        Http::assertSentCount(1);
+        Http::assertSent(fn (Request $request) => $request->method() === 'PATCH' && str_ends_with(parse_url($request->url(), PHP_URL_PATH), '/actions/complete') && $request->data() === $payload);
     }
 }

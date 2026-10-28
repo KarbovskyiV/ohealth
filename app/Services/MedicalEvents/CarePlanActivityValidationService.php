@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\MedicalEvents;
 
 use App\Models\CarePlan;
+use App\Repositories\Repository;
 use Illuminate\Support\Arr;
 
 /**
@@ -83,21 +84,7 @@ class CarePlanActivityValidationService
             return null;
         }
 
-        $hasReference = collect($reasonReferences)
-            ->filter(function (mixed $ref): bool {
-                if (is_string($ref)) {
-                    return trim($ref) !== '';
-                }
-
-                if (is_array($ref)) {
-                    return trim((string) ($ref['uuid'] ?? $ref['identifier']['value'] ?? $ref['value'] ?? '')) !== '';
-                }
-
-                return false;
-            })
-            ->isNotEmpty();
-
-        if ($hasReference) {
+        if (Repository::carePlan()->hasRehabilitationObservation($carePlan, $reasonReferences)) {
             return null;
         }
 

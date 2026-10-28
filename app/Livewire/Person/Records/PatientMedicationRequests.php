@@ -11,6 +11,7 @@ use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\MedicalEvents\Sql\Medications\MedicationRequestRequest;
 use App\Repositories\MedicalEvents\MedicationRequestRepository;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Locked;
@@ -212,6 +213,24 @@ class PatientMedicationRequests extends BasePatientComponent
     protected function authorizeSearch(): void
     {
         $this->authorize($this->activeTab === 'requests' ? 'medication_request_request:read' : 'medication_request:read');
+    }
+
+    public function synchronizeSignedPrescriptions(): void
+    {
+        abort_unless(Auth::user()->can('medication_request:read'), 403);
+        if ($this->personId === null) {
+            return;
+        }
+        try {
+            foreach (app(MedicationRequestRepository::class)->pendingSignedPrescriptions($this->personId) as $request) {
+                app(\App\Services\MedicalEvents\MedicationRequestLifecycleService::class)->synchronizeSignedPrescription($request);
+            }
+            Session::flash('success', __('medication-requests.signed_details_synchronized'));
+        } catch (Throwable $exception) {
+            Log::warning('Signed prescription synchronization failed', ['exceptionType' => $exception::class]);
+            Session::flash('error', __('medication-requests.signed_details_pending'));
+        }
+        $this->resetSearch();
     }
 
     public function resetSearch(): void

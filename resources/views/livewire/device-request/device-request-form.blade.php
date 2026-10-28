@@ -3,7 +3,9 @@
     <x-forms.loading />
     <h1 class="text-xl font-bold">{{ __('device-requests.form.title') }} — {{ $person->fullName }}</h1>
     @if ($carePlanUuid)
-        <p>{{ __('device-requests.plan.title') }}: {{ $carePlanUuid }} · {{ __('device-requests.form.activity_device') }}: {{ $activityUuid }}</p>
+        <p>
+            {{ __('device-requests.plan.title') }}: {{ $carePlanUuid }} · {{ __('device-requests.form.activity_device') }}: {{ $activityUuid }}
+        </p>
     @endif
     @if ($errors->any())
         <div role="alert" class="rounded bg-red-50 p-4 text-red-800">
@@ -16,7 +18,10 @@
         <div class="grid gap-6 rounded-xl border border-gray-200 p-6 md:grid-cols-2 dark:border-gray-700">
             <label
                 >{{ __('device-requests.form.encounter') }}
-                <select wire:model="request.encounter_uuid" class="input-select w-full @error('request.encounter_uuid') input-error @enderror">
+                <select
+                    wire:model="request.encounter_uuid"
+                    class="input-select w-full @error('request.encounter_uuid') input-error @enderror"
+                >
                     <option value="">{{ __('device-requests.form.choose_encounter') }}</option>
                     @foreach ($encounters as $encounter)
                         <option value="{{ $encounter['uuid'] }}">{{ $encounter['label'] }}</option>
@@ -26,7 +31,11 @@
             </label>
             <label
                 >{{ __('device-requests.form.program') }}
-                <select wire:model.live="request.program_id" class="input-select w-full @error('request.program_id') input-error @enderror" @disabled($activityUuid)>
+                <select
+                    wire:model.live="request.program_id"
+                    class="input-select w-full @error('request.program_id') input-error @enderror"
+                    @disabled($activityUuid)
+                >
                     <option value="">{{ __('device-requests.form.without_program') }}</option>
                     @foreach ($programs as $program)
                         <option value="{{ $program['id'] }}">{{ $program['name'] }}</option>
@@ -36,7 +45,11 @@
             </label>
             <label
                 >{{ __('device-requests.form.device_selection') }}
-                <select wire:model.live="request.device_code_type" class="input-select w-full @error('request.device_code_type') input-error @enderror" @disabled($activityUuid)>
+                <select
+                    wire:model.live="request.device_code_type"
+                    class="input-select w-full @error('request.device_code_type') input-error @enderror"
+                    @disabled($activityUuid)
+                >
                     <option value="CLASSIFICATION_TYPE">{{ __('device-requests.form.by_type') }}</option>
                     <option value="DEVICE_DEFINITION">{{ __('device-requests.form.by_model') }}</option>
                 </select>
@@ -45,7 +58,10 @@
             @if (!$activityUuid && $request['device_code_type'] === 'CLASSIFICATION_TYPE')
                 <label
                     >{{ __('device-requests.form.device_type') }}
-                    <select class="input-select w-full @error('request.device_id') input-error @enderror" wire:change="selectType($event.target.value)">
+                    <select
+                        class="input-select w-full @error('request.device_id') input-error @enderror"
+                        wire:change="selectType($event.target.value)"
+                    >
                         <option value="">{{ __('device-requests.form.choose_type') }}</option>
                         @foreach ($types as $key => $type)
                             <option
@@ -60,8 +76,13 @@
                 <x-input-error for="request.device_id" />
             @elseif (!$activityUuid)
                 <div>
-                    <label>{{ __('device-requests.form.model_name') }}<input wire:model="modelSearch" class="input w-full" /></label
-                    ><button type="button" wire:click="searchModels" class="button-minor">{{ __('device-requests.form.search_models') }}</button>
+                    <label
+                        >{{ __('device-requests.form.model_name') }}<input
+                            wire:model="modelSearch"
+                            class="input w-full" /></label
+                    ><button type="button" wire:click="searchModels" class="button-minor">
+                        {{ __('device-requests.form.search_models') }}
+                    </button>
                     <x-input-error for="modelSearch" />
                     <select class="input-select w-full" wire:change="selectModel($event.target.value)">
                         <option value="">{{ __('device-requests.form.choose_model') }}</option>
@@ -84,12 +105,22 @@
             @foreach (['started_at' => 'start', 'ended_at' => 'end'] as $field => $label)
                 <div class="form-group group">
                     <div class="datepicker-wrapper" wire:key="request-date-{{ $field }}" x-data>
-                        <input type="text" id="request-{{ $field }}" wire:model.lazy="request.{{ $field }}"
-                               class="datepicker-input with-leading-icon input peer @error('request.'.$field) input-error @enderror"
-                               placeholder=" " autocomplete="off" datepicker-autohide datepicker-format="{{ frontendDateFormat() }}"
-                               datepicker-min-date="{{ today()->format(config('app.date_format')) }}"
-                               x-on:change-date.camel="$el.dispatchEvent(new Event('change', { bubbles: true }))" />
-                        <label for="request-{{ $field }}" class="wrapped-label">{{ __('device-requests.form.'.$label) }}</label>
+                        <input
+                            type="text"
+                            id="request-{{ $field }}"
+                            wire:model.lazy="request.{{ $field }}"
+                            class="datepicker-input with-leading-icon input peer @error('request.'.$field) input-error @enderror"
+                            placeholder=" "
+                            autocomplete="off"
+                            datepicker-autohide
+                            datepicker-format="{{ frontendDateFormat() }}"
+                            datepicker-min-date="{{ today()->format(config('app.date_format')) }}"
+                            x-on:change-date.camel="$el.dispatchEvent(new Event('change', { bubbles: true }))"
+                        />
+                        <label
+                            for="request-{{ $field }}"
+                            class="wrapped-label"
+                        >{{ __('device-requests.form.'.$label) }}</label>
                     </div>
                     <x-input-error for="request.{{ $field }}" />
                 </div>
@@ -116,17 +147,23 @@
                 </div>
             @else
                 <label
-                    >{{ __('device-requests.form.optional_quantity') }}<input
+                    >{{ $activityUuid ? __('device-requests.quantity') : __('device-requests.form.optional_quantity') }}<input
                         type="number"
                         min="1"
                         step="1"
                         wire:model="request.quantity"
                         class="input w-full @error('request.quantity') input-error @enderror"
                 /></label>
-                <label>{{ __('device-requests.form.unit') }}
-                    <select wire:model="request.quantity_code" class="input-select w-full @error('request.quantity_code') input-error @enderror">
+                <label
+                    >{{ __('device-requests.form.unit') }}
+                    <select
+                        wire:model="request.quantity_code"
+                        class="input-select w-full @error('request.quantity_code') input-error @enderror"
+                    >
                         <option value="">{{ __('device-requests.form.choose_unit') }}</option>
-                        @foreach ($units as $code => $label)<option value="{{ $code }}">{{ $label }}</option>@endforeach
+                        @foreach ($units as $code => $label)
+                            <option value="{{ $code }}">{{ $label }}</option>
+                        @endforeach
                     </select>
                     <x-input-error for="request.quantity_code" />
                 </label>
@@ -134,7 +171,10 @@
             <x-input-error for="request.quantity" />
             <label
                 >{{ __('device-requests.form.auth_method') }}
-                <select wire:model.live="request.inform_with" class="input-select w-full @error('request.inform_with') input-error @enderror">
+                <select
+                    wire:model.live="request.inform_with"
+                    class="input-select w-full @error('request.inform_with') input-error @enderror"
+                >
                     <option value="">{{ __('device-requests.form.default_auth_method') }}</option>
                     @foreach ($authMethods as $method)
                         <option value="{{ $method['id'] }}">
@@ -155,14 +195,14 @@
                     <p>{{ __('device-requests.form.phone') }}: {{ $chosenMethod['phone_number'] }}</p>
                 @endif
                 @if (!empty($chosenMethod['phone_number']))
-                <p>{{ __('device-requests.form.phone_hint') }}</p>
-                <button type="button" wire:click="confirmPhone" class="button-minor">
-                    {{ __('device-requests.form.confirm_phone') }}
-                </button>
-                @if ($request['phone_confirmed'])
-                    <p>{{ __('device-requests.form.phone_confirmed') }}</p>
-                @endif
-                <x-input-error for="request.phone_confirmed" />
+                    <p>{{ __('device-requests.form.phone_hint') }}</p>
+                    <button type="button" wire:click="confirmPhone" class="button-minor">
+                        {{ __('device-requests.form.confirm_phone') }}
+                    </button>
+                    @if ($request['phone_confirmed'])
+                        <p>{{ __('device-requests.form.phone_confirmed') }}</p>
+                    @endif
+                    <x-input-error for="request.phone_confirmed" />
                 @endif
             </div>
         </div>
@@ -170,35 +210,56 @@
             <legend class="font-semibold">{{ __('device-requests.form.reasons') }}</legend>
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('device-requests.form.reason_hint') }}</p>
             @foreach ($request['reason_reference'] as $index => $reason)
-                <div wire:key="reason-{{ $index }}-{{ $reason['type'] }}" class="grid items-start gap-3 md:grid-cols-[1fr_2fr_auto]">
+                <div
+                    wire:key="reason-{{ $index }}-{{ $reason['type'] }}"
+                    class="grid items-start gap-3 md:grid-cols-[1fr_2fr_auto]"
+                >
                     <div class="form-group group">
-                        <select id="reason-type-{{ $index }}" wire:model.live="request.reason_reference.{{ $index }}.type" class="input-select peer @error('request.reason_reference.'.$index.'.type') input-error @enderror">
+                        <select
+                            id="reason-type-{{ $index }}"
+                            wire:model.live="request.reason_reference.{{ $index }}.type"
+                            class="input-select peer @error('request.reason_reference.'.$index.'.type') input-error @enderror"
+                        >
                             @foreach (__('device-requests.reason_types') as $type => $label)
                                 <option value="{{ $type }}">{{ $label }}</option>
                             @endforeach
                         </select>
-                        <label for="reason-type-{{ $index }}" class="label">{{ __('device-requests.form.reason_type') }}</label>
+                        <label
+                            for="reason-type-{{ $index }}"
+                            class="label"
+                        >{{ __('device-requests.form.reason_type') }}</label>
                         <x-input-error for="request.reason_reference.{{ $index }}.type" />
                     </div>
                     <div class="form-group group">
-                        <select id="reason-record-{{ $index }}" wire:model="request.reason_reference.{{ $index }}.uuid" class="input-select peer @error('request.reason_reference.'.$index.'.uuid') input-error @enderror">
+                        <select
+                            id="reason-record-{{ $index }}"
+                            wire:model="request.reason_reference.{{ $index }}.uuid"
+                            class="input-select peer @error('request.reason_reference.'.$index.'.uuid') input-error @enderror"
+                        >
                             <option value="">{{ __('device-requests.form.choose_reason') }}</option>
                             @foreach ($reasonOptions[$reason['type']] ?? [] as $uuid => $label)
                                 <option value="{{ $uuid }}">{{ $label }}</option>
                             @endforeach
                         </select>
-                        <label for="reason-record-{{ $index }}" class="label">{{ __('device-requests.form.reason_record') }}</label>
+                        <label
+                            for="reason-record-{{ $index }}"
+                            class="label"
+                        >{{ __('device-requests.form.reason_record') }}</label>
                         <x-input-error for="request.reason_reference.{{ $index }}.uuid" />
                         @if (empty($reasonOptions[$reason['type']]))
                             <p class="text-sm text-gray-500">{{ __('device-requests.form.no_reasons') }}</p>
                         @endif
                     </div>
-                    <button type="button" wire:click="removeReason({{ $index }})" class="button-minor">{{ __('device-requests.form.remove') }}</button>
+                    <button type="button" wire:click="removeReason({{ $index }})" class="button-minor">
+                        {{ __('device-requests.form.remove') }}
+                    </button>
                 </div>
             @endforeach
-            <button type="button" wire:click="addReason" class="button-minor">{{ __('device-requests.form.add_reason') }}</button>
+            <button type="button" wire:click="addReason" class="button-minor">
+                {{ __('device-requests.form.add_reason') }}
+            </button>
         </fieldset>
-        <fieldset class="fieldset-card grid gap-4 p-6 md:grid-cols-2 sm:p-8">
+        <fieldset class="fieldset-card grid gap-4 p-6 sm:p-8 md:grid-cols-2">
             <legend class="font-semibold">{{ __('device-requests.form.parameters') }}</legend>
             @foreach ($options['parameters'] ?? [] as $key => $parameter)
                 <label wire:key="parameter-{{ $key }}"
@@ -223,15 +284,24 @@
                             wire:model="request.parameter_values.{{ $key }}.value"
                             class="input w-full"
                             aria-label="{{ $parameter['label'] ?? $parameter['code'] }}: {{ __('device-requests.form.value') }}"
-
                         />
                         @if ($measurementUnits)
-                            <select wire:model="request.parameter_values.{{ $key }}.code" class="input-select w-full" aria-label="{{ __('device-requests.form.unit') }}">
+                            <select
+                                wire:model="request.parameter_values.{{ $key }}.code"
+                                class="input-select w-full"
+                                aria-label="{{ __('device-requests.form.unit') }}"
+                            >
                                 <option value="">{{ __('device-requests.form.choose_unit') }}</option>
-                                @foreach ($measurementUnits as $code => $label)<option value="{{ $code }}">{{ $label }}</option>@endforeach
+                                @foreach ($measurementUnits as $code => $label)
+                                    <option value="{{ $code }}">{{ $label }}</option>
+                                @endforeach
                             </select>
                         @else
-                            <input wire:model="request.parameter_values.{{ $key }}.code" class="input w-full" placeholder="{{ __('device-requests.form.unit') }} (cm, kg)" />
+                            <input
+                                wire:model="request.parameter_values.{{ $key }}.code"
+                                class="input w-full"
+                                placeholder="{{ __('device-requests.form.unit') }} (cm, kg)"
+                            />
                         @endif
                     @elseif ($parameter['type'] === 'range')
                         @foreach (['low' => __('device-requests.form.minimum'), 'high' => __('device-requests.form.maximum')] as $bound => $label)
@@ -242,15 +312,24 @@
                                 wire:model="request.parameter_values.{{ $key }}.{{ $bound }}.value"
                                 class="input w-full"
                                 aria-label="{{ $parameter['label'] ?? $parameter['code'] }}: {{ $label }}"
-
                             />
                             @if ($measurementUnits)
-                                <select wire:model="request.parameter_values.{{ $key }}.{{ $bound }}.code" class="input-select w-full" aria-label="{{ $label }}: {{ __('device-requests.form.unit') }}">
+                                <select
+                                    wire:model="request.parameter_values.{{ $key }}.{{ $bound }}.code"
+                                    class="input-select w-full"
+                                    aria-label="{{ $label }}: {{ __('device-requests.form.unit') }}"
+                                >
                                     <option value="">{{ __('device-requests.form.choose_unit') }}</option>
-                                    @foreach ($measurementUnits as $code => $unitLabel)<option value="{{ $code }}">{{ $unitLabel }}</option>@endforeach
+                                    @foreach ($measurementUnits as $code => $unitLabel)
+                                        <option value="{{ $code }}">{{ $unitLabel }}</option>
+                                    @endforeach
                                 </select>
                             @else
-                                <input wire:model="request.parameter_values.{{ $key }}.{{ $bound }}.code" class="input w-full" placeholder="{{ __('device-requests.form.unit') }} (cm, kg)" />
+                                <input
+                                    wire:model="request.parameter_values.{{ $key }}.{{ $bound }}.code"
+                                    class="input w-full"
+                                    placeholder="{{ __('device-requests.form.unit') }} (cm, kg)"
+                                />
                             @endif
                         @endforeach
                     @else

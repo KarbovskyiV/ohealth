@@ -6,7 +6,6 @@ namespace App\Livewire\Composition\Concerns;
 
 use App\Classes\eHealth\EHealth;
 use App\Enums\Composition\CompositionType;
-use App\Enums\Composition\CompositionStatus;
 use App\Enums\Composition\CompositionAsyncOperation;
 use App\Enums\Person\EncounterStatus;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -16,6 +15,7 @@ use App\Exceptions\MedicalEvents\CompositionGuardException;
 use App\Models\MedicalEvents\Sql\Composition;
 use App\Models\MedicalEvents\Sql\CompositionOperation;
 use App\Repositories\MedicalEvents\CompositionOperationRepository;
+use App\Repositories\MedicalEvents\CompositionRepository;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Enums\Composition\CompositionJobStatus;
@@ -53,6 +53,8 @@ trait DrivesCompositionWizard
 
     public int $step = self::STEP_ENCOUNTER;
 
+    public bool $showEncounterPicker = false;
+
     /** Episode of the chosen encounter; needed to read the conclusion back. */
     #[Locked]
     public ?string $episodeUuid = null;
@@ -68,6 +70,7 @@ trait DrivesCompositionWizard
     public bool $acknowledgedMissingAuthMethod = false;
 
     #[Locked]
+    #[\Livewire\Attributes\Url(as: 'job')]
     public ?string $asyncJobId = null;
 
     #[Locked]
@@ -196,14 +199,18 @@ trait DrivesCompositionWizard
         $this->episodeUuid = data_get($encounter, 'episode.identifier.value');
         $this->selectedEncounter = [
             'uuid' => $encounterUuid,
+            'period' => $encounter['period'] ?? null,
+            'class' => $encounter['class'] ?? null,
             'subjectUuid' => $this->encounterSubjectUuid(),
             'authorUuid' => data_get($encounter, 'performer.identifier.value'),
             'authorName' => $encounter['authorName'],
             'authorPosition' => $encounter['authorPosition'],
         ];
 
+        $this->showEncounterPicker = false;
         $this->loadAuthMethods();
         $this->step = self::STEP_AUTH_METHOD;
+        $this->dispatch('scroll-to-element', selector: '#composition-auth-method');
     }
 
     /**
@@ -289,6 +296,8 @@ trait DrivesCompositionWizard
         if (method_exists($this, 'applyDefaultPeriodDates')) {
             $this->applyDefaultPeriodDates();
         }
+
+        $this->dispatch('scroll-to-element', selector: '#composition-details');
     }
 
     /**
@@ -319,6 +328,8 @@ trait DrivesCompositionWizard
         if (method_exists($this, 'applyDefaultPeriodDates')) {
             $this->applyDefaultPeriodDates();
         }
+
+        $this->dispatch('scroll-to-element', selector: '#composition-details');
     }
 
     /**
@@ -347,6 +358,7 @@ trait DrivesCompositionWizard
 
         try {
             $this->form->validate($this->detailsRules());
+            app(CompositionRepository::class)->assertFhirStorageReady();
             $this->assertSubmissionAllowed();
         } catch (ValidationException $exception) {
             $this->setErrorBag($exception->validator->getMessageBag());
@@ -375,6 +387,10 @@ trait DrivesCompositionWizard
                 'encounter_uuid' => $this->form->encounterUuid,
                 'episode_uuid' => $this->episodeUuid,
                 'author_uuid' => $authorUuid,
+                'requestData' => [
+                    'form' => \Illuminate\Support\Arr::except($this->form->toArray(), ['password', 'knedp', 'keyContainerUpload']),
+                    'selectedEncounter' => $this->selectedEncounter,
+                ],
             ]);
             $this->asyncJobId = $job['id'];
             $this->asyncJobStatus = (string) ($job['status'] ?? CompositionJobStatus::PENDING->value);
@@ -394,10 +410,12 @@ trait DrivesCompositionWizard
             );
         } catch (EHealthConnectionException | EHealthException $exception) {
             $exception->handle('Failed to submit a medical conclusion');
+        } catch (\App\Exceptions\MedicalEvents\ClinicalStorageException $exception) {
+            Session::flash('error', __('clinical-storage.remote_import_pending'));
         } catch (Throwable $exception) {
-            Session::flash('error', $exception->getMessage());
+            Session::flash('error', __('clinical-storage.write_failed'));
 
-            Log::error('Failed to submit a medical conclusion', ['error' => $exception->getMessage()]);
+            Log::error('Failed to submit a medical conclusion', ['exceptionType' => $exception::class, 'sourceFile' => $exception->getFile(), 'sourceLine' => $exception->getLine()]);
         }
     }
 
@@ -431,72 +449,62 @@ trait DrivesCompositionWizard
      * also returns a job. After a sign, the conclusion already exists locally so the
      * details are refreshed rather than resolved from scratch.
      */
-    public function pollAsyncJob(): void
+    #[\Livewire\Attributes\On('composition-submission-updated')]
+    public function pollAsyncJob(bool $notify = true): void
     {
-        if (!$this->asyncJobId || $this->asyncJobStatus === CompositionJobStatus::FAILED->value
-            || ($this->asyncJobStatus === CompositionJobStatus::DONE->value && $this->step === self::STEP_REVIEW)) {
+        $operation = $this->currentOperation();
+        if ($operation === null) {
             return;
         }
-
-        try {
-            $status = EHealth::composition()->getAsyncJobStatus($this->asyncJobId)->validate();
-        } catch (Throwable $exception) {
-            Log::error('Failed to read the conclusion async job', ['error' => $exception->getMessage()]);
-            $this->asyncJobErrors = [__('compositions.errors.job_status_unavailable')];
-
-            return;
-        }
-
-        $this->asyncJobStatus = $status['status'];
-        $this->asyncJobErrors = [];
-
-        if ($status['status'] === CompositionJobStatus::FAILED->value) {
-            $this->asyncJobErrors = $status['errors'] ?: [__('compositions.errors.async_job_failed')];
-            $operation = $this->currentOperation();
-            if ($operation !== null) {
-                app(CompositionOperationRepository::class)->fail($operation, array_replace($status, ['errors' => $this->asyncJobErrors]));
-            }
+        $previousStep = $this->step;
+        $this->asyncJobStatus = $operation->status;
+        $this->asyncJobErrors = $operation->job->response_data['errors'] ?? [];
+        if ($this->asyncJobStatus === CompositionJobStatus::FAILED->value) {
+            $this->asyncJobErrors = $this->asyncJobErrors ?: [__('compositions.errors.async_job_failed')];
 
             return;
         }
-
-        if ($status['status'] !== CompositionJobStatus::DONE->value) {
+        if ($this->asyncJobStatus !== CompositionJobStatus::DONE->value || !$operation->composition) {
             return;
         }
-
-        if ($this->compositionUuid === null) {
-            $this->compositionUuid = $status['compositionUuid']
-                ?? $this->resolveCreatedComposition(
-                    $this->encounterSubjectUuid(),
-                    $this->form->encounterUuid,
-                    $this->conclusionType()
-                );
-        }
-
-        if ($this->compositionUuid === null) {
-            $this->asyncJobErrors = [__('compositions.errors.created_not_found')];
-
+        $composition = Repository::composition()->findForPatient($this->storagePatient(), $operation->composition->uuid);
+        if ($composition === null) {
             return;
         }
-
-        if ($this->loadCompositionDetail()) {
-            $operation = $this->currentOperation();
-            if ($operation !== null) {
-                app(CompositionOperationRepository::class)->complete($operation, Composition::whereUuid($this->compositionUuid)->firstOrFail());
-            }
-            $this->asyncJobErrors = [];
-            $this->step = self::STEP_REVIEW;
-
-            $reviewStatus = CompositionStatus::fromEHealth(data_get($this->compositionDetail, 'status'));
-            $message = match ($reviewStatus) {
-                CompositionStatus::PRELIMINARY => 'created',
-                CompositionStatus::FINAL => 'signed',
-                default => null,
-            };
-            if ($message !== null) {
-                Session::flash('success', __('compositions.create_' . strtolower($this->conclusionType()->value) . '.' . $message));
-            }
+        $this->compositionUuid = $composition->uuid;
+        $this->compositionDetail = $composition->toDetail();
+        $this->integrationData = $composition->integrationDetails();
+        $this->step = self::STEP_REVIEW;
+        if ($notify && $previousStep !== self::STEP_REVIEW) {
+            $message = $operation->operation === CompositionAsyncOperation::SIGN ? 'signed' : 'created';
+            Session::flash('success', __('compositions.create_'.strtolower($this->conclusionType()->value).'.'.$message));
         }
+    }
+
+    protected function resumeAsyncSubmission(): bool
+    {
+        if ($this->asyncJobId === null) {
+            return false;
+        }
+        $operation = app(CompositionOperationRepository::class)->findForWizard($this->patient(), $this->asyncJobId, $this->conclusionType(), Auth::user());
+        abort_unless($operation !== null, 404);
+        $formData = $operation->job->request_data['form'] ?? [];
+        $this->form->fill(\Illuminate\Support\Arr::except($formData, ['password', 'knedp', 'keyContainerUpload']));
+        $this->form->encounterUuid = $operation->encounterUuid;
+        $this->selectedEncounter = $operation->job->request_data['selectedEncounter'] ?? null;
+        $this->episodeUuid = $operation->episodeUuid;
+        $this->compositionUuid = $operation->composition?->uuid;
+        $this->asyncJobStatus = $operation->status;
+        $this->step = self::STEP_AWAITING_JOB;
+        $this->pollAsyncJob(false);
+
+        return true;
+    }
+
+    #[Computed]
+    public function compositionOperationId(): ?int
+    {
+        return $this->currentOperation()?->id;
     }
 
     public function loadCompositionDetail(): bool
@@ -596,6 +604,13 @@ trait DrivesCompositionWizard
 
         $this->authorize('sign', $composition);
 
+        if (app(CompositionOperationRepository::class)->hasPendingForComposition($composition)) {
+            $this->showSignatureModal = false;
+            Session::flash('info', __('compositions.messages.signature_submitted'));
+
+            return;
+        }
+
         try {
             $this->form->validate($this->form->signingRules());
         } catch (ValidationException $exception) {
@@ -627,6 +642,10 @@ trait DrivesCompositionWizard
                 'encounter_uuid' => $composition->encounterUuid,
                 'episode_uuid' => $composition->episodeOfCareUuid,
                 'author_uuid' => $composition->authorUuid,
+                'requestData' => [
+                    'form' => \Illuminate\Support\Arr::except($this->form->toArray(), ['password', 'knedp', 'keyContainerUpload']),
+                    'selectedEncounter' => $this->selectedEncounter,
+                ],
             ]);
 
             $this->showSignatureModal = false;
@@ -636,7 +655,7 @@ trait DrivesCompositionWizard
             $this->asyncJobErrors = [];
             $this->step = self::STEP_AWAITING_JOB;
 
-            Session::flash('success', __('compositions.messages.signature_submitted'));
+            Session::flash('info', __('compositions.messages.signature_submitted'));
         } catch (Throwable $exception) {
             Session::flash('error', $exception->getMessage());
 
@@ -658,6 +677,7 @@ trait DrivesCompositionWizard
         $this->form->resetSigningFields();
         $this->reset(array_merge([
             'step',
+            'showEncounterPicker',
             'episodeUuid',
             'selectedEncounter',
             'authMethods',
@@ -691,8 +711,7 @@ trait DrivesCompositionWizard
 
     private function currentOperation(): ?CompositionOperation
     {
-        return CompositionOperation::forPatient($this->storagePatient())
-            ->where('remote_job_id', $this->asyncJobId)->first();
+        return app(CompositionOperationRepository::class)->findForWizard($this->patient(), $this->asyncJobId ?? '', $this->conclusionType(), Auth::user());
     }
 
     protected function resolveCreatedComposition(

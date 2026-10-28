@@ -1,4 +1,7 @@
-<section class="section-form">
+<section
+    class="section-form"
+    data-livewire-background-actions="checkSubmissionStatus checkPlanSyncStatus checkApprovalJobStatus checkSmsResendStatus event:care-plan-approvals-changed"
+>
     <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
     <x-header-navigation class="breadcrumb-form">
         <x-slot name="title">
@@ -7,6 +10,9 @@
     </x-header-navigation>
 
     @php
+        $activitySubmissionPending = ($submissionStates[$activity->uuid]['status'] ?? null) === \App\Enums\JobStatus::PENDING->value;
+        $activitySubmissionProcessed = ($submissionStates[$activity->uuid]['status'] ?? null) === \App\Enums\JobStatus::PROCESSED->value;
+        $hasPendingSubmission = collect($submissionStates)->contains('status', \App\Enums\JobStatus::PENDING->value);
         $resolvedKind = $activity->resolvedKind();
         $activityStatus = is_array($activity->status) ? ($activity->status['coding'][0]['code'] ?? ($activity->status['text'] ?? '')) : $activity->status;
     @endphp
@@ -22,6 +28,20 @@
         "
         class="form shift-content space-y-6 px-4"
     >
+        @include('livewire.care-plan.parts.activity.submission-status')
+
+        @if (!$this->canManageActivities && !$this->isTerminalCarePlan)
+            <p class="text-sm text-amber-700 dark:text-amber-300" role="status">
+                {{ __('care-plan.prescribing_patient_access_required') }}
+            </p>
+        @endif
+
+        @if ($planSyncBatchId !== null)
+            <div wire:poll.3s="checkPlanSyncStatus" role="status" class="text-sm">
+                {{ __('care-plan.sync_processing') }}
+            </div>
+        @endif
+
         <div class="flex flex-wrap items-center gap-3">
             <a href="{{ route('care-plans.show', [legalEntity(), $carePlan->id]) }}" class="button-minor" wire:navigate>
                 @icon('arrow-left', 'w-4 h-4')
@@ -46,7 +66,7 @@
                 </button>
             @endif
 
-            @if (!$this->isTerminalCarePlan && in_array(strtoupper($activityStatus), ['NEW', 'DRAFT']))
+            @if ($this->canManageActivities && !$activitySubmissionPending && !$activitySubmissionProcessed && in_array(strtoupper($activityStatus), ['NEW', 'DRAFT']))
                 <a
                     href="{{ route('care-plans.show', [legalEntity(), $carePlan->id, 'edit_activity' => $activity->id]) }}"
                     class="button-minor"
@@ -61,7 +81,7 @@
                 >
                     {{ __('care-plan.sign_activity') }}
                 </button>
-            @elseif (!$this->isTerminalCarePlan && in_array(strtoupper($activityStatus), ['ACTIVE', 'SCHEDULED', 'IN-PROGRESS', 'IN_PROGRESS', 'ON-HOLD', 'PROCESSED']))
+            @elseif ($this->canManageActivities && !$hasPendingSubmission && in_array(strtoupper($activityStatus), ['ACTIVE', 'SCHEDULED', 'IN-PROGRESS', 'IN_PROGRESS', 'ON-HOLD', 'PROCESSED']))
                 @if ($resolvedKind === 'medication_request')
                     <button
                         type="button"
@@ -112,6 +132,16 @@
             @include('livewire.care-plan.parts.modals.cancel-activity-modal', ['method' => 'sign'])
         @elseif ($actionType === 'complete_activity')
             @include('livewire.care-plan.parts.modals.complete-activity-modal', ['method' => 'sign'])
+        @elseif (in_array($actionType, ['cancel_referral', 'recall_referral'], true))
+            <x-signature-modal method="sign">
+                <x-slot:customFields>
+                    <x-referral-status-fields
+                        reason-model="statusReason"
+                        letter-model="referralExplanatoryLetter"
+                        :reasons="$this->statusReasons"
+                    />
+                </x-slot:customFields>
+            </x-signature-modal>
         @else
             @include('components.signature-modal', ['method' => 'sign'])
         @endif
@@ -129,5 +159,4 @@
         @include('livewire.care-plan.parts.modals.eprescription-form-drawer')
         @include('livewire.care-plan.parts.modals.referral-form-drawer')
     </div>
-
 </section>

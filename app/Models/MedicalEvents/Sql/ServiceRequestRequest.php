@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ServiceRequestRequest extends Model
+class ServiceRequestRequest extends Model implements \App\Contracts\SubmittedToEHealth
 {
     use HasCamelCasing;
 
@@ -47,15 +47,99 @@ class ServiceRequestRequest extends Model
         'performer_id',
         'location_reference_id',
         'performer_type_id',
+
+        'details_synced_at',
+        'clinical_status',
+        'program_processing_status',
+        'authored_on',
+        'explanatory_letter',
+        'status_reason_id',
+        'code_identifier_id',
+        'program_identifier_id',
+        'requester_employee_id',
+        'requester_legal_entity_id',
+        'subject_identifier_id',
+        'quantity_id',
+        'remaining_quantity_id',
+        'occurrence_date_time',
     ];
 
     protected $casts = [
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
-        'quantity' => 'decimal:2',
+        'quantity' => 'decimal:10',
+
+        'details_synced_at' => 'datetime',
         'supporting_info' => 'array',
         'reason_reference' => 'array',
     ];
+
+    public function statusReasonConcept(): BelongsTo
+    {
+        return $this->belongsTo(CodeableConcept::class, 'status_reason_id');
+    }
+
+    public function codeReference(): BelongsTo
+    {
+        return $this->belongsTo(Identifier::class, 'code_identifier_id');
+    }
+    public function programReference(): BelongsTo
+    {
+        return $this->belongsTo(Identifier::class, 'program_identifier_id');
+    }
+    public function requesterEmployee(): BelongsTo
+    {
+        return $this->belongsTo(Identifier::class, 'requester_employee_id');
+    }
+    public function requesterLegalEntity(): BelongsTo
+    {
+        return $this->belongsTo(Identifier::class, 'requester_legal_entity_id');
+    }
+    public function subjectReference(): BelongsTo
+    {
+        return $this->belongsTo(Identifier::class, 'subject_identifier_id');
+    }
+    public function quantityQuantity(): BelongsTo
+    {
+        return $this->belongsTo(Quantity::class, 'quantity_id');
+    }
+    public function remainingQuantity(): BelongsTo
+    {
+        return $this->belongsTo(Quantity::class, 'remaining_quantity_id');
+    }
+    public function occurrencePeriod(): \Illuminate\Database\Eloquent\Relations\MorphOne
+    {
+        return $this->morphOne(Period::class, 'periodable');
+    }
+
+    private function referenceCollection(string $collection): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Identifier::class, 'service_request_references', 'service_request_id', 'identifier_id')->withPivotValue('collection', $collection)->withPivot('position')->orderByPivot('position');
+    }
+    public function basedOnReferences(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->referenceCollection('basedOn');
+    }
+    public function supportingInfoReferences(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->referenceCollection('supportingInfo');
+    }
+    public function reasonReferences(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->referenceCollection('reasonReference');
+    }
+    public function permittedReferences(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->referenceCollection('permittedResources');
+    }
+    public function specimenReferences(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->referenceCollection('specimens');
+    }
+    public function focusReferences(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->referenceCollection('focus');
+    }
 
     public function person(): BelongsTo
     {
@@ -134,10 +218,10 @@ class ServiceRequestRequest extends Model
             ->whereKey(Approval::carePlanAccessGrantedTo($user, $legalEntity)->pluck('approvable_id'))
             ->pluck('uuid');
 
-        return $query->whereHas(
-            'basedOn',
-            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $carePlanIds)
-        );
+        return $query->where(static function (Builder $scope) use ($carePlanIds): void {
+            $scope->whereHas('basedOnReferences', static fn (Builder $identifier): Builder => $identifier->whereIn('value', $carePlanIds)->whereHas('type.coding', static fn (Builder $coding): Builder => $coding->whereCode('care_plan')))
+                ->orWhere(static fn (Builder $legacy): Builder => $legacy->whereNull('details_synced_at')->whereHas('basedOn', static fn (Builder $identifier): Builder => $identifier->whereIn('value', $carePlanIds)));
+        });
     }
 
     /**
@@ -163,9 +247,14 @@ class ServiceRequestRequest extends Model
             )
             ->pluck('uuid');
 
-        return $query->whereHas(
-            'basedOn',
-            static fn (Builder $identifier): Builder => $identifier->whereIn('value', $carePlanIds)
-        );
+        return $query->where(static function (Builder $scope) use ($carePlanIds): void {
+            $scope->whereHas('basedOnReferences', static fn (Builder $identifier): Builder => $identifier->whereIn('value', $carePlanIds)->whereHas('type.coding', static fn (Builder $coding): Builder => $coding->whereCode('care_plan')))
+                ->orWhere(static fn (Builder $legacy): Builder => $legacy->whereNull('details_synced_at')->whereHas('basedOn', static fn (Builder $identifier): Builder => $identifier->whereIn('value', $carePlanIds)));
+        });
+    }
+
+    public function ehealthLinks(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(\App\Models\EhealthLink::class, 'linkable');
     }
 }

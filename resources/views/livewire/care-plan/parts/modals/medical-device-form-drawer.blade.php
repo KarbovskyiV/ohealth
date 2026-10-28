@@ -118,14 +118,16 @@
                                     ?? '')
                                 : '';
                             if ($deviceDisplayName === '') {
-                                $deviceDisplayName = $activityForm['product_reference']
-                                    ?: ($activityForm['product_codeable_concept'] ?? '');
+                                $deviceDisplayName = !empty($activityForm['product_reference'])
+                                    ? __('care-plan.device_name_unavailable')
+                                    : ($activityForm['product_codeable_concept'] ?? '');
                             }
                         @endphp
                         <input
                             type="text"
                             class="input bg-gray-50 dark:bg-gray-700 {{ empty($activityForm['id']) ? 'cursor-not-allowed' : 'pr-12' }} font-medium text-gray-900 dark:text-white w-full"
                             value="{{ $deviceDisplayName }}"
+                            placeholder="{{ __('care-plan.select_device') }}"
                             disabled
                         />
                         @if (!empty($activityForm['id']))
@@ -139,6 +141,11 @@
                             </button>
                         @endif
                     </div>
+                    @if (!empty($activityForm['product_reference']))
+                        <p class="mt-1 text-xs break-all text-gray-500 dark:text-gray-400">
+                            {{ __('care-plan.uuid') }}: {{ $activityForm['product_reference'] }}
+                        </p>
+                    @endif
                     <input type="hidden" wire:model="activityForm.product_reference" />
                 </div>
             </div>

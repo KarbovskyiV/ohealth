@@ -24,7 +24,7 @@ return new class extends Migration
 
             $table->string('status')->index();
             $table->string('title')->nullable();
-            $table->timestampTz('date')->nullable();
+            $table->timestampTz('date', 6)->nullable();
 
             $table->foreignId('type_id')->nullable()->constrained('codeable_concepts');
             $table->foreignId('category_id')->nullable()->constrained('codeable_concepts');
@@ -39,10 +39,10 @@ return new class extends Migration
             $table->foreignId('relates_to_target_id')->nullable()->constrained('identifiers');
 
             $table->uuid('inform_with_uuid')->nullable();
-            $table->boolean('is_accident')->default(false);
-            $table->boolean('is_intoxicated')->default(false);
-            $table->boolean('is_foreign_treatment')->default(false);
-            $table->boolean('is_force_renew')->default(false);
+            $table->boolean('is_accident')->nullable();
+            $table->boolean('is_intoxicated')->nullable();
+            $table->boolean('is_foreign_treatment')->nullable();
+            $table->boolean('is_force_renew')->nullable();
             $table->string('treatment_violation')->nullable();
             $table->date('treatment_violation_date')->nullable();
             $table->date('newborn_birth_date')->nullable();

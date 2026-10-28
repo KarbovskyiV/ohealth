@@ -69,6 +69,10 @@
         ->values()
         ->all();
 
+    if ($activitySubmissionPending ?? false) {
+        $activityStatusDisplay = \App\Enums\JobStatus::PENDING->label();
+    }
+
     $statusReason = is_array($activity->statusReason)
         ? ($activity->statusReason['text'] ?? ($activity->statusReason['coding'][0]['code'] ?? null))
         : $activity->statusReason;

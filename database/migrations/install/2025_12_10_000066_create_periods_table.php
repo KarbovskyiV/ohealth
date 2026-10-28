@@ -15,8 +15,8 @@ return new class extends Migration
     {
         Schema::create('periods', static function (Blueprint $table) {
             $table->id();
-            $table->timestamp('start');
-            $table->timestamp('end')->nullable();
+            $table->timestampTz('start', 6)->nullable();
+            $table->timestampTz('end', 6)->nullable();
             $table->morphs('periodable');
             $table->timestamps();
         });

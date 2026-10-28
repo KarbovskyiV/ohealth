@@ -377,6 +377,50 @@ document.addEventListener('click', (event) => {
     updatePreloader();
 });
 
+function isBackgroundLivewireRequest(payload) {
+    try {
+        payload = typeof payload === 'string' ? JSON.parse(payload) : payload;
+    } catch {
+        return false;
+    }
+
+    if (!Array.isArray(payload?.components) || payload.components.length === 0) {
+        return false;
+    }
+
+    let hasBackgroundAction = false;
+    // Livewire can bundle a status poll with empty commits from nested components.
+    const onlyBackgroundActions = payload.components.every(({ snapshot, updates, calls }) => {
+        if (!Array.isArray(calls) || Object.keys(updates ?? {}).length !== 0) {
+            return false;
+        }
+        if (calls.length === 0) {
+            return true;
+        }
+
+        try {
+            const componentId = JSON.parse(snapshot).memo.id;
+            const root = document.querySelector(`[wire\\:id="${CSS.escape(componentId)}"]`);
+            const declaration = root?.hasAttribute('data-livewire-background-actions')
+                ? root
+                : root?.querySelector('[data-livewire-background-actions]');
+            const actions = (declaration?.getAttribute('data-livewire-background-actions') ?? '')
+                .split(/\s+/).filter(Boolean);
+
+            const background = calls.every(({ method, params }) => actions.includes(
+                method === '__dispatch' ? `event:${params?.[0]}` : method
+            ));
+            hasBackgroundAction ||= background;
+
+            return background;
+        } catch {
+            return false;
+        }
+    });
+
+    return onlyBackgroundActions && hasBackgroundAction;
+}
+
 function registerLivewireHooks() {
     // JSON.stringify($wire) (Boost browser logger, DevTools, Alpine clones) looks up
     // toJSON on the proxy and Livewire POSTs it as a real method call. Drop those calls.
@@ -388,7 +432,10 @@ function registerLivewireHooks() {
         commit.calls = commit.calls.filter((call) => call.method !== 'toJSON');
     });
 
-    Livewire.hook('request', ({ succeed, fail }) => {
+    Livewire.hook('request', ({ payload, succeed, fail }) => {
+        if (isBackgroundLivewireRequest(payload)) {
+            return;
+        }
         activeRequests++;
         updatePreloader();
 

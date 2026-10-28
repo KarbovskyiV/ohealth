@@ -70,7 +70,7 @@
                         <input
                             type="text"
                             class="input cursor-not-allowed bg-gray-50 font-medium text-gray-900 dark:bg-gray-700 dark:text-white"
-                            value="{{ $referralForm['code'] }}"
+                            value="{{ $referralForm['code_label'] ?? $referralForm['code'] }}"
                             disabled
                         />
                     </div>
@@ -95,36 +95,44 @@
                 <legend class="legend">Термін дії та Кількість</legend>
 
                 <div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-3">
-                    <div class="form-group group">
-                        <label class="label">Дата початку дії*</label>
-                        <div class="relative">
-                            <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
-                                @icon('calendar-month', 'w-4 h-4 text-gray-500')
+                    @foreach (['started_at' => 'start', 'ended_at' => 'end'] as $field => $period)
+                        <div class="grid grid-cols-1 gap-6">
+                            <div class="form-group">
+                                <div class="datepicker-wrapper" wire:key="care-plan-referral-date-{{ $field }}" x-data>
+                                    <input
+                                        type="text"
+                                        id="carePlanReferral-{{ $field }}"
+                                        wire:model.lazy="referralForm.{{ $field }}"
+                                        class="datepicker-input with-leading-icon input peer @error('referralForm.'.$field) input-error @enderror"
+                                        placeholder="{{ __('referrals.period_fields.date_placeholder') }}"
+                                        autocomplete="off"
+                                        datepicker-autohide
+                                        datepicker-format="{{ frontendDateFormat() }}"
+                                        datepicker-min-date="{{ today()->format(config('app.date_format')) }}"
+                                        x-on:change-date.camel="$el.dispatchEvent(new Event('change', { bubbles: true }))"
+                                    />
+                                    <label for="carePlanReferral-{{ $field }}" class="wrapped-label required">
+                                        {{ $period === 'start' ? __('forms.start_date') : __('forms.end_date') }}
+                                    </label>
+                                </div>
+                                <x-input-error for="referralForm.{{ $field }}" />
                             </div>
-                            <input
-                                type="text"
-                                class="input peer ps-10"
-                                placeholder="dd.mm.yyyy"
-                                wire:model.live="referralForm.started_at"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="form-group group">
-                        <label class="label">Дата закінчення дії*</label>
-                        <div class="relative">
-                            <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
-                                @icon('calendar-month', 'w-4 h-4 text-gray-500')
+                            <div class="form-group">
+                                <input
+                                    id="carePlanReferral-{{ $period }}Time"
+                                    type="text"
+                                    wire:model.blur="referralForm.{{ $period }}_time"
+                                    class="timepicker-uk input peer"
+                                    autocomplete="off"
+                                    placeholder="{{ __('referrals.period_fields.time_placeholder') }}"
+                                />
+                                <label for="carePlanReferral-{{ $period }}Time" class="label required">
+                                    {{ __('referrals.period_fields.'.$period.'_time') }}
+                                </label>
+                                <x-input-error for="referralForm.{{ $period }}_time" />
                             </div>
-                            <input
-                                type="text"
-                                class="input peer ps-10"
-                                placeholder="dd.mm.yyyy"
-                                wire:model.live="referralForm.ended_at"
-                            />
                         </div>
-                    </div>
-
+                    @endforeach
                     <div class="form-group group">
                         <label class="label">Кількість*</label>
                         <div class="flex gap-2">
@@ -274,7 +282,7 @@
                                 @endphp
                                 <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                                     <span class="badge badge-minor">{{ $reasonTypeLabel }}</span>
-                                    <span class="font-mono text-gray-800 dark:text-gray-200">{{ $info['uuid'] }}</span>
+                                    <span class="text-gray-800 dark:text-gray-200">{{ $info['name'] ?? __('care-plan.ground_name_unavailable') }}</span>
                                 </div>
                             @endforeach
                         </div>

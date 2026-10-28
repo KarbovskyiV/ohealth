@@ -121,4 +121,18 @@ class ServiceRequestMapperTest extends TestCase
             'legal_entity_uuid' => (string) Str::uuid(),
         ];
     }
+
+    public function test_legacy_resource_variants_and_flat_reference_types_are_normalized(): void
+    {
+        $mapper = new ServiceRequestMapper();
+        $legacy = ['id' => '10050000-0000-4000-8000-000000000001', 'category' => [['coding' => [['system' => 'synthetic/category', 'code' => 'counselling']]]], 'code' => ['coding' => [['system' => 'synthetic/service', 'code' => 'synthetic-service']]], 'quantityInteger' => 0, 'note' => [['text' => 'First'], ['text' => 'Second']]];
+        $form = $mapper->fromFhir($legacy);
+        $this->assertSame('counselling', $form['category']);
+        $this->assertSame('synthetic-service', $form['service_id']);
+        $this->assertSame(0, $form['quantity']);
+        $this->assertSame("First\nSecond", $form['note']);
+        $resource = $mapper->toFhir(['supportingInfo' => [['uuid' => 'observation-id', 'type' => 'Observation'], ['uuid' => 'report-id', 'type' => 'DiagnosticReport']]], ['resource' => $mapper->normalize($legacy)]);
+        $this->assertSame('observation', data_get($resource, 'supportingInfo.0.identifier.type.coding.0.code'));
+        $this->assertSame('diagnostic_report', data_get($resource, 'supportingInfo.1.identifier.type.coding.0.code'));
+    }
 }

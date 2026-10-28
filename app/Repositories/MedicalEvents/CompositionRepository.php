@@ -5,18 +5,74 @@ declare(strict_types=1);
 namespace App\Repositories\MedicalEvents;
 
 use App\Enums\Composition\CompositionStatus;
+use App\Exceptions\MedicalEvents\CompositionGuardException;
 use App\Enums\Composition\CompositionExtension;
 use App\Models\MedicalEvents\Sql\Composition;
 use App\Models\MedicalEvents\Sql\Identifier;
 use App\Models\Person\Person;
 use App\Models\Preperson;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class CompositionRepository extends BaseRepository
 {
+    private const array READ_RELATIONS = [
+        'typeConcept.coding', 'categoryConcept.coding',
+        'encounter.type.coding', 'episodeOfCare.type.coding',
+        'author.type.coding', 'custodian.type.coding', 'subject.type.coding',
+        'sectionFocus.type.coding', 'relatesToTarget.type.coding',
+        'eventPeriod', 'events.code.coding', 'events.period', 'integrations',
+    ];
+
     public function __construct(Composition $model)
     {
         parent::__construct($model);
+    }
+
+    public function findForPatient(Person|Preperson $patient, string $uuid): ?Composition
+    {
+        return $this->model->newQuery()->forPatient($patient)
+            ->with(self::READ_RELATIONS)->whereUuid($uuid)->first();
+    }
+
+    public function hasSignedIdentification(Person $patient, int $prepersonId): bool
+    {
+        return \App\Models\MergeRequest::whereMasterPersonId($patient->id)
+            ->whereMergePersonId($prepersonId)
+            ->whereStatus(\App\Enums\MergeRequest\Status::SIGNED->value)->exists();
+    }
+
+    public function paginateForPatient(Person|Preperson $patient, array $filters, int $perPage): LengthAwarePaginator
+    {
+        $query = $this->model->newQuery()->forPatient($patient)
+            ->with(self::READ_RELATIONS)->recentlyUpdatedFirst();
+
+        if (!empty($filters['type'])) {
+            $query->whereRelation('typeConcept.coding', 'code', $filters['type']);
+        }
+        if (!empty($filters['status'])) {
+            $query->whereStatus($filters['status']);
+        }
+        if (!empty($filters['encounterUuid'])) {
+            $query->forEncounter($filters['encounterUuid']);
+        }
+        if (!empty($filters['episodeUuid'])) {
+            $query->whereHas('episodeOfCare', fn (Builder $episode) => $episode->whereValue($filters['episodeUuid']));
+        }
+        if (!empty($filters['focusUuid'])) {
+            $query->forFocus($filters['focusUuid']);
+        }
+
+        return $query->paginate($perPage);
+    }
+
+    public function assertFhirStorageReady(): void
+    {
+        $this->assertStorageSchema([
+            'compositions' => ['date'],
+            'composition_events' => ['composition_id', 'code_id', 'position'],
+            'composition_operations' => ['remote_job_id', 'ehealth_job_id', 'operation'],
+        ], 'compositions.errors.storage_update_required', CompositionGuardException::class);
     }
 
     public function store(array $details, Person|Preperson $patient, ?string $episodeUuid = null): ?Composition
@@ -26,9 +82,12 @@ class CompositionRepository extends BaseRepository
             return null;
         }
 
-        return DB::transaction(function () use ($details, $patient, $episodeUuid, $uuid): Composition {
-            $composition = $this->model->newQuery()->firstOrNew(['uuid' => $uuid]);
+        return $this->storageTransaction(function () use ($details, $patient, $episodeUuid, $uuid): Composition {
+            $composition = $this->model->newQuery()->with(['typeConcept.coding', 'categoryConcept.coding'])->firstOrNew(['uuid' => $uuid]);
             [$ownerColumn, $ownerId] = $this->resolveOwner($patient);
+            if ($composition->exists && ((int) $composition->getAttribute($ownerColumn) !== (int) $ownerId)) {
+                throw new \InvalidArgumentException('A Composition cannot be reassigned to another patient.');
+            }
 
             $attributes = [
                 $ownerColumn => $ownerId,
@@ -48,7 +107,7 @@ class CompositionRepository extends BaseRepository
                 $extensions = collect($details['extension'] ?? [])->keyBy('valueCode');
                 foreach (CompositionExtension::cases() as $field) {
                     $value = data_get($extensions->get($field->value), $field->valueKey());
-                    $attributes[$field->column()] = $field->valueKey() === 'valueBoolean' ? (bool) $value : $value;
+                    $attributes[$field->column()] = $field->valueKey() === 'valueBoolean' && $value !== null ? (bool) $value : $value;
                 }
             }
 
@@ -56,11 +115,8 @@ class CompositionRepository extends BaseRepository
                 if (isset($details[$field])) {
                     $concept = $details[$field];
                     $concept['coding'][0]['system'] ??= $field === 'type' ? 'COMPOSITION_TYPES' : 'COMPOSITION_CATEGORIES';
-                    $attributes[$field . '_id'] = $this->syncCodeableConcept(
-                        $composition->exists ? $composition : null,
-                        $concept,
-                        $field . 'Concept'
-                    )?->id;
+                    $relation = $field . 'Concept';
+                    $attributes[$field . '_id'] = $this->syncCodeableConcept($composition->exists ? $composition : null, $concept, $relation)->id;
                 }
             }
 
@@ -80,17 +136,41 @@ class CompositionRepository extends BaseRepository
 
             $episodeUuid ??= data_get($details, 'episodeOfCare.value');
             if ($episodeUuid) {
-                $attributes['episode_of_care_id'] = $this->storeIdentifier(['value' => $episodeUuid], $composition->episodeOfCareId);
+                $episodeReference = $details['episodeOfCare'] ?? ['value' => $episodeUuid];
+                $attributes['episode_of_care_id'] = $this->storeIdentifier($episodeReference, $composition->episodeOfCareId);
             }
             if (array_key_exists('relatesTo', $details)) {
                 $attributes['relates_to_code'] = data_get($details, 'relatesTo.code');
                 $attributes['relates_to_target_id'] = $this->storeIdentifier(data_get($details, 'relatesTo.targetIdentifier'), $composition->relatesToTargetId);
             }
 
-            $composition->fill($attributes)->save();
-            $period = data_get($details, 'event.0.period');
-            if (is_array($period)) {
-                Repository::period()->sync($composition, $period, 'eventPeriod');
+            // The shared presentation cast truncates fractions; this owned write preserves UTC precision.
+            unset($attributes['date']);
+            $composition->fill($attributes);
+            if (array_key_exists('date', $details)) {
+                $raw = $composition->getAttributes();
+                $raw['date'] = isset($details['date']) ? \Carbon\CarbonImmutable::parse($details['date'], 'UTC')->utc()->format('Y-m-d H:i:s.u') : null;
+                $composition->setRawAttributes($raw);
+            }
+            $composition->save();
+            if (array_key_exists('event', $details)) {
+                $existing = $composition->events()->with('code.coding')->get();
+                $ids = [];
+                foreach (array_values($details['event'] ?? []) as $position => $data) {
+                    $event = $existing->get($position) ?? $composition->events()->make();
+                    $event->position = $position;
+                    $event->codeId = isset($data['code']) ? $this->syncCodeableConcept($event->exists ? $event : null, $data['code'], 'code')->id : null;
+                    $event->save();
+                    if ($position !== 0) {
+                        Repository::period()->sync($event, $data['period'] ?? null);
+                    }
+                    $ids[] = $event->id;
+                }
+                foreach ($existing->whereNotIn('id', $ids) as $event) {
+                    $event->period()->delete();
+                    $event->delete();
+                }
+                Repository::period()->sync($composition, data_get($details, 'event.0.period'), 'eventPeriod');
             }
 
             return $composition->refresh();
@@ -99,7 +179,7 @@ class CompositionRepository extends BaseRepository
 
     public function storeIntegration(Composition $composition, array $items): void
     {
-        DB::transaction(function () use ($composition, $items): void {
+        $this->storageTransaction(function () use ($composition, $items): void {
             $composition->newQuery()->whereKey($composition->id)->lockForUpdate()->firstOrFail();
             $composition->integrations()->delete();
             foreach ($items as $item) {
@@ -125,26 +205,8 @@ class CompositionRepository extends BaseRepository
             return null;
         }
 
-        if ($existingId !== null) {
-            $existing = Identifier::find($existingId);
-            if ($existing?->value === $value) {
-                if (is_array(data_get($reference, 'type'))) {
-                    Repository::codeableConcept()->attach($existing, ['identifier' => $reference]);
-                }
+        $existing = $existingId === null ? null : Identifier::find($existingId);
 
-                return $existingId;
-            }
-        }
-
-        $identifier = Repository::identifier()->store($value);
-        $type = data_get($reference, 'type');
-
-        if (is_array($type)) {
-            Repository::codeableConcept()->attach($identifier, [
-                'identifier' => ['type' => $type],
-            ]);
-        }
-
-        return $identifier->id;
+        return Repository::identifier()->update($existing ?? Repository::identifier()->store($value), ['identifier' => $reference])->id;
     }
 }

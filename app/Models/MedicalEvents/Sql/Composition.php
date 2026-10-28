@@ -28,6 +28,7 @@ class Composition extends Model
 
     protected $fillable = [
         'uuid',
+
         'person_id',
         'preperson_id',
         'status',
@@ -68,6 +69,7 @@ class Composition extends Model
     {
         return [
             'status' => CompositionStatus::class,
+
             'date' => EHealthTimestampCast::class,
             'is_accident' => 'boolean',
             'is_intoxicated' => 'boolean',
@@ -281,13 +283,19 @@ class Composition extends Model
     }
 
     /** Local presentation only. Signing always uses a fresh eHealth response. */
+    public function events(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CompositionEvent::class)->orderBy('position');
+    }
+
     public function toDetail(): array
     {
-        $this->loadMissing(['typeConcept.coding', 'categoryConcept.coding']);
+        $this->loadMissing(['typeConcept.coding', 'categoryConcept.coding', 'sectionFocus.type.coding',
+            'encounter.type.coding', 'episodeOfCare.type.coding', 'author.type.coding', 'custodian.type.coding', 'subject.type.coding', 'relatesToTarget.type.coding', 'eventPeriod', 'events.code.coding', 'events.period']);
         $extensions = [];
         foreach (CompositionExtension::cases() as $field) {
             $value = $this->getAttribute($field->column());
-            if ($value === null || ($field->valueKey() === 'valueBoolean' && $value === false)) {
+            if ($value === null) {
                 continue;
             }
             $extensions[] = [
@@ -295,25 +303,39 @@ class Composition extends Model
                 $field->valueKey() => $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : $value,
             ];
         }
+        $identifier = static fn (?Identifier $value): ?array => $value === null ? null
+            : \App\Repositories\MedicalEvents\Repository::identifier()->toReference($value)['identifier'];
         $detail = [
             'identifier' => ['value' => $this->uuid],
             'status' => $this->status->value,
             'title' => $this->title,
             'date' => $this->isoDate($this->getRawOriginal('date')),
-            'type' => $this->typeConcept?->toArray(),
-            'category' => $this->categoryConcept?->toArray(),
-            'section' => ['focus' => $this->sectionFocus?->identifier],
-            'event' => [['period' => [
-                'start' => $this->isoDate($this->eventPeriod?->getRawOriginal('start')),
-                'end' => $this->isoDate($this->eventPeriod?->getRawOriginal('end')),
-            ]]],
+            'type' => $this->typeConcept === null ? null : \App\Repositories\MedicalEvents\Repository::codeableConcept()->toResource($this->typeConcept),
+            'category' => $this->categoryConcept === null ? null : \App\Repositories\MedicalEvents\Repository::codeableConcept()->toResource($this->categoryConcept),
+            'section' => ['focus' => $identifier($this->sectionFocus)],
+            'event' => $this->eventPeriod === null ? [] : [['period' => \App\Repositories\MedicalEvents\Repository::period()->toResource($this->eventPeriod)]],
             'extension' => $extensions,
         ];
-        foreach (['encounter', 'author', 'custodian', 'subject'] as $reference) {
-            $detail[$reference] = $this->{$reference}?->identifier;
+        $events = $this->events->map(function (CompositionEvent $event): array {
+            $result = [];
+            if ($event->code !== null) {
+                $result['code'] = \App\Repositories\MedicalEvents\Repository::codeableConcept()->toResource($event->code);
+            }
+            $period = $event->position === 0 ? $this->eventPeriod : $event->period;
+            if ($period !== null) {
+                $result['period'] = \App\Repositories\MedicalEvents\Repository::period()->toResource($period);
+            }
+
+            return $result;
+        })->all();
+        if ($events !== []) {
+            $detail['event'] = $events;
+        }
+        foreach (['encounter', 'episodeOfCare', 'author', 'custodian', 'subject'] as $reference) {
+            $detail[$reference] = $identifier($this->{$reference});
         }
         if ($this->relatesToCode !== null) {
-            $detail['relatesTo'] = ['code' => $this->relatesToCode, 'targetIdentifier' => $this->relatesToTarget?->identifier];
+            $detail['relatesTo'] = ['code' => $this->relatesToCode, 'targetIdentifier' => $identifier($this->relatesToTarget)];
         }
 
         return $detail;
@@ -321,7 +343,7 @@ class Composition extends Model
 
     private function isoDate(?string $value): ?string
     {
-        return $value ? CarbonImmutable::parse($value, 'UTC')->toIso8601ZuluString() : null;
+        return $value ? rtrim(rtrim(CarbonImmutable::parse($value, 'UTC')->utc()->format('Y-m-d\TH:i:s.u'), '0'), '.').'Z' : null;
     }
 
     private function erlnIntegration(): ?CompositionIntegration

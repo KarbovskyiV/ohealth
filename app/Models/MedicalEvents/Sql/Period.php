@@ -20,7 +20,11 @@ class Period extends Model
         'periodable_type',
         'periodable_id',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'start_precision',
+        'end_precision',
+        'start_timezone',
+        'end_timezone'
     ];
 
     protected $casts = [

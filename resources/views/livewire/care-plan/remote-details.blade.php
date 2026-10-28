@@ -1,6 +1,6 @@
 <fieldset class="fieldset !mb-6 !max-w-full">
     <legend class="legend">{{ __('device-requests.plan.remote_details') }}</legend>
-    <button type="button" wire:click="refreshDisplayedDetails" class="button-minor">
+    <button type="button" wire:click="sync" wire:loading.attr="disabled" class="button-minor">
         {{ __('device-requests.plan.refresh') }}
     </button>
     <dl class="mt-4 grid gap-4 md:grid-cols-2">
@@ -8,7 +8,9 @@
             <div>
                 <dt class="font-semibold">{{ __('device-requests.plan.'.$field) }}</dt>
                 <dd class="break-words">
-                    @include('livewire.device-request.record-value', ['value' => $record[$field] ?? '—'])
+                    @foreach (is_array($record[$field] ?? null) ? $record[$field] : [$record[$field] ?? '—'] as $label)
+                        <div>{{ $label }}</div>
+                    @endforeach
                 </dd>
             </div>
         @endforeach

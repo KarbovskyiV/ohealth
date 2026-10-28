@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
 
 class CarePlanApprovalsTest extends TestCase
 {
+    use \Tests\Concerns\CreatesFhirCarePlans;
+
     use DatabaseTransactions;
 
     protected function migrateDatabases()
@@ -86,6 +88,12 @@ class CarePlanApprovalsTest extends TestCase
             'party_id' => $party->id,
         ]);
 
+        \Illuminate\Support\Facades\Cache::forever(\App\Services\Dictionary\Dictionaries\BasicDictionary::KEY, [
+            ['name' => 'POSITION', 'values' => [['code' => 'P8', 'description' => 'Лікар-педіатр']]],
+        ]);
+        \Illuminate\Support\Facades\Cache::forever(\App\Services\Dictionary\Dictionaries\BasicDictionary::KEY.':fresh', true);
+        $employeeActive->update(['position' => 'P8']);
+
         // Employee belonging to other legal entity
         $employeeOther = Employee::create([
             'uuid' => (string) Str::uuid(),
@@ -111,14 +119,14 @@ class CarePlanApprovalsTest extends TestCase
         ]);
 
         // Care plan of the current legal entity (another LE's employees still exist in DB).
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $person->id,
             'author_id' => $employeeActive->id,
             'legal_entity_id' => $activeLegalEntity->id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'External Care Plan',
-            'status' => 'draft',
+            'status' => 'new',
         ]);
 
         // Mock dependencies for Livewire mount
@@ -126,9 +134,9 @@ class CarePlanApprovalsTest extends TestCase
         $this->instance(\App\Classes\eHealth\Api\Person::class, $mockPatientApi);
 
         $authResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $authResponse->shouldReceive('getData')->andReturn([
+        $authResponse->shouldReceive('getData', 'validate')->andReturn([
             [
-                'id' => 'otp-uuid',
+                'id' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
                 'type' => 'OTP',
                 'phone_number' => '+380991112233'
             ]
@@ -137,12 +145,13 @@ class CarePlanApprovalsTest extends TestCase
         $mockPatientApi->shouldReceive('getAuthMethods')->andReturn($authResponse);
 
         $mockApprovalApi = Mockery::mock(\App\Classes\eHealth\Api\Approval::class);
+        $mockApprovalApi->shouldReceive('withToken')->andReturnSelf();
         $this->instance(\App\Classes\eHealth\Api\Approval::class, $mockApprovalApi);
 
         $approvalsResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $approvalsResponse->shouldReceive('getData')->andReturn([]);
+        $approvalsResponse->shouldReceive('getData', 'validate')->andReturn([]);
         $approvalsResponse->shouldReceive('getStatusCode')->andReturn(200);
-        $mockApprovalApi->shouldReceive('getMany')->andReturn($approvalsResponse);
+        $mockApprovalApi->shouldReceive('getPatientApprovals')->andReturn($approvalsResponse);
 
         $this->actingAs($user);
         $this->grantMedicalEventAbilities($user);
@@ -157,6 +166,8 @@ class CarePlanApprovalsTest extends TestCase
 
         $this->assertCount(1, $employees);
         $this->assertEquals($employeeActive->uuid, $employees[0]['uuid']);
+        $this->assertSame($employeeActive->fullName.' (Лікар-педіатр)', $employees[0]['label']);
+        $component->assertSee('Лікар-педіатр')->assertDontSee('(DOCTOR)')->assertDontSee('(Approvals)');
     }
 
     public function test_create_approval_uses_write_access_level_for_same_legal_entity(): void
@@ -213,14 +224,14 @@ class CarePlanApprovalsTest extends TestCase
         ]);
 
         // Care plan owned by active legal entity
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $person->id,
             'author_id' => $employeeActive->id,
             'legal_entity_id' => $activeLegalEntity->id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Internal Care Plan',
-            'status' => 'draft',
+            'status' => 'new',
         ]);
 
         // Mock dependencies
@@ -228,9 +239,9 @@ class CarePlanApprovalsTest extends TestCase
         $this->instance(\App\Classes\eHealth\Api\Person::class, $mockPatientApi);
 
         $authResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $authResponse->shouldReceive('getData')->andReturn([
+        $authResponse->shouldReceive('getData', 'validate')->andReturn([
             [
-                'id' => 'otp-uuid',
+                'id' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
                 'type' => 'OTP',
                 'phone_number' => '+380991112233'
             ]
@@ -239,12 +250,15 @@ class CarePlanApprovalsTest extends TestCase
         $mockPatientApi->shouldReceive('getAuthMethods')->andReturn($authResponse);
 
         $mockApprovalApi = Mockery::mock(\App\Classes\eHealth\Api\Approval::class);
+        $mockApprovalApi->shouldReceive('withToken')->andReturnSelf();
         $this->instance(\App\Classes\eHealth\Api\Approval::class, $mockApprovalApi);
 
         $approvalsResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $approvalsResponse->shouldReceive('getData')->andReturn([]);
+        $approvalsResponse->shouldReceive('getData', 'validate')->andReturn([]);
         $approvalsResponse->shouldReceive('getStatusCode')->andReturn(200);
-        $mockApprovalApi->shouldReceive('getMany')->andReturn($approvalsResponse);
+        $mockApprovalApi->shouldReceive('getPatientApprovals')->andReturn($approvalsResponse);
+
+        session()->put(config('ehealth.api.oauth.bearer_token'), 'synthetic-token');
 
         // Expected payload with access_level => write
         $expectedPayload = [
@@ -267,11 +281,12 @@ class CarePlanApprovalsTest extends TestCase
                 ],
             ],
             'access_level' => 'write',
-            'authorize_with' => 'otp-uuid',
+            'authorize_with' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         ];
 
         $approvalCreateResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $approvalCreateResponse->shouldReceive('getData')->andReturn(['id' => (string) Str::uuid(), 'status' => 'NEW']);
+        $approvalCreateResponse->shouldReceive('getData', 'validate')->andReturn(['id' => (string) Str::uuid(), 'status' => 'new', 'is_verified' => false, 'authentication_method_current' => ['type' => 'OTP']]);
+        $approvalCreateResponse->shouldReceive('successful')->andReturnTrue();
         $approvalCreateResponse->shouldReceive('getStatusCode')->andReturn(201);
 
         $mockApprovalApi->shouldReceive('createApproval')
@@ -352,14 +367,14 @@ class CarePlanApprovalsTest extends TestCase
         ]);
 
         // Care plan owned by other legal entity
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $person->id,
             'author_id' => $employeeActive->id,
             'legal_entity_id' => $otherLegalEntity->id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'External Care Plan',
-            'status' => 'draft',
+            'status' => 'new',
         ]);
 
         $this->actingAs($user);
@@ -426,7 +441,7 @@ class CarePlanApprovalsTest extends TestCase
             'process_disclosure_data_consent' => true,
         ]);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $person->id,
             'author_id' => $employee->id,
@@ -456,7 +471,7 @@ class CarePlanApprovalsTest extends TestCase
         $mockPatientApi = Mockery::mock(\App\Classes\eHealth\Api\Person::class);
         $this->instance(\App\Classes\eHealth\Api\Person::class, $mockPatientApi);
         $authResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $authResponse->shouldReceive('getData')->andReturn([]);
+        $authResponse->shouldReceive('getData', 'validate')->andReturn([]);
         $mockPatientApi->shouldReceive('getAuthMethods')->andReturn($authResponse);
 
         $this->actingAs($user);

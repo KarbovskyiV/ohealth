@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Person\Records;
 
+use App\Livewire\Concerns\SubmitsClinicalOperations;
+use App\Classes\eHealth\EHealth as SubmissionApi;
 use App\Core\Arr;
 use App\Core\BaseForm as Form;
 use App\Enums\Person\ServiceRequestStatus;
@@ -16,7 +18,6 @@ use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use App\Repositories\MedicalEvents\DeviceRequestRequestRepository;
 use App\Repositories\MedicalEvents\ServiceRequestRequestRepository;
-use App\Services\MedicalEvents\Mappers\DeviceRequestMapper;
 use App\Services\MedicalEvents\Mappers\ServiceRequestMapper;
 use App\Services\MedicalEvents\ReferralRequestLifecycleService;
 use Illuminate\Contracts\View\View;
@@ -28,6 +29,9 @@ use Livewire\WithFileUploads;
 
 class PatientReferrals extends BasePatientComponent
 {
+    use SubmitsClinicalOperations;
+    use \App\Livewire\Concerns\ReadsClinicalSnapshots;
+
     use WithFileUploads;
 
     public Form $form;
@@ -56,6 +60,9 @@ class PatientReferrals extends BasePatientComponent
     public string $requestKindToSign = 'service_request';
 
     public string $referralExplanatoryLetter = '';
+    public string $referralStatusReason = '';
+    #[\Livewire\Attributes\Locked]
+    public array $referralStatusReasons = [];
 
     protected function initializeComponent(): void
     {
@@ -127,10 +134,8 @@ class PatientReferrals extends BasePatientComponent
             return;
         }
         $this->requestIdToSign = $uuid;
-        $this->requestKindToSign = $kind === 'device_request' ? 'device_request' : 'service_request';
-        $this->actionType = $this->requestKindToSign === 'device_request'
-            ? 'sign_devicerequest'
-            : 'sign_referral';
+        $this->requestKindToSign = 'service_request';
+        $this->actionType = 'sign_referral';
         $this->showSignatureModal = true;
     }
 
@@ -165,6 +170,7 @@ class PatientReferrals extends BasePatientComponent
         $this->requestIdToSign = $uuid;
         $this->requestKindToSign = 'service_request';
         $this->referralExplanatoryLetter = '';
+        $this->loadReferralStatusReasons('recall');
         $this->actionType = 'recall_referral';
         $this->showSignatureModal = true;
     }
@@ -178,7 +184,8 @@ class PatientReferrals extends BasePatientComponent
             return;
         }
         $this->requestIdToSign = $uuid;
-        $this->requestKindToSign = $kind === 'device_request' ? 'device_request' : 'service_request';
+        $this->requestKindToSign = 'service_request';
+        $this->loadReferralStatusReasons('cancel');
         $this->actionType = 'cancel_referral';
         $this->showSignatureModal = true;
     }
@@ -216,7 +223,10 @@ class PatientReferrals extends BasePatientComponent
         }
 
         try {
-            $payload = ['explanatory_letter' => $letter];
+            $this->validate(['referralStatusReason' => ['required', 'string']]);
+            $snapshot = $this->fetchServiceRequestSnapshot($this->uuid, $record->uuid);
+            $record = \App\Repositories\MedicalEvents\Repository::serviceRequest()->storeResource((new \App\Services\MedicalEvents\Mappers\ServiceRequestMapper())->normalize($snapshot), (int) $this->personId, $record->employeeId, $record->divisionId);
+            $payload = \App\Livewire\Referral\Forms\ServiceRequestForm::buildStatusContent($snapshot, $this->referralStatusReason, $letter, 'eHealth/service_request_recall_reasons');
             $signedContent = signatureService()->signData(
                 Arr::toSnakeCase($payload),
                 $validated['password'],
@@ -225,11 +235,10 @@ class PatientReferrals extends BasePatientComponent
                 Auth::user()->party->taxId
             );
 
-            $finalResponse = app(ReferralRequestLifecycleService::class)->submitSignedRecall($this->uuid, $record->uuid, [
-                'signed_data' => $signedContent,
-                'signed_data_encoding' => 'base64',
-                'explanatory_letter' => $letter,
-            ]);
+            $finalResponse = $this->submitClinicalOperation($record, ['status' => 'recalled', 'statusReason' => $payload['status_reason'], 'explanatoryLetter' => $letter], fn () => SubmissionApi::serviceRequest()->recall($this->uuid, $record->uuid, ['signed_data' => $signedContent, 'signed_data_encoding' => 'base64']), 'service_request:recall');
+            if ($finalResponse === null) {
+                return;
+            }
 
             $this->persistReferralStatusFromJob($finalResponse, $record, ServiceRequestStatus::RECALLED);
             $this->showSignatureModal = false;
@@ -272,10 +281,12 @@ class PatientReferrals extends BasePatientComponent
 
             return;
         }
-        $kind = $record instanceof ServiceRequestRequest ? 'service_request' : 'device_request';
 
         try {
-            $payload = ['status_reason' => 'entered-in-error'];
+            $this->validate(['referralStatusReason' => ['required', 'string'], 'referralExplanatoryLetter' => ['required', 'string']]);
+            $snapshot = $this->fetchServiceRequestSnapshot($this->uuid, $record->uuid);
+            $record = \App\Repositories\MedicalEvents\Repository::serviceRequest()->storeResource((new \App\Services\MedicalEvents\Mappers\ServiceRequestMapper())->normalize($snapshot), (int) $this->personId, $record->employeeId, $record->divisionId);
+            $payload = \App\Livewire\Referral\Forms\ServiceRequestForm::buildStatusContent($snapshot, $this->referralStatusReason, trim($this->referralExplanatoryLetter), 'eHealth/service_request_cancel_reasons');
             $signedContent = signatureService()->signData(
                 Arr::toSnakeCase($payload),
                 $validated['password'],
@@ -284,16 +295,10 @@ class PatientReferrals extends BasePatientComponent
                 Auth::user()->party->taxId
             );
 
-            $finalResponse = app(ReferralRequestLifecycleService::class)->submitSignedCancel(
-                $kind,
-                $this->uuid,
-                $record->uuid,
-                [
-                    'signed_data' => $signedContent,
-                    'signed_data_encoding' => 'base64',
-                    'status_reason' => $payload['status_reason'],
-                ]
-            );
+            $finalResponse = $this->submitClinicalOperation($record, ['status' => 'entered-in-error', 'statusReason' => $payload['status_reason'], 'explanatoryLetter' => trim($this->referralExplanatoryLetter)], fn () => SubmissionApi::serviceRequest()->cancel($this->uuid, $record->uuid, ['signed_data' => $signedContent, 'signed_data_encoding' => 'base64']), 'service_request:cancel');
+            if ($finalResponse === null) {
+                return;
+            }
 
             $this->persistReferralStatusFromJob($finalResponse, $record, ServiceRequestStatus::ENTERED_IN_ERROR);
             $this->showSignatureModal = false;
@@ -362,10 +367,7 @@ class PatientReferrals extends BasePatientComponent
                 'legal_entity_uuid' => $employeeContext['legal_entity_uuid'],
             ];
 
-            $kind = $this->requestKindToSign === 'device_request' ? 'device_request' : 'service_request';
-            $mapper = $kind === 'service_request'
-                ? new ServiceRequestMapper()
-                : new DeviceRequestMapper();
+            $mapper = new ServiceRequestMapper();
             $signPayload = $mapper->toCreateSignedContent(
                 $dbData,
                 $uuids,
@@ -381,12 +383,17 @@ class PatientReferrals extends BasePatientComponent
                 Auth::user()->party->taxId
             );
 
-            $finalResponse = $lifecycle->submitSignedCreate($kind, $this->uuid, $signedContent);
+            $resource = $mapper->toFhir($dbData, $uuids + ['carePlanUuid' => $carePlan?->uuid]);
+            $requestRecord = \App\Repositories\MedicalEvents\Repository::serviceRequest()->storeResource($resource, (int) $this->personId, $requestRecord->employeeId, $requestRecord->divisionId);
+            $finalResponse = $this->submitClinicalOperation($requestRecord, ['status' => 'active'], fn () => SubmissionApi::serviceRequest()->createSigned($this->uuid, ['signed_data' => $signedContent, 'signed_data_encoding' => 'base64']));
+            if ($finalResponse === null) {
+                return;
+            }
 
             $dbData = $lifecycle->persistAfterSignedCreate(
                 $dbData,
                 $finalResponse,
-                $kind,
+                'service_request',
                 (int) $this->personId
             );
 
@@ -507,5 +514,18 @@ class PatientReferrals extends BasePatientComponent
 
         return app(\App\Services\MedicalEvents\MedicalRequestOwnership::class)
             ->referralForPerson($uuid, $this->personId);
+    }
+
+    protected function loadReferralStatusReasons(string $operation): void
+    {
+        $this->referralStatusReason = '';
+        $this->referralExplanatoryLetter = '';
+        try {
+            $this->referralStatusReasons = dictionary()->basics()->byName('eHealth/service_request_'.$operation.'_reasons')->asCodeDescription()->all();
+        } catch (\Throwable $exception) {
+            $this->referralStatusReasons = [];
+            Log::warning('Referral status reasons could not be loaded', ['exceptionType' => $exception::class]);
+            Session::flash('error', __('Не вдалося завантажити довідник причин зміни направлення.'));
+        }
     }
 }

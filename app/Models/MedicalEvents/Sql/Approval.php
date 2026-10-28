@@ -12,7 +12,6 @@ use App\Models\LegalEntity;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Models\User;
-use App\Services\Dictionary\DictionaryManager;
 use Eloquence\Behaviours\HasCamelCasing;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -175,6 +174,13 @@ class Approval extends Model
             ->where('expires_at', '>', now());
     }
 
+    /**
+     * Filter verified approvals.
+     *
+     * Read the flag with getAttribute('is_verified'): the camelCase key isVerified
+     * collides with this scope during Eloquent attribute resolution.
+     * Keep the shared scope name and use snake_case for this attribute read.
+     */
     #[Scope]
     protected function isVerified(Builder $query): Builder
     {
@@ -399,64 +405,37 @@ class Approval extends Model
         if (!$uuid) {
             return [
                 'name' => '-',
-                'description' => $this->granted_to_type ?? '',
+                'description' => __('approval.recipient_types.'.(in_array($this->grantedToType, ['employee', 'legal_entity'], true) ? $this->grantedToType : 'unknown')),
             ];
         }
 
-        if ($this->granted_to_type === 'employee') {
+        if ($this->grantedToType === 'employee') {
             $employee = Employee::where('uuid', $uuid)->with('party', 'specialities')->first();
 
             if ($employee) {
-                $specNames = [];
-                $basics = null;
-
-                try {
-                    $basics = app(DictionaryManager::class)->basics();
-                    $specialityDict = $basics->byName('eHealth/SPECIALITY_TYPE')?->asCodeDescription()?->toArray()
-                        ?? $basics->byName('SPECIALITY_TYPE')?->asCodeDescription()?->toArray()
-                        ?? [];
-                } catch (\Exception) {
-                    $specialityDict = [];
-                }
-
-                foreach ($employee->specialities as $spec) {
-                    $specNames[] = $specialityDict[$spec->speciality] ?? $spec->speciality;
-                }
-
-                $specialization = implode(', ', array_unique(array_filter($specNames)));
-
-                if (empty($specialization) && $employee->position) {
-                    try {
-                        $positionDict = $basics?->byName('eHealth/POSITION')?->asCodeDescription()?->toArray()
-                            ?? $basics?->byName('POSITION')?->asCodeDescription()?->toArray()
-                            ?? [];
-                        $specialization = $positionDict[$employee->position] ?? $employee->position;
-                    } catch (\Exception) {
-                        $specialization = $employee->position;
-                    }
-                }
+                $specialization = implode(', ', $employee->specialityLabels());
 
                 return [
                     'name' => $employee->fullName,
-                    'description' => 'Співробітник'.($specialization ? ' ('.$specialization.')' : ''),
+                    'description' => $employee->positionLabel().($specialization ? ' ('.$specialization.')' : ''),
                 ];
             }
         }
 
-        if ($this->granted_to_type === 'legal_entity') {
+        if ($this->grantedToType === 'legal_entity') {
             $legalEntity = \App\Models\LegalEntity::where('uuid', $uuid)->first();
 
             if ($legalEntity) {
                 return [
                     'name' => $legalEntity->name,
-                    'description' => 'Заклад охорони здоров\'я (ЄДРПОУ: '.($legalEntity->edrpou ?? '-').')',
+                    'description' => __('approval.legal_entity_description', ['edrpou' => $legalEntity->edrpou ?? '-']),
                 ];
             }
         }
 
         return [
             'name' => $uuid,
-            'description' => $this->granted_to_type ?? '',
+            'description' => __('approval.recipient_types.'.(in_array($this->grantedToType, ['employee', 'legal_entity'], true) ? $this->grantedToType : 'unknown')),
         ];
     }
 }

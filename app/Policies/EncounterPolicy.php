@@ -158,4 +158,27 @@ class EncounterPolicy
             )
             ->exists();
     }
+
+    public function createMedicationRequest(User $user, Encounter $encounter, Person $patient, int|\App\Models\LegalEntity $legalEntityId): Response
+    {
+        $legalEntityId = $legalEntityId instanceof \App\Models\LegalEntity ? $legalEntityId->id : $legalEntityId;
+
+        return $this->standaloneDocumentResponse($user, $encounter, $patient, $legalEntityId, 'medication_request_request:write');
+    }
+
+    public function createServiceRequest(User $user, Encounter $encounter, Person $patient, int|\App\Models\LegalEntity $legalEntityId): Response
+    {
+        $legalEntityId = $legalEntityId instanceof \App\Models\LegalEntity ? $legalEntityId->id : $legalEntityId;
+
+        return $this->standaloneDocumentResponse($user, $encounter, $patient, $legalEntityId, 'service_request:write');
+    }
+
+    private function standaloneDocumentResponse(User $user, Encounter $encounter, Person $patient, int $legalEntityId, string $permission): Response
+    {
+        if ($legalEntityId !== (int) legalEntity()->id || $encounter->status !== EncounterStatus::FINISHED || !$user->can($permission)) {
+            return Response::denyWithStatus(404);
+        }
+
+        return $this->view($user, $encounter, $patient);
+    }
 }

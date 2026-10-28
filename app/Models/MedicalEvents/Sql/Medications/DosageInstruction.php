@@ -19,6 +19,10 @@ class DosageInstruction extends Model
         'medication_request_request_id',
         'medication_request_id',
         'sequence',
+        'position',
+        'additional_instruction',
+        'as_needed_codeable_concept',
+        'site',
         'text',
         'additional_instruction_id',
         'patient_instruction',
@@ -31,6 +35,13 @@ class DosageInstruction extends Model
         'max_dose_per_period',
         'max_dose_per_administration',
         'max_dose_per_lifetime'
+    ];
+
+    protected $casts = [
+        'position' => 'integer', 'as_needed_boolean' => 'boolean',
+        'timing' => 'array', 'additional_instruction' => 'array', 'as_needed_codeable_concept' => 'array',
+        'site' => 'array', 'route' => 'array', 'method' => 'array', 'dose_and_rate' => 'array',
+        'max_dose_per_period' => 'array', 'max_dose_per_administration' => 'array', 'max_dose_per_lifetime' => 'array',
     ];
 
     public function medicationRequestRequest(): BelongsTo

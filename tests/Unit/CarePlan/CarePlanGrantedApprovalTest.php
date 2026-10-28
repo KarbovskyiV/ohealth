@@ -134,6 +134,8 @@ class CarePlanGrantedApprovalTest extends TestCase
             'granted_to_type' => 'employee',
             'status' => $status,
             'is_verified' => true,
+            'access_level' => 'write',
+            'expires_at' => now()->addYear(),
         ]);
     }
 }

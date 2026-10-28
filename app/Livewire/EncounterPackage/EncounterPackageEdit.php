@@ -574,7 +574,12 @@ class EncounterPackageEdit extends EncounterPackageComponent
                 throw new RuntimeException(__('Направлення не було підтверджено перед підписанням взаємодії.'));
             }
 
-            $service->completeReferral($this->referralToRedeemId, $this->encounterUuid);
+            $response = $service->completeReferral($this->referralToRedeemId, $this->encounterUuid);
+            if ($response['submissionPending'] ?? false) {
+                Session::flash('info', __('care-plan.submission_pending'));
+
+                return;
+            }
             Session::flash('success', __('encounters.messages.referral_redeemed'));
         } catch (Exception $exception) {
             Session::flash('error', __('encounters.messages.referral_redeem_error', ['message' => $exception->getMessage()]));

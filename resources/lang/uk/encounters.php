@@ -3,6 +3,12 @@
 declare(strict_types=1);
 
 return [
+    'prescription_creation_unavailable' => 'Електронний рецепт можна створити лише для завершеної взаємодії і за наявності права на виписування.',
+    'referral_creation_unavailable' => 'Направлення можна створити лише для завершеної взаємодії і за наявності права на виписування.',
+    'referral_destination_from_discharge' => 'Заклад підставлено з даних госпіталізації у завершеній взаємодії.',
+    'referral_recipient_speciality_help' => 'Оберіть потрібну спеціальність лікаря, який має надати послугу за направленням.',
+    'referral_no_eligible_divisions' => 'У вибраному закладі немає активних підрозділів, придатних для направлення на переведення. Перевірте заклад, зазначений у виписці.',
+    'referral_divisions_invalid_response' => 'ЕСОЗ повернув неочікуваний формат списку підрозділів.',
     'referral_drawer_title' => 'Виписати електронне направлення (без плану лікування)',
     'referral_service_placeholder' => 'Код або назва послуги',
     'referral_search' => 'Пошук',
@@ -134,7 +140,7 @@ return [
         'unit' => 'Одиниця',
         'dosage' => 'Дозування',
         'max_dose_per_administration' => 'Макс. доза за прийом',
-        'max_dose_per_period' => 'Макс. доза за період',
+        'max_dose_per_period' => 'Макс. добова доза',
         'course_start' => 'Початок курсу',
         'course_end' => 'Кінець курсу',
         'patient_authentication' => 'Метод автентифікації пацієнта',

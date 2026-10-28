@@ -48,6 +48,13 @@
                 </div>
             </div>
 
+            @foreach (['identifier', 'episodeOfCare'] as $reference)
+                <div class="min-w-0">
+                    <div class="record-inner-label text-[10px] uppercase">{{ __('compositions.detail.' . $reference) }}</div>
+                    <div class="record-inner-id-value">{{ data_get($detail, $reference . '.value') ?: '-' }}</div>
+                </div>
+            @endforeach
+
             <div class="min-w-0">
                 <div class="record-inner-label text-[10px] uppercase">{{ __('compositions.detail.date') }}</div>
                 <div class="record-inner-value text-[14px] font-semibold break-words">
@@ -129,13 +136,13 @@
             @endif
 
             @foreach (['IS_ACCIDENT', 'IS_INTOXICATED', 'IS_FOREIGN_TREATMENT', 'IS_FORCE_RENEW'] as $flag)
-                @if ($extensions->get($flag))
+                @if ($extensions->has($flag) && is_bool($extensions->get($flag)))
                     <div class="min-w-0">
                         <div class="record-inner-label text-[10px] uppercase">
                             {{ __('compositions.detail.flags.' . \Illuminate\Support\Str::lower($flag)) }}
                         </div>
                         <div class="record-inner-value text-[14px] font-semibold break-words">
-                            {{ __('forms.yes') }}
+                            {{ __($extensions->get($flag) ? 'forms.yes' : 'forms.no') }}
                         </div>
                     </div>
                 @endif
@@ -164,6 +171,12 @@
                         {{ data_get($detail, 'relatesTo.code') }}:
                         <span class="record-inner-id-value">{{ data_get($detail, 'relatesTo.targetIdentifier.value') ?: '-' }}</span>
                     </div>
+                </div>
+            @endif
+            @if ($extensions->has('INFORM_WITH'))
+                <div class="min-w-0">
+                    <div class="record-inner-label text-[10px] uppercase">{{ __('compositions.detail.inform_with') }}</div>
+                    <div class="record-inner-id-value">{{ $extensions->get('INFORM_WITH') }}</div>
                 </div>
             @endif
         </div>

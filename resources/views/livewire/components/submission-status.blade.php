@@ -1,4 +1,4 @@
-<div>
+<div @if ($carePlanId !== null) data-livewire-background-actions="checkStatus" @endif>
     <fieldset class="fieldset-card p-4 sm:p-8">
         <legend class="legend">{{ __('encounters.submission.label') }}</legend>
 
@@ -7,9 +7,23 @@
                 <input type="text" id="ehealthStatus" class="input text-gray-500" value="{{ $statusLabel }}" readonly />
             </div>
 
-            @if ($editUrl !== null)
+            @if ($recordEditUrl !== null)
                 <div class="mb-1">
-                    <a href="{{ $editUrl }}" wire:navigate class="button-primary px-8"> {{ __('forms.update') }} </a>
+                    <a href="{{ $recordEditUrl }}" wire:navigate class="button-primary px-8">
+                        {{ __($carePlanId !== null ? 'forms.edit' : 'forms.update') }}
+                    </a>
+                </div>
+            @endif
+            @if ($carePlanId !== null)
+                <div class="mb-1">
+                    <button
+                        type="button"
+                        wire:click="checkStatus"
+                        wire:loading.attr="disabled"
+                        class="button-primary px-8"
+                    >
+                        {{ __('care-plan.submission_check') }}
+                    </button>
                 </div>
             @endif
         </div>
@@ -74,5 +88,5 @@
         </div>
     </x-modal>
 
-    <livewire:components.x-message :key="time()" />
+    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
 </div>

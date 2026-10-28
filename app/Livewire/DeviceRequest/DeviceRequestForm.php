@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\DeviceRequest;
 
 use App\Classes\eHealth\EHealth;
-use App\Models\CarePlan;
+use App\Repositories\CarePlanActivityRepository;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\DeviceRequestRequest;
 use App\Models\Person\Person;
@@ -100,6 +100,15 @@ class DeviceRequestForm extends Component
         $this->requestUuid = (string) Str::uuid();
         $service = app(DeviceRequestLifecycleService::class);
         $employee = $service->authorizeAction($legalEntity, 'device_request:write');
+        $activity = null;
+        if (request()->hasAny(['carePlan', 'activity'])) {
+            $context = Validator::make(request()->only(['carePlan', 'activity']), [
+                'carePlan' => 'required|integer|min:1',
+                'activity' => 'required|integer|min:1',
+            ])->validate();
+            $activity = app(CarePlanActivityRepository::class)->findOwned((int) $context['carePlan'], (int) $context['activity']);
+            abort_unless($activity->carePlan->personId === $person->id, 404);
+        }
         $this->request = [
             'uuid' => $this->requestUuid, 'encounter_uuid' => '', 'device_id' => '',
             'device_code_type' => 'CLASSIFICATION_TYPE', 'device_code_system' => '', 'program_id' => '',
@@ -161,10 +170,8 @@ class DeviceRequestForm extends Component
                 $this->request['phone_confirmed'] = false;
                 $this->request['confirmed_phone'] = '';
             }
-            if (request()->filled('carePlan') && request()->filled('activity')) {
-                $plan = CarePlan::wherePersonId($person->id)->whereUuid(request()->string('carePlan')->toString())->firstOrFail();
-                $activity = $plan->activities()->whereUuid(request()->string('activity')->toString())->firstOrFail();
-                $this->carePlanUuid = $plan->uuid;
+            if ($activity !== null) {
+                $this->carePlanUuid = $activity->carePlan->uuid;
                 $this->activityUuid = $activity->uuid;
                 $detail = $service->carePlanContext($person, $this->carePlanUuid, $this->activityUuid)['detail'];
                 $this->request['program_id'] = data_get($detail, 'program.identifier.value', '');

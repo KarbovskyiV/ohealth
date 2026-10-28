@@ -6,9 +6,6 @@ namespace App\Classes\eHealth\Api;
 
 use App\Classes\eHealth\EHealthRequest as Request;
 use App\Classes\eHealth\EHealthResponse;
-use App\Exceptions\EHealth\EHealthConnectionException;
-use App\Exceptions\EHealth\EHealthResponseException;
-use App\Exceptions\EHealth\EHealthValidationException;
 use GuzzleHttp\Promise\PromiseInterface;
 
 class ServiceRequest extends Request
@@ -53,6 +50,8 @@ class ServiceRequest extends Request
      */
     public function qualify(string $id, array $payload = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
         return $this->post(self::ENDPOINT_SERVICE_REQUESTS . "/{$id}/actions/qualify", $payload);
     }
 
@@ -61,6 +60,8 @@ class ServiceRequest extends Request
      */
     public function process(string $id, array $payload = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
         return $this->patch(self::ENDPOINT_SERVICE_REQUESTS . "/{$id}/actions/use", $payload);
     }
 
@@ -69,6 +70,8 @@ class ServiceRequest extends Request
      */
     public function complete(string $id, array $payload = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
         return $this->patch(self::ENDPOINT_SERVICE_REQUESTS . "/{$id}/actions/complete", $payload);
     }
 
@@ -77,7 +80,10 @@ class ServiceRequest extends Request
      */
     public function cancelUsage(string $id, string $patientId, array $payload = []): PromiseInterface|EHealthResponse
     {
-        return $this->patch("/api/patients/{$patientId}/service_requests/{$id}/actions/cancel", $payload);
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
+        // PROD Medical Events 9.15.4 documents Release with service_request:use and no request body.
+        return $this->patch(self::ENDPOINT_SERVICE_REQUESTS . "/{$id}/actions/release");
     }
 
     /**
@@ -85,6 +91,8 @@ class ServiceRequest extends Request
      */
     public function recall(string $patientId, string $id, array $payload = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
         return $this->patch("/api/patients/{$patientId}/service_requests/{$id}/actions/recall", $payload);
     }
 }

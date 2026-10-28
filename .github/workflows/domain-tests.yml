@@ -44,6 +44,7 @@ jobs:
     env:
       APP_ENV: testing
       COMPOSER_NO_INTERACTION: "1"
+      CIPHER_API_URL: https://cipher.invalid
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0

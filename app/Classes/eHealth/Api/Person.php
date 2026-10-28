@@ -1031,7 +1031,24 @@ class Person extends Request
         string $personId,
         string $medicationRequestId
     ): PromiseInterface|EHealthResponse {
+        $this->setValidator($this->validateMedicationRequestPrintout(...));
+
         return $this->get(self::URL . "/{$personId}/medication_requests/{$medicationRequestId}/printout_form");
+    }
+
+    protected function validateMedicationRequestPrintout(EHealthResponse $response): array
+    {
+        $data = $response->getData();
+        Validator::make(['data' => $data], [
+            'data' => ['present', 'array'],
+            'data.printout_form' => ['nullable', static function (string $attribute, mixed $value, \Closure $fail): void {
+                if (!is_array($value) && !is_string($value)) {
+                    $fail(__('validation.string', ['attribute' => $attribute]));
+                }
+            }],
+        ])->validate();
+
+        return $data;
     }
 
     /**

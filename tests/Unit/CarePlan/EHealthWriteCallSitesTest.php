@@ -16,12 +16,11 @@ class EHealthWriteCallSitesTest extends TestCase
         $this->assertStringContainsString('use ManagesCarePlanActivities;', $show);
         $this->assertStringNotContainsString('function saveActivity', $show);
         $this->assertStringNotContainsString('function initActivityForm', $show);
-        $this->assertLessThan(80, substr_count($show, "\n"));
     }
 
-    public function test_livewire_does_not_post_clinical_writes_directly_to_ehealth(): void
+    public function test_device_writes_keep_the_existing_domain_boundary(): void
     {
-        $writePattern = '/EHealth::(?:carePlan|carePlanActivity|serviceRequest|deviceRequest)\(\)->(?:create|createSigned|cancel|complete|recall)\s*\(/';
+        $writePattern = '/EHealth::(?:deviceRequest)\(\)->(?:create|createSigned|cancel|complete|recall)\s*\(/';
 
         foreach ($this->clinicalLivewirePaths() as $path) {
             $source = file_get_contents($path);

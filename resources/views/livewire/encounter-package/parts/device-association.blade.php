@@ -423,7 +423,7 @@
     </x-dialog-drawer>
 </div>
 
-<script>
+<script data-navigate-once>
     /**
      * Representation of the association of a medical device with the patient
      */

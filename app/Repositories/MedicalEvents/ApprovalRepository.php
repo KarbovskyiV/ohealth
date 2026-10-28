@@ -25,6 +25,173 @@ use App\Models\Relations\AuthenticationMethod;
  */
 class ApprovalRepository extends BaseRepository
 {
+    public function reusableForCarePlan(\App\Models\CarePlan $plan, string $employeeUuid, string $accessLevel): ?Approval
+    {
+        return $plan->approvals()->with(['grantedTo', 'ehealthLinks.job'])
+            ->whereHas('grantedTo', fn ($query) => $query->whereValue($employeeUuid))
+            ->whereAccessLevel($accessLevel)
+            ->where(function ($query): void {
+                $query->whereIn('status', [ApprovalStatus::ACTIVE->value, ApprovalStatus::APPROVED->value, ApprovalStatus::PENDING->value, ApprovalStatus::NEW->value])
+                    ->orWhereHas('ehealthLinks', fn ($links) => $links->whereStatus(\App\Enums\JobStatus::PENDING->value));
+            })
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->orderByDesc('is_verified')->latest('id')->first();
+    }
+
+    public function beginCarePlanRequest(\App\Models\CarePlan $plan, array $payload, bool $confirmWithoutOtp = false): EhealthLink
+    {
+        return $this->storageTransaction(function () use ($plan, $payload, $confirmWithoutOtp): EhealthLink {
+            $identifier = $this->resolveIdentifier(data_get($payload, 'granted_to.identifier.value'));
+            $approval = Approval::create([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'approvable_type' => $plan::class,
+                'approvable_id' => $plan->id,
+                'granted_to_id' => $identifier?->id,
+                'granted_to_type' => 'employee',
+                'access_level' => $payload['access_level'],
+                'authorize_with' => $payload['authorize_with'] ?? null,
+                'status' => ApprovalStatus::PENDING->value,
+                'is_verified' => false,
+            ]);
+            $link = $this->attachEhealthLink($approval, ['href' => null]);
+            $link->job()->update(['request_data' => $payload + ['confirmWithoutOtp' => $confirmWithoutOtp]]);
+
+            return $link->load('linkable');
+        });
+    }
+
+    public function requestLink(int $id): ?EhealthLink
+    {
+        return EhealthLink::with(['job', 'linkable.approvable', 'processingData'])->find($id);
+    }
+
+    public function creationLinkFor(Approval $approval): ?EhealthLink
+    {
+        return $approval->ehealthLinks()->with('job')->whereHas('job', fn ($query) => $query
+            ->where(fn ($operation) => $operation->whereNull('request_data->operation')->orWhere('request_data->operation', '!=', 'resendSms')))
+            ->latest('id')->first();
+    }
+
+    public function carePlanApproval(\App\Models\CarePlan $plan, string $approvalUuid): Approval
+    {
+        return $plan->approvals()->whereUuid($approvalUuid)->firstOrFail();
+    }
+
+    public function beginCarePlanSmsResend(\App\Models\CarePlan $plan, string $approvalUuid): EhealthLink
+    {
+        return $this->storageTransaction(function () use ($plan, $approvalUuid): EhealthLink {
+            $approval = $this->carePlanApproval($plan, $approvalUuid);
+            $link = $this->attachEhealthLink($approval, ['href' => null]);
+            $link->job()->update(['request_data' => ['operation' => 'resendSms']]);
+
+            return $link->load('linkable');
+        });
+    }
+
+    public function finishCarePlanSmsResend(EhealthLink $link, array $data): void
+    {
+        $this->storageTransaction(function () use ($link, $data): void {
+            $link = EhealthLink::whereKey($link->id)->lockForUpdate()->firstOrFail();
+            $status = strtolower((string) ($data['status'] ?? '')) === 'processed'
+                ? \App\Enums\JobStatus::PROCESSED->value : \App\Enums\JobStatus::FAILED->value;
+            $link->job()->update(['status' => $status, 'response_data' => $data]);
+            $link->update(['status' => $status, 'error' => $status === 'FAILED' ? ['message' => __('care-plan.sms_resend_error')] : null]);
+        });
+    }
+
+    public function carePlanSmsResendState(\App\Models\CarePlan $plan, string $approvalUuid, int $linkId): array
+    {
+        $approval = $plan->approvals()->whereUuid($approvalUuid)->firstOrFail();
+        $link = $approval->ehealthLinks()->whereKey($linkId)->with('job')->firstOrFail();
+        if (data_get($link->job->request_data, 'operation') !== 'resendSms') {
+            throw new \RuntimeException(__('care-plan.sms_resend_error'));
+        }
+
+        if ($approval->getAttribute('is_verified') && ApprovalStatus::resolve($approval->status)?->isGranted()
+            && ($approval->expiresAt === null || $approval->expiresAt->isFuture())) {
+            return ['status' => 'GRANTED'];
+        }
+
+        return ['status' => $link->status];
+    }
+
+    public function trackRequest(EhealthLink $link, string $href, array $data): void
+    {
+        $this->storageTransaction(function () use ($link, $href, $data): void {
+            $link->update(['href' => $href]);
+            $link->job()->update(['response_data' => $data]);
+        });
+    }
+
+    public function completeCarePlanRequest(EhealthLink $link, array $data): void
+    {
+        $this->storageTransaction(function () use ($link, $data): void {
+            $approval = $link->linkable;
+            $resolved = Approval::whereUuid($data['id'])->first();
+            if ($resolved !== null && $resolved->id !== $approval->id) {
+                if ($resolved->approvableId !== $approval->approvableId || $resolved->approvableType !== $approval->approvableType) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['approval' => __('care-plan.approval_result_unavailable')]);
+                }
+                $approval->ehealthLinks()->update(['linkable_id' => $resolved->id]);
+                $approval->delete();
+                $approval = $resolved;
+            }
+            if (($data['is_verified'] ?? null) === false && ApprovalStatus::resolve($data['status'] ?? null) !== ApprovalStatus::INACTIVE) {
+                $data['status'] = ApprovalStatus::PENDING->value;
+            }
+            if ($approval->getAttribute('is_verified') && ApprovalStatus::resolve($approval->status)?->isGranted()) {
+                $data['is_verified'] = true;
+                $data['status'] = ApprovalStatus::ACTIVE->value;
+            }
+            $this->sync($data, $approval->approvable, $approval);
+            $link->job()->update(['status' => \App\Enums\JobStatus::PROCESSED->value, 'response_data' => $data]);
+            $link->update(['status' => \App\Enums\JobStatus::PROCESSED->value]);
+            $link->processingData()->create(['response_data' => $data]);
+        });
+    }
+
+    public function localForCarePlan(\App\Models\CarePlan $plan): array
+    {
+        return $plan->approvals()->withAllRelations()->with('ehealthLinks.job')->latest('id')->get()
+            ->map(function (Approval $approval): array {
+                $row = $approval->toArray();
+                $link = $approval->ehealthLinks->sortByDesc('id')->first();
+                $row['requestPending'] = $link !== null && !in_array($link->status, [\App\Enums\JobStatus::PROCESSED->value, \App\Enums\JobStatus::FAILED->value], true);
+
+                return $row;
+            })->all();
+    }
+
+    public function recordConfirmationError(EhealthLink $link): void
+    {
+        $link->load('job');
+        $link->job()->update(['response_data' => array_replace($link->job->response_data ?? [], ['confirmationError' => true])]);
+    }
+
+    public function storePatientResponse(string $patientUuid, string $approvalUuid, array $data, string $confirmedStatus): void
+    {
+        $approval = Approval::whereUuid($approvalUuid)->whereHasMorph(
+            'approvable',
+            [\App\Models\CarePlan::class],
+            fn ($query) => $query->whereHas('person', fn ($person) => $person->whereUuid($patientUuid))
+        )->with('approvable')->firstOrFail();
+        if (isset($data['id']) && $data['id'] !== $approvalUuid) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['approval' => __('care-plan.approval_result_unavailable')]);
+        }
+        if ($confirmedStatus === ApprovalStatus::ACTIVE->value && array_key_exists('is_verified', $data) && $data['is_verified'] !== true) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['approval' => __('care-plan.approval_verify_error')]);
+        }
+        if (isset($data['id'], $data['is_verified'])) {
+            $this->sync($data, $approval->approvable, $approval);
+        } else {
+            $changes = ['status' => $confirmedStatus];
+            if ($confirmedStatus === ApprovalStatus::ACTIVE->value) {
+                $changes['isVerified'] = true;
+            }
+            // These server-owned fields are explicit; camelCase keys are not in this model's $fillable.
+            $approval->forceFill($changes)->save();
+        }
+    }
     protected const int SMS_CODE_ALIVE_MINUTES = 14;
 
     protected string $employeeUuid;
@@ -45,13 +212,17 @@ class ApprovalRepository extends BaseRepository
      *
      * @see https://e-health-ua.atlassian.net/wiki/spaces/EH/pages/2115600961/Get+approvals
      */
-    public function syncApprovals(Model $entity, string $resourceType, array $additionalFilters = []): void
+    public function syncApprovals(Model $entity, string $resourceType, array $additionalFilters = [], ?string $token = null): void
     {
         if (empty($entity->uuid)) {
             return;
         }
 
         try {
+            $api = EHealth::approval();
+            if ($token !== null) {
+                $api->withToken($token);
+            }
             $patientUuid = null;
 
             if (method_exists($entity, 'person') && $entity->person) {
@@ -67,8 +238,8 @@ class ApprovalRepository extends BaseRepository
             ], $additionalFilters), static fn ($value) => $value !== null && $value !== '');
 
             if ($patientUuid) {
-                $response = EHealth::approval()->getPatientApprovals($patientUuid, $filters);
-                $data = $response->getData();
+                $response = $api->getPatientApprovals($patientUuid, $filters);
+                $data = $response->validate();
 
                 // Safety net: keep only approvals that reference this specific resource
                 if (!empty($data) && is_array($data)) {
@@ -91,8 +262,8 @@ class ApprovalRepository extends BaseRepository
                     $data = $filteredData;
                 }
             } else {
-                $response = EHealth::approval()->getMany($filters);
-                $data = $response->getData();
+                $response = $api->getMany($filters);
+                $data = $response->validate();
             }
 
             if (empty($data)) {
@@ -132,9 +303,9 @@ class ApprovalRepository extends BaseRepository
                         'granted_to_type' => $grantedToCode,
                         'reason_id' => $this->resolveIdentifier($reasonValue)?->id,
                         'created_by_id' => $this->resolveIdentifier($createdByValue)?->id,
-                        'status' => $approvalData['status'] ?? ($approvalData['is_verified']
-                            ? ApprovalStatus::ACTIVE->value
-                            : ApprovalStatus::PENDING->value),
+                        'status' => ApprovalStatus::resolve($approvalData['status'] ?? null) === ApprovalStatus::INACTIVE
+                            ? ApprovalStatus::INACTIVE->value
+                            : (!empty($approvalData['is_verified']) ? ApprovalStatus::ACTIVE->value : ApprovalStatus::PENDING->value),
                         'access_level' => $approvalData['access_level'] ?? 'read',
                         'is_verified' => (bool) ($approvalData['is_verified'] ?? false),
                         'expires_at' => $approvalData['expires_at'] ?? null,
@@ -144,6 +315,7 @@ class ApprovalRepository extends BaseRepository
 
             $inactiveQuery = Approval::where('approvable_type', get_class($entity))
                 ->where('approvable_id', $entity->id)
+                ->whereDoesntHave('ehealthLinks', fn ($links) => $links->whereHas('job', fn ($jobs) => $jobs->whereIn('status', ['PENDING', 'PROCESSING'])))
                 ->whereNotIn('uuid', $syncedUuids);
 
             if (isset($additionalFilters['granted_to.identifier.value'])) {
@@ -157,8 +329,14 @@ class ApprovalRepository extends BaseRepository
 
             $inactiveQuery->update(['status' => ApprovalStatus::INACTIVE->value]);
         } catch (\App\Exceptions\EHealth\EHealthValidationException $e) {
+            if ($entity instanceof \App\Models\CarePlan) {
+                throw $e;
+            }
             \Illuminate\Support\Facades\Log::error('MedicalEvents\ApprovalRepository syncing failed: ' . $e->getFormattedMessage());
         } catch (\Exception $e) {
+            if ($entity instanceof \App\Models\CarePlan) {
+                throw $e;
+            }
             \Illuminate\Support\Facades\Log::error('MedicalEvents\ApprovalRepository syncing failed: ' . $e->getMessage());
         }
     }
@@ -172,7 +350,7 @@ class ApprovalRepository extends BaseRepository
     {
         $job = EhealthJob::create([
             'processing_method' => 'ASYNC',
-            'status' => 'PROCESSING',
+            'status' => 'PENDING',
         ]);
 
         return EhealthLink::create([
@@ -181,6 +359,7 @@ class ApprovalRepository extends BaseRepository
             'ehealth_job_id' => $job->id,
             'entity' => 'job',
             'href' => $link['href'],
+            'status' => 'PENDING',
         ]);
     }
 
@@ -360,13 +539,13 @@ class ApprovalRepository extends BaseRepository
                 'granted_to_id' => $grantedToId,
                 'granted_to_type' => $grantedToType,
                 'granted_by_id' => null,
-                'authorize_with' => $modelData['authorize_with'] ?? null,
+                'authorize_with' => $modelData['authorize_with'] ?? $existing?->authorizeWith,
                 'authentication_method_id' => $authMethod?->id,
                 'reason_id' => $reason?->id,
-                'status' => ApprovalStatus::forStorage($modelData['status'] ?? ApprovalStatus::ACTIVE->value),
-                'access_level' => $modelData['access_level'] ?? 'read',
+                'status' => ApprovalStatus::forStorage($modelData['status'] ?? (!empty($modelData['is_verified']) ? ApprovalStatus::ACTIVE->value : ApprovalStatus::PENDING->value)),
+                'access_level' => $modelData['access_level'] ?? $existing?->accessLevel ?? 'read',
                 'is_verified' => $modelData['is_verified'] ?? false,
-                'expires_at' => convertToLocalTimezone($modelData['expires_at'])
+                'expires_at' => isset($modelData['expires_at']) ? convertToLocalTimezone($modelData['expires_at']) : $existing?->expiresAt,
             ];
 
             if ($existing) {
@@ -551,5 +730,11 @@ class ApprovalRepository extends BaseRepository
         $timestamp = $approval->updated_at;
 
         return !Carbon::parse($timestamp)->addMinutes(self::SMS_CODE_ALIVE_MINUTES)->isPast();
+    }
+
+    public function replaceResolvedUuid(Approval $approval, string $uuid): void
+    {
+        $approval->uuid = $uuid;
+        $approval->save();
     }
 }

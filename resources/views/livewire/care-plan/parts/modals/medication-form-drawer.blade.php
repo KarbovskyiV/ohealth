@@ -105,6 +105,7 @@
                             type="text"
                             class="input bg-gray-50 dark:bg-gray-700 {{ empty($activityForm['id']) ? 'cursor-not-allowed' : 'pr-12' }} font-medium text-gray-900 dark:text-white w-full"
                             value="{{ !empty($selectedProduct) ? ($selectedProduct['name'] ?? '') : '' }}"
+                            placeholder="{{ __('care-plan.select_medication') }}"
                             disabled
                         />
                         @if (!empty($activityForm['id']))
