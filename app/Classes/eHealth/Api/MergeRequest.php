@@ -6,6 +6,8 @@ namespace App\Classes\eHealth\Api;
 
 use App\Classes\eHealth\EHealthRequest as Request;
 use App\Classes\eHealth\EHealthResponse;
+use App\Classes\eHealth\Errors\MergeRequestErrorTranslator;
+use App\Contracts\ApiErrorTranslator;
 use App\Enums\MergeRequest\Status;
 use App\Models\Person\Person;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -117,6 +119,16 @@ class MergeRequest extends Request
         $this->setValidator($this->validateResponse(...));
 
         return $this->patch(self::URL . "/$id/actions/sign", $data);
+    }
+
+    /**
+     * Get the translator of the errors the merge request resource returns.
+     *
+     * @return ApiErrorTranslator
+     */
+    protected function errorTranslator(): ApiErrorTranslator
+    {
+        return new MergeRequestErrorTranslator();
     }
 
     /**
