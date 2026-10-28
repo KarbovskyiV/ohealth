@@ -90,8 +90,10 @@ function simulateRequirements(array $options = []): array
     $comments = [];
     $updates = [];
     $selections = [];
+    $selectionData = [];
+    $sourceUrls = [];
     $sourceReads = 0;
-    $request = static function ($method, $url, $payload) use ($pr, $options, &$models, &$reads, &$comments, &$updates, &$selections, &$sourceReads): array {
+    $request = static function ($method, $url, $payload) use ($pr, $options, &$models, &$reads, &$comments, &$updates, &$selections, &$selectionData, &$sourceUrls, &$sourceReads): array {
         if ($url === 'https://api.github.com/graphql') {
             return ['data' => ['repository' => ['pullRequest' => ['closingIssuesReferences' => ['nodes' => [], 'pageInfo' => ['hasNextPage' => false]]]]]];
         }
@@ -110,13 +112,14 @@ function simulateRequirements(array $options = []): array
             return $options['comments'] ?? [];
         }
         if (str_contains($url, '/files?')) {
-            return [['filename' => 'app/Example.php', 'status' => 'modified', 'patch' => "@@ -1 +1 @@\n-old\n+new"]];
+            return array_merge([['filename' => 'app/Example.php', 'status' => 'modified', 'patch' => "@@ -1 +1 @@\n-old\n+new"]], $options['extraFiles'] ?? []);
         }
         if (str_contains($url, '/git/trees/')) {
             return ['truncated' => false, 'tree' => [['type' => 'blob', 'path' => 'app/Example.php']]];
         }
         if (str_contains($url, '/contents/')) {
             $sourceReads++;
+            $sourceUrls[] = $url;
             $text = "<?php\nreturn true;\n".(!empty($options['truncated']) ? str_repeat("// line\n", 500) : '');
             return ['type' => 'file', 'encoding' => 'base64', 'content' => base64_encode($text)];
         }
@@ -127,10 +130,17 @@ function simulateRequirements(array $options = []): array
             if ($isSelection) {
                 $data = json_decode($payload['messages'][1]['content'], true, 512, JSON_THROW_ON_ERROR);
                 $selections[] = $data['requirements'][0]['id'];
+                $selectionData[] = $data;
             }
             $result = $isSelection ? ['paths' => $options['paths'] ?? ['app/Example.php']] :
                 ['status' => 'covered', 'change' => 'unknown', 'nextStep' => '', 'explanation' => 'Поведінка підтверджена кодом',
                     'evidence' => [['side' => 'head', 'path' => 'app/Example.php', 'line' => $options['line'] ?? 2]]];
+            if ($isSelection) {
+                $result = $options['selectionResults'][count($selections) - 1] ?? $result;
+                if (($options['invalidSelectionClause'] ?? null) === $data['requirements'][0]['id']) {
+                    $result = ['paths' => ['app/Missing.php']];
+                }
+            }
             if (!$isSelection && isset($options['assessment'])) {
                 $result = array_replace($result, $options['assessment']);
             }
@@ -149,7 +159,7 @@ function simulateRequirements(array $options = []): array
         $error = $failure->getMessage();
     }
 
-    return compact('models', 'comments', 'updates', 'error', 'selections', 'sourceReads');
+    return compact('models', 'comments', 'updates', 'error', 'selections', 'selectionData', 'sourceUrls', 'sourceReads');
 }
 $simulation = simulateRequirements();
 requirementsCheck($simulation['error'] === null && $simulation['models'] === 2 && count($simulation['comments']) === 1, 'Full requirements flow failed');
@@ -169,10 +179,50 @@ $staleRequirements = simulateRequirements(['staleRequirements' => true]);
 requirementsCheck($staleRequirements['comments'] === [] && $staleRequirements['updates'][count($staleRequirements['updates']) - 1]['conclusion'] === 'neutral', 'Changed requirements result published');
 $none = simulateRequirements(['body' => 'No requirements declared']);
 requirementsCheck($none['models'] === 0 && $none['comments'] === [] && $none['updates'][0]['conclusion'] === 'neutral', 'No-requirements flow was not neutral');
-foreach ([['paths' => ['.env']], ['line' => 900], ['body' => 'ТВ: 3.999.1']] as $option) {
+foreach ([['line' => 900], ['body' => 'ТВ: 3.999.1']] as $option) {
     $bad = simulateRequirements($option);
     requirementsCheck($bad['error'] !== null && $bad['comments'] === [], 'Unsafe or invalid result published');
 }
+$filtered = simulateRequirements(['extraFiles' => array_map(static fn (string $path): array =>
+    ['filename' => $path, 'status' => 'removed', 'patch' => "@@ -1 +0,0 @@\n-old"],
+    ['app/Deleted.php', 'resources/lang/uk/messages.php', 'resources/js/app.js', 'README.md'])]);
+requirementsCheck($filtered['error'] === null
+    && $filtered['selectionData'][0]['changedPaths'] === ['app/Example.php']
+    && $filtered['selectionData'][0]['repositoryPaths'] === ['app/Example.php'], 'Selection advertised files outside the allowed head index');
+foreach (['.env', 'app/Missing.php', 'app/../config/app.php', 'app\\Example.php', 'resources/lang/uk/messages.php'] as $path) {
+    $recovered = simulateRequirements(['selectionResults' => [['paths' => ['app/Example.php', $path]]]]);
+    requirementsCheck($recovered['error'] === null && $recovered['models'] === 3 && $recovered['sourceReads'] === 2
+        && isset($recovered['selectionData'][1]['validationError'])
+        && $recovered['updates'][count($recovered['updates']) - 1]['conclusion'] === 'success', 'Invalid path selection did not recover within one retry');
+    foreach ($recovered['sourceUrls'] as $url) {
+        requirementsCheck(str_contains($url, '/contents/app/Example.php?ref='), 'Unapproved source was fetched');
+    }
+}
+foreach ([['paths' => ['app/Example.php', 'app/Example.php']], ['paths' => [7]], ['paths' => ['named' => 'app/Example.php']],
+    ['paths' => 'app/Example.php'], ['paths' => array_fill(0, 7, 'app/Example.php')], []] as $invalid) {
+    $recovered = simulateRequirements(['selectionResults' => [$invalid]]);
+    requirementsCheck($recovered['error'] === null && $recovered['models'] === 3, 'Malformed selection was not retried');
+}
+$incomplete = simulateRequirements(['paths' => ['app/Example.php', '.env']]);
+requirementsCheck($incomplete['error'] === null && $incomplete['models'] === 2 && $incomplete['sourceReads'] === 0
+    && count($incomplete['comments']) === 1
+    && str_contains($incomplete['comments'][0], '**Рев’ю неповне.**')
+    && str_contains($incomplete['comments'][0], 'потребують перевірки: 1')
+    && !str_contains($incomplete['comments'][0], '<!-- requirements-head:')
+    && $incomplete['updates'][count($incomplete['updates']) - 1]['conclusion'] === 'neutral', 'Exhausted selection was fetched, hidden or certified as complete');
+$retried = simulateRequirements(['comments' => [['id' => 1, 'user' => ['login' => 'github-actions[bot]'], 'body' => $incomplete['comments'][0]]]]);
+requirementsCheck($retried['error'] === null && $retried['models'] === 2 && count($retried['comments']) === 1
+    && str_contains($retried['comments'][0], '**Рев’ю завершено.**'), 'Incomplete report suppressed a new review of the same commit');
+$failedClause = $plan[intdiv(count($plan), 2)]['id'];
+$partialGroup = simulateRequirements(['body' => 'ТВ: 3.5', 'invalidSelectionClause' => $failedClause]);
+requirementsCheck($partialGroup['error'] === null && $partialGroup['models'] === count($plan) * 2
+    && array_values(array_unique($partialGroup['selections'])) === array_column($plan, 'id')
+    && str_contains(implode('', $partialGroup['comments']), 'Підтверджено: '.(count($plan) - 1))
+    && str_contains(implode('', $partialGroup['comments']), 'потребують перевірки: 1')
+    && str_contains(implode('', $partialGroup['comments']), 'контексту: ТВ '.$failedClause.'.')
+    && $partialGroup['updates'][count($partialGroup['updates']) - 1]['conclusion'] === 'neutral', 'One failed clause discarded previous results or stopped later clauses');
+$stalePartial = simulateRequirements(['paths' => ['.env'], 'stale' => true]);
+requirementsCheck($stalePartial['comments'] === [] && $stalePartial['updates'][count($stalePartial['updates']) - 1]['conclusion'] === 'neutral', 'Incomplete results were published for a stale head');
 $stale = simulateRequirements(['stale' => true]);
 requirementsCheck($stale['comments'] === [] && $stale['updates'][count($stale['updates']) - 1]['conclusion'] === 'neutral', 'Stale result published');
 $published = [];
