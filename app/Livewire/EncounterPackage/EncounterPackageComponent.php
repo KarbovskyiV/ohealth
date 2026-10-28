@@ -295,14 +295,6 @@ class EncounterPackageComponent extends Component
     public array $allowedConditionCodesBySystem = [];
 
     /**
-     * ICD-10 AM condition codes reserved for specialities the current user does not hold.
-     *
-     * @var array
-     */
-    #[Locked]
-    public array $forbiddenIcd10ConditionCodes = [];
-
-    /**
      * List of values for codeable concept.
      *
      * @var array
@@ -666,28 +658,6 @@ class EncounterPackageComponent extends Component
     }
 
     /**
-     * Search for ICD-10 in DB by the provided value.
-     *
-     * @param  string  $value
-     * @return void
-     */
-    public function searchICD10(string $value): void
-    {
-        $query = Icd10::search($value)->active()->limit(50);
-
-        $allowedCodes = $this->allowedConditionCodesBySystem['eHealth/ICD10_AM/condition_codes'] ?? null;
-        if ($allowedCodes !== null) {
-            $query->whereIn('code', $allowedCodes);
-        }
-
-        if ($this->forbiddenIcd10ConditionCodes !== []) {
-            $query->whereNotIn('code', $this->forbiddenIcd10ConditionCodes);
-        }
-
-        $this->results = $query->get(['code', 'description'])->toArray();
-    }
-
-    /**
      * Resolve the patient model (person or preperson) for the current context.
      *
      * @return Person|Preperson
@@ -904,7 +874,6 @@ class EncounterPackageComponent extends Component
             ->all();
 
         $this->allowedConditionCodesBySystem = $encounterWriterEmployee->allowedConditionCodesBySystem();
-        $this->forbiddenIcd10ConditionCodes = $encounterWriterEmployee->forbiddenIcd10ConditionCodes();
 
         $this->equipmentOptions = Equipment::whereLegalEntityId(legalEntity()->id)
             ->where('availability_status', AvailabilityStatus::AVAILABLE)

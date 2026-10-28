@@ -297,7 +297,7 @@
                                         @endunless
                                         type="text"
                                         id="diagnosticReportBasedOnIdentifier"
-                                        class="input peer !pr-7 uppercase"
+                                        class="input peer pr-7! uppercase"
                                         placeholder=" "
                                         autocomplete="off"
                                         x-mask="****-****-****-****"
@@ -510,12 +510,7 @@
 
         {{-- Conclusion code by ICD-10 --}}
         <div
-            x-data="{
-                selected: null,
-                results: $wire.entangle('results'),
-                showResults: false,
-                conclusionCodeLabel: '',
-            }"
+            x-data="{ conclusionCodeLabel: '' }"
             x-effect="
                 const code = modalDiagnosticReport.conclusionCode || '';
                 const description = $wire.dictionaries['eHealth/ICD10_AM/condition_codes']?.[code] || '';
@@ -523,20 +518,14 @@
             "
             class="form-row-2 relative"
         >
-            <div class="form-group group">
+            <div
+                x-data="icd10Search"
+                data-icd10-search-url="{{ $context === 'encounter' ? route('icd10.search', [legalEntity()]) : route('icd10.lookup', [legalEntity()]) }}"
+                class="form-group group"
+            >
                 <input
                     type="text"
-                    @input.debounce.1000ms="
-                        let value = $event.target.value;
-                        let isEnglish = /^[a-zA-Z0-9.]+$/.test(value);
-
-                        if ((isEnglish && value.length >= 1) || (! isEnglish && value.length >= 3)) {
-                            $wire.searchICD10(value);
-                            showResults = true;
-                        } else {
-                            showResults = false;
-                        }
-                    "
+                    @input.debounce.600ms="search($event.target.value)"
                     @focus="if (conclusionCodeLabel.length >= 1) showResults = true;"
                     @click.away="showResults = false"
                     x-model="conclusionCodeLabel"
@@ -561,7 +550,6 @@
                             <li
                                 class="group flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 transition-colors dark:bg-gray-800 dark:text-white"
                                 @click="
-                                    selected = result;
                                     conclusionCodeLabel = result.code + ' - ' + result.description;
                                     modalDiagnosticReport.conclusionCode = result.code;
                                     modalDiagnosticReport.conclusionCodeLabel = conclusionCodeLabel;

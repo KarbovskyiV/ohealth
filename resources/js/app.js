@@ -310,6 +310,17 @@ function updatePreloader() {
     }
 }
 
+// Requests outside Livewire (plain fetch) show the same preloader through these events
+window.addEventListener('preloader:start', () => {
+    activeRequests++;
+    updatePreloader();
+});
+
+window.addEventListener('preloader:stop', () => {
+    activeRequests = Math.max(0, activeRequests - 1);
+    updatePreloader();
+});
+
 document.addEventListener('livewire:navigate', () => {
     isNavigating = true;
     updatePreloader();

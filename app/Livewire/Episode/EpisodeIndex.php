@@ -16,7 +16,6 @@ use App\Livewire\Episode\Forms\EpisodeCancellationForm;
 use App\Livewire\Episode\Forms\EpisodeClosingForm;
 use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\Declaration;
-use App\Models\Icd10;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Approval;
 use App\Models\MedicalEvents\Sql\Encounter;
@@ -64,13 +63,6 @@ class EpisodeIndex extends BasePatientComponent
         'eHealth/cancellation_reasons',
         'eHealth/episode_closing_reasons'
     ];
-
-    /**
-     * ICD-10 dictionary matches (code and description) for the search autocomplete.
-     *
-     * @var array
-     */
-    public array $icd10Results = [];
 
     protected function initializeComponent(): void
     {
@@ -165,13 +157,6 @@ class EpisodeIndex extends BasePatientComponent
 
         $this->isSearching = false;
         $this->resetPage();
-    }
-
-    public function searchICD10(string $value): void
-    {
-        $this->icd10Results = Icd10::search($value)->active()->limit(50)
-            ->get(['code', 'description'])
-            ->toArray();
     }
 
     public function resetFilters(): void

@@ -67,13 +67,6 @@ class ConditionIndex extends BasePatientComponent
         'eHealth/resources',
     ];
 
-    /**
-     * ICD-10 dictionary matches (code and description) for the search autocomplete.
-     *
-     * @var array
-     */
-    public array $icd10Results = [];
-
     protected function getSyncStatus(string $entityType): ?string
     {
         return $this->syncStatus ?: null;
@@ -220,13 +213,6 @@ class ConditionIndex extends BasePatientComponent
             [legalEntity(), 'person' => $this->personId, 'condition' => $condition->id],
             navigate: true
         );
-    }
-
-    public function searchICD10(string $value): void
-    {
-        $this->icd10Results = Icd10::search($value)->limit(50)
-            ->get(['code', 'description'])
-            ->toArray();
     }
 
     public function resetFilters(): void
