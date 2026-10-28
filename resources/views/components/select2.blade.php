@@ -1,53 +1,58 @@
 @props(['modelPath', 'dictionaryName'])
 
-<div x-data="selectComponent('{{ $dictionaryName }}', '{{ $modelPath }}')"
-     x-modelable="selected"
-     x-model="{{ $modelPath }}"
-     @click.away="hideOptions"
-     x-cloak
+<div
+    x-data="selectComponent('{{ $dictionaryName }}', '{{ $modelPath }}')"
+    x-modelable="selected"
+    x-model="{{ $modelPath }}"
+    @click.away="hideOptions"
+    x-cloak
 >
-    <input class="{{ $attributes->get('class', 'input-modal') }}"
-           {{ $attributes->except('class') }}
-           type="search"
-           placeholder="{{ __('forms.type_to_search') }}"
-           x-model="search"
-           @focus="showOptions"
-           @click="showOptions"
-           @input.debounce.150ms="showOptions"
-           id="{{ $attributes['id'] ?? '' }}"
-           autocomplete="off"
-           role="combobox"
+    <input
+        class="{{ $attributes->get('class', 'input-modal') }}"
+        {{ $attributes->except('class') }}
+        type="search"
+        placeholder="{{ __('forms.type_to_search') }}"
+        x-model="search"
+        @focus="showOptions"
+        @click="showOptions"
+        @input.debounce.150ms="showOptions"
+        @input="if (! $event.target.value.trim()) selected = '';"
+        id="{{ $attributes['id'] ?? '' }}"
+        autocomplete="off"
+        role="combobox"
     />
 
     <div class="relative w-full">
-        <div x-show="optionsVisible"
-             x-transition:enter="transition ease-out duration-100"
-             x-transition:enter-start="opacity-0 scale-95"
-             x-transition:enter-end="opacity-100 scale-100"
-             x-transition:leave="transition ease-in duration-75"
-             x-transition:leave-start="opacity-100 scale-100"
-             x-transition:leave-end="opacity-0 scale-95"
-             class="absolute w-full z-50 border p-2 overflow-y-auto bg-white dark:bg-gray-800 dark:text-white max-h-60 grid shadow-lg rounded-md"
+        <div
+            x-show="optionsVisible"
+            x-transition:enter="transition ease-out duration-100"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-75"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="absolute z-50 grid max-h-60 w-full overflow-y-auto rounded-md border bg-white p-2 shadow-lg dark:bg-gray-800 dark:text-white"
         >
             <template x-for="(option, index) in paginatedOptions" :key="`${option.value}-${index}`">
-                <a @click="selectOption(option)"
-                   x-html="highlightedText(option)"
-                   class="cursor-pointer px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                <a
+                    @click="selectOption(option)"
+                    x-html="highlightedText(option)"
+                    class="cursor-pointer rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700"
                 ></a>
             </template>
 
-            <div x-show="filteredOptions.length === 0 && search.length >= 3 && !isLoading"
-                 class="px-2 py-1 text-gray-500">
+            <div
+                x-show="filteredOptions.length === 0 && search.length >= 3 && ! isLoading"
+                class="px-2 py-1 text-gray-500"
+            >
                 {{ __('forms.nothing_found') }}
             </div>
 
-            <div x-show="isLoading" class="px-2 py-1 text-gray-500">
-                {{ __('general.loading') }}...
-            </div>
+            <div x-show="isLoading" class="px-2 py-1 text-gray-500">{{ __('general.loading') }}...</div>
 
             {{-- Show the 'Show more' button if there are more options --}}
             <div x-show="canLoadMore()" class="px-2 py-1 text-center">
-                <button type="button" @click.prevent="loadMore" class="text-blue-500 hover:text-blue-700 text-sm">
+                <button type="button" @click.prevent="loadMore" class="text-sm text-blue-500 hover:text-blue-700">
                     {{ __('general.show_more') }} (<span x-text="remainingCount()"></span> {{ __('general.remain') }})
                 </button>
             </div>
@@ -83,7 +88,10 @@
 
             init() {
                 this.watchSelected();
-                this.$watch('search', Alpine.debounce(() => this.filterOptions(), 150));
+                this.$watch(
+                    'search',
+                    Alpine.debounce(() => this.filterOptions(), 150),
+                );
                 // Defer heavy processing to avoid blocking the initial render
                 setTimeout(() => this.initializeOptions(), 0);
 
@@ -116,17 +124,22 @@
                                 .filter(([value]) => allowedSet.has(value))
                                 .map(([value, label]) => this.makeOption(value, label));
                         } else {
-                            this.options = Object.entries(rawData).map(([value, label]) => this.makeOption(value, label));
+                            this.options = Object.entries(rawData).map(([value, label]) =>
+                                this.makeOption(value, label),
+                            );
                         }
                     } else if (dictionaryKey === 'eHealth/ICPC2/condition_codes') {
-                        const allowedCodes = this.$wire.allowedConditionCodesBySystem?.['eHealth/ICPC2/condition_codes'];
+                        const allowedCodes =
+                            this.$wire.allowedConditionCodesBySystem?.['eHealth/ICPC2/condition_codes'];
                         if (allowedCodes !== undefined) {
                             const allowedSet = new Set(allowedCodes);
                             this.options = Object.entries(rawData)
                                 .filter(([value]) => allowedSet.has(value))
                                 .map(([value, label]) => this.makeOption(value, label));
                         } else {
-                            this.options = Object.entries(rawData).map(([value, label]) => this.makeOption(value, label));
+                            this.options = Object.entries(rawData).map(([value, label]) =>
+                                this.makeOption(value, label),
+                            );
                         }
                     } else if (dictionaryKey === 'eHealth/ICF/classifiers') {
                         this.updateIcfOptions(rawData);
@@ -138,11 +151,14 @@
 
                         const setSpecialityOptions = () => {
                             const empType = readEmployeeType();
-                            const specDict = (empType && this.$wire.employeeTypeSpecialities?.[empType]) 
-                                ? this.$wire.employeeTypeSpecialities[empType] 
-                                : {};
+                            const specDict =
+                                empType && this.$wire.employeeTypeSpecialities?.[empType]
+                                    ? this.$wire.employeeTypeSpecialities[empType]
+                                    : {};
 
-                            this.options = Object.entries(specDict).map(([value, label]) => this.makeOption(value, label));
+                            this.options = Object.entries(specDict).map(([value, label]) =>
+                                this.makeOption(value, label),
+                            );
                             this.buildOptionsMap();
 
                             const selectedOption = this.optionsMap.get(this.selected);
@@ -169,9 +185,10 @@
                         const rootPath = modelPath.split('.')[0];
                         const isModalProcedure = rootPath === 'modalProcedure';
                         const isModalDiagnosticReport = rootPath === 'modalDiagnosticReport';
-                        const categoryPath = (isModalProcedure || isModalDiagnosticReport)
-                            ? `${rootPath}.categoryCode`
-                            : `${rootPath}.category[0].coding[0].code`;
+                        const categoryPath =
+                            isModalProcedure || isModalDiagnosticReport
+                                ? `${rootPath}.categoryCode`
+                                : `${rootPath}.category[0].coding[0].code`;
 
                         const setServiceOptions = (categoryCode) => {
                             const selectedCategory = categoryCode ?? '';
@@ -188,7 +205,7 @@
                                     value: service.id,
                                     code: service.code,
                                     label: service.name,
-                                    searchText: `${service.name ?? ''} ${service.code ?? ''}`.toLowerCase()
+                                    searchText: `${service.name ?? ''} ${service.code ?? ''}`.toLowerCase(),
                                 }));
 
                             this.buildOptionsMap();
@@ -205,9 +222,10 @@
                             this.filterOptions();
                         };
 
-                        const currentCategoryCode = (isModalProcedure || isModalDiagnosticReport)
-                            ? this[rootPath]?.categoryCode
-                            : this[rootPath]?.category?.[0]?.coding?.[0]?.code;
+                        const currentCategoryCode =
+                            isModalProcedure || isModalDiagnosticReport
+                                ? this[rootPath]?.categoryCode
+                                : this[rootPath]?.category?.[0]?.coding?.[0]?.code;
 
                         setServiceOptions(currentCategoryCode);
 
@@ -246,12 +264,12 @@
                 return {
                     value,
                     label,
-                    searchText: `${label} ${value}`.toLowerCase()
+                    searchText: `${label} ${value}`.toLowerCase(),
                 };
             },
 
             buildOptionsMap() {
-                this.optionsMap = new Map(this.options.map(opt => [opt.value, opt]));
+                this.optionsMap = new Map(this.options.map((opt) => [opt.value, opt]));
             },
 
             updateIcfOptions(rawData) {
@@ -260,7 +278,7 @@
                     functions: 'b',
                     structures: 's',
                     activities: 'd',
-                    environmental: 'e'
+                    environmental: 'e',
                 };
                 const prefix = prefixMap[categoryCode] ?? null;
 
@@ -344,8 +362,9 @@
 
                 const escaped = searchTerm.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
                 const re = new RegExp(escaped, 'gi');
-                const highlighted = text.replace(re, match =>
-                    `<span class='bg-purple-300 dark:bg-purple-600'>${match}</span>`
+                const highlighted = text.replace(
+                    re,
+                    (match) => `<span class='bg-purple-300 dark:bg-purple-600'>${match}</span>`,
                 );
 
                 // Limiting cache size
@@ -377,7 +396,7 @@
                         this.search = this.getDisplayText(opt);
                     }
                 });
-            }
-        }
+            },
+        };
     }
 </script>
