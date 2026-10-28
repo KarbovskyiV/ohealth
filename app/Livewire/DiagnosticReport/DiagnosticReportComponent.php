@@ -21,7 +21,6 @@ use App\Services\MedicalEvents\Fhir;
 use App\Livewire\DiagnosticReport\Forms\DiagnosticReportForm as Form;
 use App\Models\Employee\Employee;
 use App\Models\Equipment;
-use App\Models\Icd10;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Specimen;
 use App\Models\Person\Person;
@@ -152,13 +151,6 @@ abstract class DiagnosticReportComponent extends Component
      * @var array
      */
     public array $codeableConceptValues;
-
-    /**
-     * Found the ICD-10 code and description.
-     *
-     * @var array
-     */
-    public array $results;
 
     /**
      * List of equipment options for combobox.
@@ -333,19 +325,6 @@ abstract class DiagnosticReportComponent extends Component
     {
         $this->form->diagnosticReport = $diagnosticReportData;
         $this->showSignatureModal = true;
-    }
-
-    /**
-     * Search for ICD-10 in DB by the provided value.
-     *
-     * @param  string  $value
-     * @return void
-     */
-    public function searchICD10(string $value): void
-    {
-        $this->results = Icd10::search($value)->active()->limit(50)
-            ->get(['code', 'description'])
-            ->toArray();
     }
 
     /**

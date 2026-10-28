@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\EHealthLoginController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Icd10Controller;
 use App\Livewire\Actions\Logout;
 use App\Livewire\Auth\ForgotPassword;
 use App\Livewire\Auth\Login;
@@ -77,6 +78,7 @@ use App\Models\Equipment;
 use App\Models\HealthcareService;
 use App\Models\LegalEntity;
 use App\Models\License;
+use App\Models\MedicalEvents\Sql\Encounter;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\LegalEntity\Connections\LegalEntityConnectionShow;
 use App\Livewire\LegalEntity\Connections\LegalEntityConnectionIndex;
@@ -244,6 +246,12 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
                     ->whereNumber('employeeRole')
                     ->can('view', 'employeeRole');
             });
+
+            Route::get('/icd10/search', [Icd10Controller::class, 'search'])
+                ->can('create', Encounter::class)
+                ->name('icd10.search');
+
+            Route::get('/icd10/lookup', [Icd10Controller::class, 'lookup'])->name('icd10.lookup');
 
             // --- Referrals ---
             Route::prefix('referrals')->name('referrals.')->group(function () {
