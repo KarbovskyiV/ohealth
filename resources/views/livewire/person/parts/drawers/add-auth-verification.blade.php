@@ -1,3 +1,5 @@
+@use(App\Enums\Person\AuthenticationMethod)
+
 {{-- Auth Drawer Overlay --}}
 <div
     x-show="showAuthDrawer"
@@ -55,6 +57,18 @@
     </div>
 
     <div class="overflow-y-auto bg-white p-6 dark:bg-gray-800" style="height: calc(100% - 70px)">
+        @if (data_get($confidantRequestAuthenticationMethod, 'type') === AuthenticationMethod::OTP->value)
+            <div class="mb-8 flex items-start rounded-lg bg-gray-100 p-4 dark:bg-slate-800">
+                @icon('alert-circle', 'w-5 h-5 text-slate-600 dark:text-slate-400 mr-3 mt-0.5')
+                <p class="text-sm text-gray-800 dark:text-gray-200">
+                    {{ __('patients.please_check_patient_number') }}
+                    <span class="font-bold text-slate-900 dark:text-white">
+                        {{ data_get($confidantRequestAuthenticationMethod, 'phone_number') }}
+                    </span>
+                </p>
+            </div>
+        @endif
+
         <legend class="legend">{{ __('patients.code_sms') }}</legend>
 
         @foreach ($this->uploadedDocuments as $key => $document)
@@ -126,7 +140,8 @@
                     @click="
                         showDocumentDrawer = false;
                         showConfidantPersonDrawer = false;
-                        showSignatureDrawer = true;
+                        showAuthDrawer = false;
+                        $wire.openAuthMethodModal();
                     "
                     class="button-outline-primary"
                 >

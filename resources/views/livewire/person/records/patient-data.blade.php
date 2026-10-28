@@ -201,7 +201,6 @@
              isEditingLegalRep: false,
              editingLegalRepIndex: null,
              resetForm() {
-                 this.selectedPatient = null;
                  this.newDocument = {
                      type: '',
                      typeLabel: '',
@@ -1114,13 +1113,6 @@
                                                                         wire:click.prevent="approveFromRequest('{{ $req['uuid'] }}')"
                                                                     >
                                                                         {{ __('forms.confirm') }}
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-600"
-                                                                        wire:click.prevent="deactivateConfidantPersonRelationshipRequest('{{ $req['uuid'] }}')"
-                                                                    >
-                                                                        {{ __('patients.cancel_request') }}
                                                                     </button>
                                                                 </div>
                                                             </div>

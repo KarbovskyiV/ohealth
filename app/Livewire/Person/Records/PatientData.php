@@ -129,6 +129,9 @@ class PatientData extends BasePatientComponent
     #[Locked]
     public array $uploadedDocuments = [];
 
+    #[Locked]
+    public array $confidantRequestAuthenticationMethod = [];
+
     public array $uploadedFiles = [];
 
     public array $dictionaryNames = [

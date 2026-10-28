@@ -328,8 +328,9 @@ class PersonComponent extends Component
         }
 
         try {
-            $this->confidantPerson = Arr::toCamelCase(
-                EHealth::person()->searchForPersonByParams($validated)->validate()
+            $this->confidantPerson = array_map(
+                static fn (array $person): array => [...$person, 'birthDate' => convertToAppDateFormat($person['birthDate'] ?? null)],
+                Arr::toCamelCase(EHealth::person()->searchForPersonByParams($validated)->validate())
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when searching for person');

@@ -122,7 +122,6 @@
               },
 
               resetForm() {
-                  this.selectedPatient = null;
                   this.newDocument.type = '';
                   this.newDocument.typeLabel = '';
                   this.newDocument.number = '';
@@ -144,7 +143,14 @@
               }
           }"
     x-effect="
-        if (showConfidantPersonDrawer || showDeactivateConfidantPersonDrawer || showDocumentDrawer || showAuthDrawer || showSignatureDrawer || showTerminateModal) {
+        if (
+            showConfidantPersonDrawer ||
+            showDeactivateConfidantPersonDrawer ||
+            showDocumentDrawer ||
+            showAuthDrawer ||
+            showSignatureDrawer ||
+            showTerminateModal
+        ) {
             document.body.classList.add('overflow-hidden');
         } else {
             document.body.classList.remove('overflow-hidden');
