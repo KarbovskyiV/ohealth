@@ -18,11 +18,22 @@
     ]"
 >
     <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
+    @if (!$this->canManageActivities && !$this->isTerminalCarePlan && $carePlan->status !== CarePlanStatus::DRAFT->value && !$carePlan->requiresFhirImport())
+        <p class="mt-4 text-sm text-amber-700 dark:text-amber-300" role="status">
+            {{ __('care-plan.prescribing_patient_access_required') }}
+        </p>
+    @endif
+    @if ($carePlan->requiresFhirImport())
+        <p class="mt-4 text-sm text-amber-700 dark:text-amber-300" role="status">
+            {{ $carePlan->status === CarePlanStatus::DRAFT->value ? __('care-plan.draft_backfill_required') : __('care-plan.full_sync_required') }}
+        </p>
+    @endif
 
     <x-slot name="headerActions"></x-slot>
 
     <div
         class="shift-content mt-6 pl-4"
+        data-livewire-background-actions="checkPlanSubmissionStatus checkApprovalJobStatus checkPlanSyncStatus checkSmsResendStatus event:care-plan-approvals-changed event:submission-processed event:submission-rejected event:care-plan-submission-status-updated"
         x-data="{
             activeTab: 'info',
             openDropdown: false,
@@ -56,7 +67,7 @@
                 $status = is_array($carePlan->status) ? ($carePlan->status['coding'][0]['code'] ?? ($carePlan->status['text'] ?? '')) : $carePlan->status;
                 $statusEnum = CarePlanStatus::fromStored($status);
 
-                $categoryLabel = $carePlan->categoryConcept?->text ?? $carePlan->categoryConcept?->coding?->first()?->display;
+                $categoryLabel = $carePlan->categoryConcept?->text;
                 if (!$categoryLabel) {
                     $categoryCode = is_array($carePlan->category) ? ($carePlan->category['coding'][0]['code'] ?? ($carePlan->category['text'] ?? '')) : $carePlan->category;
                     $categoryLabel = $dictionaries['care_plan_categories'][$categoryCode] ?? $categoryCode;
@@ -110,7 +121,7 @@
                         </button>
                     @endif
 
-                    @if (!$this->isTerminalCarePlan && in_array(strtolower((string)$status), [CarePlanStatus::ACTIVE->value, CarePlanStatus::DRAFT->value, 'new', 'pending']))
+                    @if ($this->canManageActivities && in_array(strtolower((string)$status), [CarePlanStatus::ACTIVE->value, 'new', 'pending']))
                         <div class="relative">
                             <button
                                 type="button"
@@ -349,17 +360,14 @@
                                         if (str_contains($condId ?? '', '/')) {
                                             $condId = last(explode('/', $condId));
                                         }
-                                        $condition = null;
-                                        if ($condId) {
-                                            $condition = \App\Models\MedicalEvents\Sql\Condition::where('uuid', $condId)->first();
-                                        }
+                                        $condition = $addressConditions->get($condId);
                                     @endphp
                                     <tr class="index-table-tr">
                                         <td class="index-table-td">
-                                            {{ $condition?->onset_date?->format('d.m.Y') ?? '-' }}
+                                            {{ $condition?->onsetDate ? \Carbon\CarbonImmutable::parse($condition->onsetDate)->format('d.m.Y') : '-' }}
                                         </td>
                                         <td class="index-table-td-primary">
-                                            {{ $condition ? ($condition->typeConcept?->text ?? $condition->typeConcept?->coding->first()?->display ?? '-') : '-' }}
+                                            {{ $condition?->code?->text ?: ($condition?->code?->coding->first()?->code ?? ($address['text'] ?? data_get($address, 'coding.0.code', '-'))) }}
                                         </td>
                                     </tr>
                                 @empty
@@ -400,7 +408,7 @@
                                         @forelse ($episodes as $item)
                                             @php
                                                 $ref = $item['name'] ?? ($item['reference'] ?? ($item['uuid'] ?? '-'));
-                                                $date = $item['date'] ?? \Carbon\CarbonImmutable::now()->format('d.m.Y');
+                                                $date = $item['date'] ?? '—';
                                             @endphp
                                             <tr class="index-table-tr">
                                                 <td class="index-table-td">{{ $date }}</td>
@@ -477,10 +485,39 @@
                     </div>
                 </fieldset>
 
-                {{-- Approvals --}}
-                <div class="mb-6">
-                    @livewire('care-plan.care-plan-approvals', ['carePlan' => $carePlan], key('care-plan-approvals-'.$carePlan->id.'-'.$carePlan->status))
+                <div
+                    class="mb-6"
+                    @if (in_array($planSubmission['status'] ?? null, [\App\Enums\JobStatus::PENDING->value, \App\Enums\JobStatus::PROCESSING->value], true) || in_array($inpatientApprovalStatus, ['queued', 'pending'], true)) wire:poll.3s="checkPlanSubmissionStatus" @endif
+                >
+                    <livewire:components.submission-status
+                        :record-type="\App\Models\CarePlan::class"
+                        :record-id="$carePlan->id"
+                        :record-status-label="CarePlanStatus::labelFor($carePlan->status)"
+                        :edit-url="$this->canSignPlan && auth()->user()->can('update', $carePlan) ? route('care-plans.edit', [legalEntity(), $carePlan->id]) : null"
+                        :key="'plan-submission-'.$carePlan->id.'-'.($planSubmission['status'] ?? 'draft')"
+                    />
                 </div>
+
+                {{-- Approvals --}}
+                @if (in_array($inpatientApprovalStatus, ['queued', 'pending'], true))
+                    <p class="mb-4 text-sm text-gray-600 dark:text-gray-300" role="status">
+                        {{ __('care-plan.inpatient_access_processing') }}
+                    </p>
+                @elseif ($inpatientApprovalStatus === 'failed')
+                    <p class="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
+                        {{ __('care-plan.inpatient_access_failed') }}
+                    </p>
+                @endif
+                @if ($this->isInpatientPlanOfCurrentOrganization && $carePlan->status === CarePlanStatus::PENDING->value)
+                    <p class="mb-4 text-sm text-gray-600 dark:text-gray-300" role="status">
+                        {{ __('care-plan.inpatient_registered') }}
+                    </p>
+                @endif
+                @if ($carePlan->status !== CarePlanStatus::DRAFT->value && ($planSubmission['status'] ?? null) !== \App\Enums\JobStatus::PENDING->value)
+                    <div class="mb-6">
+                        @livewire('care-plan.care-plan-approvals', ['carePlan' => $carePlan], key('care-plan-approvals-'.$carePlan->id.'-'.$carePlan->status))
+                    </div>
+                @endif
 
                 {{-- Bottom Actions --}}
                 <div class="mt-8 flex items-center justify-between gap-4 border-t border-gray-100 pt-6 pb-12 dark:border-gray-700">
@@ -501,6 +538,16 @@
                                 @click="$wire.openSignatureModal('sign_plan')"
                             >
                                 {{ __('care-plan.sign_and_send_plan') }}
+                            </button>
+                        @elseif ($this->canRequestInpatientAccess)
+                            <button
+                                type="button"
+                                class="button-primary"
+                                wire:click="openMethodSelectionModal"
+                                wire:loading.attr="disabled"
+                                wire:target="openMethodSelectionModal"
+                            >
+                                {{ __($inpatientApprovalStatus === 'failed' ? 'care-plan.inpatient_retry_access' : 'care-plan.inpatient_get_access') }}
                             </button>
                         @elseif ($this->canRequestPatientApproval)
                             <button type="button" class="button-primary" wire:click="openMethodSelectionModal">
@@ -635,7 +682,7 @@
                                                         {{ __('forms.view_details') }}
                                                     </a>
 
-                                                    @if (!$this->isTerminalCarePlan && in_array(strtoupper($activityStatus), ['NEW', 'DRAFT']))
+                                                    @if ($this->canManageActivities && in_array(strtoupper($activityStatus), ['NEW', 'DRAFT']))
                                                         <button
                                                             type="button"
                                                             @click="close()"
@@ -663,7 +710,7 @@
                                                             @icon('trash', 'w-5 h-5 text-gray-500')
                                                             {{ __('forms.delete') }}
                                                         </button>
-                                                    @elseif (!$this->isTerminalCarePlan && in_array(strtoupper($activityStatus), ['ACTIVE', 'SCHEDULED', 'IN-PROGRESS', 'IN_PROGRESS', 'ON-HOLD', 'PROCESSED']))
+                                                    @elseif ($this->canManageActivities && in_array(strtoupper($activityStatus), ['ACTIVE', 'SCHEDULED', 'IN-PROGRESS', 'IN_PROGRESS', 'ON-HOLD', 'PROCESSED']))
                                                         @if ($resolvedKind === 'medication_request')
                                                             <button
                                                                 type="button"
@@ -760,12 +807,28 @@
             @include('livewire.care-plan.parts.modals.cancel-activity-modal', ['method' => 'sign'])
         @elseif ($actionType === 'complete_activity')
             @include('livewire.care-plan.parts.modals.complete-activity-modal', ['method' => 'sign'])
+        @elseif (in_array($actionType, ['cancel_referral', 'recall_referral'], true))
+            <x-signature-modal method="sign">
+                <x-slot:customFields>
+                    <x-referral-status-fields
+                        reason-model="statusReason"
+                        letter-model="referralExplanatoryLetter"
+                        :reasons="$this->statusReasons"
+                    />
+                </x-slot:customFields>
+            </x-signature-modal>
         @else
             @include('components.signature-modal', ['method' => 'sign'])
         @endif
 
         @if ($isPolling)
             <div wire:poll.3s.keep-alive="checkApprovalJobStatus" class="hidden"></div>
+        @endif
+
+        @if ($planSyncBatchId !== null)
+            <div wire:poll.3s="checkPlanSyncStatus" role="status" class="text-sm">
+                {{ __('care-plan.sync_processing') }}
+            </div>
         @endif
 
         @if ($showAuthModal)
@@ -775,6 +838,19 @@
         @if ($showMethodSelectionModal)
             @include('livewire.care-plan.modals.method-selection')
         @endif
+
+        <x-confirmation-modal wire:model.live="showActivationPrompt">
+            <x-slot name="title">{{ __('care-plan.activation_prompt_title') }}</x-slot>
+            <x-slot name="content">{{ __('care-plan.activation_prompt_content') }}</x-slot>
+            <x-slot name="footer">
+                <x-secondary-button wire:click="dismissPlanActivation">
+                    {{ __('care-plan.activation_later') }}
+                </x-secondary-button>
+                <x-button wire:click="acceptPlanActivation" wire:loading.attr="disabled" class="ml-3">
+                    {{ __('care-plan.activation_accept') }}
+                </x-button>
+            </x-slot>
+        </x-confirmation-modal>
 
         {{-- Drawers --}}
         @include('livewire.care-plan.parts.modals.services-drawer')

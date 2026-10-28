@@ -22,8 +22,9 @@ class ReferralRequestLifecycleWriteTest extends TestCase
         ];
 
         $serviceResponse = Mockery::mock(EHealthResponse::class);
-        $serviceResponse->shouldReceive('getData')->once()->andReturn(['job_id' => 'job-sr']);
-        $serviceApi = Mockery::mock(ServiceRequestApi::class);
+        $serviceResponse->shouldReceive('getStatusCode')->andReturn(200);
+        $serviceResponse->shouldReceive('getData')->once()->andReturn(['id' => 'sr-uuid', 'status' => 'active']);
+        $serviceApi = Mockery::mock(ServiceRequestApi::class)->makePartial();
         $serviceApi->shouldReceive('createSigned')->once()->with('person-uuid', $payload)->andReturn($serviceResponse);
         $this->instance(ServiceRequestApi::class, $serviceApi);
 
@@ -35,8 +36,8 @@ class ReferralRequestLifecycleWriteTest extends TestCase
 
         $resolver = Mockery::mock(EHealthJobResolver::class);
         $resolver->shouldReceive('resolve')
-            ->twice()
-            ->andReturn(['id' => 'sr-uuid'], ['id' => 'dr-uuid']);
+            ->once()
+            ->andReturn(['id' => 'dr-uuid']);
         $this->app->instance(EHealthJobResolver::class, $resolver);
 
         $service = app(ReferralRequestLifecycleService::class);
@@ -45,8 +46,10 @@ class ReferralRequestLifecycleWriteTest extends TestCase
         $this->assertSame('dr-uuid', $service->submitSignedCreate('device_request', 'person-uuid', 'signed')['id']);
     }
 
-    public function test_submit_signed_cancel_and_recall_resolve_jobs(): void
+    public function test_confirmed_signed_cancel_and_recall_do_not_poll_jobs(): void
     {
+        $this->mock(\App\Repositories\MedicalEvents\ServiceRequestRequestRepository::class)
+            ->shouldReceive('findByUuid')->with('sr-uuid')->twice()->andReturnNull();
         $cancelPayload = [
             'signed_data' => 'signed',
             'signed_data_encoding' => 'base64',
@@ -59,19 +62,19 @@ class ReferralRequestLifecycleWriteTest extends TestCase
         ];
 
         $cancelResponse = Mockery::mock(EHealthResponse::class);
-        $cancelResponse->shouldReceive('getData')->once()->andReturn(['job_id' => 'job-cancel']);
+        $cancelResponse->shouldReceive('getStatusCode')->andReturn(200);
+        $cancelResponse->shouldReceive('getData')->once()->andReturn(['status' => 'entered-in-error']);
         $recallResponse = Mockery::mock(EHealthResponse::class);
-        $recallResponse->shouldReceive('getData')->once()->andReturn(['job_id' => 'job-recall']);
+        $recallResponse->shouldReceive('getStatusCode')->andReturn(200);
+        $recallResponse->shouldReceive('getData')->once()->andReturn(['status' => 'recalled']);
 
-        $api = Mockery::mock(ServiceRequestApi::class);
-        $api->shouldReceive('cancel')->once()->with('person-uuid', 'sr-uuid', $cancelPayload)->andReturn($cancelResponse);
-        $api->shouldReceive('recall')->once()->with('person-uuid', 'sr-uuid', $recallPayload)->andReturn($recallResponse);
+        $api = Mockery::mock(ServiceRequestApi::class)->makePartial();
+        $api->shouldReceive('cancel')->once()->with('person-uuid', 'sr-uuid', array_intersect_key($cancelPayload, array_flip(['signed_data', 'signed_data_encoding'])))->andReturn($cancelResponse);
+        $api->shouldReceive('recall')->once()->with('person-uuid', 'sr-uuid', array_intersect_key($recallPayload, array_flip(['signed_data', 'signed_data_encoding'])))->andReturn($recallResponse);
         $this->instance(ServiceRequestApi::class, $api);
 
         $resolver = Mockery::mock(EHealthJobResolver::class);
-        $resolver->shouldReceive('resolve')
-            ->twice()
-            ->andReturn(['status' => 'entered-in-error'], ['status' => 'recalled']);
+        $resolver->shouldNotReceive('resolve');
         $this->app->instance(EHealthJobResolver::class, $resolver);
 
         $service = app(ReferralRequestLifecycleService::class);
@@ -83,6 +86,39 @@ class ReferralRequestLifecycleWriteTest extends TestCase
             $cancelPayload
         )['status']);
         $this->assertSame('recalled', $service->submitSignedRecall('person-uuid', 'sr-uuid', $recallPayload)['status']);
+    }
+
+    public function test_remote_only_signed_mutations_return_pending_receipts_without_polling(): void
+    {
+        $this->mock(\App\Repositories\MedicalEvents\ServiceRequestRequestRepository::class)
+            ->shouldReceive('findByUuid')->with('sr-uuid')->andReturnNull();
+        $resolver = Mockery::mock(EHealthJobResolver::class);
+        $resolver->shouldNotReceive('resolve');
+        $this->instance(EHealthJobResolver::class, $resolver);
+        $api = Mockery::mock(ServiceRequestApi::class);
+        $pending = [
+            [],
+            ['id' => 'sr-uuid', 'status' => 'active'],
+            ['job_id' => 'synthetic-job'],
+            ['links' => [['href' => '/service_requests/sr-uuid'], ['href' => '/jobs/synthetic-job']]],
+            ['status' => 'pending'],
+            ['status' => 'accepted'],
+            ['status' => 'queued'],
+        ];
+        foreach ($pending as $index => $data) {
+            $response = new EHealthResponse(new \GuzzleHttp\Psr7\Response($index < 2 ? 202 : 200, [], json_encode(['data' => $data], JSON_THROW_ON_ERROR)));
+            $api->shouldReceive('createSigned')->once()->andReturn($response);
+            $api->shouldReceive('cancel')->once()->andReturn($response);
+            $api->shouldReceive('recall')->once()->andReturn($response);
+        }
+        $this->instance(ServiceRequestApi::class, $api);
+        $service = app(ReferralRequestLifecycleService::class);
+        foreach ($pending as $data) {
+            $payload = ['signed_data' => 'synthetic-signature', 'explanatory_letter' => 'Synthetic explanation'];
+            $this->assertSame(['submissionPending' => true] + $data, $service->submitSignedCreate('service_request', 'person-uuid', 'synthetic-signature'));
+            $this->assertSame(['submissionPending' => true] + $data, $service->submitSignedCancel('service_request', 'person-uuid', 'sr-uuid', $payload));
+            $this->assertSame(['submissionPending' => true] + $data, $service->submitSignedRecall('person-uuid', 'sr-uuid', $payload));
+        }
     }
 
     public function test_recall_requires_an_explanatory_letter(): void

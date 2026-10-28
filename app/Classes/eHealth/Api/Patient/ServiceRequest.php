@@ -23,6 +23,8 @@ class ServiceRequest extends PatientApiBase
      */
     public function createSigned(string $patientId, array $payload): PromiseInterface|EHealthResponse
     {
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
         return $this->post(self::URL . "/{$patientId}/service_requests", $payload);
     }
 
@@ -31,6 +33,8 @@ class ServiceRequest extends PatientApiBase
      */
     public function cancel(string $patientId, string $id, array $payload): PromiseInterface|EHealthResponse
     {
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
         return $this->patch(self::URL . "/{$patientId}/service_requests/{$id}/actions/cancel", $payload);
     }
 
@@ -41,6 +45,8 @@ class ServiceRequest extends PatientApiBase
      */
     public function recall(string $patientId, string $id, array $payload): PromiseInterface|EHealthResponse
     {
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
         return $this->patch(self::URL . "/{$patientId}/service_requests/{$id}/actions/recall", $payload);
     }
 
@@ -73,9 +79,9 @@ class ServiceRequest extends PatientApiBase
     /**
      * Get a specific Service Request by ID.
      */
-    public function getById(string $patientId, string $id, array $query = []): PromiseInterface|EHealthResponse
+    public function getById(string $patientId, string $id, array $query = [], bool $preserveApiKeys = false): PromiseInterface|EHealthResponse
     {
-        $this->setValidator($this->validateDetails(...));
+        $this->setValidator(fn (EHealthResponse $response): array => $this->validateDetails($response, $preserveApiKeys));
 
         return $this->get(self::URL . "/{$patientId}/service_requests/{$id}", $query);
     }
@@ -130,9 +136,10 @@ class ServiceRequest extends PatientApiBase
         return app(ServiceRequestExecutorApi::class);
     }
 
-    protected function validateDetails(EHealthResponse $response): array
+    protected function validateDetails(EHealthResponse $response, bool $preserveApiKeys = false): array
     {
-        $data = $this->replaceEHealthPropNames($response->getData());
+        $native = $response->getData();
+        $data = $this->replaceEHealthPropNames($native);
         $toValidate = isset($data[0]) && is_array($data[0]) ? $data[0] : $data;
 
         $validator = Validator::make($toValidate, [
@@ -148,7 +155,8 @@ class ServiceRequest extends PatientApiBase
             throw new ValidationException($validator);
         }
 
-        return $data;
+        // Signed snapshots retain the API's keys; both forms pass the same validator.
+        return $preserveApiKeys ? $native : $data;
     }
 
     protected function validateMany(EHealthResponse $response): array

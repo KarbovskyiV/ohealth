@@ -1,25 +1,4 @@
-@if ($showEncounterEPrescriptionDrawer)
-    <div
-        x-data="{
-            open: $wire.entangle('showEncounterEPrescriptionDrawer').live,
-        }"
-    >
-        <x-dialog-drawer
-            x-model="open"
-            maxWidth="4/5"
-            overlayWidth="100%"
-            :stopClickPropagation="true"
-            zIndex="46"
-            onCloseClick="$wire.closeEncounterEPrescriptionDrawer()"
-        >
-            <x-slot name="title">
-                {{ __('encounters.eprescription.title') }}
-            </x-slot>
-            <p class="mb-6 text-sm text-gray-600 dark:text-gray-300">
-                {{ __('encounters.eprescription.encounter_number', ['number' => $encounterUuid ?? $encounterId]) }}
-            </p>
-
-            <form
+<form
                 wire:submit.prevent="validateEncounterEPrescription"
                 class="space-y-6"
             >
@@ -31,20 +10,23 @@
                                 for="encounterEPrescriptionProgram"
                                 class="label"
                             >
-                                {{ __('device-requests.medical_program') }} *
+                                {{ __('device-requests.medical_program') }}
                             </label>
                             <select
                                 id="encounterEPrescriptionProgram"
                                 class="input-select peer w-full"
                                 wire:model.live="encounterEPrescriptionForm.program_id"
                             >
-                                <option value="">{{ __('encounters.eprescription.select_program') }}</option>
+                                <option value="">{{ __('care-plan.prescription_medication') }}</option>
                                 @foreach ($encounterEPrescriptionPrograms as $program)
                                     <option value="{{ $program['id'] }}">
                                         {{ $program['name'] }}
                                     </option>
                                 @endforeach
                             </select>
+                            @if ($encounterEPrescriptionPrograms === [])
+                                <p class="mt-1 text-xs text-gray-500">{{ __('encounters.messages.medication_programs_unavailable') }}</p>
+                            @endif
                             @error ('encounterEPrescriptionForm.program_id')
                                 <p class="text-error">{{ $message }}</p>
                             @enderror
@@ -69,14 +51,12 @@
                                     type="button"
                                     class="button-primary shrink-0"
                                     wire:click="searchEncounterEPrescriptionMedications"
-                                    @disabled (($encounterEPrescriptionForm['program_id'] ?? '') === '')
+                                    wire:loading.attr="disabled"
+                                    wire:target="searchEncounterEPrescriptionMedications"
                                 >
                                     {{ __('forms.search') }}
                                 </button>
                             </div>
-                            @if (($encounterEPrescriptionForm['program_id'] ?? '') === '')
-                                <p class="mt-1 text-xs text-gray-500">{{ __('encounters.eprescription.program_required') }}</p>
-                            @endif
                         </div>
                         @if ($encounterEPrescriptionSearchResults !== [])
                             <div
@@ -138,6 +118,9 @@
                             >
                                 <option value="community">{{ __('encounters.eprescription.community') }}</option>
                             </select>
+                            @error ('encounterEPrescriptionForm.category')
+                                <p class="text-error">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="form-group group">
                             <label
@@ -153,6 +136,9 @@
                                 class="input peer w-full"
                                 wire:model="encounterEPrescriptionForm.medication_qty"
                             />
+                            @error ('encounterEPrescriptionForm.medication_qty')
+                                <p class="text-error">{{ $message }}</p>
+                            @enderror
                             @if (!empty($encounterEPrescriptionSelectedMedication))
                                 <p class="mt-1 text-xs text-gray-500">{{ __('encounters.eprescription.quantity_packaging_hint') }}</p>
                             @endif
@@ -168,6 +154,7 @@
                                 id="encounterEPrescriptionUnit"
                                 class="input peer w-full"
                                 wire:model="encounterEPrescriptionForm.medication_unit"
+                                readonly
                             />
                         </div>
                     </div>
@@ -198,6 +185,9 @@
                                 class="label"
                             >
                                 {{ __('encounters.eprescription.max_dose_per_administration') }} *
+                                @if (($encounterEPrescriptionForm['medication_unit'] ?? '') !== '')
+                                    ({{ $encounterEPrescriptionForm['medication_unit'] }})
+                                @endif
                             </label>
                             <input
                                 type="number"
@@ -207,6 +197,9 @@
                                 class="input peer w-full"
                                 wire:model="encounterEPrescriptionForm.max_dose_per_administration"
                             />
+                            @error ('encounterEPrescriptionForm.max_dose_per_administration')
+                                <p class="text-error">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="form-group group">
                             <label
@@ -214,6 +207,9 @@
                                 class="label"
                             >
                                 {{ __('encounters.eprescription.max_dose_per_period') }} *
+                                @if (($encounterEPrescriptionForm['medication_unit'] ?? '') !== '')
+                                    ({{ $encounterEPrescriptionForm['medication_unit'] }})
+                                @endif
                             </label>
                             <input
                                 type="number"
@@ -223,43 +219,44 @@
                                 class="input peer w-full"
                                 wire:model="encounterEPrescriptionForm.max_dose_per_period"
                             />
+                            @error ('encounterEPrescriptionForm.max_dose_per_period')
+                                <p class="text-error">{{ $message }}</p>
+                            @enderror
                         </div>
-                        <div class="form-group group">
-                            <div class="datepicker-wrapper">
-                                <input
-                                    type="date"
-                                    id="encounterEPrescriptionStartedAt"
-                                    class="input peer w-full"
-                                    placeholder=" "
-                                    autocomplete="off"
-                                    wire:model="encounterEPrescriptionForm.started_at"
-                                />
-                                <label
-                                    for="encounterEPrescriptionStartedAt"
-                                    class="wrapped-label"
-                                    >{{ __('encounters.eprescription.course_start') }}</label
-                                >
-                            </div>
+                        <div class="form-group datepicker-wrapper relative w-full">
+                            <input
+                                wire:model="encounterEPrescriptionForm.started_at"
+                                datepicker-format="{{ frontendDateFormat() }}"
+                                type="text"
+                                name="encounterEPrescriptionStartedAt"
+                                id="encounterEPrescriptionStartedAt"
+                                class="peer input datepicker-input appearance-none pl-10 text-gray-500 dark:text-gray-400"
+                                placeholder=" "
+                                autocomplete="off"
+                                required
+                                datepicker-autohide
+                                datepicker-button="false"
+                            />
+                            <label for="encounterEPrescriptionStartedAt" class="wrapped-label">{{ __('encounters.eprescription.course_start') }}</label>
                             @error ('encounterEPrescriptionForm.started_at')
                                 <p class="text-error">{{ $message }}</p>
                             @enderror
                         </div>
-                        <div class="form-group group">
-                            <div class="datepicker-wrapper">
-                                <input
-                                    type="date"
-                                    id="encounterEPrescriptionEndedAt"
-                                    class="input peer w-full"
-                                    placeholder=" "
-                                    autocomplete="off"
-                                    wire:model="encounterEPrescriptionForm.ended_at"
-                                />
-                                <label
-                                    for="encounterEPrescriptionEndedAt"
-                                    class="wrapped-label"
-                                    >{{ __('encounters.eprescription.course_end') }}</label
-                                >
-                            </div>
+                        <div class="form-group datepicker-wrapper relative w-full">
+                            <input
+                                wire:model="encounterEPrescriptionForm.ended_at"
+                                datepicker-format="{{ frontendDateFormat() }}"
+                                type="text"
+                                name="encounterEPrescriptionEndedAt"
+                                id="encounterEPrescriptionEndedAt"
+                                class="peer input datepicker-input appearance-none pl-10 text-gray-500 dark:text-gray-400"
+                                placeholder=" "
+                                autocomplete="off"
+                                required
+                                datepicker-autohide
+                                datepicker-button="false"
+                            />
+                            <label for="encounterEPrescriptionEndedAt" class="wrapped-label">{{ __('encounters.eprescription.course_end') }}</label>
                             @error ('encounterEPrescriptionForm.ended_at')
                                 <p class="text-error">{{ $message }}</p>
                             @enderror
@@ -305,19 +302,16 @@
                     </div>
                 @endif
 
+                @if ($encounterEPrescriptionRequestIdToSign !== null)
+                    <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                        {{ __('medication-requests.pending_signing_note') }}
+                    </p>
+                @endif
+
                 <div class="mt-8 flex w-full justify-start gap-4">
-                    <button
-                        type="button"
-                        class="button-minor"
-                        wire:click="closeEncounterEPrescriptionDrawer"
-                    >
-                        {{ __('forms.cancel') }}
-                    </button>
+                    <a href="{{ $encounterReturnUrl }}" class="button-minor">{{ __('forms.cancel') }}</a>
                     <button type="submit" class="button-primary">
-                        {{ __('forms.create_and_sign') }}
+                        {{ $encounterEPrescriptionRequestIdToSign !== null ? __('medication-requests.resume_signing') : __('forms.create_and_sign') }}
                     </button>
                 </div>
             </form>
-        </x-dialog-drawer>
-    </div>
-@endif

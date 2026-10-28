@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\CarePlan\Forms;
 
+use Illuminate\Support\Facades\Validator;
+
+use App\Core\Arr;
+
 use Carbon\CarbonImmutable;
 use Livewire\Form;
 
@@ -44,13 +48,14 @@ class CarePlanForm extends Form
             'category' => 'required|string',
             'context' => 'nullable|string',
             'title' => 'required|string',
+            'intent' => 'required|in:order',
             'periodStart' => 'required|date_format:'.config('app.date_format'),
             'periodEnd' => 'nullable|date_format:'.config('app.date_format').'|after_or_equal:periodStart',
-            'encounter' => 'nullable|string',
+            'encounter' => 'required|uuid',
             'description' => 'nullable|string',
             'note' => 'nullable|string',
             'informWith' => 'nullable|string',
-            'termsOfService' => 'required|string',
+            'termsOfService' => 'required|in:INPATIENT,OUTPATIENT',
             'episodes' => 'nullable|array',
             'medicalRecords' => 'nullable|array',
         ];
@@ -89,6 +94,7 @@ class CarePlanForm extends Form
             'category' => __('care-plan.category'),
             'context' => __('care-plan.context'),
             'title' => __('care-plan.name_care_plan'),
+            'intent' => __('care-plan.intention'),
             'periodStart' => __('care-plan.date_and_time_start'),
             'periodEnd' => __('care-plan.date_and_time_end'),
             'encounter' => __('care-plan.encounter'),
@@ -110,5 +116,47 @@ class CarePlanForm extends Form
         return [
             'periodEnd.after_or_equal' => __('care-plan.period_end_before_start'),
         ];
+    }
+
+    public static function buildCreateContent(array $resource): array
+    {
+        Validator::make($resource, [
+            'id' => ['required', 'uuid'], 'title' => ['required', 'string'],
+            'category.coding' => ['required', 'array', 'min:1'],
+            'period.start' => ['required', 'date'],
+            'encounter.identifier.value' => ['required', 'uuid'],
+            'author.identifier.value' => ['required', 'uuid'],
+            'addresses' => ['required', 'array', 'min:1'],
+            'termsOfService.coding' => ['required', 'array', 'min:1'],
+        ])->validate();
+        $content = array_intersect_key($resource, array_flip(['id', 'category', 'title', 'description', 'period', 'supportingInfo', 'note', 'encounter', 'addresses', 'author', 'contributor', 'termsOfService', 'informWith']));
+        $content['intent'] = 'order';
+        $content['status'] = 'new';
+
+        return self::resourcePayload($content);
+    }
+
+    public static function buildCancelContent(array $snapshot, array $statusReason): array
+    {
+        Validator::make($snapshot, ['id' => ['required', 'uuid']])->validate();
+        unset($snapshot['activities']);
+        $snapshot['status_reason'] = $statusReason;
+
+        return $snapshot;
+    }
+
+    private static function resourcePayload(array $data): array
+    {
+        $result = [];
+        foreach (Arr::toSnakeCase($data) as $key => $value) {
+            if (is_array($value)) {
+                $value = self::resourcePayload($value);
+            }
+            if ($value !== null && $value !== '' && $value !== []) {
+                $result[$key] = $value;
+            }
+        }
+
+        return array_is_list($data) ? array_values($result) : $result;
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Livewire\CarePlan;
 
 use App\Livewire\CarePlan\Forms\CarePlanForm;
-use App\Repositories\CarePlanRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -15,6 +14,17 @@ use Tests\TestCase;
 
 class CarePlanPeriodValidationTest extends TestCase
 {
+    public function test_order_is_the_only_intent_and_an_encounter_is_required(): void
+    {
+        $form = $this->form('10.10.2026', '11.10.2026');
+        $form->intent = 'proposal';
+        $form->encounter = '';
+        $validator = Validator::make($form->toArray(), $form->rules());
+        $this->assertTrue($validator->fails());
+        $this->assertTrue($validator->errors()->has('intent'));
+        $this->assertTrue($validator->errors()->has('encounter'));
+    }
+
     public static function dateFormats(): array
     {
         return [
@@ -45,9 +55,10 @@ class CarePlanPeriodValidationTest extends TestCase
         $rules = array_intersect_key($form->rulesForSigning(), array_flip(['periodStart', 'periodEnd']));
         $this->assertTrue(Validator::make($form->toArray(), $rules)->passes());
 
-        $payload = (new CarePlanRepository())->formatCarePlanRequest(array_replace($form->toArray(), [
+        $payload = \App\Services\MedicalEvents\Fhir::carePlan()->toFhir(array_replace($form->toArray(), [
+            'uuid' => '11111111-1111-4111-8111-111111111111',
             'periodStart' => $form->periodStartIsoDate(), 'periodEnd' => $form->periodEndIsoDate(),
-        ]), null, ['addresses' => []], '11111111-1111-4111-8111-111111111111');
+        ]), ['timezone' => config('app.timezone')]);
         $this->assertSame('2026-11-10', CarbonImmutable::parse($payload['period']['start'])->setTimezone(config('app.timezone'))->toDateString());
         $this->assertSame('2026-11-11', CarbonImmutable::parse($payload['period']['end'])->setTimezone(config('app.timezone'))->toDateString());
     }
@@ -105,7 +116,8 @@ class CarePlanPeriodValidationTest extends TestCase
         $form = new CarePlanForm($component, 'form');
         $form->category = 'THERAPY';
         $form->title = 'Test plan';
-        $form->termsOfService = 'EPISODE';
+        $form->termsOfService = 'OUTPATIENT';
+        $form->encounter = '11111111-1111-4111-8111-111111111111';
         $form->periodStart = $start;
         $form->periodEnd = $end;
 

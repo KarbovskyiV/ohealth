@@ -7,7 +7,6 @@ namespace Tests\Feature\CarePlan;
 use App\Classes\eHealth\Api\Person as PersonApi;
 use App\Classes\eHealth\EHealthResponse;
 use App\Livewire\CarePlan\CarePlanUpdate;
-use App\Models\CarePlan;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\Person\Person;
@@ -15,7 +14,7 @@ use App\Models\Relations\Party;
 use App\Models\User;
 use App\Services\Dictionary\Collections\BasicDictionaryCollection;
 use App\Services\Dictionary\DictionaryManager;
-use App\Services\MedicalEvents\CarePlanLifecycleService;
+use App\Classes\eHealth\Api\CarePlan as CarePlanLifecycleService;
 use App\Services\SignatureService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -32,6 +31,8 @@ use Tests\TestCase;
 
 class CarePlanConfiguredPeriodTest extends TestCase
 {
+    use \Tests\Concerns\CreatesFhirCarePlans;
+
     use DatabaseTransactions;
 
     public static function dateFormats(): array
@@ -77,19 +78,36 @@ class CarePlanConfiguredPeriodTest extends TestCase
             'birth_date' => '1990-01-01', 'gender' => 'FEMALE',
             'patient_signed' => true, 'process_disclosure_data_consent' => true,
         ]);
-        $draft = CarePlan::create([
+        $episodeIdentifier = \App\Models\MedicalEvents\Sql\Identifier::create(['value' => (string) Str::uuid()]);
+        $episode = \App\Models\MedicalEvents\Sql\Episode::create([
+            'uuid' => $episodeIdentifier->value, 'person_id' => $person->id,
+            'status' => 'active', 'name' => 'Контроль лікування',
+        ]);
+        $episode->period()->create(['start' => '2026-11-10']);
+        $class = \App\Models\MedicalEvents\Sql\Coding::create(['system' => 'eHealth/encounter_classes', 'code' => 'AMB']);
+        $type = \App\Models\MedicalEvents\Sql\CodeableConcept::create();
+        $encounter = \App\Models\MedicalEvents\Sql\Encounter::create(['uuid' => (string) Str::uuid(), 'person_id' => $person->id, 'status' => 'finished', 'episode_id' => $episodeIdentifier->id, 'class_id' => $class->id, 'type_id' => $type->id]);
+        $conditionIdentifier = \App\Models\MedicalEvents\Sql\Identifier::create(['value' => (string) Str::uuid()]);
+        $code = \App\Repositories\MedicalEvents\Repository::codeableConcept()->store(['coding' => [['system' => 'eHealth/ICD10_AM/condition_codes', 'code' => 'A00.0']]]);
+        \App\Models\MedicalEvents\Sql\Condition::create(['uuid' => $conditionIdentifier->value, 'person_id' => $person->id, 'primary_source' => true, 'clinical_status' => 'active', 'verification_status' => 'confirmed', 'code_id' => $code->id, 'context_id' => $episodeIdentifier->id, 'onset_date' => now()]);
+        $diagnosisRole = \App\Repositories\MedicalEvents\Repository::codeableConcept()->store([
+            'coding' => [['system' => 'eHealth/diagnosis_roles', 'code' => 'primary']],
+        ]);
+        \App\Models\MedicalEvents\Sql\EncounterDiagnose::create(['encounter_id' => $encounter->id, 'condition_id' => $conditionIdentifier->id, 'role_id' => $diagnosisRole->id, 'rank' => 1]);
+        $draft = $this->createFhirCarePlan([
             'person_id' => $person->id, 'author_id' => $employee->id, 'legal_entity_id' => $legalEntity->id,
-            'status' => 'draft', 'category' => '736382003', 'title' => 'План лікування',
+            'encounter_id' => $encounter->id, 'status' => 'draft', 'category' => 'class_1', 'title' => 'План лікування',
             'terms_of_service' => 'OUTPATIENT', 'period_start' => '2026-11-10', 'period_end' => '2026-11-11',
+            'supporting_info' => ['episodes' => [['uuid' => $episode->uuid]]],
         ]);
         $response = Mockery::mock(EHealthResponse::class);
-        $response->shouldReceive('getData')->andReturn([]);
+        $response->shouldReceive('validate')->andReturn([]);
         $this->mock(PersonApi::class, function ($mock) use ($response): void {
             $mock->shouldReceive('getAuthMethods')->andReturn($response);
         });
         $this->mock(DictionaryManager::class, function ($mock): void {
             $mock->shouldReceive('basics')->andReturn(new BasicDictionaryCollection([
-                ['name' => 'eHealth/care_plan_categories', 'values' => [['code' => '736382003', 'description' => 'План лікування']]],
+                ['name' => 'eHealth/care_plan_categories', 'values' => [['code' => 'class_1', 'description' => 'План лікування']]],
                 ['name' => 'eHealth/encounter_classes', 'values' => [['code' => 'AMB', 'description' => 'Амбулаторна взаємодія']]],
                 ['name' => 'PROVIDING_CONDITION', 'values' => [['code' => 'OUTPATIENT', 'description' => 'Амбулаторно']]],
                 ['name' => 'AUTHENTICATION_METHOD', 'values' => [
@@ -108,17 +126,32 @@ class CarePlanConfiguredPeriodTest extends TestCase
                 return 'signed-test-payload';
             });
         });
-        $uuid = (string) Str::uuid();
+        $uuid = $draft->uuid;
         $this->mock(CarePlanLifecycleService::class, function ($mock) use ($person, $uuid): void {
-            $mock->shouldReceive('submitSignedCreate')->once()->with($person->uuid, 'signed-test-payload')
-                ->andReturn(['id' => $uuid, 'status' => 'active']);
+            $mock->makePartial();
+            $response = \Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
+            $response->shouldReceive('validate')->once()->andReturn(['id' => $uuid, 'status' => 'active']);
+            $response->shouldReceive('getStatusCode')->andReturn(201);
+            $mock->shouldReceive('create')->once()->with($person->uuid, ['signed_data' => 'signed-test-payload', 'signed_data_encoding' => 'base64'])
+                ->andReturn($response);
         });
 
+        $earlier = CarbonImmutable::parse('2026-11-09')->format($format);
         Livewire::test(CarePlanUpdate::class, ['legalEntity' => $legalEntity, 'carePlan' => $draft])
+            ->set('form.periodEnd', $earlier)->call('save')
+            ->assertHasErrors(['form.periodEnd'])
+            ->assertSee(__('care-plan.period_end_before_start'))
+            ->assertSet('showSignatureModal', false);
+
+        Livewire::test(CarePlanUpdate::class, ['legalEntity' => $legalEntity, 'carePlan' => $draft])
+            ->assertSet('form.episodes.0.name', 'Контроль лікування')
+            ->assertSet('form.episodes.0.date', $start)
             ->assertSet('form.periodStart', $start)->assertSet('form.periodEnd', $end)
-            ->set('form.termsOfService', 'OUTPATIENT')->call('save')->assertHasNoErrors();
-        $this->assertSame('2026-11-10', $draft->fresh()->periodStart->toDateString());
-        $this->assertSame('2026-11-11', $draft->fresh()->periodEnd->toDateString());
+            ->set('form.intent', 'proposal')->set('form.termsOfService', 'INPATIENT')->call('save')->assertHasNoErrors()
+            ->assertSet('form.intent', 'order')->assertSet('form.termsOfService', 'OUTPATIENT')
+            ->assertDontSeeHtml('<select id="intent"');
+        $this->assertSame('2026-11-10', \Carbon\CarbonImmutable::parse(app(\App\Repositories\CarePlanRepository::class)->getResource($draft->id)['period']['start'])->setTimezone(config('app.timezone'))->toDateString());
+        $this->assertSame('2026-11-11', \Carbon\CarbonImmutable::parse(app(\App\Repositories\CarePlanRepository::class)->getResource($draft->id)['period']['end'])->setTimezone(config('app.timezone'))->toDateString());
 
         Livewire::test(CarePlanUpdate::class, ['legalEntity' => $legalEntity, 'carePlan' => $draft->fresh()])
             ->assertSet('form.periodStart', $start)->assertSet('form.periodEnd', $end)
@@ -130,7 +163,7 @@ class CarePlanConfiguredPeriodTest extends TestCase
         $this->assertSame('2026-11-10', CarbonImmutable::parse($payload['period']['start'])->setTimezone(config('app.timezone'))->toDateString());
         $this->assertSame('2026-11-11', CarbonImmutable::parse($payload['period']['end'])->setTimezone(config('app.timezone'))->toDateString());
         $this->assertSame('active', $draft->fresh()->status);
-        $this->assertSame('2026-11-10', $draft->fresh()->periodStart->toDateString());
-        $this->assertSame('2026-11-11', $draft->fresh()->periodEnd->toDateString());
+        $this->assertSame('2026-11-10', \Carbon\CarbonImmutable::parse(app(\App\Repositories\CarePlanRepository::class)->getResource($draft->id)['period']['start'])->setTimezone(config('app.timezone'))->toDateString());
+        $this->assertSame('2026-11-11', \Carbon\CarbonImmutable::parse(app(\App\Repositories\CarePlanRepository::class)->getResource($draft->id)['period']['end'])->setTimezone(config('app.timezone'))->toDateString());
     }
 }

@@ -1,5 +1,14 @@
 @if (is_array($value))
-    @if (isset($value['start']))
+    @php
+        $entityReferenceUuid = data_get($value, 'identifier.value');
+        $entityReferenceType = data_get($value, 'identifier.type.coding.0.code');
+        $entityReferenceName = $entityReferenceType === 'legal_entity'
+            ? ($legalEntityNames[$entityReferenceUuid ?? ''] ?? null)
+            : null;
+    @endphp
+    @if ($entityReferenceName)
+        <span>{{ $entityReferenceName }}</span>
+    @elseif (isset($value['start']))
         <span>{{ $value['start'] }} — {{ $value['end'] ?? __('care-plan.no_end_date') }}</span>
     @elseif (isset($value['display_value']))
         <span>{{ $value['display_value'] }}</span>

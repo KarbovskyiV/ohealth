@@ -118,7 +118,7 @@ class CarePlanActivityValidationServiceTest extends TestCase
         $this->carePlan->update(['category' => 'CLASS 23']);
 
         $this->assertNotNull($this->service->rehabReasonReferenceBlockReason($this->carePlan, []));
-        $this->assertNull($this->service->rehabReasonReferenceBlockReason($this->carePlan, [
+        $this->assertNotNull($this->service->rehabReasonReferenceBlockReason($this->carePlan, [
             'Observation/' . (string) Str::uuid(),
         ]));
     }

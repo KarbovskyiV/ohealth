@@ -286,6 +286,11 @@ final class EHealth
         return app(MedicationRequest::class);
     }
 
+    public static function medicationRequestRequest(): \App\Classes\eHealth\Api\Patient\MedicationRequestRequest
+    {
+        return app(\App\Classes\eHealth\Api\Patient\MedicationRequestRequest::class);
+    }
+
     public static function medicationDispense(): MedicationDispense
     {
         return app(MedicationDispense::class);

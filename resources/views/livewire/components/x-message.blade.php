@@ -6,7 +6,7 @@
     @endif
 >
     @if (session('error') || session('success') || session('status') || session('info') || session('warning'))
-        <div class="alert-message fixed top-6 right-2 z-99999 flex w-auto" x-show="showAlertMessage">
+        <div class="alert-message fixed top-6 right-2 left-2 z-99999 flex max-w-xl flex-col sm:left-auto" x-show="showAlertMessage">
             @session('error')
                 <div
                     role="alert"
@@ -62,7 +62,7 @@
     @endif
 
     <div
-        class="alert-message fixed top-6 right-2 z-99999 flex w-auto"
+        class="alert-message fixed top-6 right-2 left-2 z-99999 flex max-w-xl flex-col sm:left-auto"
         x-show="showDynamicMessage"
         x-transition:enter="transition ease-out duration-300"
         x-transition:enter-start="opacity-0 translate-y-[-20px]"

@@ -13,19 +13,12 @@ use App\Enums\User\Role;
 use App\Models\CarePlan;
 use App\Models\CarePlanActivity;
 use App\Models\Employee\Employee;
-use App\Models\MedicalEvents\Sql\Condition;
-use App\Models\MedicalEvents\Sql\DeviceRequestRequest;
-use App\Models\MedicalEvents\Sql\DiagnosticReport;
-use App\Models\MedicalEvents\Sql\Medications\MedicationRequestRequest;
-use App\Models\MedicalEvents\Sql\Observation;
-use App\Models\MedicalEvents\Sql\ServiceRequestRequest;
 use App\Services\Dictionary\DictionaryManager;
 use App\Services\Dictionary\MedicationProgramPicker;
 use App\Services\MedicalEvents\CarePlanActivityValidationService;
 use App\Services\MedicalEvents\CarePlanLifecycleGateService;
 use App\Services\MedicalEvents\DeviceProgramParticipationGuard;
 use App\Traits\InteractsWithApprovals;
-use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -34,7 +27,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -51,6 +43,12 @@ abstract class CarePlanComponent extends Component
 
     #[Locked]
     public CarePlan $carePlan;
+
+    #[Locked]
+    public array $planSubmission = [];
+
+    #[Locked]
+    public ?string $inpatientApprovalStatus = null;
 
     public bool $showSignatureModal = false;
     public string $actionType = ''; // 'cancel', 'complete', 'sign_activity', 'complete_activity', 'cancel_activity'
@@ -206,6 +204,8 @@ abstract class CarePlanComponent extends Component
         'quantity_system' => '',
         'quantity_code' => '',
         'daily_amount' => '',
+        'daily_amount_system' => '',
+        'daily_amount_code' => '',
         'reason_code' => '',
         'reason_reference' => '',
         'goal' => '',
@@ -289,70 +289,59 @@ abstract class CarePlanComponent extends Component
     {
         if (isset($this->carePlan)) {
             $this->authorize('view', $this->carePlan);
+            $this->carePlan = app(\App\Repositories\CarePlanRepository::class)->findById($this->carePlan->id);
+            if (property_exists($this, 'activity') && isset($this->activity)) {
+                $this->activity = $this->ownedActivity($this->activity->id);
+            }
         }
+    }
+
+    protected function authorizeCarePlanActivityWrite(): void
+    {
+        $this->authorizeCarePlanWrite();
+        // Use fresh consent state for a mutation, even if the page was opened before it expired.
+        $plan = app(\App\Repositories\CarePlanRepository::class)->findById($this->carePlan->id);
+        $this->authorize('manageActivities', $plan);
+    }
+
+    public function getCanManageActivitiesProperty(): bool
+    {
+        return !$this->isTerminalCarePlan && !$this->carePlan->requiresFhirImport()
+            && Auth::user()?->can('manageActivities', $this->carePlan) === true;
     }
 
     protected function authorizeCarePlanWrite(): void
     {
         $this->authorize('manage', $this->carePlan);
+        if ($this->carePlan->requiresFhirImport()) {
+            $message = __($this->carePlan->status === CarePlanStatus::DRAFT->value ? 'care-plan.draft_backfill_required' : 'care-plan.full_sync_required');
+            Session::flash('error', $message);
+            throw \Illuminate\Validation\ValidationException::withMessages(['carePlan' => $message]);
+        }
     }
 
     protected function ownedActivity(int $activityId): CarePlanActivity
     {
-        $activity = $this->carePlan->activities()->whereKey($activityId)->first();
-
-        if ($activity === null) {
-            throw (new ModelNotFoundException())->setModel(CarePlanActivity::class);
-        }
-
-        return $activity;
+        return app(\App\Repositories\CarePlanActivityRepository::class)->findOwned($this->carePlan->id, $activityId);
     }
 
-    /**
-     * Resolve a care-plan activity from a request's basedOn Identifier UUID.
-     */
     protected function ownedActivityByBasedOnUuid(?string $activityUuid): CarePlanActivity
     {
-        if ($activityUuid === null || $activityUuid === '') {
-            throw (new ModelNotFoundException())->setModel(CarePlanActivity::class);
-        }
-
-        return $this->carePlan->activities()->where('uuid', $activityUuid)->firstOrFail();
+        return app(\App\Repositories\CarePlanActivityRepository::class)->findOwnedByUuid($this->carePlan->id, $activityUuid);
     }
 
     protected function bootCarePlan(CarePlan $carePlan): void
     {
         $this->authorize('view', $carePlan);
 
-        $this->carePlan = $carePlan;
-        $this->carePlan->load(['person', 'author.party', 'categoryConcept.coding', 'activities.kindConcept.coding']);
+        $this->carePlan = app(\App\Repositories\CarePlanRepository::class)->findById($carePlan->id);
 
         $personId = $this->carePlan->personId;
 
-        // Fetch patient conditions for outcomeReference selection
-        $this->availableConditions = Condition::where('person_id', $personId)
-            ->with('code.coding')->get()->map(fn ($c) => [
-                'uuid' => $c->uuid,
-                'name' => ($c->code?->text ?: null) ?? ($c->code?->coding?->first()?->code ?: null) ?? 'Unknown Condition',
-                'date' => $c->onset_date ? Carbon::parse($c->onset_date)->format('d.m.Y') : '-',
-            ])->toArray();
-
-        // Fetch patient diagnostic reports for justifications (grounds)
-        $this->availableReports = DiagnosticReport::where('person_id', $personId)
-            ->with('code')
-            ->get()->map(fn ($dr) => [
-                'uuid' => $dr->uuid,
-                'name' => $dr->code?->displayValue ?: $dr->code?->value ?: 'Diagnostic Report',
-                'date' => $dr->issued ? Carbon::parse($dr->issued)->format('d.m.Y') : '-',
-            ])->toArray();
-
-        // Fetch patient observations for justifications (grounds)
-        $this->availableObservations = Observation::where('person_id', $personId)
-            ->get()->map(fn ($obs) => [
-                'uuid' => $obs->uuid,
-                'name' => $obs->code?->text ?: 'Observation',
-                'date' => $obs->issued ? Carbon::parse($obs->issued)->format('d.m.Y') : '-',
-            ])->toArray();
+        $grounds = app(\App\Repositories\CarePlanRepository::class)->availableGrounds($personId);
+        $this->availableConditions = $grounds['conditions'];
+        $this->availableReports = $grounds['reports'];
+        $this->availableObservations = $grounds['observations'];
 
         // Basic dictionaries and medical programs come from different eHealth endpoints.
         // They are loaded separately so a missing optional dictionary cannot leave the
@@ -440,9 +429,8 @@ abstract class CarePlanComponent extends Component
         $this->patientId = $this->carePlan->person->uuid;
         $this->loadDeviceProgramParticipationState();
 
-        $this->activePrescriptions = MedicationRequestRequest::with('basedOn')
-            ->whereHas('basedOn', fn ($q) => $q->whereIn('value', $this->carePlan->activities->pluck('uuid')))
-            ->get()
+        $this->activePrescriptions = app(\App\Repositories\CarePlanActivityRepository::class)
+            ->linkedDocuments($this->carePlan->activities->pluck('uuid')->all(), 'medication_request', forDisplay: true)
             ->map(function ($record): array {
                 $row = $record->toArray();
                 $row['based_on_uuid'] = $record->basedOn?->value;
@@ -463,12 +451,10 @@ abstract class CarePlanComponent extends Component
      */
     public function getCanSignPlanProperty(): bool
     {
-        return !filled($this->carePlan->uuid)
-            && in_array($this->carePlanStatusCode(), [
-                CarePlanStatus::DRAFT->value,
-                CarePlanStatus::PENDING->value,
-                'pending',
-            ], true);
+        return $this->carePlanStatusCode() === CarePlanStatus::DRAFT->value
+            && !$this->carePlan->requiresFhirImport()
+            && !in_array($this->planSubmission['status'] ?? null, [\App\Enums\JobStatus::PENDING->value, \App\Enums\JobStatus::PROCESSING->value, \App\Enums\JobStatus::PROCESSED->value], true)
+            && !app(\App\Repositories\CarePlanRepository::class)->hasPendingSubmission($this->carePlan);
     }
 
     /**
@@ -478,8 +464,12 @@ abstract class CarePlanComponent extends Component
     {
         return filled($this->carePlan->uuid)
             && !$this->isTerminalCarePlan
+            && !$this->isInpatientPlanOfCurrentOrganization
+            && !$this->carePlan->requiresFhirImport()
             && $this->carePlanStatusCode() === CarePlanStatus::PENDING->value
-            && !$this->hasGrantedApprovalForCurrentDoctor;
+            && !in_array($this->planSubmission['status'] ?? null, [\App\Enums\JobStatus::PENDING->value, \App\Enums\JobStatus::PROCESSING->value], true)
+            && !$this->hasGrantedApprovalForCurrentDoctor
+            && !app(\App\Repositories\CarePlanRepository::class)->hasPendingSubmission($this->carePlan);
     }
 
     /**
@@ -494,6 +484,22 @@ abstract class CarePlanComponent extends Component
 
         return $this->carePlanStatusCode() === CarePlanStatus::ACTIVE->value
             || $this->hasGrantedApprovalForCurrentDoctor;
+    }
+
+    public function getIsInpatientPlanOfCurrentOrganizationProperty(): bool
+    {
+        return app(\App\Services\MedicalEvents\CarePlanApprovalService::class)->skipsPatientOtp($this->carePlan);
+    }
+
+    public function getCanRequestInpatientAccessProperty(): bool
+    {
+        return $this->isInpatientPlanOfCurrentOrganization
+            && !$this->isTerminalCarePlan
+            && in_array($this->carePlanStatusCode(), [CarePlanStatus::PENDING->value, CarePlanStatus::ACTIVE->value], true)
+            && !$this->carePlan->requiresFhirImport()
+            && !$this->hasGrantedApprovalForCurrentDoctor
+            && !in_array($this->inpatientApprovalStatus, ['queued', 'pending'], true)
+            && !app(\App\Repositories\CarePlanRepository::class)->hasPendingSubmission($this->carePlan);
     }
 
     public function getHasGrantedApprovalForCurrentDoctorProperty(): bool
@@ -538,16 +544,20 @@ abstract class CarePlanComponent extends Component
     }
 
     /**
-     * Completing an activity is the one action here eHealth accepts unsigned
-     * (API-007-006-0006), so it must not ask the doctor for a KEP.
+     * Care Plan and Activity completion use unsigned action bodies.
      */
     protected function requiresDigitalSignature(): bool
     {
-        return $this->actionType !== 'complete_activity';
+        return !in_array($this->actionType, ['complete', 'complete_activity'], true);
     }
 
     public function getStatusReasonsProperty(): array
     {
+        if (in_array($this->actionType, ['cancel_referral', 'recall_referral'], true)) {
+            $operation = $this->actionType === 'recall_referral' ? 'recall' : 'cancel';
+
+            return $this->dictionaries['service_request_'.$operation.'_reasons'] ?? [];
+        }
         if ($this->actionType === 'complete') {
             return $this->dictionaries['care_plan_complete_reasons'] ?? [];
         }
@@ -587,8 +597,22 @@ abstract class CarePlanComponent extends Component
     public function openSignatureModal(string $actionType, ?int $activityId = null, ?string $requestUuid = null): void
     {
         $this->authorizeCarePlanWrite();
+        if (in_array($actionType, ['sign_activity', 'cancel_activity', 'complete_activity'], true)) {
+            $this->authorizeCarePlanActivityWrite();
+        }
         if ($this->guardTerminalCarePlanMutation()) {
             return;
+        }
+
+        if ($actionType === 'sign_plan') {
+            try {
+                app(\App\Repositories\CarePlanRepository::class)->assertDraftSigningReady($this->carePlan);
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                Session::flash('error', $exception->validator->errors()->first());
+                $this->showSignatureModal = false;
+
+                return;
+            }
         }
 
         try {
@@ -637,6 +661,18 @@ abstract class CarePlanComponent extends Component
             }
         }
 
+        if (in_array($actionType, ['cancel_referral', 'recall_referral'], true)) {
+            $operation = $actionType === 'recall_referral' ? 'recall' : 'cancel';
+            try {
+                $this->dictionaries['service_request_'.$operation.'_reasons'] = dictionary()->basics()->byName('eHealth/service_request_'.$operation.'_reasons')->asCodeDescription()->all();
+            } catch (\Throwable $exception) {
+                Log::warning('Referral status reasons could not be loaded', ['exceptionType' => $exception::class]);
+                Session::flash('error', __('Не вдалося завантажити довідник причин зміни направлення.'));
+                $this->showSignatureModal = false;
+
+                return;
+            }
+        }
         $this->actionType = $actionType;
         $this->activityToSign = $activityId;
         if ($requestUuid !== null && $requestUuid !== '') {
@@ -662,10 +698,7 @@ abstract class CarePlanComponent extends Component
             return null;
         }
 
-        $termsOfService = $this->carePlan->termsOfService;
-        if (is_array($termsOfService)) {
-            $termsOfService = $termsOfService['coding'][0]['code'] ?? null;
-        }
+        $termsOfService = $this->carePlan->termsOfServiceCode();
 
         return $user->getCarePlanWriterEmployee(is_string($termsOfService) ? $termsOfService : null)
             ?? $user->activeDoctorEmployee();
@@ -696,46 +729,32 @@ abstract class CarePlanComponent extends Component
 
     protected function refreshCarePlan(): void
     {
-        $this->carePlan->refresh();
-        $this->carePlan->unsetRelation('approvals');
-        $this->carePlan->load(['person', 'author.party', 'categoryConcept', 'activities.kindConcept.coding']);
-
+        $this->carePlan = app(\App\Repositories\CarePlanRepository::class)->findById($this->carePlan->id);
+        unset($this->canManageActivities, $this->hasGrantedApprovalForCurrentDoctor, $this->canRequestPatientApproval, $this->canRequestInpatientAccess, $this->canChangePlanLifecycle);
+        $repository = app(\App\Repositories\CarePlanActivityRepository::class);
         if (property_exists($this, 'activity') && $this->activity instanceof CarePlanActivity) {
-            $this->activity->refresh()->load(['kindConcept.coding', 'reasonReferences', 'author.party']);
+            $this->activity = $repository->findOwned($this->carePlan->id, $this->activity->id);
         }
-
-        $this->activePrescriptions = MedicationRequestRequest::with('basedOn')
-            ->whereHas('basedOn', fn ($q) => $q->whereIn('value', $this->carePlan->activities->pluck('uuid')))
-            ->get()
+        $this->activePrescriptions = $repository->linkedDocuments($this->carePlan->activities->pluck('uuid')->all(), 'medication_request', forDisplay: true)
             ->map(function ($record): array {
                 $row = $record->toArray();
                 $row['based_on_uuid'] = $record->basedOn?->value;
 
                 return $row;
-            })
-            ->all();
-
+            })->all();
         $this->loadActiveReferrals();
     }
 
     protected function loadActiveReferrals(): void
     {
-        $activityUuids = $this->carePlan->activities->pluck('uuid')->toArray();
-
-        $serviceReferrals = ServiceRequestRequest::query()
-            ->with(['employee', 'basedOn', 'category', 'priority'])
-            ->whereHas('basedOn', fn ($q) => $q->whereIn('value', $activityUuids))
-            ->get()
-            ->map(fn (Model $record): array => $this->normalizeReferralForView($record, 'service_request'))
-            ->all();
-        $deviceReferrals = DeviceRequestRequest::query()
-            ->with(['employee', 'basedOn', 'category', 'priority'])
-            ->whereHas('basedOn', fn ($q) => $q->whereIn('value', $activityUuids))
-            ->get()
-            ->map(fn (Model $record): array => $this->normalizeReferralForView($record, 'device_request'))
-            ->all();
-
-        $this->activeReferrals = array_values(array_merge($serviceReferrals, $deviceReferrals));
+        $activityUuids = $this->carePlan->activities->pluck('uuid')->all();
+        $repository = app(\App\Repositories\CarePlanActivityRepository::class);
+        $this->activeReferrals = [];
+        foreach (['service_request', 'device_request'] as $kind) {
+            foreach ($repository->linkedDocuments($activityUuids, $kind) as $record) {
+                $this->activeReferrals[] = $this->normalizeReferralForView($record, $kind);
+            }
+        }
     }
 
     /**
@@ -754,8 +773,8 @@ abstract class CarePlanComponent extends Component
             'status_label' => $this->resolveReferralStatusLabel((string) $record->getAttribute('status')),
             'request_number' => $record->getAttribute('request_number'),
             'quantity' => $record->getAttribute('quantity'),
-            'started_at' => $record->getAttribute('started_at'),
-            'ended_at' => $record->getAttribute('ended_at'),
+            'started_at' => $kind === 'service_request' ? $record->getRawOriginal('started_at') : $record->getAttribute('started_at'),
+            'ended_at' => $kind === 'service_request' ? $record->getRawOriginal('ended_at') : $record->getAttribute('ended_at'),
             'service_id' => $kind === 'service_request' ? $record->getAttribute('service_id') : null,
             'device_id' => $kind === 'device_request' ? $record->getAttribute('device_id') : null,
             'product_code' => $kind === 'service_request'
@@ -796,96 +815,6 @@ abstract class CarePlanComponent extends Component
         $key = 'care-plan.referral_priority.' . $priority;
 
         return Lang::has($key) ? __($key) : $priority;
-    }
-
-    protected function cleanCarePlanPayload(array $payload): array
-    {
-        $excludeKeys = [
-            'remaining_quantity',
-            'remaining_quantity_type',
-            'inserted_at',
-            'inserted_by',
-            'updated_at',
-            'updated_by',
-            'ehealth_inserted_at',
-            'ehealth_updated_at',
-            'ehealth_inserted_by',
-            'status_history',
-            'database_id',
-            'urgent',
-            'links',
-        ];
-
-        $cleaned = $this->cleanPayloadKeys($payload, $excludeKeys);
-
-        if (isset($cleaned['uuid']) && empty($cleaned['id'])) {
-            $cleaned['id'] = $cleaned['uuid'];
-        }
-        unset($cleaned['uuid']);
-
-        return $cleaned;
-    }
-
-    protected function cleanActivityPayload(array $payload): array
-    {
-        $excludeKeys = [
-            'remaining_quantity',
-            'remaining_quantity_type',
-            'inserted_at',
-            'inserted_by',
-            'updated_at',
-            'updated_by',
-            'status_history',
-            'database_id',
-        ];
-
-        $cleaned = [];
-        foreach ($payload as $key => $value) {
-            $snakeKey = Str::snake($key);
-            if (in_array($snakeKey, $excludeKeys, true)) {
-                continue;
-            }
-
-            if ($snakeKey === 'author' && is_array($value)) {
-                if (isset($value[0])) {
-                    $value = $value[0];
-                }
-            }
-
-            if (is_array($value)) {
-                $cleaned[$key] = $this->cleanActivityPayload($value);
-            } else {
-                $cleaned[$key] = $value;
-            }
-        }
-
-        return $cleaned;
-    }
-
-    protected function cleanPayloadKeys(array $payload, array $excludeKeys): array
-    {
-        $cleaned = [];
-        foreach ($payload as $key => $value) {
-            $snakeKey = Str::snake($key);
-            if (in_array($snakeKey, $excludeKeys, true)) {
-                continue;
-            }
-
-            if ($snakeKey === 'author' && is_array($value)) {
-                // eHealth getDetails returns author as a list [ {identifier...} ], but creation / expected schema is a single object
-                if (isset($value[0])) {
-                    $value = $value[0];
-                }
-            }
-
-            if (is_array($value)) {
-                $cleaned[$key] = $this->cleanPayloadKeys($value, $excludeKeys);
-            } else {
-                $cleaned[$key] = $value;
-            }
-        }
-
-        return $cleaned;
     }
 
     protected function scopeDocumentsToActivity(string $activityUuid): void

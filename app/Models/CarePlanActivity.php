@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Contracts\SubmittedToEHealth;
 use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\CodeableConcept;
 use App\Models\MedicalEvents\Sql\Identifier;
@@ -16,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
-class CarePlanActivity extends Model
+class CarePlanActivity extends Model implements SubmittedToEHealth
 {
     use HasFactory;
     use HasCamelCasing;
@@ -56,22 +58,81 @@ class CarePlanActivity extends Model
         'product_reference_id',
         'quantity_id',
         'daily_amount_id',
+        'remaining_quantity_id',
+        'remaining_quantity_type',
+        'location_identifier_id',
+        'performer_identifier_id',
+        'program_identifier_id',
+        'status_reason_concept_id',
+        'scheduled_timing',
+        'scheduled_string',
+
+        'details_synced_at',
+        'care_plan_reference_id',
     ];
 
     protected $casts = [
         'do_not_perform' => 'boolean',
-        'quantity' => 'integer',
-        'daily_amount' => 'decimal:4',
-        'remaining_quantity' => 'decimal:4',
+        'quantity' => 'float',
+        'daily_amount' => 'float',
+        'remaining_quantity' => 'float',
         'reason_reference' => 'array',
         'goal' => 'array',
         'scheduled_period_start' => 'date',
         'scheduled_period_end' => 'date',
+        'scheduled_timing' => 'array',
+
+        'details_synced_at' => 'datetime',
     ];
 
     public function quantityQuantity(): BelongsTo
     {
         return $this->belongsTo(Quantity::class, 'quantity_id');
+    }
+
+    public function remainingQuantityQuantity(): BelongsTo
+    {
+        return $this->belongsTo(Quantity::class, 'remaining_quantity_id');
+    }
+
+    public function locationIdentifier(): BelongsTo
+    {
+        return $this->belongsTo(Identifier::class, 'location_identifier_id');
+    }
+
+    public function performerIdentifier(): BelongsTo
+    {
+        return $this->belongsTo(Identifier::class, 'performer_identifier_id');
+    }
+
+    public function programIdentifier(): BelongsTo
+    {
+        return $this->belongsTo(Identifier::class, 'program_identifier_id');
+    }
+
+    public function statusReasonConcept(): BelongsTo
+    {
+        return $this->belongsTo(CodeableConcept::class, 'status_reason_concept_id');
+    }
+
+    public function authorReferences(): BelongsToMany
+    {
+        return $this->belongsToMany(Identifier::class, 'care_plan_activity_authors', 'activity_id', 'identifier_id')->withPivot('position')->orderByPivot('position');
+    }
+
+    public function reasonConcepts(): BelongsToMany
+    {
+        return $this->belongsToMany(CodeableConcept::class, 'care_plan_activity_reason_codes', 'activity_id', 'concept_id')->withPivot('position')->orderByPivot('position');
+    }
+
+    public function goalConcepts(): BelongsToMany
+    {
+        return $this->belongsToMany(CodeableConcept::class, 'care_plan_activity_goal_concepts', 'activity_id', 'concept_id')->withPivot('position')->orderByPivot('position');
+    }
+
+    public function outcomeConcepts(): BelongsToMany
+    {
+        return $this->belongsToMany(CodeableConcept::class, 'care_plan_activity_outcome_concepts', 'activity_id', 'concept_id')->withPivot('position')->orderByPivot('position');
     }
 
     public function dailyAmountQuantity(): BelongsTo
@@ -82,6 +143,11 @@ class CarePlanActivity extends Model
     public function scheduledPeriod(): MorphOne
     {
         return $this->morphOne(Period::class, 'periodable');
+    }
+
+    public function carePlanReference(): BelongsTo
+    {
+        return $this->belongsTo(Identifier::class, 'care_plan_reference_id');
     }
 
     public function carePlan(): BelongsTo
@@ -151,6 +217,7 @@ class CarePlanActivity extends Model
             };
         }
 
+        $this->loadMissing('kindConcept.coding');
         $conceptCode = strtolower(trim((string) ($this->kindConcept?->coding?->first()?->code ?? '')));
 
         return match ($conceptCode) {
@@ -159,5 +226,10 @@ class CarePlanActivity extends Model
             'devicerequest', 'device_request' => 'device_request',
             default => $conceptCode,
         };
+    }
+
+    public function ehealthLinks(): MorphMany
+    {
+        return $this->morphMany(EhealthLink::class, 'linkable');
     }
 }

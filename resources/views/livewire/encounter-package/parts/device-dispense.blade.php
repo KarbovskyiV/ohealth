@@ -745,7 +745,7 @@
     </x-dialog-drawer>
 </div>
 
-<script>
+<script data-navigate-once>
     class DeviceDispense {
         constructor(obj = null) {
             this.uuid = crypto.randomUUID();

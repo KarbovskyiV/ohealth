@@ -160,9 +160,9 @@ trait HasApproval
                 ->withOption('legal_entity_id', legalEntity()->id)
                 ->withOption('token', Crypt::encryptString($token))
                 ->withOption('user', $user)
-                ->then(fn () => $user->notify(new RemoteEHealthLinksNotification(__('Approval created successfully'), 'success')))
+                ->then(fn () => $user->notify(new RemoteEHealthLinksNotification(__('approval.messages.created'), 'success')))
                 ->catch(callback: function (Batch $batch, Throwable $e) use ($user) {
-                    $message = __('Approval job failed');
+                    $message = __('approval.messages.failed');
                     Log::error('Approval job batch failed.', ['batch_id' => $batch->id, 'exception' => $e]);
 
                     $user->notify(new RemoteEHealthLinksNotification($message, 'error'));

@@ -212,6 +212,7 @@ class CompositionTempDisabilityForm extends BaseForm
                 $extension['valueCode'] => $extension['valueBoolean']
                     ?? $extension['valueString']
                     ?? $extension['valueDate']
+                    ?? $extension['valueUuid']
                     ?? null,
             ]);
 
@@ -221,6 +222,7 @@ class CompositionTempDisabilityForm extends BaseForm
         $this->isForceRenew = (bool) $extensions->get('IS_FORCE_RENEW', false);
         $this->treatmentViolation = $extensions->get('TREATMENT_VIOLATION');
         $this->treatmentViolationDate = $this->asDate($extensions->get('TREATMENT_VIOLATION_DATE')) ?: null;
+        $this->informWithUuid = $extensions->get('INFORM_WITH');
 
         $this->relatesToTargetUuid = data_get($previous, 'identifier.value');
         $this->relatesToCode = CompositionRelation::REPLACES->value;

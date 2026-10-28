@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Composition;
 
-use App\Enums\MergeRequest\Status as MergeRequestStatus;
 use App\Enums\Composition\CompositionCategory;
 use App\Classes\eHealth\EHealth;
 use App\Exceptions\EHealth\EHealthException;
@@ -18,7 +17,6 @@ use App\Livewire\Composition\Concerns\DrivesCompositionWizard;
 use App\Livewire\Composition\Forms\CompositionTempDisabilityForm;
 use App\Livewire\Person\Records\BasePatientComponent;
 use App\Models\MedicalEvents\Sql\Composition;
-use App\Models\MergeRequest;
 use App\Models\Person\Person;
 use App\Models\Preperson;
 use App\Enums\Composition\CompositionRelation;
@@ -80,6 +78,10 @@ class CompositionTempDisabilityCreate extends BasePatientComponent
         // The patient is their own incapacitated person unless a care category says otherwise.
         $this->form->sectionFocusUuid = $this->uuid;
         $this->form->category = CompositionType::TEMP_DISABILITY->defaultCategory()->value;
+
+        if ($this->resumeAsyncSubmission()) {
+            return;
+        }
 
         $this->applyRelatedConclusion();
 
@@ -384,11 +386,7 @@ class CompositionTempDisabilityCreate extends BasePatientComponent
             return false;
         }
 
-        return MergeRequest::query()
-            ->whereMasterPersonId($patient->id)
-            ->whereMergePersonId($previous->prepersonId)
-            ->whereIn('status', [MergeRequestStatus::APPROVED->value, MergeRequestStatus::SIGNED->value])
-            ->exists();
+        return \App\Repositories\MedicalEvents\Repository::composition()->hasSignedIdentification($patient, $previous->prepersonId);
     }
 
     private function applyRelatedConclusion(): void

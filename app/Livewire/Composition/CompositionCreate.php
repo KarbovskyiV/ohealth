@@ -78,6 +78,10 @@ class CompositionCreate extends BasePatientComponent
             $this->motherFullName = $this->patientFullName;
         }
 
+        if ($this->resumeAsyncSubmission()) {
+            return;
+        }
+
         if (filled($this->encounter) && !$this->needsNewborn && !$this->needsMother) {
             $this->selectEncounter((string) $this->encounter);
         }
@@ -281,12 +285,29 @@ class CompositionCreate extends BasePatientComponent
         return $this->form->personUuid !== '' ? $this->form->personUuid : null;
     }
 
+    protected function hasPrimaryAuthenticationMethod(): bool
+    {
+        return collect($this->authMethods)->contains(
+            static fn (array $method): bool => in_array($method['type'] ?? null, ['OTP', 'OFFLINE'], true)
+        );
+    }
+
     public function skipAuthMethod(): void
     {
         // Without a mother there is nobody to inform — send the doctor back to pick one.
         if ($this->needsMother) {
             Session::flash('error', __('compositions.errors.counterpart_required_before_encounter'));
             $this->step = self::STEP_ENCOUNTER;
+
+            return;
+        }
+
+        if (!$this->hasPrimaryAuthenticationMethod()) {
+            $this->loadAuthMethods();
+        }
+        if (!$this->hasPrimaryAuthenticationMethod()) {
+            Session::flash('error', __('compositions.errors.primary_auth_method_required'));
+            $this->step = self::STEP_AUTH_METHOD;
 
             return;
         }
@@ -350,6 +371,10 @@ class CompositionCreate extends BasePatientComponent
 
         if ($existsRemotely) {
             throw new CompositionGuardException(__('compositions.errors.newborn_duplicate'));
+        }
+        $this->loadAuthMethods();
+        if (!$this->hasPrimaryAuthenticationMethod()) {
+            throw new CompositionGuardException(__('compositions.errors.primary_auth_method_required'));
         }
     }
 

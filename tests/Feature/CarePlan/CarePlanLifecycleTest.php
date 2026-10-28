@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
 
 class CarePlanLifecycleTest extends TestCase
 {
+    use \Tests\Concerns\CreatesFhirCarePlans;
+
     use DatabaseTransactions;
     use MocksBasicDictionaries;
 
@@ -38,6 +40,8 @@ class CarePlanLifecycleTest extends TestCase
     {
         parent::setUp();
         $this->mockBasicDictionaries();
+        \Illuminate\Support\Facades\Bus::fake();
+        \Illuminate\Support\Facades\Notification::fake();
 
         config(['cipher.api.domain' => 'https://cipher.invalid']);
         \Illuminate\Support\Facades\Cache::put('knedp_certificate_authority', [], 60);
@@ -91,10 +95,13 @@ class CarePlanLifecycleTest extends TestCase
             'onset_date' => now(),
         ]);
 
+        $diagnosisRole = \App\Repositories\MedicalEvents\Repository::codeableConcept()->store([
+            'coding' => [['system' => 'eHealth/diagnosis_roles', 'code' => 'primary']],
+        ]);
         \App\Models\MedicalEvents\Sql\EncounterDiagnose::create([
             'encounter_id' => $this->encounter->id,
             'condition_id' => $conditionIdentifier->id,
-            'role_id' => $ccId,
+            'role_id' => $diagnosisRole->id,
             'rank' => 1
         ]);
 
@@ -148,6 +155,34 @@ class CarePlanLifecycleTest extends TestCase
         $this->grantMedicalEventAbilities($this->user);
     }
 
+    public function test_category_mismatch_is_rejected_before_opening_kep_and_before_signing(): void
+    {
+        $this->actingAs($this->user);
+        $response = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
+        $response->shouldReceive('getData', 'validate')->andReturn([]);
+        $this->mock(\App\Classes\eHealth\Api\Person::class)->shouldReceive('getAuthMethods')->andReturn($response);
+        $signature = $this->mock(\App\Services\SignatureService::class);
+        $signature->shouldReceive('getCertificateAuthorities')->andReturn([]);
+        $signature->shouldNotReceive('signData');
+        $this->mock(\App\Classes\eHealth\Api\CarePlan::class)->shouldNotReceive('create');
+
+        Livewire::test(\App\Livewire\CarePlan\CarePlanCreate::class, [
+            'legalEntity' => legalEntity(), 'personId' => $this->person->id,
+        ])->set('form.encounter', $this->encounter->uuid)
+            ->assertSet('form.category', 'class_18')
+            ->assertSet('allowedCategoryCodes', ['class_18'])
+            ->set('form.title', 'Invalid category plan')
+            ->set('form.category', 'class_1')
+            ->call('startSigningProcess')->assertHasErrors(['form.category'])
+            ->assertSet('showSignatureModal', false)
+            ->set('form.knedp', 'test-authority')->set('form.password', 'test-password')
+            ->set('form.keyContainerUpload', \Illuminate\Http\UploadedFile::fake()->create('key.jks', 100))
+            ->call('sign')->assertHasErrors(['form.category'])
+            ->assertSet('showSignatureModal', false);
+
+        $this->assertSame(0, CarePlan::wherePersonId($this->person->id)->count());
+    }
+
     public function test_full_care_plan_lifecycle_flow(): void
     {
         $this->actingAs($this->user);
@@ -156,11 +191,12 @@ class CarePlanLifecycleTest extends TestCase
         $activityUuid = (string) Str::uuid();
         $approvalId = (string) Str::uuid(); // Use different ID for internal approval ID if needed
 
-        $mockCarePlanApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlan::class);
+        $mockCarePlanApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlan::class)->makePartial();
         $mockApprovalApi = Mockery::mock(\App\Classes\eHealth\Api\Approval::class);
         $mockPatientApi = Mockery::mock(\App\Classes\eHealth\Api\Person::class);
         $mockJobApi = Mockery::mock(\App\Classes\eHealth\Api\Job::class);
-        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class);
+        $mockJobApi->shouldReceive('withToken')->andReturnSelf();
+        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class)->makePartial();
         $mockSignatureService = Mockery::mock(\App\Services\SignatureService::class);
 
         // Bind mocks to container
@@ -177,13 +213,16 @@ class CarePlanLifecycleTest extends TestCase
 
         // 1. Mock Care Plan Creation
         $cpCreateResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $cpCreateResponse->shouldReceive('getData')->andReturn(['job_id' => 'job-123']);
+        $cpCreateResponse->shouldReceive('getData', 'validate')->andReturn(['job_id' => 'job-123']);
         $cpCreateResponse->shouldReceive('getStatusCode')->andReturn(202);
         $mockCarePlanApi->shouldReceive('create')->andReturn($cpCreateResponse);
 
         // Mock Job Details
         $jobResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $jobResponse->shouldReceive('getData')->andReturn([
+        $jobResponse->shouldReceive('getStatusCode')->andReturn(200);
+        $jobResponse->shouldReceive('json')->andReturn([]);
+        $jobResponse->shouldReceive('isNotLast')->andReturn(false);
+        $jobResponse->shouldReceive('getData', 'validate')->andReturn([
             'status' => 'processed',
             'id' => $carePlanUuid,
             'result' => [
@@ -195,17 +234,17 @@ class CarePlanLifecycleTest extends TestCase
 
         // 2. Mock Approval Flow
         $approvalCreateResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $approvalCreateResponse->shouldReceive('getData')->andReturn(['id' => $approvalUuid, 'status' => 'NEW']);
+        $approvalCreateResponse->shouldReceive('getData', 'validate')->andReturn(['id' => $approvalUuid, 'status' => 'NEW']);
         $approvalCreateResponse->shouldReceive('getStatusCode')->andReturn(201);
         $mockApprovalApi->shouldReceive('createApproval')->andReturn($approvalCreateResponse);
 
         $approvalVerifyResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $approvalVerifyResponse->shouldReceive('getData')->andReturn(['id' => $approvalUuid, 'status' => 'GRANTED']);
+        $approvalVerifyResponse->shouldReceive('getData', 'validate')->andReturn(['id' => $approvalUuid, 'status' => 'GRANTED']);
         $approvalVerifyResponse->shouldReceive('getStatusCode')->andReturn(200);
         $mockApprovalApi->shouldReceive('verify')->andReturn($approvalVerifyResponse);
 
         $approvalsResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $approvalsResponse->shouldReceive('getData')->andReturn([
+        $approvalsResponse->shouldReceive('getData', 'validate')->andReturn([
             [
                 'id' => $approvalUuid,
                 'status' => 'NEW',
@@ -218,7 +257,7 @@ class CarePlanLifecycleTest extends TestCase
 
         // Mock auth methods
         $authResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $authResponse->shouldReceive('getData')->andReturn([
+        $authResponse->shouldReceive('getData', 'validate')->andReturn([
             [
                 'id' => 'otp-uuid',
                 'type' => \App\Enums\Person\AuthenticationMethod::OTP->value,
@@ -234,8 +273,9 @@ class CarePlanLifecycleTest extends TestCase
             'personId' => $this->person->id,
         ])
             ->set('form.encounter', $this->encounter->uuid)
+            ->set('carePlanUuid', $carePlanUuid)
             ->set('form.title', 'Test Plan')
-            ->set('form.category', '736382003')
+            ->set('form.category', 'class_18')
             ->set('form.intent', 'order')
             ->set('form.termsOfService', '736382003')
             ->set('form.periodStart', now()->format('d.m.Y'))
@@ -248,56 +288,62 @@ class CarePlanLifecycleTest extends TestCase
         // Verify Care Plan is in DB
         $carePlan = CarePlan::where('uuid', $carePlanUuid)->first();
 
-        $this->assertDatabaseHas('care_plans', [
+        $this->assertFhirCarePlanStored([
             'uuid' => $carePlanUuid,
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
-            'terms_of_service' => '736382003',
+            'terms_of_service' => 'OUTPATIENT',
         ]);
 
         $carePlan = CarePlan::where('uuid', $carePlanUuid)->first();
 
-        // 4. Test CarePlanShow - Adding Activity
-        $activityCreateResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $activityCreateResponse->shouldReceive('getData')->andReturn(['id' => $activityUuid, 'status' => 'scheduled']);
-        $activityCreateResponse->shouldReceive('getStatusCode')->andReturn(201);
-        $mockActivityApi->shouldReceive('create')->once()->andReturn($activityCreateResponse);
+        $submission = $carePlan->ehealthLinks()->latest('id')->firstOrFail();
+        $this->assertSame('draft', $carePlan->status);
+        $this->assertSame('PENDING', $submission->status);
+        \App\Jobs\RemoteEHealthLinksProcessing::finishSubmission($submission, [
+            'status' => 'processed', 'result' => ['id' => $carePlanUuid, 'status' => 'active'],
+        ], $this->user);
+        $carePlan->refresh();
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
+        // 4. Test CarePlanShow - Adding Activity
         Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $carePlan])
             ->call('initActivityForm', 'service_request')
-            ->set('activityForm.kind', 'ServiceRequest')
+            ->set('activityForm.kind', 'service_request')
+            ->set('activityForm.product_reference', '4fbe6a29-5ffb-4bde-be83-7c968ee12e25')
             ->set('activityForm.quantity', 1)
             ->set('activityForm.scheduled_period_start', now()->format('d.m.Y'))
             ->set('activityForm.scheduled_period_end', now()->addDays(7)->format('d.m.Y'))
             ->call('saveActivity')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('care_plan_activities', [
+        $this->assertFhirActivityStored([
             'care_plan_id' => $carePlan->id,
             'status' => 'draft',
         ]);
 
         $activity = CarePlanActivity::where('care_plan_id', $carePlan->id)->first();
+        $activityUuid = $activity->uuid;
 
         // 5. Test CarePlanShow - Signing Activity & Auto-Activation
         $activitySignResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $activitySignResponse->shouldReceive('getData')->andReturn(['id' => $activityUuid, 'status' => 'scheduled']);
+        $activitySignResponse->shouldReceive('getData', 'validate')->andReturn(['id' => $activityUuid, 'status' => 'scheduled']);
         $activitySignResponse->shouldReceive('getStatusCode')->andReturn(200);
-        $mockActivityApi->shouldReceive('create')->andReturn($activitySignResponse);
+        $mockActivityApi->shouldReceive('create')->once()->andReturn($activitySignResponse);
 
         $activitySummaryResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $activitySummaryResponse->shouldReceive('getData')->andReturn(['data' => []]);
+        $activitySummaryResponse->shouldReceive('getData', 'validate')->andReturn(['data' => []]);
         $activitySummaryResponse->shouldReceive('getStatusCode')->andReturn(200);
         $mockActivityApi->shouldReceive('getSummary')->andReturn($activitySummaryResponse);
 
         // Mock sync response showing plan is now ACTIVE
         $syncResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $syncResponse->shouldReceive('getData')->andReturn([[
+        $syncResponse->shouldReceive('getData', 'validate')->andReturn([[
             'uuid' => $carePlanUuid,
             'status' => 'active',
             'title' => 'Test Plan',
             'period' => ['start' => now()->toIso8601String()],
-            'terms_of_service' => ['coding' => [['code' => '736382003']]]
+            'terms_of_service' => ['coding' => [['code' => 'OUTPATIENT']]]
         ]]);
         $syncResponse->shouldReceive('getStatusCode')->andReturn(200);
         $mockCarePlanApi->shouldReceive('getBySearchParams')->andReturn($syncResponse);
@@ -311,14 +357,14 @@ class CarePlanLifecycleTest extends TestCase
             ->assertHasNoErrors();
 
         // Verify Activity is now SIGNED in local DB
-        $this->assertDatabaseHas('care_plan_activities', [
+        $this->assertFhirActivityStored([
             'uuid' => $activityUuid,
             'id' => $activity->id,
             'status' => 'scheduled',
         ]);
 
         // Verify Plan is now ACTIVE in local DB
-        $this->assertDatabaseHas('care_plans', [
+        $this->assertFhirCarePlanStored([
             'id' => $carePlan->id,
             'status' => 'active',
         ]);
@@ -328,24 +374,25 @@ class CarePlanLifecycleTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Service Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         $condition = \App\Models\MedicalEvents\Sql\Condition::first();
 
         // Bind mock APIs to satisfy dependencies
-        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class);
+        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class)->makePartial();
         $this->instance(\App\Classes\eHealth\Api\CarePlanActivity::class, $mockActivityApi);
 
         $activityCreateResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $activityCreateResponse->shouldReceive('getData')->andReturn(['id' => (string) Str::uuid(), 'status' => 'scheduled']);
+        $activityCreateResponse->shouldReceive('getData', 'validate')->andReturn(['id' => (string) Str::uuid(), 'status' => 'scheduled']);
         $activityCreateResponse->shouldReceive('getStatusCode')->andReturn(201);
         $mockActivityApi->shouldReceive('create')->andReturn($activityCreateResponse);
 
@@ -361,7 +408,7 @@ class CarePlanLifecycleTest extends TestCase
             ->call('saveActivity')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('care_plan_activities', [
+        $this->assertFhirActivityStored([
             'care_plan_id' => $carePlan->id,
             'product_reference' => 'A01001',
             'quantity' => 2,
@@ -372,23 +419,24 @@ class CarePlanLifecycleTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Medication Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         $condition = \App\Models\MedicalEvents\Sql\Condition::first();
 
-        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class);
+        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class)->makePartial();
         $this->instance(\App\Classes\eHealth\Api\CarePlanActivity::class, $mockActivityApi);
 
         $activityCreateResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $activityCreateResponse->shouldReceive('getData')->andReturn(['id' => (string) Str::uuid(), 'status' => 'scheduled']);
+        $activityCreateResponse->shouldReceive('getData', 'validate')->andReturn(['id' => (string) Str::uuid(), 'status' => 'scheduled']);
         $activityCreateResponse->shouldReceive('getStatusCode')->andReturn(201);
         $mockActivityApi->shouldReceive('create')->andReturn($activityCreateResponse);
 
@@ -416,7 +464,7 @@ class CarePlanLifecycleTest extends TestCase
             ->call('saveActivity')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('care_plan_activities', [
+        $this->assertFhirActivityStored([
             'care_plan_id' => $carePlan->id,
             'product_reference' => $medicationId,
             'program' => 'program-id',
@@ -428,21 +476,22 @@ class CarePlanLifecycleTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Device Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class);
+        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class)->makePartial();
         $this->instance(\App\Classes\eHealth\Api\CarePlanActivity::class, $mockActivityApi);
 
         $activityCreateResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $activityCreateResponse->shouldReceive('getData')->andReturn(['id' => (string) Str::uuid(), 'status' => 'scheduled']);
+        $activityCreateResponse->shouldReceive('getData', 'validate')->andReturn(['id' => (string) Str::uuid(), 'status' => 'scheduled']);
         $activityCreateResponse->shouldReceive('getStatusCode')->andReturn(201);
         $mockActivityApi->shouldReceive('create')->andReturn($activityCreateResponse);
 
@@ -475,7 +524,7 @@ class CarePlanLifecycleTest extends TestCase
             ->call('saveActivity')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('care_plan_activities', [
+        $this->assertFhirActivityStored([
             'care_plan_id' => $carePlan->id,
             'product_reference' => $deviceUuid,
             'quantity' => 10,
@@ -486,21 +535,22 @@ class CarePlanLifecycleTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Device Without Program Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class);
+        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class)->makePartial();
         $this->instance(\App\Classes\eHealth\Api\CarePlanActivity::class, $mockActivityApi);
 
         $activityCreateResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $activityCreateResponse->shouldReceive('getData')->andReturn(['id' => (string) Str::uuid(), 'status' => 'scheduled']);
+        $activityCreateResponse->shouldReceive('getData', 'validate')->andReturn(['id' => (string) Str::uuid(), 'status' => 'scheduled']);
         $activityCreateResponse->shouldReceive('getStatusCode')->andReturn(201);
         $mockActivityApi->shouldReceive('create')->andReturn($activityCreateResponse);
 
@@ -524,7 +574,7 @@ class CarePlanLifecycleTest extends TestCase
             ->call('saveActivity')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('care_plan_activities', [
+        $this->assertFhirActivityStored([
             'care_plan_id' => $carePlan->id,
             'product_reference' => $deviceUuid,
             'quantity' => 50,
@@ -536,7 +586,7 @@ class CarePlanLifecycleTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
@@ -545,8 +595,9 @@ class CarePlanLifecycleTest extends TestCase
             'title' => 'Lifecycle Plan',
             'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $activity = CarePlanActivity::create([
+        $activity = $this->createFhirCarePlanActivity([
             'uuid' => (string) Str::uuid(),
             'care_plan_id' => $carePlan->id,
             'status' => 'scheduled',
@@ -556,19 +607,25 @@ class CarePlanLifecycleTest extends TestCase
             'author_id' => $this->employee->id,
         ]);
 
-        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class);
+        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class)->makePartial();
         $mockSignatureService = Mockery::mock(\App\Services\SignatureService::class);
         $mockJobApi = Mockery::mock(\App\Classes\eHealth\Api\Job::class);
+        $mockJobApi->shouldReceive('withToken')->andReturnSelf();
 
         $this->instance(\App\Classes\eHealth\Api\CarePlanActivity::class, $mockActivityApi);
         $this->instance(\App\Services\SignatureService::class, $mockSignatureService);
         $this->instance(\App\Classes\eHealth\Api\Job::class, $mockJobApi);
 
+        $snapshot = \App\Core\Arr::toSnakeCase(app(\App\Repositories\CarePlanActivityRepository::class)->getResource($activity->id));
+        $snapshotResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
+        $snapshotResponse->shouldReceive('getData', 'validate')->andReturn($snapshot);
+        $mockActivityApi->shouldReceive('getDetails')->once()->with($this->person->uuid, $carePlan->uuid, $activity->uuid, true)->andReturn($snapshotResponse);
+
         // API-007-006-0005: cancel signs create-shaped activity + detail.status_reason; PATCH is signed_data only
         $mockSignatureService->shouldReceive('signData')
             ->once()
             ->withArgs(function (array $payload): bool {
-                return ($payload['detail']['kind'] ?? null) === 'ServiceRequest'
+                return ($payload['detail']['kind'] ?? null) === 'service_request'
                     && ($payload['detail']['status'] ?? null) === 'scheduled'
                     && ($payload['detail']['do_not_perform'] ?? null) === false
                     && ($payload['detail']['status_reason']['coding'][0]['code'] ?? null) === 'typo'
@@ -579,7 +636,7 @@ class CarePlanLifecycleTest extends TestCase
 
         // 1. Test Cancel Activity
         $activityCancelResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $activityCancelResponse->shouldReceive('getData')->andReturn([
+        $activityCancelResponse->shouldReceive('getData', 'validate')->andReturn([
             'links' => [['href' => '/jobs/cancel-123']]
         ]);
         $activityCancelResponse->shouldReceive('getStatusCode')->andReturn(202);
@@ -594,7 +651,10 @@ class CarePlanLifecycleTest extends TestCase
             ->andReturn($activityCancelResponse);
 
         $cancelJobResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $cancelJobResponse->shouldReceive('getData')->andReturn([
+        $cancelJobResponse->shouldReceive('getStatusCode')->andReturn(200);
+        $cancelJobResponse->shouldReceive('json')->andReturn([]);
+        $cancelJobResponse->shouldReceive('isNotLast')->andReturn(false);
+        $cancelJobResponse->shouldReceive('getData', 'validate')->andReturn([
             'status' => 'processed',
             'id' => $activity->uuid,
             'result' => [
@@ -613,7 +673,14 @@ class CarePlanLifecycleTest extends TestCase
             ->call('sign')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('care_plan_activities', [
+        $this->assertSame('scheduled', $activity->fresh()->status);
+        $submission = $activity->ehealthLinks()->latest('id')->firstOrFail();
+        $this->assertSame('PENDING', $submission->status);
+        \App\Jobs\RemoteEHealthLinksProcessing::finishSubmission($submission, [
+            'status' => 'processed', 'result' => ['id' => $activity->uuid, 'status' => 'cancelled'],
+        ], $this->user);
+
+        $this->assertFhirActivityStored([
             'id' => $activity->id,
             'status' => 'cancelled',
         ]);
@@ -624,10 +691,11 @@ class CarePlanLifecycleTest extends TestCase
         $this->actingAs($this->user);
         $carePlanUuid = (string) Str::uuid();
 
-        $mockCarePlanApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlan::class);
+        $mockCarePlanApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlan::class)->makePartial();
         $mockApprovalApi = Mockery::mock(\App\Classes\eHealth\Api\Approval::class);
         $mockPatientApi = Mockery::mock(\App\Classes\eHealth\Api\Person::class);
         $mockJobApi = Mockery::mock(\App\Classes\eHealth\Api\Job::class);
+        $mockJobApi->shouldReceive('withToken')->andReturnSelf();
         $mockSignatureService = Mockery::mock(\App\Services\SignatureService::class);
 
         $this->instance(\App\Classes\eHealth\Api\CarePlan::class, $mockCarePlanApi);
@@ -646,12 +714,15 @@ class CarePlanLifecycleTest extends TestCase
         $mockSignatureService->shouldReceive('getCertificateAuthorities')->andReturn([]);
 
         $cpCreateResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $cpCreateResponse->shouldReceive('getData')->andReturn(['job_id' => 'job-123']);
+        $cpCreateResponse->shouldReceive('getData', 'validate')->andReturn(['job_id' => 'job-123']);
         $cpCreateResponse->shouldReceive('getStatusCode')->andReturn(202);
         $mockCarePlanApi->shouldReceive('create')->andReturn($cpCreateResponse);
 
         $jobResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $jobResponse->shouldReceive('getData')->andReturn([
+        $jobResponse->shouldReceive('getStatusCode')->andReturn(200);
+        $jobResponse->shouldReceive('json')->andReturn([]);
+        $jobResponse->shouldReceive('isNotLast')->andReturn(false);
+        $jobResponse->shouldReceive('getData', 'validate')->andReturn([
             'status' => 'processed',
             'id' => $carePlanUuid,
             'result' => [
@@ -662,7 +733,7 @@ class CarePlanLifecycleTest extends TestCase
         $mockJobApi->shouldReceive('getDetails')->andReturn($jobResponse);
 
         $authResponse = Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
-        $authResponse->shouldReceive('getData')->andReturn([]);
+        $authResponse->shouldReceive('getData', 'validate')->andReturn([]);
         $authResponse->shouldReceive('getStatusCode')->andReturn(200);
         $mockPatientApi->shouldReceive('getAuthMethods')->andReturn($authResponse);
 
@@ -673,7 +744,7 @@ class CarePlanLifecycleTest extends TestCase
         ])
             ->set('form.encounter', $this->encounter->uuid)
             ->set('form.title', 'Draft Plan')
-            ->set('form.category', '736382003')
+            ->set('form.category', 'class_18')
             ->set('form.context', 'context-value')
             ->set('form.termsOfService', 'PROVIDING_CONDITION')
             ->set('form.description', 'My Description')
@@ -684,11 +755,11 @@ class CarePlanLifecycleTest extends TestCase
             ->assertHasNoErrors();
 
         // Check local draft is persisted with terms_of_service
-        $this->assertDatabaseHas('care_plans', [
+        $this->assertFhirCarePlanStored([
             'title' => 'Draft Plan',
             'status' => 'draft',
             'context' => 'context-value',
-            'terms_of_service' => 'PROVIDING_CONDITION',
+            'terms_of_service' => 'OUTPATIENT',
             'description' => 'My Description',
             'note' => 'My Note',
             'inform_with' => 'SMS',
@@ -702,8 +773,9 @@ class CarePlanLifecycleTest extends TestCase
             'personId' => $this->person->id,
         ])
             ->set('form.encounter', $this->encounter->uuid)
+            ->set('carePlanUuid', $carePlanUuid)
             ->set('form.title', 'Signed Plan')
-            ->set('form.category', '736382003')
+            ->set('form.category', 'class_18')
             ->set('form.context', 'context-value')
             ->set('form.termsOfService', 'PROVIDING_CONDITION')
             ->set('form.description', 'My Description')
@@ -720,14 +792,22 @@ class CarePlanLifecycleTest extends TestCase
         $this->assertNotNull($capturedPayload);
         $this->assertFalse(array_key_exists('instantiates_protocol', $capturedPayload));
         $this->assertStringNotContainsString('"instantiates_protocol"', json_encode($capturedPayload));
-        $this->assertEquals('SMS', $capturedPayload['inform_with'] ?? null);
+        $this->assertEquals('SMS', $capturedPayload['inform_with']['auth_method_id'] ?? null);
+
+        $submitted = CarePlan::whereUuid($carePlanUuid)->firstOrFail();
+        $this->assertSame('draft', $submitted->status);
+        $submission = $submitted->ehealthLinks()->latest('id')->firstOrFail();
+        $this->assertSame('PENDING', $submission->status);
+        \App\Jobs\RemoteEHealthLinksProcessing::finishSubmission($submission, [
+            'status' => 'processed', 'result' => ['id' => $carePlanUuid, 'status' => 'active'],
+        ], $this->user);
 
         // Check signed Care Plan is in DB with all fields persisted locally
-        $this->assertDatabaseHas('care_plans', [
+        $this->assertFhirCarePlanStored([
             'uuid' => $carePlanUuid,
             'status' => 'active',
             'context' => 'context-value',
-            'terms_of_service' => 'PROVIDING_CONDITION',
+            'terms_of_service' => 'OUTPATIENT',
             'description' => 'My Description',
             'note' => 'My Note',
             'inform_with' => 'SMS',
@@ -743,10 +823,10 @@ class CarePlanLifecycleTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('care_plans', [
+        $this->assertFhirCarePlanStored([
             'id' => $draft->id,
             'title' => 'Updated Draft Plan',
-            'terms_of_service' => 'PROVIDING_CONDITION_NEW',
+            'terms_of_service' => 'OUTPATIENT',
         ]);
 
         // 4. Test Sign on Update Component
@@ -768,10 +848,10 @@ class CarePlanLifecycleTest extends TestCase
         $this->assertFalse(array_key_exists('instantiates_protocol', $capturedPayload));
 
         // Check updated Care Plan is in DB with all fields updated locally
-        $this->assertDatabaseHas('care_plans', [
+        $this->assertFhirCarePlanStored([
             'id' => $draft->id,
             'title' => 'Signed Updated Plan',
-            'terms_of_service' => 'PROVIDING_CONDITION_SIGNED',
+            'terms_of_service' => 'OUTPATIENT',
         ]);
     }
 
@@ -779,15 +859,16 @@ class CarePlanLifecycleTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Program Default Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $carePlan])
             ->call('initActivityForm', 'medication_request')
@@ -799,15 +880,16 @@ class CarePlanLifecycleTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Device Program Optional Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         $this->fakeMedicalPrograms();
 
@@ -828,17 +910,18 @@ class CarePlanLifecycleTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Delete Draft Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $activity = CarePlanActivity::create([
+        $activity = $this->createFhirCarePlanActivity([
             'care_plan_id' => $carePlan->id,
             'author_id' => $this->employee->id,
             'status' => 'draft',
@@ -864,7 +947,7 @@ class CarePlanLifecycleTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
@@ -873,8 +956,9 @@ class CarePlanLifecycleTest extends TestCase
             'title' => 'No Delete Scheduled Plan',
             'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $activity = CarePlanActivity::create([
+        $activity = $this->createFhirCarePlanActivity([
             'care_plan_id' => $carePlan->id,
             'author_id' => $this->employee->id,
             'status' => 'scheduled',
@@ -887,24 +971,25 @@ class CarePlanLifecycleTest extends TestCase
         Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $carePlan])
             ->call('deleteActivity', $activity->id);
 
-        $this->assertDatabaseHas('care_plan_activities', ['id' => $activity->id]);
+        $this->assertFhirActivityStored(['id' => $activity->id]);
     }
 
     public function test_edit_activity_sets_selected_program_for_program_change(): void
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Edit Program Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $activity = CarePlanActivity::create([
+        $activity = $this->createFhirCarePlanActivity([
             'care_plan_id' => $carePlan->id,
             'author_id' => $this->employee->id,
             'status' => 'draft',
@@ -1002,15 +1087,16 @@ class CarePlanLifecycleTest extends TestCase
             });
         });
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Device Search Catalog Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $carePlan])
             ->call('initActivityForm', 'device_request')
@@ -1097,15 +1183,16 @@ class CarePlanLifecycleTest extends TestCase
             $mock->shouldReceive('getById')->with($targetId)->andReturn($byIdResponse);
         });
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Device UUID Lookup Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $carePlan])
             ->call('initActivityForm', 'device_request')
@@ -1158,15 +1245,16 @@ class CarePlanLifecycleTest extends TestCase
             $mock->shouldReceive('getById')->andReturn($response);
         });
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Select Device Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $carePlan])
             ->call('initActivityForm', 'device_request')
@@ -1220,15 +1308,16 @@ class CarePlanLifecycleTest extends TestCase
             $mock->shouldReceive('getById')->with($targetId)->andReturn($byIdResponse);
         });
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
             'legal_entity_id' => $this->employee->legal_entity_id,
             'period_start' => now()->format('Y-m-d'),
             'title' => 'Select Device Refetch Plan',
-            'status' => 'draft',
+            'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
         Livewire::test(\App\Livewire\CarePlan\CarePlanShow::class, ['carePlan' => $carePlan])
             ->call('initActivityForm', 'device_request')
@@ -1247,7 +1336,7 @@ class CarePlanLifecycleTest extends TestCase
         $deviceUuid = '0fa1e6cd-7066-4881-92a5-6d747a1128f7';
         $programId = '85953838-1834-4ed6-8bf4-3f83057380ec';
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
@@ -1256,8 +1345,9 @@ class CarePlanLifecycleTest extends TestCase
             'title' => 'Device Request Plan',
             'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $activity = CarePlanActivity::create([
+        $activity = $this->createFhirCarePlanActivity([
             'uuid' => (string) Str::uuid(),
             'care_plan_id' => $carePlan->id,
             'author_id' => $this->employee->id,
@@ -1279,8 +1369,72 @@ class CarePlanLifecycleTest extends TestCase
             ->call('initReferralForm', $activity->id)
             ->assertRedirect(route('device-requests.create', [
                 'legalEntity' => legalEntity(), 'person' => $this->person,
-                'carePlan' => $carePlan->uuid, 'activity' => $activity->uuid,
+                'carePlan' => $carePlan->id, 'activity' => $activity->id,
             ]));
+    }
+
+    public function test_device_request_form_resolves_local_context_ids_to_esoz_uuids(): void
+    {
+        [$plan, $activity, $service] = $this->deviceRequestFormContext();
+        $service->shouldReceive('carePlanContext')->once()
+            ->with($this->person, $plan->uuid, $activity->uuid)
+            ->andReturn(['detail' => ['quantity' => ['code' => 'piece']]]);
+
+        Livewire::withQueryParams(['carePlan' => $plan->id, 'activity' => $activity->id])
+            ->test(\App\Livewire\DeviceRequest\DeviceRequestForm::class, ['legalEntity' => legalEntity(), 'person' => $this->person])
+            ->assertOk()->assertHasNoErrors()
+            ->assertSet('carePlanUuid', $plan->uuid)
+            ->assertSet('activityUuid', $activity->uuid);
+    }
+
+    public function test_device_request_form_rejects_activity_from_another_plan(): void
+    {
+        [$plan, $activity, $service] = $this->deviceRequestFormContext();
+        $otherPlan = $this->createFhirCarePlan([
+            'person_id' => $this->person->id, 'author_id' => $this->employee->id,
+            'legal_entity_id' => $this->employee->legalEntityId,
+        ]);
+        $service->shouldNotReceive('carePlanContext');
+        $this->withoutExceptionHandling();
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+
+        Livewire::withQueryParams(['carePlan' => $otherPlan->id, 'activity' => $activity->id])
+            ->test(\App\Livewire\DeviceRequest\DeviceRequestForm::class, ['legalEntity' => legalEntity(), 'person' => $this->person]);
+    }
+
+    public function test_device_request_form_rejects_context_from_another_patient(): void
+    {
+        [$plan, $activity, $service] = $this->deviceRequestFormContext();
+        $otherPerson = Person::create(['uuid' => (string) Str::uuid(), 'gender' => 'MALE']);
+        $service->shouldNotReceive('carePlanContext');
+        $this->withoutExceptionHandling();
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class);
+
+        Livewire::withQueryParams(['carePlan' => $plan->id, 'activity' => $activity->id])
+            ->test(\App\Livewire\DeviceRequest\DeviceRequestForm::class, ['legalEntity' => legalEntity(), 'person' => $otherPerson]);
+    }
+
+    private function deviceRequestFormContext(): array
+    {
+        $this->actingAs($this->user);
+        \Illuminate\Support\Facades\Cache::put(\App\Services\Dictionary\Dictionaries\MedicalProgramDictionary::KEY, [], now()->addDay());
+        \Illuminate\Support\Facades\Cache::put(\App\Services\Dictionary\Dictionaries\MedicalProgramDictionary::KEY.':fresh', true, now()->addDay());
+        $this->mockBasicDictionaries(['device_unit' => ['piece' => 'Штука']]);
+        $plan = $this->createFhirCarePlan([
+            'person_id' => $this->person->id, 'author_id' => $this->employee->id,
+            'legal_entity_id' => $this->employee->legalEntityId, 'status' => 'active',
+        ]);
+        $activity = $this->createFhirCarePlanActivity([
+            'care_plan_id' => $plan->id, 'author_id' => $this->employee->id,
+            'kind' => 'device_request', 'status' => 'scheduled',
+        ]);
+        $service = Mockery::mock(\App\Services\MedicalEvents\DeviceRequestLifecycleService::class);
+        $service->shouldReceive('authorizeAction')->andReturn($this->employee);
+        $service->shouldReceive('authMethods')->andReturn([]);
+        $service->shouldReceive('permittedTypes')->andReturn([]);
+        $this->instance(\App\Services\MedicalEvents\DeviceRequestLifecycleService::class, $service);
+
+        return [$plan, $activity, $service];
     }
 
     /**

@@ -289,6 +289,13 @@ class CompositionCreateNewbornTest extends TestCase
                 ],
             ]),
         ]);
+        $operation = \App\Models\MedicalEvents\Sql\CompositionOperation::whereRemoteJobId($component->get('asyncJobId'))->firstOrFail();
+        $this->assertNull(Composition::whereUuid($compositionUuid)->first());
+        $this->assertTrue(app(\App\Repositories\MedicalEvents\CompositionOperationRepository::class)->processResult(
+            $operation,
+            ['status' => 'DONE', 'compositionUuid' => $compositionUuid],
+            'synthetic-token',
+        ));
         $component->call('pollAsyncJob')->assertSet('step', CompositionCreate::STEP_REVIEW)
             ->assertSee(__('compositions.create_newborn.created'))
             ->assertSee('alert-message fixed top-6 right-2', false)
@@ -327,6 +334,24 @@ class CompositionCreateNewbornTest extends TestCase
         Http::assertNotSent(static fn ($request): bool => $request->method() === 'POST');
     }
 
+    public function test_birth_conclusion_requires_a_primary_authentication_method_even_when_informing_is_skipped(): void
+    {
+        [$component, $author, $encounterUuid] = $this->birthConclusionWithSecondAuthor();
+        foreach ([[], [['id' => 'bbbbbbbb-0000-4000-8000-000000000002', 'type' => 'THIRD_PERSON']]] as $methods) {
+            $this->fakeEHealth([
+                '*authentication_methods*' => Http::response($this->eHealthBody($methods)),
+                '*/encounters*' => Http::response($this->eHealthBody([$this->compositionEncounter($encounterUuid, $author->uuid)])),
+                '*' => Http::response($this->eHealthBody([])),
+            ]);
+            $component->call('loadAuthMethods')->call('skipAuthMethod')
+                ->assertSet('step', CompositionCreate::STEP_AUTH_METHOD)
+                ->assertSee(__('compositions.errors.primary_auth_method_required'));
+            $component->set('step', CompositionCreate::STEP_DETAILS)->call('submitComposition')
+                ->assertSet('asyncJobId', null)->assertSee(__('compositions.errors.primary_auth_method_required'));
+            Http::assertNotSent(static fn ($request): bool => $request->method() === 'POST');
+        }
+    }
+
     private function birthConclusionWithSecondAuthor(): array
     {
         ['legalEntity' => $legalEntity, 'employee' => $firstAuthor, 'person' => $mother, 'user' => $user]
@@ -336,7 +361,10 @@ class CompositionCreateNewbornTest extends TestCase
         $author->position = 'P6';
         $author->save();
         $user->employees()->attach($author->id);
-        $this->assertSame($firstAuthor->uuid, $user->getCompositionAuthorEmployee(CompositionType::NEWBORN)->uuid);
+        $this->assertEqualsCanonicalizing(
+            [$firstAuthor->uuid, $author->uuid],
+            $user->getCompositionAuthorEmployees(CompositionType::NEWBORN)->pluck('uuid')->all()
+        );
 
         $ineligibleAuthor = $firstAuthor->replicate();
         $ineligibleAuthor->uuid = (string) Str::uuid();
@@ -351,6 +379,7 @@ class CompositionCreateNewbornTest extends TestCase
                 $this->compositionEncounter((string) Str::uuid(), $ineligibleAuthor->uuid),
                 $this->compositionEncounter((string) Str::uuid(), (string) Str::uuid()),
             ])),
+            '*authentication_methods*' => Http::response($this->eHealthBody([['id' => 'aaaaaaaa-0000-4000-8000-000000000001', 'type' => 'OFFLINE']])),
             '*/composition' => Http::response(['data' => ['id' => 'birth-job', 'status' => 'PENDING']]),
             '*' => Http::response($this->eHealthBody([])),
         ]);

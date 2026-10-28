@@ -117,15 +117,17 @@ class PatientReferralsPhase6Test extends TestCase
     {
         $repo = app(ServiceRequestRequestRepository::class);
         $uuid = (string) Str::uuid();
-        $id = $repo->store([
+        $resource = \App\Services\MedicalEvents\Fhir::serviceRequest()->toFhir([
             'uuid' => $uuid,
             'employee_id' => $this->employee->id,
             'status' => 'active',
             'request_number' => '0000-TEST-FHIR-PROCEDURE',
+            'context_type' => 'encounter',
             'service_id' => '37003-00',
             'context_uuid' => $this->encounter->uuid,
             'category' => 'diagnostic_procedure',
-        ], $this->person->id);
+        ], ['person_uuid' => $this->person->uuid, 'employee_uuid' => $this->employee->uuid]);
+        $id = $repo->store($resource, $this->person->id, $this->employee->id);
 
         $record = ServiceRequestRequest::findOrFail($id);
         $this->assertSame($this->encounter->uuid, $record->context->value);

@@ -201,6 +201,8 @@ class ReferralController extends Controller
                 'success' => false,
                 'message' => $exception->getMessage(),
             ], 502);
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage(), 'errors' => $exception->errors()], 422);
         } catch (Throwable $exception) {
             Log::channel('e_health_errors')->error(
                 "Referral API [{$action}] failed unexpectedly",
@@ -211,6 +213,10 @@ class ReferralController extends Controller
                 'success' => false,
                 'message' => __('care-plan.unexpected_error'),
             ], 500);
+        }
+
+        if ($data['submissionPending'] ?? false) {
+            return response()->json(['success' => true, 'pending' => true, 'data' => $data, 'message' => __('care-plan.submission_pending')], 202);
         }
 
         return response()->json(array_filter([

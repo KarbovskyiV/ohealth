@@ -110,7 +110,7 @@ class CompositionRepositoryTest extends TestCase
         $updated = $repository->store($this->details(['extension' => []]), $person);
 
         $this->assertSame([], $updated->toDetail()['extension']);
-        $this->assertFalse($updated->isAccident);
+        $this->assertNull($updated->isAccident);
     }
 
     public function test_normalized_integrations_replace_the_previous_snapshot_atomically(): void

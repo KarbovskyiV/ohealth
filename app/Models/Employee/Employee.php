@@ -36,6 +36,40 @@ class Employee extends BaseEmployee
         'end_date' => EHealthDateCast::class,
     ];
 
+    public function positionLabel(): string
+    {
+        $position = (string) $this->position;
+
+        return $this->employeeDictionaryLabel('POSITION', $position)
+            ?? (preg_match('/^[A-Z][A-Z0-9_]*$/', $position) || $position === ''
+                ? (Role::tryFrom($this->employeeType)?->label() ?? __('approval.employee'))
+                : $position);
+    }
+
+    public function specialityLabels(): array
+    {
+        return $this->specialities->map(
+            fn ($speciality): ?string =>
+            $this->employeeDictionaryLabel('SPECIALITY_TYPE', $speciality->speciality)
+        )->filter()->unique()->values()->all();
+    }
+
+    private function employeeDictionaryLabel(string $name, string $code): ?string
+    {
+        if ($code === '') {
+            return null;
+        }
+        try {
+            $basics = app(\App\Services\Dictionary\DictionaryManager::class)->basics();
+            $dictionary = $basics->firstWhere('name', $name) ?? $basics->firstWhere('name', 'eHealth/'.$name);
+
+            // Historical employees may still use a deactivated dictionary value.
+            return collect($dictionary['values'] ?? [])->firstWhere('code', $code)['description'] ?? null;
+        } catch (\Exception) {
+            return null;
+        }
+    }
+
     // --- EMPLOYEE-SPECIFIC RELATIONS ---
 
     /**

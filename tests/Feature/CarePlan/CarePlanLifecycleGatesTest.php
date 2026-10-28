@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\CarePlan;
 
-use App\Models\CarePlan;
-use App\Models\CarePlanActivity;
 use App\Models\Employee\Employee;
 use App\Models\LegalEntity;
 use App\Models\MedicalEvents\Sql\Medications\MedicationRequestRequest;
@@ -21,6 +19,8 @@ use Tests\TestCase;
 
 class CarePlanLifecycleGatesTest extends TestCase
 {
+    use \Tests\Concerns\CreatesFhirCarePlans;
+
     use DatabaseTransactions;
 
     protected Person $person;
@@ -102,7 +102,7 @@ class CarePlanLifecycleGatesTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
@@ -111,8 +111,9 @@ class CarePlanLifecycleGatesTest extends TestCase
             'title' => 'Gate Activity Cancel',
             'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $activity = CarePlanActivity::create([
+        $activity = $this->createFhirCarePlanActivity([
             'uuid' => (string) Str::uuid(),
             'care_plan_id' => $carePlan->id,
             'status' => 'scheduled',
@@ -154,7 +155,7 @@ class CarePlanLifecycleGatesTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
@@ -163,8 +164,9 @@ class CarePlanLifecycleGatesTest extends TestCase
             'title' => 'Gate Activity Complete',
             'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $activity = CarePlanActivity::create([
+        $activity = $this->createFhirCarePlanActivity([
             'uuid' => (string) Str::uuid(),
             'care_plan_id' => $carePlan->id,
             'status' => 'scheduled',
@@ -205,7 +207,7 @@ class CarePlanLifecycleGatesTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
@@ -214,8 +216,9 @@ class CarePlanLifecycleGatesTest extends TestCase
             'title' => 'Gate Plan Cancel',
             'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        CarePlanActivity::create([
+        $this->createFhirCarePlanActivity([
             'uuid' => (string) Str::uuid(),
             'care_plan_id' => $carePlan->id,
             'status' => 'scheduled',
@@ -238,7 +241,7 @@ class CarePlanLifecycleGatesTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
@@ -247,8 +250,9 @@ class CarePlanLifecycleGatesTest extends TestCase
             'title' => 'Gate Activity Allow',
             'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        $activity = CarePlanActivity::create([
+        $activity = $this->createFhirCarePlanActivity([
             'uuid' => (string) Str::uuid(),
             'care_plan_id' => $carePlan->id,
             'status' => 'scheduled',
@@ -284,7 +288,7 @@ class CarePlanLifecycleGatesTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
@@ -293,8 +297,9 @@ class CarePlanLifecycleGatesTest extends TestCase
             'title' => 'Gate Plan Complete',
             'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        CarePlanActivity::create([
+        $this->createFhirCarePlanActivity([
             'uuid' => (string) Str::uuid(),
             'care_plan_id' => $carePlan->id,
             'status' => 'processed',
@@ -314,7 +319,7 @@ class CarePlanLifecycleGatesTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $carePlan = CarePlan::create([
+        $carePlan = $this->createFhirCarePlan([
             'uuid' => (string) Str::uuid(),
             'person_id' => $this->person->id,
             'author_id' => $this->employee->id,
@@ -323,8 +328,9 @@ class CarePlanLifecycleGatesTest extends TestCase
             'title' => 'Gate Plan Complete Ready',
             'status' => 'active',
         ]);
+        $this->grantCarePlanWriteApproval($carePlan, $this->employee);
 
-        CarePlanActivity::create([
+        $this->createFhirCarePlanActivity([
             'uuid' => (string) Str::uuid(),
             'care_plan_id' => $carePlan->id,
             'status' => 'completed',

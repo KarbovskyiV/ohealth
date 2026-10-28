@@ -125,4 +125,9 @@ final class Repository
     {
         return app(CompositionRepository::class);
     }
+
+    public static function quantity(): QuantityRepository
+    {
+        return app(QuantityRepository::class);
+    }
 }

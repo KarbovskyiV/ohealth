@@ -104,6 +104,7 @@ class CompositionTempDisabilityFormTest extends TestCase
                 ['valueCode' => 'IS_ACCIDENT', 'valueBoolean' => true],
                 ['valueCode' => 'TREATMENT_VIOLATION', 'valueString' => 'hospital_leave'],
                 ['valueCode' => 'TREATMENT_VIOLATION_DATE', 'valueDate' => '2026-07-05'],
+                ['valueCode' => 'INFORM_WITH', 'valueUuid' => 'aaaaaaaa-0000-4000-8000-000000000001'],
             ],
         ]);
 
@@ -113,6 +114,7 @@ class CompositionTempDisabilityFormTest extends TestCase
         $this->assertFalse($form->isIntoxicated);
         $this->assertSame('hospital_leave', $form->treatmentViolation);
         $this->assertSame('05.07.2026', $form->treatmentViolationDate);
+        $this->assertSame('aaaaaaaa-0000-4000-8000-000000000001', $form->informWithUuid);
         $this->assertSame(
             '5f21c9a6-0000-4000-8000-000000000001',
             $form->relatesToTargetUuid,

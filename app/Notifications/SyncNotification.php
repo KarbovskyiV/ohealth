@@ -31,6 +31,7 @@ class SyncNotification extends Notification
         'declaration' => 'Синхронізація декларацій',
         'declaration_request' => 'Синхронізація заявок на декларації',
         'episode' => 'Синхронізація епізодів',
+        'care_plan' => 'Синхронізація планів лікування',
         'encounter' => 'Синхронізація взаємодій',
         'clinical_impression' => 'Синхронізація клінічних оцінок',
         'immunization' => 'Синхронізація вакцинацій',

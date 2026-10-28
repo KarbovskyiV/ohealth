@@ -109,6 +109,11 @@ class ReferralIndex extends Component
                 'program_id' => is_string($programId) && $programId !== '' ? $programId : null,
             ]));
 
+            if ($response['submissionPending'] ?? false) {
+                Session::flash('info', __('care-plan.submission_pending'));
+
+                return;
+            }
             $this->updateSearchResult($uuid, 'in_progress', $response);
 
             Session::flash('success', __('referrals.messages.taken_into_work'));
@@ -166,6 +171,12 @@ class ReferralIndex extends Component
                 'explanatory_letter' => $this->cancelExplanatoryLetter,
             ]);
 
+            if ($response['submissionPending'] ?? false) {
+                Session::flash('info', __('care-plan.submission_pending'));
+                $this->showCancelModal = false;
+
+                return;
+            }
             $this->updateSearchResult($uuid, 'active', $response);
 
             Session::flash('success', __('referrals.messages.cancel_usage_success'));
@@ -263,6 +274,12 @@ class ReferralIndex extends Component
 
         try {
             $response = $service->completeReferral($uuid, $resourceUuid, $resourceType);
+            if ($response['submissionPending'] ?? false) {
+                Session::flash('info', __('care-plan.submission_pending'));
+                $this->showCompleteModal = false;
+
+                return;
+            }
             $this->updateSearchResult($uuid, 'completed', $response);
 
             Session::flash('success', __('referrals.messages.complete_success'));

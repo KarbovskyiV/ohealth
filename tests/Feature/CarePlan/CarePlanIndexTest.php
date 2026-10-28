@@ -145,9 +145,9 @@ class CarePlanIndexTest extends TestCase
         $this->actingAs($user);
 
         // 2. Mock EHealth APIs
-        $mockCarePlanApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlan::class);
+        $mockCarePlanApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlan::class)->makePartial();
         $mockDeclarationApi = Mockery::mock(\App\Classes\eHealth\Api\Declaration::class);
-        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class);
+        $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class)->makePartial();
 
         $this->instance(\App\Classes\eHealth\Api\CarePlan::class, $mockCarePlanApi);
         $this->instance(\App\Classes\eHealth\Api\Declaration::class, $mockDeclarationApi);
@@ -160,43 +160,24 @@ class CarePlanIndexTest extends TestCase
 
         // Mock care plans sync for patient
         $carePlanUuid = (string) Str::uuid();
-        $carePlanData = [
-            [
-                'id' => $carePlanUuid,
-                'status' => 'active',
-                'title' => 'Synced Care Plan',
-                'author' => [
-                    'identifier' => [
-                        'value' => $employee->uuid
-                    ]
-                ],
-                'subject' => [
-                    'identifier' => [
-                        'value' => $person->uuid
-                    ]
-                ],
-                'category' => [
-                    [
-                        'coding' => [
-                            ['system' => 'http://e-health.gov.ua/systems/care-plan-category', 'code' => '736382003']
-                        ],
-                        'text' => 'Treatment plan'
-                    ]
-                ],
-                'period' => [
-                    'start' => '2026-04-14',
-                    'end' => '2026-05-14'
-                ]
-            ]
-        ];
+        $resource = json_decode(file_get_contents(base_path('tests/Fixtures/CarePlan/plan.json')), true, flags: JSON_THROW_ON_ERROR);
+        $resource['id'] = $carePlanUuid;
+        $resource['title'] = 'Synced Care Plan';
+        $resource['author']['identifier']['value'] = $employee->uuid;
+        $carePlanData = [$resource];
 
         $cpSyncResponse = Mockery::mock(EHealthResponse::class);
         $cpSyncResponse->shouldReceive('validate')->andReturn($carePlanData);
-        $mockCarePlanApi->shouldReceive('getBySearchParams')->with($person->uuid, [])->andReturn($cpSyncResponse);
+        $cpSyncResponse->shouldReceive('getPaging')->andReturn(['total_pages' => 1]);
+        $detailsResponse = Mockery::mock(EHealthResponse::class);
+        $detailsResponse->shouldReceive('validate')->andReturn($resource);
+        $mockCarePlanApi->shouldReceive('getDetails')->with($person->uuid, $carePlanUuid)->andReturn($detailsResponse);
+        $mockCarePlanApi->shouldReceive('getBySearchParams')->with($person->uuid, ['page' => 1])->andReturn($cpSyncResponse);
 
         // Mock CarePlanActivity summary sync (called inside syncActivities)
         $activitySummaryResponse = Mockery::mock(EHealthResponse::class);
-        $activitySummaryResponse->shouldReceive('getData')->andReturn(['data' => []]);
+        $activitySummaryResponse->shouldReceive('validate')->andReturn([]);
+        $activitySummaryResponse->shouldReceive('getPaging')->andReturn([]);
         $activitySummaryResponse->shouldReceive('getStatusCode')->andReturn(200);
         $mockActivityApi->shouldReceive('getSummary')->andReturn($activitySummaryResponse);
 
@@ -256,7 +237,16 @@ class CarePlanIndexTest extends TestCase
             'language' => 'uk'
         ]);
 
-        $identifierId = \App\Models\MedicalEvents\Sql\Identifier::create(['value' => (string) Str::uuid()])->id;
+        $episodeUuid = (string) Str::uuid();
+        $owner = \App\Models\MedicalEvents\Sql\Identifier::create(['value' => $legalEntity->uuid]);
+        \App\Models\MedicalEvents\Sql\Episode::create([
+            'uuid' => $episodeUuid,
+            'person_id' => $person->id,
+            'status' => 'active',
+            'name' => 'Synthetic patient search episode',
+            'managing_organization_id' => $owner->id,
+        ]);
+        $identifierId = \App\Models\MedicalEvents\Sql\Identifier::create(['value' => $episodeUuid])->id;
         $codingId = \App\Models\MedicalEvents\Sql\Coding::create(['code' => 'AMB', 'system' => 'eHealth/encounter_classes'])->id;
         $ccId = \App\Models\MedicalEvents\Sql\CodeableConcept::create()->id;
 

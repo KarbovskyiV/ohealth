@@ -69,6 +69,23 @@ class CompositionCreateFlowTest extends TestCase
         });
     }
 
+    public function test_missing_fhir_storage_blocks_submission_before_esoz_request(): void
+    {
+        $component = $this->readyToSubmit();
+        $this->assertSame('testing', \Illuminate\Support\Facades\DB::connection()->getDatabaseName());
+        \Illuminate\Support\Facades\Schema::table('compositions', static function (\Illuminate\Database\Schema\Blueprint $table): void {
+            $table->dropColumn('date');
+        });
+        Http::fake();
+
+        $component->call('submitComposition')
+            ->assertHasErrors('form.guard')
+            ->assertSet('asyncJobId', null)
+            ->assertSee(__('compositions.errors.storage_update_required'));
+
+        Http::assertNothingSent();
+    }
+
     public function test_the_wizard_exposes_submit_composition(): void
     {
         $this->assertTrue(

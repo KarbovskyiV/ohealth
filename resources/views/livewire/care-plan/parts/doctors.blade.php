@@ -14,7 +14,8 @@
             <div class="form-group group">
                 <input
                     type="text"
-                    wire:model="form.author"
+                    value="{{ $form->author }}"
+                    readonly
                     name="author"
                     id="author"
                     class="input peer"

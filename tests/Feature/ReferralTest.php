@@ -97,7 +97,7 @@ class ReferralTest extends TestCase
         $mockResponse = Mockery::mock(EHealthResponse::class);
         $mockResponse->shouldReceive('getData')->andReturn($payload);
 
-        $mockApi = Mockery::mock(ServiceRequestApi::class);
+        $mockApi = Mockery::mock(ServiceRequestApi::class)->makePartial();
         $mockApi->shouldReceive('searchForServiceRequestsByParams')
             ->once()
             ->with(['requisition' => '1234-5678-9012-3456'])
@@ -117,6 +117,7 @@ class ReferralTest extends TestCase
         $encounterUuid = '00000000-0000-4000-8000-000000000456';
 
         $mockResponse = Mockery::mock(EHealthResponse::class);
+        $mockResponse->shouldReceive('getStatusCode')->andReturn(200);
         $mockResponse->shouldReceive('getData')->andReturn([
             'id' => $uuid,
             'status' => 'completed',
@@ -154,13 +155,13 @@ class ReferralTest extends TestCase
             'ehealth_inserted_at' => now(),
         ]);
 
-        $mockApi = Mockery::mock(ServiceRequestApi::class);
+        $mockApi = Mockery::mock(ServiceRequestApi::class)->makePartial();
         $mockApi->shouldReceive('complete')
             ->once()
             ->with($uuid, Mockery::on(static function (array $sent) use ($encounterUuid): bool {
                 return !array_key_exists('status', $sent)
                     && !array_key_exists('injected', $sent)
-                    && data_get($sent, 'based_on.0.identifier.value') === $encounterUuid;
+                    && data_get($sent, 'completed_with.identifier.value') === $encounterUuid;
             }))
             ->andReturn($mockResponse);
         $this->app->instance(ServiceRequestApi::class, $mockApi);
@@ -238,41 +239,37 @@ class ReferralTest extends TestCase
             ->assertNotDispatched('notify');
     }
 
-    public function testCancelUsageUpdatesDatabaseAfterApiSuccessAndShowsFlashOnce(): void
+    public function testQueuedCancelUsageKeepsDatabaseAndSearchStatusUntilConfirmation(): void
     {
         $this->actingAs($this->user);
         [$referral, $person] = $this->createInProgressReferral();
-        $response = Mockery::mock(EHealthResponse::class);
-        $response->shouldReceive('getData')->once()->andReturn(['status' => 'active']);
+        $referral = $this->canonicalizeReferral($referral, $person);
+        \Illuminate\Support\Facades\Bus::fake();
+        \Illuminate\Support\Facades\Notification::fake();
         $api = Mockery::mock(ServiceRequestApi::class);
-        $api->shouldReceive('cancelUsage')->once()->with($referral->uuid, $person->uuid, [
-            'explanatory_letter' => 'Пацієнт звернувся до іншого закладу',
-        ])->andReturn($response);
+        $api->shouldReceive('cancelUsage')->once()->with($referral->uuid, $person->uuid, [])
+            ->andReturn(new EHealthResponse(new \GuzzleHttp\Psr7\Response(202, [], json_encode(['data' => ['job_id' => 'release-job']], JSON_THROW_ON_ERROR)), \App\Classes\eHealth\Api\Job::validateSubmissionResponse(...)));
         $this->instance(ServiceRequestApi::class, $api);
-
         Livewire::test(ReferralIndex::class, ['legalEntity' => $this->legalEntity])
             ->set('hasSearched', true)
             ->set('searchResults', [$this->searchRow($referral, $person)])
             ->call('openCancelModal', $referral->uuid)
-            ->set('cancelExplanatoryLetter', '  Пацієнт звернувся до іншого закладу  ')
+            ->set('cancelExplanatoryLetter', 'Synthetic release explanation')
             ->call('confirmCancelUsage')
             ->assertSet('showCancelModal', false)
-            ->assertSet('searchResults.0.status', 'active')
-            ->assertSee('Взяти в роботу')
-            ->assertDontSee('Погасити направлення')
-            ->assertSee(__('referrals.messages.cancel_usage_success'))
-            ->assertNotDispatched('notify')
-            ->call('$refresh')
+            ->assertSet('searchResults.0.status', 'in_progress')
+            ->assertSee(__('care-plan.submission_pending'))
             ->assertDontSee(__('referrals.messages.cancel_usage_success'));
-
-        $this->assertSame('active', $referral->refresh()->status);
+        $this->assertSame('in_progress', $referral->fresh()->status);
+        $this->assertTrue(app(\App\Repositories\MedicalEvents\ServiceRequestRequestRepository::class)->hasPendingSubmission($referral));
     }
 
     public function testFailedCancelUsageKeepsModalAndDatabaseState(): void
     {
         $this->actingAs($this->user);
         [$referral, $person] = $this->createInProgressReferral();
-        $api = Mockery::mock(ServiceRequestApi::class);
+        $referral = $this->canonicalizeReferral($referral, $person);
+        $api = Mockery::mock(ServiceRequestApi::class)->makePartial();
         $api->shouldReceive('cancelUsage')->once()->andThrow(new RuntimeException('API rejected cancellation'));
         $this->instance(ServiceRequestApi::class, $api);
 
@@ -335,7 +332,15 @@ class ReferralTest extends TestCase
             'type_id' => CodeableConcept::create()->id,
             'incoming_referral_id' => $incoming->id,
         ]);
-        $api = Mockery::mock(ServiceRequestApi::class);
+        $detail = json_decode(file_get_contents(base_path('tests/Fixtures/ServiceRequest/resource.json')), true, flags: JSON_THROW_ON_ERROR);
+        $detail['id'] = $referral->uuid;
+        $detail['subject'] = ['identifier' => ['value' => $person->uuid]];
+        $detailResponse = Mockery::mock(EHealthResponse::class);
+        $detailResponse->shouldReceive('validate')->once()->andReturn($detail);
+        $patientApi = Mockery::mock(PatientServiceRequestApi::class)->makePartial();
+        $patientApi->shouldReceive('getById')->once()->with($person->uuid, $referral->uuid)->andReturn($detailResponse);
+        $this->instance(PatientServiceRequestApi::class, $patientApi);
+        $api = Mockery::mock(ServiceRequestApi::class)->makePartial();
         $api->shouldReceive('complete')->once()->andThrow(new RuntimeException('API rejected completion'));
         $this->instance(ServiceRequestApi::class, $api);
 
@@ -391,6 +396,21 @@ class ReferralTest extends TestCase
         $referral->save();
 
         return [$referral, $person];
+    }
+
+    private function canonicalizeReferral(ServiceRequestRequest $referral, Person $person): ServiceRequestRequest
+    {
+        $resource = json_decode(file_get_contents(base_path('tests/Fixtures/ServiceRequest/resource.json')), true);
+        $resource['id'] = $referral->uuid;
+        $resource['requesterEmployee']['identifier']['value'] = $this->employee->uuid;
+        $resource['requesterLegalEntity']['identifier']['value'] = $this->legalEntity->uuid;
+        $resource['subject'] = ['identifier' => ['value' => $person->uuid]];
+        $resource['programProcessingStatus'] = 'in_progress';
+        $repository = app(\App\Repositories\MedicalEvents\ServiceRequestRequestRepository::class);
+        $referral = $repository->storeResource($resource, $person->id);
+        $repository->saveStatus($referral, 'in_progress');
+
+        return $referral;
     }
 
     private function searchRow(ServiceRequestRequest $referral, Person $person): array

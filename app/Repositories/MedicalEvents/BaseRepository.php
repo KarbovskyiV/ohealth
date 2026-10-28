@@ -12,6 +12,77 @@ use Illuminate\Database\Eloquent\Model;
 
 abstract class BaseRepository
 {
+    /** Check before submission so a missing migration cannot leave a remote document without a local record. */
+    protected function assertStorageSchema(array $requirements, string $messageKey, string $exceptionClass = \App\Exceptions\MedicalEvents\ClinicalStorageException::class): void
+    {
+        $missing = [];
+        foreach ($requirements as $table => $columns) {
+            $actualColumns = \Illuminate\Support\Facades\Schema::getColumnListing($table);
+            $absent = array_values(array_diff($columns, $actualColumns));
+            if ($actualColumns === [] || $absent !== []) {
+                $missing[$table] = $actualColumns === [] ? ['tableMissing'] : $absent;
+            }
+        }
+        if ($missing !== []) {
+            \Illuminate\Support\Facades\Log::error('Clinical storage schema is incomplete', [
+                'operation' => static::class, 'missingSchema' => $missing,
+            ]);
+            throw new $exceptionClass(__($messageKey));
+        }
+    }
+
+    /** Only an authoritative full import can reconcile an untracked status-changing submission. */
+    protected function reconcileSubmissionFromResource(Model $record, array $resource, string $statusPath = 'status'): void
+    {
+        if (($resource['id'] ?? null) !== $record->uuid) {
+            return;
+        }
+        $remoteStatus = data_get($resource, $statusPath);
+        $links = $record->ehealthLinks()->whereStatus(
+            \App\Enums\JobStatus::PENDING->value
+        )->whereNull('href')->with('job')->lockForUpdate()->get();
+        foreach ($links as $link) {
+            $request = $link->job->request_data;
+            $expectedStatus = data_get($request, 'changes.status');
+            $originalStatus = data_get($request, 'resource.'.$statusPath);
+            // Qualify/use can leave status unchanged; a matching old status proves nothing about acceptance.
+            if ($expectedStatus === null || $expectedStatus === $originalStatus || $remoteStatus !== $expectedStatus) {
+                continue;
+            }
+            $status = \App\Enums\JobStatus::PROCESSED->value;
+            $link->job()->update(['status' => $status, 'response_data' => ['status' => 'processed', 'result' => $resource, 'reconciledBy' => 'fullResourceImport']]);
+            $link->update(['status' => $status, 'error' => null, 'error_code' => null]);
+            \Illuminate\Support\Facades\Log::info('Clinical submission reconciled from full resource', [
+                'submissionId' => $link->id, 'resourceType' => $record::class, 'remoteStatus' => $remoteStatus,
+            ]);
+        }
+    }
+
+    /** Read the latest submission receipt without sending or repeating an ESOZ operation. */
+    public function submissionState(Model $record): array
+    {
+        $link = $record->ehealthLinks()->whereEntity('job')->with('job')->latest('id')->first();
+        $error = $link?->error;
+        if (!is_array($error)) {
+            $error = $link?->job?->response_data['error'] ?? null;
+        }
+
+        return [
+            'id' => $link?->id,
+            'status' => $link?->status,
+            'error' => is_array($error) ? (new \App\Exceptions\EHealth\EHealthValidationException(['error' => $error]))->getFormattedMessage() : null,
+        ];
+    }
+
+    protected function storageTransaction(callable $callback): mixed
+    {
+        try {
+            return \Illuminate\Support\Facades\DB::transaction($callback);
+        } catch (\Illuminate\Database\QueryException $exception) {
+            throw \App\Exceptions\MedicalEvents\ClinicalStorageException::fromQueryException($exception, static::class);
+        }
+    }
+
     // Add logical operators after implementing MongoDB, like Model|MongoModel
     // For now, it's only SQL models for the IDE to prompt
     public function __construct(protected Model $model)
@@ -94,35 +165,7 @@ abstract class BaseRepository
      */
     protected function updateIdentifier(Identifier $identifier, array $newData): void
     {
-        $identifier->update([
-            'value' => $newData['identifier']['value'],
-            'display_value' => $newData['display_value'] ?? null
-        ]);
-
-        $typeData = $newData['identifier']['type'] ?? null;
-        if ($typeData) {
-            if ($identifier->type->isNotEmpty()) {
-                // Update existing codeableConcept
-                $codeableConcept = $identifier->type->first();
-                $codeableConcept->update(['text' => $typeData['text'] ?? null]);
-
-                if ($codeableConcept->coding->isNotEmpty()) {
-                    $codeableConcept->coding->first()->update([
-                        'code' => $typeData['coding'][0]['code'],
-                        'system' => $typeData['coding'][0]['system']
-                    ]);
-                } else {
-                    // Create missing coding
-                    $codeableConcept->coding()->create([
-                        'code' => $typeData['coding'][0]['code'],
-                        'system' => $typeData['coding'][0]['system']
-                    ]);
-                }
-            } else {
-                // Create missing codeableConcept with coding
-                Repository::codeableConcept()->attach($identifier, $newData);
-            }
-        }
+        Repository::identifier()->update($identifier, $newData);
     }
 
     /**
@@ -148,9 +191,11 @@ abstract class BaseRepository
 
         $identifier = Repository::identifier()->store(
             $newData['identifier']['value'],
-            $newData['display_value'] ?? null
+            $newData['displayValue'] ?? $newData['display_value'] ?? null
         );
-        Repository::codeableConcept()->attach($identifier, $newData);
+        if (isset($newData['identifier']['type'])) {
+            Repository::codeableConcept()->attach($identifier, $newData);
+        }
 
         return $identifier;
     }
@@ -183,7 +228,7 @@ abstract class BaseRepository
                 } else {
                     $identifier = Repository::identifier()->store(
                         $item['identifier']['value'],
-                        $item['display_value'] ?? null
+                        $item['displayValue'] ?? $item['display_value'] ?? null
                     );
                     if (isset($item['identifier']['type'])) {
                         Repository::codeableConcept()->attach($identifier, $item);
@@ -195,7 +240,7 @@ abstract class BaseRepository
             foreach ($items as $item) {
                 $identifier = Repository::identifier()->store(
                     $item['identifier']['value'],
-                    $item['display_value'] ?? null
+                    $item['displayValue'] ?? $item['display_value'] ?? null
                 );
                 if (isset($item['identifier']['type'])) {
                     Repository::codeableConcept()->attach($identifier, $item);
@@ -212,18 +257,11 @@ abstract class BaseRepository
      */
     protected function updateCodeableConcept(CodeableConcept $codeableConcept, array $newData): void
     {
-        $codeableConcept->update(['text' => $newData['text'] ?? null]);
-
-        if ($codeableConcept->coding->isNotEmpty()) {
-            $codeableConcept->coding->first()->update([
-                'code' => $newData['coding'][0]['code'],
-                'system' => $newData['coding'][0]['system']
-            ]);
-        }
+        Repository::codeableConcept()->update($codeableConcept, $newData);
     }
 
     /**
-     * Sync a BelongsToMany pivot using already-loaded relation data to avoid an extra SELECT.
+     * Sync a BelongsToMany pivot, retaining positions for ordered clinical collections.
      *
      * @param  Model  $model
      * @param  string  $relation
@@ -232,20 +270,29 @@ abstract class BaseRepository
      */
     protected function syncPivot(Model $model, string $relation, array $newIds): void
     {
-        $currentIds = $model->relationLoaded($relation)
-            ? $model->{$relation}->pluck('id')->toArray()
-            : [];
+        $relationship = $model->{$relation}();
+        if (in_array('position', $relationship->getPivotColumns(), true)) {
+            $positionedIds = [];
+            foreach (array_values($newIds) as $position => $id) {
+                $positionedIds[$id] = ['position' => $position];
+            }
+            $relationship->sync($positionedIds);
+            $model->unsetRelation($relation);
 
+            return;
+        }
+        $currentIds = $model->relationLoaded($relation)
+            ? $model->{$relation}->pluck('id')->all()
+            : $relationship->allRelatedIds()->all();
         $toDetach = array_diff($currentIds, $newIds);
         $toAttach = array_diff($newIds, $currentIds);
-
         if ($toDetach) {
-            $model->{$relation}()->detach($toDetach);
+            $relationship->detach($toDetach);
         }
-
         if ($toAttach) {
-            $model->{$relation}()->attach($toAttach);
+            $relationship->attach($toAttach);
         }
+        $model->unsetRelation($relation);
     }
 
     /**
@@ -287,4 +334,5 @@ abstract class BaseRepository
 
         return $ids;
     }
+
 }

@@ -641,7 +641,7 @@
     </x-dialog-drawer>
 </div>
 
-<script>
+<script data-navigate-once>
     /**
      * Representation of a Detected Issue
      * associated with a patient's medical device.

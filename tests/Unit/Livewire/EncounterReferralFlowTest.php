@@ -136,6 +136,66 @@ class EncounterReferralFlowTest extends TestCase
         $this->assertNull(Session::get('success'));
     }
 
+    public function testManualStatusCheckReportsCompletedReferralWithoutRemoteRequest(): void
+    {
+        $component = $this->finishedEncounterComponent();
+        $record = new \App\Models\MedicalEvents\Sql\ServiceRequestRequest();
+        $record->uuid = '11111111-2222-4333-8444-555555555555';
+        $record->status = 'active';
+        $record->requestNumber = '0000-TEST-1234-5678';
+        $component->encounterReferralRequestIdToSign = $record->uuid;
+        $component->encounterReferralSubmission = ['status' => \App\Enums\JobStatus::PENDING->value];
+        $component->form = Mockery::mock(\App\Core\BaseForm::class);
+        $component->form->shouldReceive('resetSigningFields')->once();
+
+        $ownership = Mockery::mock(new \App\Services\MedicalEvents\MedicalRequestOwnership());
+        $ownership->shouldReceive('serviceForEncounter')->once()->with($record->uuid, $component->encounter)->andReturn($record);
+        $this->instance(\App\Services\MedicalEvents\MedicalRequestOwnership::class, $ownership);
+        $this->mock(\App\Repositories\MedicalEvents\ServiceRequestRequestRepository::class)
+            ->shouldReceive('submissionState')->once()->with($record)->andReturn(['status' => \App\Enums\JobStatus::PROCESSED->value]);
+        $this->mock(ReferralRequestLifecycleService::class)->shouldNotReceive('fetchRemoteReferral');
+
+        $component->checkEncounterReferralSubmission(true);
+
+        $this->assertSame(__('referrals.submission_created', ['number' => $record->requestNumber]), Session::get('success'));
+        $this->assertNull($component->encounterReferralRequestIdToSign);
+        $this->assertSame([], $component->encounterReferralSubmission);
+        Session::forget('success');
+        $component->checkEncounterReferralSubmission(true);
+        $this->assertNull(Session::get('success'));
+    }
+
+    public function testManualStatusCheckKeepsPendingReferralWhenRemoteIsUnavailable(): void
+    {
+        $component = $this->finishedEncounterComponent();
+        $component->encounter->person_id = 1;
+        $record = new \App\Models\MedicalEvents\Sql\ServiceRequestRequest();
+        $record->uuid = '11111111-2222-4333-8444-555555555555';
+        $record->status = 'draft';
+        $component->encounterReferralRequestIdToSign = $record->uuid;
+        $pending = ['status' => \App\Enums\JobStatus::PENDING->value, 'error' => null];
+        $component->encounterReferralSubmission = $pending;
+        $person = new \App\Models\Person\Person();
+        $person->uuid = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+
+        $ownership = Mockery::mock(new \App\Services\MedicalEvents\MedicalRequestOwnership());
+        $ownership->shouldReceive('serviceForEncounter')->once()->with($record->uuid, $component->encounter)->andReturn($record);
+        $this->instance(\App\Services\MedicalEvents\MedicalRequestOwnership::class, $ownership);
+        $repository = $this->mock(\App\Repositories\MedicalEvents\ServiceRequestRequestRepository::class);
+        $repository->shouldReceive('person')->once()->with(1)->andReturn($person);
+        $repository->shouldReceive('submissionState')->once()->with($record)->andReturn($pending);
+        $repository->shouldNotReceive('importResource');
+        $this->mock(ReferralRequestLifecycleService::class)
+            ->shouldReceive('fetchRemoteReferral')->once()->andThrow(new RuntimeException('Unavailable'));
+
+        $component->checkEncounterReferralSubmission(true);
+
+        $this->assertSame($pending, $component->encounterReferralSubmission);
+        $this->assertSame($record->uuid, $component->encounterReferralRequestIdToSign);
+        $this->assertNull(Session::get('success'));
+        $this->assertSame(__('referrals.submission_refresh_failed'), Session::get('warning'));
+    }
+
     public function testReferralRegistryStartsEmptyUntilSearch(): void
     {
         $component = new ReferralIndex();
@@ -158,6 +218,8 @@ class EncounterReferralHarness extends Component
     use ManagesEncounterReferrals;
 
     public Encounter $encounter;
+
+    public \App\Core\BaseForm $form;
 
     public ?int $prepersonId = null;
 

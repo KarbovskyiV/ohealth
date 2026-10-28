@@ -46,6 +46,8 @@ class Job extends Request
      */
     public function getDetailsByHref(string $href, array $query = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateDetails(...));
+
         return $this->get($href, $query);
     }
 
@@ -58,21 +60,53 @@ class Job extends Request
      */
     protected function validateDetails(EHealthResponse $response): array
     {
-        $validator = Validator::make($response->getData(), [
-            'id' => ['nullable', 'string'],
+        $data = $response->getData();
+        $urgent = $response->getUrgent();
+        if ($urgent !== [] && !array_key_exists('urgent', $data)) {
+            $data['urgent'] = $urgent;
+        }
+        $validator = Validator::make($data, array_replace(self::resultRules(), [
             'status' => ['required', 'string'],
-            'status_code' => ['nullable', 'integer'],
-            'eta' => ['nullable', 'string'],
-            'error' => ['nullable'],
-            'links' => ['nullable', 'array'],
-            'links.*.entity' => ['required', 'string'],
-            'links.*.href' => ['required', 'string']
-        ]);
+        ]));
 
         if ($validator->fails()) {
             Log::channel('e_health_errors')->error('Job details validation failed: ' . implode(', ', $validator->errors()->all()));
         }
 
-        return $validator->validate();
+        $validator->validate();
+
+        return $data;
     }
+
+    /** Validate operation receipts in the API client before tracking or applying their result. */
+    public static function validateSubmissionResponse(EHealthResponse $response): array
+    {
+        $data = $response->getData();
+        Validator::make($data, self::resultRules())->validate();
+
+        return $data;
+    }
+
+    protected static function resultRules(): array
+    {
+        return [
+            'id' => ['nullable', 'string'],
+            'job_id' => ['nullable', 'string'],
+            'status' => ['nullable', 'string'],
+            'status_code' => ['nullable', 'integer'],
+            'eta' => ['nullable', 'string'],
+            'error' => ['nullable'],
+            'links' => ['nullable', 'array'],
+            'links.*' => ['required', 'array'],
+            'links.*.entity' => ['nullable', 'string'],
+            'links.*.href' => ['required', 'string'],
+            'response_data' => ['nullable', 'array'],
+            'result' => ['nullable', 'array'],
+            'data' => ['nullable', 'array'],
+            'response' => ['nullable', 'array'],
+            'response.body' => ['nullable', 'array'],
+            'urgent' => ['nullable', 'array'],
+        ];
+    }
+
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Classes\eHealth\Api;
 
+use App\Core\Arr;
+
 use App\Classes\eHealth\EHealthRequest as Request;
 use App\Classes\eHealth\EHealthResponse;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -12,7 +14,6 @@ use App\Exceptions\EHealth\EHealthValidationException;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use App\Core\Arr;
 
 class CarePlanActivity extends Request
 {
@@ -29,6 +30,8 @@ class CarePlanActivity extends Request
      */
     public function create(string $patientId, string $carePlanId, array $payload): PromiseInterface|EHealthResponse
     {
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
         return $this->post("/api/patients/{$patientId}/care_plans/{$carePlanId}/activities", $payload);
     }
 
@@ -46,6 +49,8 @@ class CarePlanActivity extends Request
      */
     public function cancel(string $personId, string $carePlanId, string $activityId, array $payload): PromiseInterface|EHealthResponse
     {
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
         return $this->patch("/api/patients/$personId/care_plans/$carePlanId/activities/$activityId/actions/cancel", $payload);
     }
 
@@ -63,6 +68,8 @@ class CarePlanActivity extends Request
      */
     public function complete(string $personId, string $carePlanId, string $activityId, array $payload): PromiseInterface|EHealthResponse
     {
+        $this->setValidator(\App\Classes\eHealth\Api\Job::validateSubmissionResponse(...));
+
         return $this->patch("/api/patients/$personId/care_plans/$carePlanId/activities/$activityId/actions/complete", $payload);
     }
 
@@ -89,23 +96,31 @@ class CarePlanActivity extends Request
      * @param  string  $activityId
      * @return PromiseInterface|EHealthResponse
      */
-    public function getDetails(string $personId, string $carePlanId, string $activityId): PromiseInterface|EHealthResponse
+    public function getDetails(string $personId, string $carePlanId, string $activityId, bool $preserveApiKeys = false): PromiseInterface|EHealthResponse
     {
-        $this->setValidator($this->validateDetails(...));
+        $this->setValidator(fn (EHealthResponse $response): array => $this->validateDetails($response, $preserveApiKeys));
 
         return $this->get("/api/patients/$personId/care_plans/$carePlanId/activities/$activityId");
     }
 
-    protected function validateDetails(EHealthResponse $response): array
+    protected function validateDetails(EHealthResponse $response, bool $preserveApiKeys = false): array
     {
-        $data = $this->replaceEHealthPropNames($response->getData());
-        $toValidate = isset($data[0]) && is_array($data[0]) ? $data[0] : $data;
+        $native = $response->getData();
+        if (array_is_list($native) && count($native) === 1) {
+            $native = $native[0];
+        }
+        $data = Arr::toCamelCase($native);
+        if (isset($data['author']['identifier'])) {
+            $data['author'] = [$data['author']];
+        }
+        if (isset($data['status']) && !isset($data['detail']['status'])) {
+            $data['detail']['status'] = $data['status'];
+        }
 
-        $validator = Validator::make($toValidate, [
-            'uuid' => 'required|string',
-            'status' => 'required|string',
-            'kind' => 'nullable|string',
-            'detail' => 'nullable|array',
+        $validator = Validator::make($data, [
+            'id' => 'required|uuid',
+            'detail.status' => 'required|string',
+            'detail.kind' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -115,7 +130,8 @@ class CarePlanActivity extends Request
             throw new \Illuminate\Validation\ValidationException($validator);
         }
 
-        return $data;
+        // Signed snapshots retain the API's keys; both forms pass the same validator.
+        return $preserveApiKeys ? $native : $data;
     }
 
     protected function validateMany(EHealthResponse $response): array
@@ -128,15 +144,15 @@ class CarePlanActivity extends Request
         if (is_array($items)) {
             foreach ($items as $item) {
                 if (is_array($item)) {
-                    $transformedData[] = $this->replaceEHealthPropNames($item);
+                    $transformedData[] = Arr::toCamelCase($item);
                 }
             }
         }
 
         $validator = Validator::make($transformedData, [
             '*' => 'array',
-            '*.uuid' => 'required|string',
-            '*.status' => 'required|string',
+            '*.id' => 'required|uuid',
+            '*.status' => 'nullable|string',
             '*.kind' => 'nullable|string',
         ]);
 
@@ -147,33 +163,7 @@ class CarePlanActivity extends Request
             throw new \Illuminate\Validation\ValidationException($validator);
         }
 
-        return $response->getData();
+        return $transformedData;
     }
 
-    protected function replaceEHealthPropNames(array $properties): array
-    {
-        if (!Arr::isAssoc($properties)) {
-            $result = [];
-            foreach ($properties as $item) {
-                $result[] = is_array($item) ? $this->replaceEHealthPropNames($item) : $item;
-            }
-
-            return $result;
-        }
-
-        $mapping = [
-            'id' => 'uuid',
-            'inserted_at' => 'ehealth_inserted_at',
-            'inserted_by' => 'ehealth_inserted_by',
-            'updated_at' => 'ehealth_updated_at'
-        ];
-
-        $replaced = [];
-        foreach ($properties as $name => $value) {
-            $newName = $mapping[$name] ?? $name;
-            $replaced[$newName] = is_array($value) ? $this->replaceEHealthPropNames($value) : $value;
-        }
-
-        return $replaced;
-    }
 }

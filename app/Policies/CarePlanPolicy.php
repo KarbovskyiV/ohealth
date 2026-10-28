@@ -44,6 +44,28 @@ class CarePlanPolicy
         return Response::allow();
     }
 
+    /** A plan's registration does not itself grant patient access for prescribing. */
+    public function manageActivities(User $user, CarePlan $carePlan): Response
+    {
+        $permission = $this->manage($user, $carePlan);
+        if ($permission->denied()) {
+            return $permission;
+        }
+        $legalEntity = legalEntity();
+        $employee = $user->getCarePlanWriterEmployee($carePlan->termsOfServiceCode());
+        $status = CarePlanStatus::fromStored($carePlan->status);
+        if ($employee === null || $legalEntity === null || $status === CarePlanStatus::DRAFT || $status->isTerminal()) {
+            return Response::deny(__('care-plan.prescribing_patient_access_required'));
+        }
+        $repository = app(\App\Repositories\CarePlanRepository::class);
+        if (app(\App\Services\MedicalEvents\CarePlanApprovalService::class)->skipsPatientOtp($carePlan, $legalEntity)
+            || $repository->hasGrantedApproval($carePlan, $employee->uuid)) {
+            return Response::allow();
+        }
+
+        return Response::deny(__('care-plan.prescribing_patient_access_required'));
+    }
+
     /**
      * Determine whether the user can create care plan.
      */
@@ -69,8 +91,12 @@ class CarePlanPolicy
             return Response::denyWithStatus(404);
         }
 
+        if (\App\Repositories\Repository::carePlan()->hasPendingSubmission($carePlan)) {
+            return Response::denyWithStatus(404);
+        }
+
         $status = CarePlanStatus::fromStored($carePlan->status);
-        if (!in_array($status, [CarePlanStatus::DRAFT, CarePlanStatus::PENDING], true)) {
+        if ($status !== CarePlanStatus::DRAFT) {
             return Response::denyWithStatus(404);
         }
 

@@ -14,15 +14,13 @@
     <div class="breadcrumb-form shift-content p-4">
         <div class="mt-6 w-full max-w-screen-xl space-y-8">
             <fieldset class="fieldset-card p-6 sm:p-8" @disabled($step >= Wizard::STEP_AWAITING_JOB)>
-                <legend class="legend">
-                    {{ __('compositions.create_newborn.steps.encounter') }}
-                </legend>
+                <legend class="legend">{{ __('compositions.create_newborn.steps.encounter') }}</legend>
                 <div class="mt-6">
                     <div class="mb-4 font-semibold text-gray-900 dark:text-gray-100">
-                        {{ __('compositions.create_newborn.encounter_hint') }}
+                        {{ __($selectedEncounter !== null && !$showEncounterPicker ? 'compositions.wizard.encounter_selected_hint' : 'compositions.create_newborn.encounter_hint') }}
                     </div>
 
-                    @if($this->needsMother)
+                    @if ($this->needsMother)
                         <div class="mb-6">
                             <p class="mb-3 text-sm text-gray-700 dark:text-gray-200">
                                 {{ __('compositions.create_newborn.identify_mother') }}
@@ -47,13 +45,11 @@
                                     class="button-primary flex shrink-0 items-center gap-2 px-4 py-2 text-sm"
                                 >
                                     @icon('search', 'w-4 h-4')
-                                    <span>
-                                        {{ __('forms.search') }}
-                                    </span>
+                                    <span> {{ __('forms.search') }} </span>
                                 </button>
                             </div>
                             <div class="space-y-3">
-                                @forelse($this->counterpartMatches as $match)
+                                @forelse ($this->counterpartMatches as $match)
                                     <div class="record-inner-card" wire:key="mother-{{ $match->id }}">
                                         <div class="record-inner-header items-center gap-3">
                                             <div class="record-inner-column min-w-0 flex-1">
@@ -74,16 +70,14 @@
                                         </div>
                                     </div>
                                 @empty
-                                    @if($counterpartSearchTerm !== '')
+                                    @if ($counterpartSearchTerm !== '')
                                         <x-nothing-found :description="__('compositions.create_newborn.no_mother')" />
                                     @endif
                                 @endforelse
                             </div>
                         </div>
-                    @elseif($form->personUuid)
-                        <div
-                            class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700"
-                        >
+                    @elseif ($form->personUuid)
+                        <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
                             <div class="min-w-0">
                                 <div class="record-inner-label text-[10px] uppercase">
                                     {{ __('compositions.create_newborn.mother') }}
@@ -102,7 +96,7 @@
                         </div>
                     @endif
 
-                    @if($this->needsNewborn)
+                    @if ($this->needsNewborn)
                         <div class="mb-6">
                             <p class="mb-3 text-sm text-gray-700 dark:text-gray-200">
                                 {{ __('compositions.create_newborn.identify_newborn') }}
@@ -127,13 +121,11 @@
                                     class="button-primary flex shrink-0 items-center gap-2 px-4 py-2 text-sm"
                                 >
                                     @icon('search', 'w-4 h-4')
-                                    <span>
-                                        {{ __('forms.search') }}
-                                    </span>
+                                    <span> {{ __('forms.search') }} </span>
                                 </button>
                             </div>
                             <div class="space-y-3">
-                                @forelse($this->counterpartMatches as $match)
+                                @forelse ($this->counterpartMatches as $match)
                                     <div class="record-inner-card" wire:key="newborn-{{ $match->id }}">
                                         <div class="record-inner-header items-center gap-3">
                                             <div class="record-inner-column min-w-0 flex-1">
@@ -154,16 +146,14 @@
                                         </div>
                                     </div>
                                 @empty
-                                    @if($counterpartSearchTerm !== '')
+                                    @if ($counterpartSearchTerm !== '')
                                         <x-nothing-found :description="__('compositions.create_newborn.no_newborn')" />
                                     @endif
                                 @endforelse
                             </div>
                         </div>
-                    @elseif($form->prepersonUuid && $personId)
-                        <div
-                            class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700"
-                        >
+                    @elseif ($form->prepersonUuid && $personId)
+                        <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
                             <div class="min-w-0">
                                 <div class="record-inner-label text-[10px] uppercase">
                                     {{ __('compositions.create_newborn.newborn') }}
@@ -182,16 +172,16 @@
                         </div>
                     @endif
 
-                    @if($this->needsMother)
+                    @if ($this->needsMother)
                         <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
                             {{ __('compositions.create_newborn.pick_mother_first') }}
                         </p>
-                    @elseif($this->needsNewborn)
+                    @elseif ($this->needsNewborn)
                         <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
                             {{ __('compositions.create_newborn.pick_newborn_first') }}
                         </p>
-                    @elseif(!$this->needsNewborn && !$this->needsMother)
-                        @if($step < Wizard::STEP_AWAITING_JOB && $this->hasExistingActiveBirthConclusion)
+                    @elseif (!$this->needsNewborn && !$this->needsMother)
+                        @if ($step < Wizard::STEP_AWAITING_JOB && $this->hasExistingActiveBirthConclusion)
                             <div class="status-alert-yellow mb-6">
                                 <p class="text-sm font-medium">
                                     {{ __('compositions.create_newborn.existing_warning') }}
@@ -200,16 +190,14 @@
                         @endif
 
                         <div class="space-y-4">
-                            @forelse(($step < Wizard::STEP_AWAITING_JOB ? $this->availableEncounters : collect(array_filter([$selectedEncounter]))) as $encounter)
+                            @forelse ((($step >= Wizard::STEP_AWAITING_JOB || ($selectedEncounter !== null && !$showEncounterPicker)) ? collect(array_filter([$selectedEncounter])) : $this->availableEncounters) as $encounter)
                                 <div
                                     @class(['record-inner-card', 'ring-2 ring-blue-500' => $form->encounterUuid === $encounter['uuid']])
                                     wire:key="encounter-{{ $encounter['uuid'] }}"
                                 >
                                     <div class="record-inner-header">
                                         <div class="record-inner-column min-w-0 flex-1">
-                                            <div class="record-inner-label">
-                                                {{ __('compositions.columns.date') }}
-                                            </div>
+                                            <div class="record-inner-label">{{ __('compositions.columns.date') }}</div>
                                             <div class="record-inner-value text-[15px] font-semibold">
                                                 {{
                                                     data_get($encounter, 'period.start')
@@ -226,15 +214,16 @@
                                                 {{ $this->dictionaryLabel($encounter, 'class') }}
                                             </div>
                                         </div>
-                                        <div
-                                            class="flex shrink-0 items-center justify-end border-t border-gray-200 p-3 md:border-t-0 md:border-l dark:border-gray-700"
-                                        >
+                                        <div class="flex shrink-0 items-center justify-end border-t border-gray-200 p-3 md:border-t-0 md:border-l dark:border-gray-700">
                                             <button
                                                 type="button"
                                                 wire:click="selectEncounter('{{ $encounter['uuid'] }}')"
+                                                wire:loading.attr="disabled"
+                                                wire:target="selectEncounter"
+                                                @disabled($form->encounterUuid === $encounter['uuid'])
                                                 class="button-primary px-3 py-1.5 text-sm whitespace-nowrap"
                                             >
-                                                {{ __('forms.select') }}
+                                                {{ __($form->encounterUuid === $encounter['uuid'] ? 'compositions.wizard.selected' : 'forms.select') }}
                                             </button>
                                         </div>
                                     </div>
@@ -249,12 +238,8 @@
                                         </div>
                                         <div class="record-inner-id-col">
                                             <div class="min-w-0">
-                                                <div class="record-inner-label text-[10px] uppercase">
-                                                    ID
-                                                </div>
-                                                <div class="record-inner-id-value">
-                                                    {{ $encounter['uuid'] }}
-                                                </div>
+                                                <div class="record-inner-label text-[10px] uppercase">ID</div>
+                                                <div class="record-inner-id-value">{{ $encounter['uuid'] }}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -264,25 +249,34 @@
                             @endforelse
                         </div>
                     @endif
+                    @if ($selectedEncounter !== null && $step < Wizard::STEP_AWAITING_JOB)
+                        <button
+                            type="button"
+                            wire:click="$toggle('showEncounterPicker')"
+                            class="button-minor mt-4 px-4 py-2 text-sm"
+                        >
+                            {{ __($showEncounterPicker ? 'compositions.wizard.keep_encounter' : 'compositions.wizard.change_encounter') }}
+                        </button>
+                    @endif
                     @error('form.encounterUuid')
-                        <p class="text-error">
-                            {{ $message }}
-                        </p>
+                        <p class="text-error">{{ $message }}</p>
                     @enderror
                 </div>
             </fieldset>
 
-            <fieldset class="fieldset-card p-6 sm:p-8" @disabled($step < Wizard::STEP_AUTH_METHOD || $step >= Wizard::STEP_AWAITING_JOB)>
-                <legend class="legend">
-                    {{ __('compositions.create_newborn.steps.auth_method') }}
-                </legend>
+            <fieldset
+                id="composition-auth-method"
+                class="fieldset-card p-6 sm:p-8"
+                @disabled($step < Wizard::STEP_AUTH_METHOD || $step >= Wizard::STEP_AWAITING_JOB)
+            >
+                <legend class="legend">{{ __('compositions.create_newborn.steps.auth_method') }}</legend>
                 <div class="mt-6">
                     <div class="mb-4 font-semibold text-gray-900 dark:text-gray-100">
                         {{ __('compositions.create_newborn.auth_method_hint') }}
                     </div>
 
                     <div class="space-y-3">
-                        @foreach($authMethods as $method)
+                        @foreach ($authMethods as $method)
                             <div
                                 @class(['record-inner-card', 'ring-2 ring-blue-500' => $form->informWithUuid === ($method['uuid'] ?? $method['id'])])
                                 wire:key="auth-{{ $method['uuid'] ?? $method['id'] }}"
@@ -316,15 +310,16 @@
                                             }}
                                         </div>
                                     </div>
-                                    <div
-                                        class="flex shrink-0 items-center justify-end border-t border-gray-200 p-3 md:border-t-0 md:border-l dark:border-gray-700"
-                                    >
+                                    <div class="flex shrink-0 items-center justify-end border-t border-gray-200 p-3 md:border-t-0 md:border-l dark:border-gray-700">
                                         <button
                                             type="button"
                                             wire:click="selectAuthMethod('{{ $method['uuid'] ?? $method['id'] }}')"
+                                            wire:loading.attr="disabled"
+                                            wire:target="selectAuthMethod"
+                                            @disabled($form->informWithUuid === ($method['uuid'] ?? $method['id']))
                                             class="button-primary px-3 py-1.5 text-sm whitespace-nowrap"
                                         >
-                                            {{ __('forms.select') }}
+                                            {{ __($form->informWithUuid === ($method['uuid'] ?? $method['id']) ? 'compositions.wizard.selected' : 'forms.select') }}
                                         </button>
                                     </div>
                                 </div>
@@ -333,7 +328,7 @@
                     </div>
 
                     {{-- Warn only when eHealth returned no usable method (TV 3.8.1.4.4). --}}
-                    @if($authMethods === [])
+                    @if ($authMethods === [])
                         <div class="status-alert-yellow mt-6 flex-col items-start">
                             <p class="text-sm font-medium">
                                 {{ __('compositions.create_newborn.no_auth_method_warning') }}
@@ -351,28 +346,24 @@
                         </button>
                     </div>
                     @error('form.informWithUuid')
-                        <p class="text-error">
-                            {{ $message }}
-                        </p>
+                        <p class="text-error">{{ $message }}</p>
                     @enderror
                 </div>
             </fieldset>
 
-            <fieldset class="fieldset-card p-6 sm:p-8" @disabled($step < Wizard::STEP_DETAILS || $step >= Wizard::STEP_AWAITING_JOB)>
-                <legend class="legend">
-                    {{ __('compositions.create_newborn.steps.details') }}
-                </legend>
+            <fieldset
+                id="composition-details"
+                class="fieldset-card p-6 sm:p-8"
+                @disabled($step < Wizard::STEP_DETAILS || $step >= Wizard::STEP_AWAITING_JOB)
+            >
+                <legend class="legend">{{ __('compositions.create_newborn.steps.details') }}</legend>
                 <div class="mt-6">
                     @error('form.guard')
-                        <p class="text-error mb-6">
-                            {{ $message }}
-                        </p>
+                        <p class="text-error mb-6">{{ $message }}</p>
                     @enderror
-                    @if($step < Wizard::STEP_AWAITING_JOB && $this->hasExistingActiveBirthConclusion)
+                    @if ($step < Wizard::STEP_AWAITING_JOB && $this->hasExistingActiveBirthConclusion)
                         <div class="status-alert-yellow mb-6">
-                            <p class="text-sm font-medium">
-                                {{ __('compositions.create_newborn.existing_warning') }}
-                            </p>
+                            <p class="text-sm font-medium">{{ __('compositions.create_newborn.existing_warning') }}</p>
                         </div>
                     @endif
 
@@ -421,9 +412,7 @@
                                 </label>
                             </div>
                             @error('form.newbornBirthDate')
-                                <p class="text-error">
-                                    {{ $message }}
-                                </p>
+                                <p class="text-error">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -434,19 +423,15 @@
                                 id="form.newbornSex"
                                 class="input-select peer w-full"
                             >
-                                @foreach($this->sexOptions as $code => $description)
-                                    <option value="{{ $code }}">
-                                        {{ $description }}
-                                    </option>
+                                @foreach ($this->sexOptions as $code => $description)
+                                    <option value="{{ $code }}">{{ $description }}</option>
                                 @endforeach
                             </select>
                             <label for="form.newbornSex" class="label">
                                 {{ __('compositions.fields.newborn_sex') }} *
                             </label>
                             @error('form.newbornSex')
-                                <p class="text-error">
-                                    {{ $message }}
-                                </p>
+                                <p class="text-error">{{ $message }}</p>
                             @enderror
                         </div>
                     </div>
@@ -470,7 +455,7 @@
                         </div>
                     </div>
 
-                    @if(!$form->informWithUuid)
+                    @if (!$form->informWithUuid)
                         <div class="status-alert-yellow mb-6 flex-col items-start">
                             <p class="text-sm font-medium">
                                 {{ __('compositions.create_newborn.no_auth_method_warning') }}
@@ -479,7 +464,7 @@
                     @endif
 
                     <div class="flex flex-wrap gap-2">
-                        @if($step === Wizard::STEP_DETAILS)
+                        @if ($step === Wizard::STEP_DETAILS)
                             <button
                                 type="button"
                                 wire:click="submitComposition"
@@ -493,73 +478,43 @@
                 </div>
             </fieldset>
 
-            @if($step === Wizard::STEP_AWAITING_JOB)
-                <fieldset class="fieldset-card p-6 sm:p-8">
-                    <legend class="legend">
-                        {{ __('compositions.create_newborn.steps.processing') }}
-                    </legend>
-                    <div class="mt-6">
-                        <div
-                            @if(!$asyncJobErrors && $asyncJobStatus !== \App\Enums\Composition\CompositionJobStatus::FAILED->value)
-                                wire:poll.3s="pollAsyncJob"
-                            @endif
-                            class="max-w-2xl"
-                        >
-                            @if($asyncJobErrors)
-                                <div class="status-alert-red mb-4 flex-col items-start">
-                                    <p class="mb-2 text-sm font-semibold">
-                                        {{ $asyncJobStatus === \App\Enums\Composition\CompositionJobStatus::FAILED->value ? __('compositions.create_newborn.job_failed') : __('compositions.async.result_unavailable') }}
-                                    </p>
-                                    <ul class="list-inside list-disc text-sm">
-                                        @foreach($asyncJobErrors as $error)
-                                            <li>
-                                                {{ $error }}
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                                @if($asyncJobStatus === \App\Enums\Composition\CompositionJobStatus::FAILED->value)
-                                    <button
-                                        type="button"
-                                        wire:click="restart"
-                                        class="button-primary px-5 py-2.5 text-sm"
-                                    >
-                                        {{ __('compositions.create_newborn.restart') }}
-                                    </button>
-                                @else
-                                    <button
-                                        type="button"
-                                        wire:click="pollAsyncJob"
-                                        wire:loading.attr="disabled"
-                                        class="button-primary px-5 py-2.5 text-sm"
-                                    >
-                                        {{ __('compositions.async.retry_read') }}
-                                    </button>
-                                @endif
-                            @else
-                                <div class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200">
-                                    @icon('refresh', 'w-5 h-5 animate-spin text-gray-500')
-                                    {{ $asyncJobStatus === \App\Enums\Composition\CompositionJobStatus::DONE->value ? __('compositions.async.loading_result') : __('compositions.create_newborn.processing', ['status' => \App\Enums\Composition\CompositionJobStatus::tryFrom($asyncJobStatus)?->label() ?? $asyncJobStatus]) }}
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </fieldset>
+            @if ($step === Wizard::STEP_AWAITING_JOB)
+                <div wire:poll.3s="pollAsyncJob">
+                    <livewire:components.submission-status
+                        :record-type="\App\Models\MedicalEvents\Sql\Composition::class"
+                        :record-id="0"
+                        :record-status-label="$asyncJobStatus"
+                        :composition-operation-id="$this->compositionOperationId"
+                        :key="'composition-submission-'.$asyncJobId.'-'.$asyncJobStatus"
+                    />
+                    @if ($asyncJobErrors)
+                        <p class="mt-3 text-sm text-red-600" role="alert">{{ implode(' ', $asyncJobErrors) }}</p>
+                    @endif
+                    @if ($asyncJobStatus === \App\Enums\Composition\CompositionJobStatus::FAILED->value && $compositionUuid === null)
+                        <button type="button" wire:click="restart" class="button-primary mt-4">
+                            {{ __('forms.update') }}
+                        </button>
+                    @endif
+                </div>
             @endif
 
-            @if($step === Wizard::STEP_REVIEW)
+            @if ($step === Wizard::STEP_REVIEW)
                 <fieldset class="fieldset-card p-6 sm:p-8">
-                    <legend class="legend">
-                        {{ __('compositions.create_newborn.steps.review') }}
-                    </legend>
+                    <legend class="legend">{{ __('compositions.create_newborn.steps.review') }}</legend>
                     <div class="mt-6">
                         @php
-                        $reviewStatus = \App\Enums\Composition\CompositionStatus::fromEHealth(data_get($compositionDetail, 'status'));
-                    @endphp
+                            $reviewStatus = \App\Enums\Composition\CompositionStatus::fromEHealth(data_get($compositionDetail, 'status'));
+                        @endphp
 
                         @include('livewire.composition.parts.details-summary', ['detail' => $compositionDetail])
 
-                        @if($integrationData)
+                        @if ($reviewStatus?->isSignable())
+                            <p class="mt-4 text-sm text-gray-700 dark:text-gray-200">
+                                {{ __('compositions.async.draft_ready') }}
+                            </p>
+                        @endif
+
+                        @if ($integrationData)
                             @include('livewire.composition.parts.integration-data', ['items' => $integrationData])
                         @endif
 
@@ -571,7 +526,7 @@
                             >
                                 {{ __('compositions.actions.print') }}
                             </button>
-                            @if($reviewStatus?->isSignable())
+                            @if ($reviewStatus?->isSignable())
                                 <button
                                     type="button"
                                     wire:click="openSigningModal"

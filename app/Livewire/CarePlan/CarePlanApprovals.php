@@ -6,7 +6,6 @@ namespace App\Livewire\CarePlan;
 
 use App\Classes\eHealth\EHealth;
 use App\Enums\CarePlanStatus;
-use App\Enums\User\Role;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Models\CarePlan;
@@ -23,13 +22,13 @@ use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use RuntimeException;
 use Throwable;
 
 class CarePlanApprovals extends Component
 {
     use FormTrait;
     use InteractsWithApprovals;
+    use \App\Livewire\CarePlan\Concerns\HandlesCarePlanApprovalSms;
 
     #[Locked]
     public int $carePlanId;
@@ -89,20 +88,9 @@ class CarePlanApprovals extends Component
         // that the granted employee belongs to the requesting clinic.
         $legalEntityId = legalEntity()?->id ?? $legalEntity->id;
         if ($legalEntityId) {
-            $this->employees = Employee::where('legal_entity_id', $legalEntityId)
-                ->where('status', 'APPROVED')
-                ->where('is_active', true)
-                ->whereIn('employee_type', [Role::DOCTOR->value, Role::SPECIALIST->value])
-                ->with('party:id,first_name,last_name,second_name')
-                ->select(['id', 'uuid', 'party_id', 'employee_type', 'position'])
-                ->get()
-                ->map(fn ($e) => [
-                    'uuid' => $e->uuid,
-                    'label' => trim($e->fullName) . ' (' . $e->employee_type . ')',
-                ])
-                ->toArray();
+            $this->employees = app(\App\Repositories\CarePlanRepository::class)->approvalEmployees($legalEntityId);
 
-            $writerUuid = Auth::user()?->getCarePlanWriterEmployee($carePlan->termsOfService)?->uuid;
+            $writerUuid = Auth::user()?->getCarePlanWriterEmployee($carePlan->termsOfServiceCode())?->uuid;
             if ($writerUuid && collect($this->employees)->contains(fn (array $employee): bool => $employee['uuid'] === $writerUuid)) {
                 $this->newApproval['employee_uuid'] = $writerUuid;
             } elseif (count($this->employees) === 1) {
@@ -110,36 +98,34 @@ class CarePlanApprovals extends Component
             }
         }
 
-        try {
-            $this->authMethods = EHealth::person()->getAuthMethods($this->patientUuid)->getData();
-            foreach ($this->authMethods as $method) {
-                if (($method['type'] ?? '') === 'OTP') {
-                    $this->selectedAuthMethodUuid = $method['id'] ?? $method['uuid'] ?? null;
-                    break;
-                }
-            }
-        } catch (Exception $e) {
-            Log::warning('CarePlanApprovals: failed to fetch patient auth methods: ' . $e->getMessage());
+    }
+
+    public function loadAuthMethods(): void
+    {
+        if ($this->skipsPatientOtp || $this->authMethods !== []) {
+            return;
         }
+        $this->authMethods = EHealth::person()->getAuthMethods($this->patientUuid)->validate();
+        $method = collect($this->authMethods)->firstWhere('type', 'OTP') ?? ($this->authMethods[0] ?? null);
+        $this->selectedAuthMethodUuid = $method['id'] ?? $method['uuid'] ?? null;
     }
 
     /**
      * Sync from eHealth and refresh the local approvals list.
      */
     #[On('refreshApprovals')]
-    public function fetchApprovals(): void
+    public function fetchApprovals(bool $notifyErrors = true): void
     {
         $this->isLoading = true;
 
         try {
-            $carePlan = CarePlan::findOrFail($this->carePlanId);
-            app(CarePlanApprovalService::class)->syncForCarePlan($carePlan);
-            $this->approvals = $carePlan->approvals()
-                ->withAllRelations()
-                ->latest()
-                ->get()
-                ->toArray();
+            $carePlan = $this->currentCarePlan();
+            $this->skipsPatientOtp = app(CarePlanApprovalService::class)->skipsPatientOtp($carePlan);
+            $this->approvals = \App\Repositories\MedicalEvents\Repository::approval()->localForCarePlan($carePlan);
         } catch (Exception $e) {
+            if (!$notifyErrors) {
+                throw $e;
+            }
             Log::error('CarePlanApprovals: failed to fetch: ' . $e->getMessage());
             Session::flash('error', __('care-plan.approvals_fetch_error'));
         } finally {
@@ -158,7 +144,7 @@ class CarePlanApprovals extends Component
             'newApproval.employee_uuid' => 'required|uuid',
         ]);
 
-        $carePlan = CarePlan::findOrFail($this->carePlanId);
+        $carePlan = $this->currentCarePlan();
         $this->authorize('manage', $carePlan);
         $this->isReadOnly = CarePlanStatus::fromStored($carePlan->status)->isTerminal();
 
@@ -172,6 +158,7 @@ class CarePlanApprovals extends Component
         }
 
         try {
+            $this->loadAuthMethods();
             if ($this->selectedAuthMethodUuid) {
                 $this->currentAuthMethod = collect($this->authMethods)->first(function ($method) {
                     return ($method['id'] ?? $method['uuid'] ?? null) === $this->selectedAuthMethodUuid;
@@ -265,6 +252,7 @@ class CarePlanApprovals extends Component
         Session::flash('success', $this->skipsPatientOtp
             ? __('care-plan.approval_inpatient_granted')
             : __('care-plan.approval_created'));
+        $this->errorMessage = null;
         $this->reset('newApproval');
         $this->fetchApprovals();
         $this->dispatch('care-plan-approvals-changed');
@@ -276,20 +264,48 @@ class CarePlanApprovals extends Component
             return;
         }
 
+        $approval = app(MedicalRequestOwnership::class)->approvalForCarePlan($this->currentCarePlan(), $approvalUuid);
         if ($this->skipsPatientOtp) {
             $this->confirmInpatientApproval($approvalUuid);
 
             return;
         }
 
+        $link = \App\Repositories\MedicalEvents\Repository::approval()->creationLinkFor($approval);
+        if ($link !== null) {
+            $this->pollingLinkId = $link->id;
+            $this->isPolling = true;
+            $this->checkApprovalJobStatus();
+
+            return;
+        }
+        $this->loadAuthMethods();
         $this->approvalId = $approvalUuid;
-        if (empty($this->currentAuthMethod)) {
-            $this->currentAuthMethod = collect($this->authMethods)->first(function ($method) {
-                return ($method['type'] ?? '') === 'OTP';
-            });
+        $this->currentAuthMethod = collect($this->authMethods)->first(fn (array $method): bool => ($method['id'] ?? $method['uuid'] ?? null) === $approval->authorizeWith);
+        if ($this->currentAuthMethod === null) {
+            Session::flash('error', __('care-plan.approval_result_unavailable'));
+
+            return;
         }
         $this->openAuthModal();
-        $this->resendSms();
+    }
+
+    public function resumeApprovalRequest(string $approvalUuid): void
+    {
+        $this->authorize('manage', $this->currentCarePlan());
+        $approval = app(MedicalRequestOwnership::class)->approvalForCarePlan($this->currentCarePlan(), $approvalUuid);
+        $link = \App\Repositories\MedicalEvents\Repository::approval()->creationLinkFor($approval);
+        if ($link === null) {
+            return;
+        }
+        if ($this->skipsPatientOtp && $link->status === 'PROCESSED') {
+            $this->confirmInpatientApproval($approvalUuid);
+
+            return;
+        }
+        $this->pollingLinkId = $link->id;
+        $this->isPolling = true;
+        $this->checkApprovalJobStatus();
     }
 
     public function recreateApproval(string $oldApprovalUuid): void
@@ -301,6 +317,8 @@ class CarePlanApprovals extends Component
         }
 
         try {
+            app(MedicalRequestOwnership::class)->approvalForCarePlan($this->currentCarePlan(), $oldApprovalUuid);
+            $this->loadAuthMethods();
             try {
                 app(CarePlanApprovalService::class)
                     ->deactivate($this->patientUuid, $oldApprovalUuid);
@@ -311,10 +329,10 @@ class CarePlanApprovals extends Component
                 }
             }
 
-            $carePlan = CarePlan::findOrFail($this->carePlanId);
+            $carePlan = $this->currentCarePlan();
             $oldApproval = $carePlan->approvals()->with('grantedTo')->where('uuid', $oldApprovalUuid)->first();
             $employeeUuid = $oldApproval?->grantedTo?->value
-                ?? Auth::user()?->getCarePlanWriterEmployee($carePlan->termsOfService)?->uuid;
+                ?? Auth::user()?->getCarePlanWriterEmployee($carePlan->termsOfServiceCode())?->uuid;
 
             if (!$employeeUuid) {
                 Session::flash('error', __('care-plan.employee_not_found'));
@@ -367,6 +385,7 @@ class CarePlanApprovals extends Component
      */
     protected function confirmInpatientApproval(string $approvalUuid): void
     {
+        $this->errorMessage = null;
         $this->approvalId = $approvalUuid;
 
         try {
@@ -387,6 +406,8 @@ class CarePlanApprovals extends Component
             return;
         }
 
+        $this->isPolling = false;
+        $this->pollingLinkId = null;
         $this->fetchApprovals();
         $this->dispatch('care-plan-approvals-changed');
         Session::flash('success', __('care-plan.approval_inpatient_granted'));
@@ -394,38 +415,26 @@ class CarePlanApprovals extends Component
 
     public function verify(): void
     {
-        $this->validate($this->approvalVerificationRules());
-
-        if ($this->isOfflineAuthMethod()) {
-            Log::info('CarePlanApprovals: offline document verification confirmed for approval ID: ' . $this->approvalId);
-            Session::flash('success', __('care-plan.approval_verified'));
-            $this->closeAuthModal();
-            $this->reset('newApproval');
-            $this->fetchApprovals();
-            $this->dispatch('care-plan-approvals-changed');
+        if ($this->isSmsResending) {
+            Session::flash('info', __('care-plan.sms_resend_processing'));
 
             return;
         }
+        $this->authorize('manage', $this->currentCarePlan());
+        app(MedicalRequestOwnership::class)->approvalForCarePlan($this->currentCarePlan(), $this->approvalId ?? '');
+        $this->validate($this->approvalVerificationRules());
 
         try {
-            $response = app(CarePlanApprovalService::class)->verify(
+            app(CarePlanApprovalService::class)->verify(
                 $this->patientUuid,
                 $this->approvalId,
-                (int) $this->verificationCode,
+                $this->isOfflineAuthMethod() ? null : (int) $this->verificationCode,
             );
-
-            if ($response->successful()) {
-                Session::flash('success', __('care-plan.approval_verified'));
-                $this->closeAuthModal();
-                $this->reset('newApproval');
-                $this->fetchApprovals();
-                $this->dispatch('care-plan-approvals-changed');
-            }
         } catch (EHealthValidationException|EHealthResponseException $e) {
             Log::error('CarePlanApprovals: failed to verify: ' . $e->getMessage());
 
             if ($e->getCode() === 404 || str_contains($e->getMessage(), '404')) {
-                $this->approvalsOfCurrentPlan()->where('uuid', $this->approvalId)->delete();
+                app(\App\Repositories\CarePlanRepository::class)->removeApproval($this->currentCarePlan(), $this->approvalId);
                 Session::flash('error', __('care-plan.approval_expired_404'));
                 $this->closeAuthModal();
                 $this->fetchApprovals();
@@ -437,49 +446,45 @@ class CarePlanApprovals extends Component
                 ? $e->getFormattedMessage()
                 : __('Помилка від ЕСОЗ: ') . $e->getMessage();
             Session::flash('error', $msg);
-        } catch (Exception $e) {
-            Log::error('CarePlanApprovals: failed to verify: ' . $e->getMessage());
-            Session::flash('error', __('care-plan.approval_verify_error'));
-        }
-    }
 
-    public function resendSms(): void
-    {
-        if ($this->smsResent) {
+            return;
+        } catch (Exception $e) {
+            Log::warning('Care plan approval confirmation failed', ['exceptionType' => $e::class]);
+            Session::flash('error', __('care-plan.approval_verify_error'));
+
             return;
         }
-
+        $this->errorMessage = null;
+        $this->resetValidation('verificationCode');
+        $this->closeAuthModal();
+        $this->reset('newApproval');
         try {
-            app(CarePlanApprovalService::class)->resendSms($this->patientUuid, $this->approvalId);
-            $this->smsResent = true;
-            Session::flash('success', __('care-plan.sms_resent'));
-        } catch (EHealthResponseException $e) {
-            Log::error('CarePlanApprovals: failed to resend SMS: ' . $e->getMessage());
+            $this->fetchApprovals(notifyErrors: false);
+            $this->dispatch('care-plan-approvals-changed');
+        } catch (Throwable $exception) {
+            Log::warning('Verified care plan approval list could not be refreshed', ['exceptionType' => $exception::class]);
+            Session::flash('warning', __('care-plan.approval_verified_refresh_pending'));
 
-            if ($e->getCode() === 404 || str_contains($e->getMessage(), '404')) {
-                $this->approvalsOfCurrentPlan()->where('uuid', $this->approvalId)->delete();
-                Session::flash('error', __('care-plan.approval_expired_404'));
-                $this->closeAuthModal();
-                $this->fetchApprovals();
-
-                return;
-            }
-            Session::flash('error', __('care-plan.sms_resend_error'));
-        } catch (RuntimeException $e) {
-            Session::flash('error', $e->getMessage());
-        } catch (Exception $e) {
-            Log::error('CarePlanApprovals: failed to resend SMS: ' . $e->getMessage());
-            Session::flash('error', __('care-plan.sms_resend_error'));
+            return;
         }
+        Session::flash('success', __('care-plan.approval_verified'));
+    }
+
+    protected function carePlanForSms(): CarePlan
+    {
+        return $this->currentCarePlan();
+    }
+
+    protected function onSmsApprovalAlreadyGranted(): void
+    {
+        $this->fetchApprovals();
+        $this->dispatch('care-plan-approvals-changed');
     }
 
     public function cancelApproval(string $approvalUuid): void
     {
-        if ($this->guardReadOnlyApprovals()) {
-            return;
-        }
-
         $this->authorize('manage', $this->currentCarePlan());
+
         try {
             app(MedicalRequestOwnership::class)
                 ->approvalForCarePlan($this->currentCarePlan(), $approvalUuid);
@@ -499,19 +504,27 @@ class CarePlanApprovals extends Component
         return view('livewire.care-plan.care-plan-approvals');
     }
 
-    protected function currentCarePlan(): CarePlan
+    public function getSelectedEmployeeHasAccessProperty(): bool
     {
-        return CarePlan::query()->findOrFail($this->carePlanId);
+        return collect($this->approvals)->contains(function (array $approval): bool {
+            $expiresAt = $approval['expiresAt'] ?? $approval['expires_at'] ?? null;
+
+            return data_get($approval, 'grantedTo.value', data_get($approval, 'granted_to.value')) === $this->newApproval['employee_uuid']
+                && ($approval['isVerified'] ?? $approval['is_verified'] ?? false)
+                && ($expiresAt === null || \Carbon\CarbonImmutable::parse($expiresAt)->isFuture())
+                && \App\Enums\Person\ApprovalStatus::resolve($approval['status'] ?? null)?->isGranted();
+        });
     }
 
-    protected function approvalsOfCurrentPlan()
+    protected function currentCarePlan(): CarePlan
     {
-        return $this->currentCarePlan()->approvals();
+        return app(\App\Repositories\CarePlanRepository::class)->findById($this->carePlanId) ?? abort(404);
     }
 
     protected function guardReadOnlyApprovals(): bool
     {
-        $carePlan = CarePlan::findOrFail($this->carePlanId);
+        $carePlan = $this->currentCarePlan();
+        $this->authorize('manage', $carePlan);
         $this->isReadOnly = CarePlanStatus::fromStored($carePlan->status)->isTerminal();
         $this->statusLabel = CarePlanStatus::labelFor($carePlan->status);
 

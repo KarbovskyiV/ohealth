@@ -60,6 +60,14 @@ class DeviceRequestRequestRepository extends BaseRepository
                     $name = $type === 'diagnostic_report'
                         ? ($record->code?->displayValue ?: $record->code?->value)
                         : ($record->code?->text ?: $record->code?->coding->first()?->code);
+                    if ($type === 'condition') {
+                        $code = $record->codeString;
+                        $description = $record->codeDisplay;
+                        if (!$description || $description === $code) {
+                            $description = $record->code?->text ?: $record->code?->coding->first()?->display;
+                        }
+                        $name = trim(($code ?? '').($description && $description !== $code ? ' — '.$description : ''));
+                    }
                     $date = $type === 'condition' ? $record->onsetDate : $record->issued;
 
                     return [$record->uuid => trim(($name ?: __('device-requests.reason_types.'.$type)).' · '.formatDisplayDate($date ?: ''))];
@@ -310,11 +318,11 @@ class DeviceRequestRequestRepository extends BaseRepository
         return $this->model->newQuery()->where('uuid', $uuid)->first();
     }
 
-    public function sumIssuedQuantityByActivity(string $activityUuid): float
+    public function sumIssuedQuantityByActivity(string $activityUuid, array $excludedStatuses = MedicalEventsRequestStatuses::EXCLUDED_FROM_ISSUED_SUM): float
     {
         return (float) $this->model->newQuery()
             ->whereHas('basedOn', fn ($q) => $q->where('value', $activityUuid))
-            ->whereNotIn('status', MedicalEventsRequestStatuses::EXCLUDED_FROM_ISSUED_SUM)
+            ->whereNotIn('status', $excludedStatuses)
             ->sum('quantity');
     }
 
@@ -325,5 +333,16 @@ class DeviceRequestRequestRepository extends BaseRepository
             ->whereIn('status', ['draft', 'DRAFT'])
             ->latest('id')
             ->first();
+    }
+
+    public function saveStatus(DeviceRequestRequest $record, string $status): void
+    {
+        $record->status = $status;
+        $record->save();
+    }
+
+    public function refreshRecord(DeviceRequestRequest $record): void
+    {
+        $record->refresh();
     }
 }

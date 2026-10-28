@@ -184,7 +184,7 @@ class UserGetCarePlanWriterEmployeeTest extends TestCase
 
     public function test_it_ignores_inactive_roles_when_matching_terms_of_service(): void
     {
-        $therapist = $this->createEmployee('P10', Role::SPECIALIST->value);
+        $doctor = $this->createEmployee('P1', Role::DOCTOR->value);
         $endocrinologist = $this->createEmployee('P56', Role::SPECIALIST->value);
 
         $healthcareService = $this->createHealthcareService('ENDOCRINOLOGY', 'INPATIENT');
@@ -194,6 +194,6 @@ class UserGetCarePlanWriterEmployeeTest extends TestCase
         $result = $this->user->getCarePlanWriterEmployee('INPATIENT');
 
         $this->assertNotNull($result);
-        $this->assertSame($therapist->id, $result->id);
+        $this->assertSame($doctor->id, $result->id);
     }
 }

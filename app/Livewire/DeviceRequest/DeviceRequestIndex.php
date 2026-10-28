@@ -36,6 +36,11 @@ class DeviceRequestIndex extends Component
 
     public array $filters = ['requester_legal_entity' => '', 'status' => '', 'code' => '', 'context_episode_id' => '', 'encounter' => '', 'program' => ''];
 
+    public string $requesterEntitySearch = '';
+
+    #[Locked]
+    public array $legalEntityOptions = [];
+
     #[Locked]
     public array $requests = [];
 
@@ -85,6 +90,8 @@ class DeviceRequestIndex extends Component
         $this->legalEntityId = $legalEntity->id;
         $this->personId = $person?->exists ? $person->id : null;
         $this->filters['requester_legal_entity'] = $legalEntity->uuid;
+        $this->legalEntityOptions = app(LegalEntityRepository::class)->getLegalEntitiesList();
+        $this->requesterEntitySearch = collect($this->legalEntityOptions)->firstWhere('uuid', $legalEntity->uuid)['name'] ?? $legalEntity->name ?? $legalEntity->uuid;
 
         if ($person?->exists) {
             if (Auth::user()->can('create', [DeviceRequestRequest::class, $legalEntity])) {
@@ -131,6 +138,21 @@ class DeviceRequestIndex extends Component
     {
         $this->authorize('perform', [DeviceRequestRequest::class, $this->legalEntity, 'device_request:read']);
         abort_unless($this->person?->exists, 404);
+        $this->validate(['requesterEntitySearch' => 'nullable|string|max:500']);
+        $entitySearch = trim($this->requesterEntitySearch);
+        if ($entitySearch === '' || \Illuminate\Support\Str::isUuid($entitySearch)) {
+            $this->filters['requester_legal_entity'] = $entitySearch;
+        } else {
+            $matches = collect($this->legalEntityOptions)->filter(
+                fn (array $entity): bool => mb_strtolower($entity['name']) === mb_strtolower($entitySearch)
+            );
+            if ($matches->count() !== 1) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'requesterEntitySearch' => __('device-requests.labels.choose_entity_from_list'),
+                ]);
+            }
+            $this->filters['requester_legal_entity'] = $matches->first()['uuid'];
+        }
         $this->validate([
             'filters.requester_legal_entity' => 'nullable|uuid', 'filters.context_episode_id' => 'nullable|uuid',
             'filters.encounter' => 'nullable|uuid', 'filters.program' => 'nullable|uuid',
@@ -327,6 +349,7 @@ class DeviceRequestIndex extends Component
         return view('livewire.device-request.device-request-index', [
             'legalEntity' => $this->legalEntity,
             'person' => $this->person,
+            'legalEntityNames' => collect($this->legalEntityOptions)->pluck('name', 'uuid')->all(),
         ])->layout('layouts.app');
     }
 }

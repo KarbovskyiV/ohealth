@@ -11,7 +11,9 @@ use App\Exceptions\EHealth\EHealthConnectionException;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use GuzzleHttp\Promise\PromiseInterface;
+use App\Classes\eHealth\ValidationRuleBuilder;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class Approval extends Request
 {
@@ -30,6 +32,8 @@ class Approval extends Request
      */
     public function getMany(array $query = []): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateApprovalList(...));
+
         return $this->get(self::URL, $query);
     }
 
@@ -75,6 +79,8 @@ class Approval extends Request
      */
     public function createApproval(string $patientId, array $payload): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateCreate(...));
+
         return $this->post(self::APPROVAL_URL . "/{$patientId}/approvals", $payload);
     }
 
@@ -89,6 +95,8 @@ class Approval extends Request
      */
     public function create(array $payload): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateCreate(...));
+
         return $this->post(self::URL, $payload);
     }
 
@@ -103,6 +111,8 @@ class Approval extends Request
      */
     public function verify(string $patientId, string $approvalId, array $payload): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateVerification(...));
+
         return $this->patch(self::APPROVAL_URL . "/{$patientId}/approvals/{$approvalId}", $payload);
     }
 
@@ -121,6 +131,8 @@ class Approval extends Request
      */
     public function resendSms(string $patientId, string $approvalId): PromiseInterface|EHealthResponse
     {
+        $this->setValidator($this->validateCreate(...));
+
         return $this->patch(self::APPROVAL_URL . "/{$patientId}/approvals/{$approvalId}/actions/resend", []);
     }
 
@@ -201,6 +213,10 @@ class Approval extends Request
             'items' => ['present', 'array'],
             'items.*.id' => ['required', 'uuid'],
             'items.*.granted_to.identifier.value' => ['required', 'uuid'],
+            'items.*.is_verified' => ['sometimes', 'boolean:strict'],
+            'items.*.access_level' => ['nullable', Rule::in(['read', 'write'])],
+            'items.*.expires_at' => ['nullable', 'date'],
+            'items.*.status' => ['nullable', 'string'],
         ])->validate();
 
         return $data;
@@ -214,8 +230,113 @@ class Approval extends Request
             'id' => ['required', 'uuid'],
             'granted_to.identifier.value' => ['required', 'uuid'],
             'access_level' => ['required', 'string'],
+            'is_verified' => ['sometimes', 'boolean:strict'],
+            'expires_at' => ['nullable', 'date'],
+            'status' => ['nullable', 'string'],
         ])->validate();
 
         return $data;
     }
+
+    protected function validateCreate(EHealthResponse $response): array
+    {
+        return $response->status() === 202
+            ? Job::validateSubmissionResponse($response)
+            : self::validateResourceData($response->json() ?? []);
+    }
+
+    protected function validateVerification(EHealthResponse $response): array
+    {
+        // Verification acknowledges the PATCH; it need not return an Approval resource.
+        Validator::make(['status' => $response->status()], [
+            'status' => ['required', Rule::in([200, 204])],
+        ])->validate();
+        if (trim($response->body()) === '') {
+            return [];
+        }
+        $body = Validator::make(['body' => $response->json()], [
+            'body' => ['present', 'array'],
+        ])->validate()['body'];
+        if (array_key_exists('data', $body) || array_key_exists('meta', $body)) {
+            $body = Validator::make(['body' => $body], [
+                'body' => ['array:data,meta'],
+                'body.data' => ['nullable', 'array'],
+                'body.meta' => ['nullable', 'array'],
+                'body.meta.code' => ['nullable', 'integer', Rule::in([200, 204])],
+                'body.meta.type' => ['nullable', 'string'],
+                'body.meta.url' => ['nullable', 'string'],
+                'body.meta.request_id' => ['nullable', 'string'],
+            ])->validate()['body'];
+            $body = $body['data'] ?? [];
+        }
+        if ($body === []) {
+            return [];
+        }
+        Validator::make($body, [
+            'id' => ['required_without_all:is_verified,status', 'uuid'],
+        ])->validate();
+
+        return self::validateResourceData($body, complete: false);
+    }
+
+    /** Unwrap documented job envelopes and validate the approval before consumers can persist it. */
+    public static function validateResourceData(array $data, bool $complete = true): array
+    {
+        $urgent = null;
+        for ($depth = 0; $depth < 6; $depth++) {
+            $urgent = $data['urgent'] ?? $urgent;
+            $nested = $data['response_data'] ?? $data['result'] ?? data_get($data, 'response.body') ?? $data['data'] ?? null;
+            if (!is_array($nested)) {
+                break;
+            }
+            $data = array_is_list($nested) && count($nested) === 1 ? $nested[0] : $nested;
+        }
+        if ($urgent !== null && !array_key_exists('urgent', $data)) {
+            $data['urgent'] = $urgent;
+        }
+
+        $rules = ValidationRuleBuilder::merge(
+            [
+                'id' => [$complete ? 'required' : 'sometimes', 'uuid'],
+                'is_verified' => [$complete ? 'required' : 'sometimes', 'boolean:strict'],
+                'status' => ['nullable', 'string'],
+                'access_level' => ['nullable', Rule::in(['read', 'write'])],
+                'authorize_with' => ['nullable', 'uuid'],
+                'expires_at' => ['nullable', 'date'],
+                'inserted_at' => ['nullable', 'date'],
+                'updated_at' => ['nullable', 'date'],
+                'urgent' => ['nullable', 'array'],
+            ],
+            ValidationRuleBuilder::identifierRules('granted_to'),
+            ValidationRuleBuilder::identifierRules('created_by'),
+            ValidationRuleBuilder::identifierRules('person'),
+            ValidationRuleBuilder::identifierRules('reason'),
+            ValidationRuleBuilder::identifierCollectionRules('granted_resources'),
+            ValidationRuleBuilder::codeableConceptCollectionRules('granted_resource_types'),
+        );
+        foreach (['authentication_method_current', 'urgent.authentication_method_current'] as $field) {
+            $rules += [
+                $field => ['nullable', 'array'],
+                "$field.type" => ["required_with:$field", 'string'],
+                "$field.id" => ['nullable', 'uuid'],
+                "$field.uuid" => ['nullable', 'uuid'],
+                "$field.phone_number" => ['nullable', 'string'],
+                "$field.phoneNumber" => ['nullable', 'string'],
+                "$field.number" => ['nullable', 'string'],
+            ];
+        }
+
+        return Validator::make($data, $rules)->validate();
+    }
+
+    public static function errorMessage(\Illuminate\Http\Client\Response $response): ?string
+    {
+        $data = Validator::make($response->json() ?? [], [
+            'error' => ['nullable', 'array'],
+            'error.message' => ['nullable', 'string'],
+        ])->validate();
+
+        return data_get($data, 'error.message');
+    }
+
 }

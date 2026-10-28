@@ -1,5 +1,9 @@
 @use('App\Enums\CarePlanStatus')
-<x-layouts.patient :personId="$personId" :patientFullName="$patientFullName">
+<x-layouts.patient :showLegacyMessages="false" :personId="$personId" :patientFullName="$patientFullName">
+    <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
+    @if ($syncBatchId !== null)
+        <div wire:poll.3s="checkSyncStatus" class="mb-4 text-sm text-gray-600 dark:text-gray-300">{{ __('care-plan.sync_running') }}</div>
+    @endif
     <x-slot name="headerActions">
         @can('create', \App\Models\CarePlan::class)
             <a
@@ -17,6 +21,9 @@
 
         <button
             wire:click.prevent="sync"
+            wire:loading.attr="disabled"
+            wire:target="sync"
+            @disabled($syncBatchId !== null)
             type="button"
             class="button-sync flex items-center gap-2 px-5 py-2 text-sm whitespace-nowrap shadow-sm"
         >
@@ -237,7 +244,7 @@
 
             <div class="space-y-4">
                 @forelse ($carePlans as $plan)
-                    <div class="record-inner-card" wire:key="care-plan-{{ $plan->id }}">
+                    <div class="record-inner-card" wire:key="care-plan-{{ $plan['id'] }}">
                         <div class="record-inner-header">
                             <div class="record-inner-checkbox-col">
                                 <input type="checkbox" class="default-checkbox h-5 w-5" />
@@ -246,7 +253,12 @@
                             <div class="record-inner-column flex-1">
                                 <div class="record-inner-label">{{ __('care-plan.name') }}</div>
                                 <div class="record-inner-value text-[17px] font-semibold text-gray-900 dark:text-gray-100">
-                                    {{ $plan->title }}
+                                    {{ $plan['title'] }}
+                                    @if ($plan['requiresFhirImport'])
+                                        <p class="mt-2 text-sm font-normal text-gray-600 dark:text-gray-300">
+                                            {{ $plan['status'] === 'draft' ? __('care-plan.draft_backfill_required') : __('care-plan.full_sync_required') }}
+                                        </p>
+                                    @endif
                                 </div>
                             </div>
 
@@ -254,7 +266,7 @@
                                 <div class="record-inner-label">{{ __('forms.status.label') }}:</div>
                                 <div>
                                     @php
-                                        $rawStatus = is_array($plan->status) ? ($plan->status['coding'][0]['code'] ?? ($plan->status['text'] ?? '')) : $plan->status;
+                                        $rawStatus = is_array($plan['status']) ? ($plan['status']['coding'][0]['code'] ?? ($plan['status']['text'] ?? '')) : $plan['status'];
                                         $statusEnum = CarePlanStatus::fromStored($rawStatus);
                                     @endphp
                                     <span class="{{ $statusEnum->color() }}">
@@ -263,6 +275,7 @@
                                 </div>
                             </div>
 
+                            @if (!$plan['requiresFhirImport'])
                             <div class="record-inner-action-col">
                                 <div
                                     x-data="{
@@ -305,9 +318,9 @@
                                         :id="$id('dropdown-button')"
                                         class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
                                     >
-                                        @if ($plan->status === CarePlanStatus::DRAFT->value)
+                                        @if ($plan['status'] === CarePlanStatus::DRAFT->value)
                                             <a
-                                                href="{{ route('care-plans.edit', [legalEntity(), $plan->id]) }}"
+                                                href="{{ route('care-plans.edit', [legalEntity(), $plan['id']]) }}"
                                                 class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                             >
                                                 @icon('edit', 'w-5 h-5 text-gray-500')
@@ -316,7 +329,7 @@
                                         @endif
 
                                         <a
-                                            href="{{ route('care-plans.show', [legalEntity(), $plan->id]) }}"
+                                            href="{{ route('care-plans.show', [legalEntity(), $plan['id']]) }}"
                                             class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
                                             @icon('eye', 'w-5 h-5 text-gray-500')
@@ -325,6 +338,7 @@
                                     </div>
                                 </div>
                             </div>
+                            @endif
                         </div>
 
                         <div class="record-inner-body">
@@ -336,7 +350,7 @@
                                             {{ __('forms.created') ?? 'Створено' }}
                                         </div>
                                         <div class="record-inner-value font-semibold break-words">
-                                            {{ $plan->created_at?->format(config('app.date_format')) ?? '-' }}
+                                            {{ $plan['createdAt'] }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
@@ -344,7 +358,7 @@
                                             {{ __('forms.start_date') ?? 'Початок' }}
                                         </div>
                                         <div class="record-inner-value font-semibold break-words">
-                                            {{ $plan->period_start?->format(config('app.date_format')) ?? '-' }}
+                                            {{ $plan['periodStart'] }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
@@ -352,7 +366,7 @@
                                             {{ __('forms.end_date') ?? 'Кінець' }}
                                         </div>
                                         <div class="record-inner-value font-semibold break-words">
-                                            {{ $plan->period_end?->format(config('app.date_format')) ?? '-' }}
+                                            {{ $plan['periodEnd'] }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
@@ -360,7 +374,7 @@
                                             {{ __('care-plan.doctor') ?? 'Лікар' }}
                                         </div>
                                         <div class="record-inner-value font-semibold break-words uppercase">
-                                            {{ $plan->author_name }}
+                                            {{ $plan['authorName'] }}
                                         </div>
                                     </div>
                                     <div class="col-span-1 min-w-0">
@@ -368,7 +382,7 @@
                                             {{ __('care-plan.terms_of_service') }}
                                         </div>
                                         <div class="record-inner-value font-semibold break-words">
-                                            {{ $plan->care_provision_conditions }}
+                                            {{ $plan['careProvisionConditions'] }}
                                         </div>
                                     </div>
                                 </div>
@@ -380,7 +394,7 @@
                                             {{ __('care-plan.condition_diagnosis') }}
                                         </div>
                                         <div class="record-inner-value font-semibold break-words">
-                                            {{ $plan->medical_condition }}
+                                            {{ $plan['medicalCondition'] }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
@@ -388,7 +402,7 @@
                                             {{ __('care-plan.extended_description') }}
                                         </div>
                                         <div class="record-inner-value font-semibold break-words">
-                                            {{ $plan->extended_description }}
+                                            {{ $plan['extendedDescription'] }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
@@ -396,7 +410,7 @@
                                             {{ __('care-plan.supporting_information') }}
                                         </div>
                                         <div class="record-inner-value font-semibold break-words">
-                                            {{ $plan->additional_info }}
+                                            {{ $plan['additionalInfo'] }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
@@ -404,7 +418,7 @@
                                             {{ __('care-plan.notes') }}
                                         </div>
                                         <div class="record-inner-value font-semibold break-words">
-                                            {{ $plan->notes }}
+                                            {{ $plan['notes'] }}
                                         </div>
                                     </div>
                                 </div>
@@ -415,13 +429,13 @@
                                     <div class="record-inner-label text-[10px] uppercase">
                                         {{ __('care-plan.ehealth_id') }}
                                     </div>
-                                    <div class="record-inner-id-value">{{ $plan->ehealth_id }}</div>
+                                    <div class="record-inner-id-value">{{ $plan['ehealthId'] }}</div>
                                 </div>
                                 <div class="min-w-0">
                                     <div class="record-inner-label text-[10px] uppercase">
                                         {{ __('care-plan.episode_id') ?? 'ID Епізоду' }}
                                     </div>
-                                    <div class="record-inner-id-value">{{ $plan->episodeUuid() ?? '-' }}</div>
+                                    <div class="record-inner-id-value">{{ $plan['episodeUuid'] }}</div>
                                 </div>
                             </div>
                         </div>

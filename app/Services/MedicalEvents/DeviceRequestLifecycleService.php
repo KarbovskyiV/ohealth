@@ -119,8 +119,13 @@ class DeviceRequestLifecycleService extends EHealthRequestLifecycleService imple
 
     public function carePlanContext(Person $person, string $carePlanUuid, string $activityUuid): array
     {
-        $plan = EHealth::carePlan()->getDetails($person->uuid, $carePlanUuid)->getData();
-        $activity = EHealth::carePlanActivity()->getDetails($person->uuid, $carePlanUuid, $activityUuid)->getData();
+        $localPlan = app(\App\Repositories\CarePlanRepository::class)->findByUuid($carePlanUuid, legalEntity()?->id, $person->id);
+        if ($localPlan === null) {
+            $this->invalid('activity', __('care-plan.full_sync_required'));
+        }
+        Gate::authorize('manageActivities', $localPlan);
+        $plan = \App\Core\Arr::toSnakeCase(EHealth::carePlan()->getDetails($person->uuid, $carePlanUuid)->validate());
+        $activity = \App\Core\Arr::toSnakeCase(EHealth::carePlanActivity()->getDetails($person->uuid, $carePlanUuid, $activityUuid)->validate());
         $detail = $activity['detail'] ?? $activity;
         if (($plan['status'] ?? '') !== 'active'
             || !in_array($detail['status'] ?? $activity['status'] ?? '', ['scheduled', 'in-progress', 'active'], true)
@@ -262,6 +267,60 @@ class DeviceRequestLifecycleService extends EHealthRequestLifecycleService imple
         return ['program' => $program, 'packages' => array_values(array_unique($packages, SORT_REGULAR)), 'parameters' => $parameters, 'model' => $model];
     }
 
+    private function parametersForModel(array $parameters, array $properties): array
+    {
+        $groups = collect($properties)->groupBy(static fn (array $property): string =>
+            $property['type']['system'].'|'.$property['type']['code']);
+        foreach ($groups as $key => $group) {
+            $index = collect($parameters)->search(static fn (array $parameter): bool =>
+                data_get($parameter, 'code.coding.0.system').'|'.data_get($parameter, 'code.coding.0.code') === $key);
+            $field = 'parameter_values.'.$key;
+            if ($index === false) {
+                if ($group->count() > 1) {
+                    $this->invalid($field, __('device-requests.validation.model_property_required'));
+                }
+                continue;
+            }
+            $valueField = collect(array_keys($parameters[$index]))->first(static fn (string $field): bool => str_starts_with($field, 'value_'));
+            $value = $this->propertyValueForComparison($parameters[$index][$valueField]);
+            $property = $group->first(fn (array $property): bool => array_key_exists($valueField, $property)
+                && $this->propertyValueForComparison($property[$valueField]) === $value);
+            if ($property === null) {
+                $this->invalid($field, __('errors.ehealth.messages.device_parameter_property_mismatch'));
+            }
+            // Preserve the exact fresh property, including optional text and explicit nulls.
+            $parameters[$index][$valueField] = $property[$valueField];
+        }
+
+        return $parameters;
+    }
+
+    private function propertyValueForComparison(mixed $value): mixed
+    {
+        if (is_int($value) || is_float($value)) {
+            return (string) \Brick\Math\BigDecimal::of(is_float($value) ? json_encode($value, JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR) : $value)->stripTrailingZeros();
+        }
+        if (!is_array($value)) {
+            return $value;
+        }
+        unset($value['text'], $value['unit']);
+        if (isset($value['coding'])) {
+            $value['coding'] = array_map(static fn (array $coding): array =>
+                array_intersect_key($coding, array_flip(['system', 'code'])), $value['coding']);
+        }
+        foreach ($value as $key => $part) {
+            if ($part === null) {
+                unset($value[$key]);
+            } else {
+                $value[$key] = $this->propertyValueForComparison($part);
+            }
+        }
+
+        ksort($value);
+
+        return $value;
+    }
+
     public function validateQuantity(?int $quantity, string $unit, bool $withProgram, array $packages, ?float $remaining, ?int $daily, CarbonImmutable $start, CarbonImmutable $end): void
     {
         if ($quantity === null) {
@@ -373,6 +432,14 @@ class DeviceRequestLifecycleService extends EHealthRequestLifecycleService imple
             if (isset($detail['quantity']) && $remaining === null) {
                 $this->invalid('quantity', __('device-requests.validation.remaining_quantity_unavailable'));
             }
+            if (isset($detail['quantity'])) {
+                if (!isset($data['quantity'])) {
+                    $this->invalid('quantity', __('device-requests.validation.activity_quantity_required'));
+                }
+                if (($data['quantity_code'] ?? '') !== data_get($detail, 'quantity.code')) {
+                    $this->invalid('quantity_code', __('errors.ehealth.messages.quantity_unit_activity_mismatch'));
+                }
+            }
             $activityProgram = data_get($detail, 'program.identifier.value', '');
             $activityDevice = data_get($detail, 'product_reference.identifier.value', data_get($detail, 'product_codeable_concept.coding.0.code'));
             if ($activityProgram !== ($data['program_id'] ?? '') || (string) $activityDevice !== $data['device_id']) {
@@ -406,6 +473,7 @@ class DeviceRequestLifecycleService extends EHealthRequestLifecycleService imple
         }
         $data['inform_with'] = $method['id'] ?? null;
         $data['parameter'] = $this->parameters($data['parameter_values'] ?? [], $options['parameters']);
+        $data['parameter'] = $this->parametersForModel($data['parameter'], $options['model']['properties'] ?? []);
         $data['quantity'] = isset($data['quantity']) ? (int) $data['quantity'] : null;
         $data['started_at'] = $start->toIso8601String();
         $data['ended_at'] = $end->toIso8601String();
