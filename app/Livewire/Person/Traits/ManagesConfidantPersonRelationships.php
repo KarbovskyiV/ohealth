@@ -85,8 +85,9 @@ trait ManagesConfidantPersonRelationships
         }
 
         try {
-            $this->confidantPerson = Arr::toCamelCase(
-                EHealth::person()->searchForPersonByParams($validated)->validate()
+            $this->confidantPerson = array_map(
+                static fn (array $person): array => [...$person, 'birthDate' => convertToAppDateFormat($person['birthDate'] ?? null)],
+                Arr::toCamelCase(EHealth::person()->searchForPersonByParams($validated)->validate())
             );
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle('Error when searching for person');
@@ -131,7 +132,10 @@ trait ManagesConfidantPersonRelationships
 
         try {
             $validated = $this->validate(
-                $this->form->rulesForCreateNewConfidantPersonRelationshipRequest($this->hasLegalCapacityDocument()),
+                $this->form->rulesForCreateNewConfidantPersonRelationshipRequest(
+                    $this->hasLegalCapacityDocument(),
+                    $this->documentsRelationship
+                ),
                 ['documentsRelationship.*.activeTo.after' => __('validation.custom.person.expiration_date_in_future')]
             );
         } catch (ValidationException $exception) {
@@ -153,6 +157,7 @@ trait ManagesConfidantPersonRelationships
 
             $this->confidantPersonRelationshipRequestId = $validatedData['uuid'];
             $this->uploadedDocuments = $response->getUrgent()['documents'];
+            $this->confidantRequestAuthenticationMethod = $response->getUrgent()['authentication_method_current'] ?? [];
 
             try {
                 $dataForCreate = $response->validate();
@@ -201,6 +206,7 @@ trait ManagesConfidantPersonRelationships
     {
         $this->showAuthDrawer = true;
         $this->confidantPersonRelationshipRequestId = $requestId;
+        $this->confidantRequestAuthenticationMethod = [];
 
         $this->uploadedDocuments = ConfidantPersonRelationshipRequest::whereUuid($requestId)
             ->value('documents') ?? [];
@@ -422,7 +428,7 @@ trait ManagesConfidantPersonRelationships
             $validated = Validator::make([
                 'confidantPersonRelationUuid' => $confidantPersonRelationUuid,
                 'documents' => $documents
-            ], $this->form->rulesForDeactivateConfidantPerson())->validate();
+            ], $this->form->rulesForDeactivateConfidantPerson($documents))->validate();
         } catch (ValidationException $exception) {
             Session::flash('error', $exception->validator->errors()->first());
             $this->setErrorBag($exception->validator->getMessageBag());
@@ -453,6 +459,7 @@ trait ManagesConfidantPersonRelationships
 
             $this->confidantPersonRelationshipRequestId = $response->getData()['id'];
             $this->uploadedDocuments = $response->getUrgent()['documents'];
+            $this->confidantRequestAuthenticationMethod = $response->getUrgent()['authentication_method_current'] ?? [];
 
             try {
                 $dataForCreate = $response->validate();

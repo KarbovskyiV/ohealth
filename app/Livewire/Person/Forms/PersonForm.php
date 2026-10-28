@@ -465,11 +465,14 @@ class PersonForm extends BaseForm
      * Get validation rules for creating a confidant person relationship request.
      *
      * @param  bool  $hasLegalCapacityDocument  Whether the documents of the patient prove their own legal capacity
+     * @param  array  $documentsRelationship
      * @return array
      */
-    public function rulesForCreateNewConfidantPersonRelationshipRequest(bool $hasLegalCapacityDocument): array
-    {
-        return [
+    public function rulesForCreateNewConfidantPersonRelationshipRequest(
+        bool $hasLegalCapacityDocument,
+        array $documentsRelationship
+    ): array {
+        $rules = [
             'confidantPersonId' => [
                 'required',
                 'uuid',
@@ -492,11 +495,28 @@ class PersonForm extends BaseForm
             'documentsRelationship.*.issuedAt' => ['required', 'date_format:' . config('app.date_format')],
             'documentsRelationship.*.activeTo' => ['nullable', 'date_format:' . config('app.date_format'), 'after:today']
         ];
+
+        foreach ($documentsRelationship as $key => $document) {
+            if (($document['type'] ?? null) === 'BIRTH_CERTIFICATE') {
+                $rules["documentsRelationship.$key.number"] = [
+                    ...$rules['documentsRelationship.*.number'],
+                    new AlphaNumericWithSymbols()
+                ];
+            }
+        }
+
+        return $rules;
     }
 
-    public function rulesForDeactivateConfidantPerson(): array
+    /**
+     * Get validation rules for deactivating a confidant person relationship.
+     *
+     * @param  array  $documents
+     * @return array
+     */
+    public function rulesForDeactivateConfidantPerson(array $documents): array
     {
-        return [
+        $rules = [
             'confidantPersonRelationUuid' => ['required', 'uuid'],
             'documents' => ['required', 'array'],
             'documents.*.type' => ['required', 'string', new InDictionary('DOCUMENT_RELATIONSHIP_TYPE')],
@@ -504,6 +524,14 @@ class PersonForm extends BaseForm
             'documents.*.issuedBy' => ['required', 'string', 'max:255'],
             'documents.*.issuedAt' => ['required', 'date_format:' . config('app.date_format')]
         ];
+
+        foreach ($documents as $key => $document) {
+            if (($document['type'] ?? null) === 'BIRTH_CERTIFICATE') {
+                $rules["documents.$key.number"] = [...$rules['documents.*.number'], new AlphaNumericWithSymbols()];
+            }
+        }
+
+        return $rules;
     }
 
     /**
@@ -877,7 +905,10 @@ class PersonForm extends BaseForm
     {
         foreach ($this->person['confidantPerson']['documentsRelationship'] as $key => $document) {
             if ($document['type'] === 'BIRTH_CERTIFICATE') {
-                $rules["person.confidantPerson.documentsRelationship.$key.number"][] = new AlphaNumericWithSymbols();
+                $rules["person.confidantPerson.documentsRelationship.$key.number"] = [
+                    ...$rules['person.confidantPerson.documentsRelationship.*.number'],
+                    new AlphaNumericWithSymbols()
+                ];
             }
         }
     }

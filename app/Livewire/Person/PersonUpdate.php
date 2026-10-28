@@ -104,6 +104,14 @@ class PersonUpdate extends PersonComponent
 
     public string $confidantPersonRelationshipRequestId;
 
+    /**
+     * Authentication method the confidant person relationship request is confirmed with.
+     *
+     * @var array
+     */
+    #[Locked]
+    public array $confidantRequestAuthenticationMethod = [];
+
     public string $confidantPersonId;
 
     public array $documentsRelationship = [];
