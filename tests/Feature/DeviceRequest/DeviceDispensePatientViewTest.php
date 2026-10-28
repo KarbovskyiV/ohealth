@@ -125,10 +125,12 @@ class DeviceDispensePatientViewTest extends TestCase
         $component = $this->patientComponent();
         $this->canRead = false;
         $this->api->shouldNotReceive('getById');
+        $uuid = (string) Str::uuid();
 
-        $component->call('openDeviceDispenseView', (string) Str::uuid())
+        $component->call('openDeviceDispenseView', $uuid)
             ->assertNoRedirect();
 
+        $component->instance()->openDeviceDispenseView($uuid);
         $this->assertSame(__('device-dispenses.policy.view'), Session::get('error'));
     }
 
@@ -146,6 +148,7 @@ class DeviceDispensePatientViewTest extends TestCase
         $component->call('openDeviceDispenseView', $dispense->uuid)
             ->assertNoRedirect();
 
+        $component->instance()->openDeviceDispenseView($dispense->uuid);
         $this->assertSame(__('device-dispenses.policy.view'), Session::get('error'));
     }
 
@@ -160,12 +163,14 @@ class DeviceDispensePatientViewTest extends TestCase
     public function testConnectionErrorWhileOpeningRemoteDispenseFlashesErrorAndDoesNotRedirect(): void
     {
         $uuid = (string) Str::uuid();
-        $this->api->shouldReceive('getById')->once()->with($this->person->uuid, $uuid)
+        $this->api->shouldReceive('getById')->twice()->with($this->person->uuid, $uuid)
             ->andThrow(new EHealthConnectionException('Timeout'));
 
-        $this->patientComponent()->call('openDeviceDispenseView', $uuid)
+        $component = $this->patientComponent();
+        $component->call('openDeviceDispenseView', $uuid)
             ->assertNoRedirect();
 
+        $component->instance()->openDeviceDispenseView($uuid);
         $this->assertSame(__('messages.connection_exception'), Session::get('error'));
         $this->assertDatabaseMissing('device_dispenses', ['uuid' => $uuid]);
     }
