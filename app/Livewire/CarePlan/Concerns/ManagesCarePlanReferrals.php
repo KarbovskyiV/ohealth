@@ -158,15 +158,21 @@ trait ManagesCarePlanReferrals
         $this->referralServiceType = data_get($activityResource, 'detail.productReference.identifier.type.coding.0.code', 'service');
         $this->referralCategoryOptions = [];
         if ($this->referralServiceType === 'service_group') {
-            $group = dictionary()->services()->flattened()->firstWhere('id', $activity->productReference);
-            if ($group === null || empty($group['request_allowed'])) {
-                Session::flash('error', __('care-plan.service_group_referral_not_allowed'));
-
-                return;
-            }
             try {
+                $group = dictionary()->services()->flattened()->firstWhere('id', $activity->productReference);
+                if (($group['type'] ?? '') !== 'service_group' || empty($group['request_allowed'])) {
+                    Session::flash('error', __('care-plan.service_group_referral_not_allowed'));
+
+                    return;
+                }
                 $this->referralCategoryOptions = dictionary()->basics()
-                    ->byName('eHealth/SNOMED/service_request_categories')->asCodeDescription()->all();
+                    ->byName('eHealth/SNOMED/service_request_categories')->asCodeDescription()
+                    ->except('transfer_of_care')->all(); // Transfers use the encounter discharge flow.
+                if ($this->referralCategoryOptions === []) {
+                    Session::flash('error', __('care-plan.referral_categories_unavailable'));
+
+                    return;
+                }
             } catch (Throwable $exception) {
                 report($exception);
                 Session::flash('error', __('care-plan.referral_categories_unavailable'));

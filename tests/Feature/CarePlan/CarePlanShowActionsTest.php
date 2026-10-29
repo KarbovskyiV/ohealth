@@ -779,7 +779,7 @@ class CarePlanShowActionsTest extends TestCase
             ->assertSee(__('care-plan.lifecycle_access_required'));
     }
 
-    private function cacheServicePickerCatalog(string $groupId, string $laboratoryId): void
+    private function cacheServicePickerCatalog(string $groupId, string $laboratoryId, bool $requestAllowed = true): void
     {
         $this->mockBasicDictionaries(['SERVICE_CATEGORY' => [
             'laboratory_procedure' => 'Лабораторні процедури', 'procedure' => 'Процедури',
@@ -788,7 +788,7 @@ class CarePlanShowActionsTest extends TestCase
         ]]);
         \Illuminate\Support\Facades\Cache::put('dictionaries.service', [[
             'id' => $groupId, 'code' => 'GROUP', 'name' => 'Група послуг',
-            'is_active' => true, 'request_allowed' => true,
+            'is_active' => true, 'request_allowed' => $requestAllowed,
             'services' => [
                 ['id' => $laboratoryId, 'code' => 'B34015', 'name' => 'Аналіз; вітамін B12',
                     'category' => 'laboratory_procedure', 'is_active' => true, 'request_allowed' => true],
@@ -822,6 +822,25 @@ class CarePlanShowActionsTest extends TestCase
             ->assertSeeHtml('wire:model="referralForm.category"')
             ->set('referralForm.category', 'invented')->call('validateReferral')
             ->assertHasErrors('referralForm.category');
+    }
+
+    public function test_active_group_can_be_prescribed_without_permission_to_issue_a_referral(): void
+    {
+        $this->actingAs($this->user);
+        $groupId = (string) Str::uuid();
+        $this->cacheServicePickerCatalog($groupId, (string) Str::uuid(), requestAllowed: false);
+        $plan = $this->makeSignedNewPlan();
+        $this->grantCarePlanWriteApproval($plan, $this->employee);
+        $component = Livewire::test(CarePlanShow::class, ['carePlan' => $plan])
+            ->call('initActivityForm', 'service_request')
+            ->call('selectCarePlanServiceFromCatalog', ['id' => $groupId])->call('saveActivity')
+            ->assertHasNoErrors();
+        $activity = \App\Models\CarePlanActivity::whereCarePlanId($plan->id)->firstOrFail();
+        $activity->update(['status' => 'scheduled']);
+        $this->mock(\App\Services\MedicalEvents\CarePlanActivityEHealthGuard::class)
+            ->shouldReceive('assertRegisteredInEHealth')->once()->andReturnNull();
+        $component->call('initReferralForm', $activity->id)->assertSet('showReferralDrawer', false)
+            ->assertSee(__('care-plan.service_group_referral_not_allowed'));
     }
 
     private function grantApproval(CarePlan $carePlan, Employee $employee, string $status): void

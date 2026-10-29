@@ -253,7 +253,12 @@ trait ManagesEncounterReferrals
         if (($service['type'] ?? '') !== 'service_group') {
             return $service;
         }
-        $group = dictionary()->services()->flattened()->firstWhere('id', $service['id'] ?? null);
+        try {
+            $group = dictionary()->services()->flattened()->firstWhere('id', $service['id'] ?? null);
+        } catch (Throwable $exception) {
+            report($exception);
+            $group = null;
+        }
         if (($group['type'] ?? '') !== 'service_group' || empty($group['request_allowed'])) {
             Session::flash('error', __('care-plan.service_group_referral_not_allowed'));
 
