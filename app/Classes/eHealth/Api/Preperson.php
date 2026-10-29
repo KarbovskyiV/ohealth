@@ -6,6 +6,8 @@ namespace App\Classes\eHealth\Api;
 
 use App\Classes\eHealth\EHealthRequest as Request;
 use App\Classes\eHealth\EHealthResponse;
+use App\Classes\eHealth\Errors\PrepersonErrorTranslator;
+use App\Contracts\ApiErrorTranslator;
 use App\Enums\Person\Gender;
 use App\Enums\Preperson\Status;
 use App\Exceptions\EHealth\EHealthConnectionException;
@@ -70,6 +72,16 @@ class Preperson extends Request
         $this->setValidator($this->validateResponse(...));
 
         return $this->get(self::URL . "/$id");
+    }
+
+    /**
+     * Get the translator of the errors the preperson resource returns.
+     *
+     * @return ApiErrorTranslator
+     */
+    protected function errorTranslator(): ApiErrorTranslator
+    {
+        return new PrepersonErrorTranslator();
     }
 
     /**

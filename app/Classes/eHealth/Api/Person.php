@@ -6,6 +6,8 @@ namespace App\Classes\eHealth\Api;
 
 use App\Classes\eHealth\EHealthRequest as Request;
 use App\Classes\eHealth\EHealthResponse;
+use App\Classes\eHealth\Errors\PersonErrorTranslator;
+use App\Contracts\ApiErrorTranslator;
 use App\Core\Arr;
 use App\Enums\Person\AuthenticationMethod;
 use App\Enums\Person\AuthenticationMethodAction;
@@ -515,6 +517,16 @@ class Person extends Request
     public function resendAuthOtp(string $id, string $requestId, array $data = []): PromiseInterface|EHealthResponse
     {
         return $this->post(self::URL . "/$id/authentication_method_requests/$requestId/actions/resend_otp", $data);
+    }
+
+    /**
+     * Get the translator of the errors the person resource returns.
+     *
+     * @return ApiErrorTranslator
+     */
+    protected function errorTranslator(): ApiErrorTranslator
+    {
+        return new PersonErrorTranslator();
     }
 
     protected function validateMergedPersons(EHealthResponse $response): array
