@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Livewire\LegalEntity\Connections;
@@ -36,9 +37,16 @@ use App\Livewire\LegalEntity\Connections\Form\ConnectionForm;
 
 class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
 {
-    use BatchLegalEntityQueries,
-        WithPagination,
-        WithFileUploads;
+    use BatchLegalEntityQueries;
+    use WithPagination;
+    use WithFileUploads;
+
+    /**
+     * Represents the current synchronization status for the component.
+     *
+     * @var string
+     */
+    public string $syncStatus = '';
 
     /**
      * @var object|null
@@ -52,6 +60,12 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
     public bool $showSignatureModal = false;
 
     public ConnectionForm $form;
+
+    #[Computed]
+    public function isSync(): bool
+    {
+        return $this->isSyncProcessing();
+    }
 
     #[Locked]
     public array $dataToSign = [
@@ -83,6 +97,37 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
             $currentPage,
             ['path' => route('connection.index', [$this->legalEntityId])]
         );
+    }
+
+    /**
+     * Get the synchronization status of the connection request.
+     *
+     * @return string The current sync status
+     */
+    protected function getSyncStatus(): string
+    {
+        return $this->legalEntity?->getEntityStatus(LegalEntity::ENTITY_CONNECTION) ?? '';
+    }
+
+    /**
+    * Determine if a synchronization process is currently running.
+    *
+     * @return bool True if a sync process is actively processing, false otherwise.
+    */
+    protected function isSyncProcessing(): bool
+    {
+        // Set the sync status only for Connection
+        $this->syncStatus = $this->getSyncStatus();
+
+        return $this->legalEntity?->isSyncBlocked(LegalEntity::ENTITY_CONNECTION) ?? false;
+    }
+
+    public function mount(LegalEntity $legalEntity, ?Connection $connection = null): void
+    {
+        parent::mount($legalEntity);
+
+        // Set the sync status for Connection
+        $this->syncStatus = $this->getSyncStatus();
     }
 
     public function create(string $clientUuid): void
@@ -206,7 +251,6 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
      * Synchronize all the Connections with stored ones on the eHealths side
      *
      * @return void
-     *
      * @throws Exception|EHealthResponseException|EHealthValidationException
      */
     public function sync(): void
@@ -219,7 +263,27 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
             return;
         }
 
+        if ($this->isSyncProcessing()) {
+            Session::flash('error', __('forms.errors.sync_already_running'));
+
+            return;
+        }
+
         $token = Session::get(config('ehealth.api.oauth.bearer_token'));
+
+        // Try to resume previous sync if it was paused or failed
+        if ($this->syncStatus === JobStatus::PAUSED->value || $this->syncStatus === JobStatus::FAILED->value) {
+
+            if ($this->resumeSynchronization($user, $token)) {
+                $user->notify(new SyncNotification('connection', 'resumed'));
+
+                return;
+            }
+        }
+
+        if (!Repository::legalEntity()->setConnectionSyncStatus($this->legalEntity, false)) {
+            return;
+        }
 
         $connections = $this->getClientConnections();
 
@@ -233,31 +297,44 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
             return;
         }
 
+        // If connections fit in one page, mark the sync as complete
+        if (!$response->isNotLast() && !Repository::legalEntity()->setConnectionSyncStatus($this->legalEntity)) {
+            return;
+        }
+
         $isJobsStarted = false;
 
         if ($response->isNotLast()) {
-            Bus::batch([new ConnectionSync($this->legalEntity, page: 2)])
-                ->withOption('legal_entity_id', $this->legalEntityId)
-                ->withOption('token', Crypt::encryptString($token))
-                ->withOption('user', $user)
-                ->withOption('sync_entity', LegalEntity::ENTITY_CONNECTION)
-                ->catch(function (Batch $batch, Throwable $exception) use ($user) {
-                    Log::error('Connection Client sync batch failed.', [
-                        'batch_id' => $batch->id,
-                        'exception' => $exception
-                    ]);
+            $this->legalEntity->setEntityStatus(JobStatus::PROCESSING, LegalEntity::ENTITY_CONNECTION);
 
-                    $user->notify(new SyncNotification('connection', 'failed'));
-                })
-                ->onQueue('sync')
-                ->name(self::BATCH_NAME)
-                ->dispatch();
+            try {
+                Bus::batch([new ConnectionSync($this->legalEntity, page: 2)])
+                    ->withOption('legal_entity_id', $this->legalEntityId)
+                    ->withOption('token', Crypt::encryptString($token))
+                    ->withOption('user', $user)
+                    ->withOption('sync_entity', LegalEntity::ENTITY_CONNECTION)
+                    ->catch(function (Batch $batch, Throwable $exception) use ($user) {
+                        Log::error('Connection Client sync batch failed.', [
+                            'batch_id' => $batch->id,
+                            'exception' => $exception
+                        ]);
+
+                        $user->notify(new SyncNotification('connection', 'failed'));
+                    })
+                    ->onQueue('sync')
+                    ->name(self::BATCH_NAME)
+                    ->dispatch();
+            } catch (Throwable $exception) {
+                $this->legalEntity->setEntityStatus(JobStatus::FAILED, LegalEntity::ENTITY_CONNECTION);
+
+                unset($this->isSync);
+
+                throw $exception;
+            }
 
             $isJobsStarted = true;
 
             $user->notify(new SyncNotification('connection', 'started'));
-
-            $this->legalEntity->setEntityStatus(JobStatus::PROCESSING);
         } elseif (!empty($connections['responseData'])) {
             // Client synchronization
             if (\count($connections['responseData']) === 1) {
@@ -270,6 +347,10 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
                 try {
                     $this->dispatchNextSyncJobs($user, $token, $this->legalEntity);
                 } catch (Throwable $exception) {
+                    $this->legalEntity->setEntityStatus(JobStatus::FAILED, LegalEntity::ENTITY_CONNECTION);
+
+                    unset($this->isSync);
+
                     Log::error('Failed to dispatch Connection Client sync batch', ['exception' => $exception]);
 
                     $user->notify(new SyncNotification('connection_client', 'failed'));
@@ -283,6 +364,12 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
             }
         }
 
+        if (!$isJobsStarted) {
+            $this->legalEntity->setEntityStatus(JobStatus::COMPLETED, LegalEntity::ENTITY_CONNECTION);
+        }
+
+        unset($this->isSync);
+
         $isJobsStarted
             ? Session::flash('success', __('legal-entity-connection.sync.started'))
             : session()->flash('success', __('legal-entity-connection.sync.success_many'));
@@ -293,19 +380,19 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
      *
      * @param  User  $user
      * @param  string  $token
-     * @param  LegalEntity $legalEntity
-     *
+     * @param  LegalEntity  $legalEntity
      * @return void
-     *
      * @throws Throwable
      */
     protected function dispatchNextSyncJobs(User $user, string $token, LegalEntity $legalEntity): void
     {
+        $legalEntity->setEntityStatus(JobStatus::PROCESSING, LegalEntity::ENTITY_CONNECTION);
+
         Bus::batch($this->getConnectionClientsDataJob($legalEntity, null))
             ->withOption('legal_entity_id', $legalEntity->id)
             ->withOption('token', Crypt::encryptString($token))
             ->withOption('user', $user)
-            ->withOption('sync_entity', LegalEntity::ENTITY_CONNECTION_CLIENT)
+            ->withOption('sync_entity', LegalEntity::ENTITY_CONNECTION)
             ->catch(function (Batch $batch, Throwable $exception) use ($user) {
                 Log::error('Connection Client sync batch failed.', [
                     'batch_id' => $batch->id,
@@ -319,8 +406,67 @@ class LegalEntityConnectionIndex extends LegalEntityConnectionComponent
             ->dispatch();
 
         $user->notify(new SyncNotification('connection_client', 'started'));
+    }
 
-        $legalEntity->setEntityStatus(JobStatus::PROCESSING);
+    /**
+    * Resume the synchronization process for a user with the provided token.
+    *
+    * This method handles the continuation of a previously initiated synchronization
+    * operation for a specific user using an authentication or session token.
+    *
+     * @param  User  $user  The user instance for whom synchronization should be resumed
+     * @param  string  $token  The authentication or session token used to resume the sync process
+     * @return bool
+    */
+    protected function resumeSynchronization(User $user, string $token): bool
+    {
+        $encryptedToken = Crypt::encryptString($token);
+
+        // Find failed connection batches for this legal entity and retry them.
+        $failedBatches = $this->findFailedBatchesByLegalEntity($this->legalEntityId, 'ASC');
+
+        foreach ($failedBatches as $batch) {
+            if ($batch->name === self::BATCH_NAME || $batch->name === self::BATCH_SUBNAME) {
+                try {
+                    $isResumed = DB::transaction(function () use ($batch, $user, $encryptedToken) {
+                        $pendingJobs = $this->extractPendingJobsFromBatches($batch);
+
+                        if (empty($pendingJobs)) {
+                            return false;
+                        }
+
+                        Log::info('Resuming Connection sync batch: ' . $batch->name . ' id: ' . $batch->id);
+
+                        $this->legalEntity->setEntityStatus(JobStatus::PROCESSING, LegalEntity::ENTITY_CONNECTION);
+
+                        $this->restartFailedBatch($user, $batch, $encryptedToken, $this->legalEntity, $pendingJobs);
+
+                        return true;
+                    });
+                } catch (Throwable $exception) {
+                    $this->legalEntity->setEntityStatus(JobStatus::FAILED, LegalEntity::ENTITY_CONNECTION);
+
+                    unset($this->isSync);
+
+                    throw $exception;
+                }
+
+                if (!$isResumed) {
+                    continue;
+                }
+
+                unset($this->isSync);
+
+                $this->dispatch('flashMessage', [
+                    'message' => __('forms.success.sync_resumed'),
+                    'type' => 'success'
+                ]);
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     #[Title('Зв\'язки МІС та СГуСОЗ')]

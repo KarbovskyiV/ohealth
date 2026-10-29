@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use Throwable;
+use RuntimeException;
 use App\Core\EHealthJob;
 use App\Models\LegalEntity;
 use App\Classes\eHealth\EHealth;
@@ -32,7 +33,15 @@ class ConnectionSync extends EHealthJob
      */
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse
     {
-        $query = ['page' => $this->page];
+        // Mark this LegalEntity's connections as unsynced before starting a full sync.
+        if ($this->page === 1 && !Repository::legalEntity()->setConnectionSyncStatus($this->legalEntity, false)) {
+            throw new RuntimeException('Unable to start connection synchronization.');
+        }
+
+        $query = [
+            'page' => $this->page,
+            'page_size' => config('ehealth.api.page_size_le_connections_max')
+        ];
 
         return EHealth::connection()->withToken($token)->getClientConnections($this->legalEntity->uuid, query: $query);
     }
@@ -47,11 +56,9 @@ class ConnectionSync extends EHealthJob
     {
         $connections = $response->validate();
 
-        if (empty($connections)) {
-            return;
+        if (!Repository::legalEntity()->syncConnections($connections, $this->legalEntity)) {
+            throw new RuntimeException('Unable to save synchronized connections.');
         }
-
-        Repository::legalEntity()->syncConnections($connections, $this->legalEntity);
     }
 
     /**
@@ -74,6 +81,11 @@ class ConnectionSync extends EHealthJob
      */
     protected function getNextEntityJob(): ?EHealthJob
     {
+        // EHealthJob calls this only after the last page succeeds.
+        if (!Repository::legalEntity()->setConnectionSyncStatus($this->legalEntity)) {
+            throw new RuntimeException('Unable to complete connection synchronization.');
+        }
+
         return $this->standalone
             ? new CompleteSync($this->legalEntity, isFirstLogin: $this->isFirstLogin)
             : $this->getConnectionClientsDataJob($this->legalEntity, $this->nextEntity);

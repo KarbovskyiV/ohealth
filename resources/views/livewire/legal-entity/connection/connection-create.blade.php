@@ -76,7 +76,7 @@
                             x-model="clientName"
                         >
                         <label for="client_name" class="label">
-                            {{ __('legal-entity-connection.facility_name') }}
+                            {{ __('legal-entity-connection.legal_entity_name') }}
                         </label>
                         <p class="text-xs text-blue-600 mt-1">
                             {{ __('Назва, для ідентифікації закладу в списку при лоігні') }}<BR>

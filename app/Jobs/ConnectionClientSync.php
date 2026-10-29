@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use Throwable;
+use RuntimeException;
 use App\Core\EHealthJob;
 use App\Models\LegalEntity;
 use App\Repositories\Repository;
@@ -21,13 +22,16 @@ class ConnectionClientSync extends EHealthJob
 
     public const string SCOPE_REQUIRED = 'connection:read';
 
+    public const string ENTITY = LegalEntity::ENTITY_CONNECTION;
+
     public function __construct(
         public ConnectionModel $misConnection,
         public ?LegalEntity $legalEntity,
         protected ?EHealthJob $nextEntity = null,
         public bool $standalone = false,
+        protected bool $isFirstLogin = false,
     ) {
-        parent::__construct(legalEntity: $legalEntity, nextEntity: $nextEntity, standalone: $standalone);
+        parent::__construct(legalEntity: $legalEntity, nextEntity: $nextEntity, isFirstLogin: $isFirstLogin, standalone: $standalone);
     }
 
     /**
@@ -59,7 +63,9 @@ class ConnectionClientSync extends EHealthJob
             return;
         }
 
-        Repository::legalEntity()->syncClient($clientData);
+        if (!Repository::legalEntity()->syncClient($clientData)) {
+            throw new RuntimeException('Unable to save synchronized client.');
+        }
     }
 
     /**

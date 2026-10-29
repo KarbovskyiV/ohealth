@@ -32,4 +32,14 @@ enum JobStatus: string
             self::FAILED => 'Помилка'
         };
     }
+
+    /**
+     * Determine whether this status blocks starting or resuming synchronization.
+     *
+     * @return bool True unless the status is completed, paused, or failed.
+     */
+    public function blocksSync(): bool
+    {
+        return !\in_array($this, [self::COMPLETED, self::PAUSED, self::FAILED], true);
+    }
 }

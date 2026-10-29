@@ -14,13 +14,13 @@ use App\Enums\LegalEntity\ConnectionStatus;
 
 /**
  * Verifies pending connections on eHealth login and marks matching records active.
- * If none match, saves verified replacements for the facility and retires stale pending records.
+ * If none match, saves verified replacements for the legal entity and retires stale pending records.
  */
 class VerifyCreatedConnection
 {
     public function handle(EHealthUserLogin $event): void
     {
-        // Load the facility's local connections that still require confirmation from eHealth.
+        // Load the legal entity's local connections that still require confirmation from eHealth.
         $pendingConnections = $event->legalEntity
             ->connections()
             ->where('status', ConnectionStatus::PENDING->value)
@@ -37,7 +37,7 @@ class VerifyCreatedConnection
         }
 
         // The bearer token limits results to this MIS, whose connections as usual fit in a single page.
-        // Fetch and validate the facility's connections before changing local statuses.
+        // Fetch and validate the legal entity's connections before changing local statuses.
         try {
             $response = EHealth::connection()->getClientConnections(
                 clientId: $event->legalEntity->uuid,
@@ -64,13 +64,13 @@ class VerifyCreatedConnection
         // If no matching connections are found in eHealth, the pending connections has last chance to be verified.
         if ($pendingConnections->pluck('uuid')->intersect($connectionUuids)->isEmpty()) {
             // The original connections are absent. Look for replacements belonging to this facility.
-            // client_uuid identifies the facility; uuid identifies an individual connection.
+            // client_uuid identifies the legal entity; uuid identifies an individual connection.
             $legalEntityConnections = collect($connections)
                 ->whereStrict('client_uuid', $event->legalEntity->uuid)
                 ->values()
                 ->all();
 
-            // Block login if eHealth returned no connection for the facility.
+            // Block login if eHealth returned no connection for the legal entity.
             if (empty($legalEntityConnections)) {
                 throw new RuntimeException(__('legal-entity-connection.connection_absent'));
             }

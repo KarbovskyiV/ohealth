@@ -38,6 +38,7 @@ return new class extends Migration
             $table->string('website')->nullable();
 
             $table->enum('sync_status', JobStatus::values())->nullable();
+            $table->enum('connection_sync_status', JobStatus::values())->nullable();
             $table->enum('division_sync_status', JobStatus::values())->nullable();
             $table->enum('hcs_sync_status', JobStatus::values())->nullable();
             $table->enum('employee_sync_status', JobStatus::values())->nullable();

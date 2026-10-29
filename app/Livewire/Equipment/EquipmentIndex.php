@@ -118,14 +118,11 @@ class EquipmentIndex extends Component
      */
     protected function isSyncProcessing(): bool
     {
-        // Get the sync status for whole Legal Entity
-        $legalEntitySyncStatus = legalEntity()->getEntityStatus();
-
         // Set the sync status only for Equipment
         $this->syncStatus = $this->getSyncStatus();
 
-        // Determine if either the Legal Entity's sync is in progress
-        $legalEntitySync = $this->isEntitySyncIsInProgress($legalEntitySyncStatus, true);
+        // Require the overall synchronization to be completed
+        $legalEntitySync = legalEntity()->isSyncBlocked();
 
         // Get the sync status only for Division
         $divisionSyncStatus = legalEntity()->getEntityStatus(LegalEntity::ENTITY_DIVISION);

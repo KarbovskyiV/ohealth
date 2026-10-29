@@ -1,5 +1,6 @@
-    @use(App\Enums\LegalEntity\ConnectionStatus)
-    @use(App\Models\Connection)
+@use('App\Enums\JobStatus')
+@use(App\Models\Connection)
+@use(App\Enums\LegalEntity\ConnectionStatus)
 
 <div x-data="{ openGrantAccessDrawer: false, showSignatureModal: $wire.entangle('showSignatureModal') }">
     <livewire:components.x-message :key="time()" />
@@ -24,10 +25,13 @@
             @can('sync', Connection::class)
                 <button type="button"
                     wire:click="sync"
-                    class="button-sync flex items-center gap-2 whitespace-nowrap"
+                    wire:loading.attr="disabled"
+                    wire:target="sync"
+                    class="{{ $this->isSync ? 'button-sync-disabled' : 'button-sync' }} flex items-center gap-2 whitespace-nowrap"
+                    {{ $this->isSync ? 'disabled' : '' }}
                 >
                     @icon('refresh', 'w-4 h-4')
-                    <span>{{ __('legal-entity-connection.sync_data') }}</span>
+                    <span>{{ ($syncStatus === JobStatus::PAUSED->value || $syncStatus === JobStatus::FAILED->value) ? __('forms.sync_retry') : __('forms.synchronise_with_eHealth') }}</span>
                 </button>
             @endcan
         </div>

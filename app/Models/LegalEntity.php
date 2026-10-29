@@ -367,6 +367,34 @@ class LegalEntity extends Model
     }
 
     /**
+     * Determine whether a partial synchronization is blocked.
+     * The overall synchronization and dependencies must be completed before a partial sync can start or resume.
+     *
+     * @param  string  $entityType  The entity whose own synchronization status is checked
+     * @param  array<string>  $dependencies  Entity types whose synchronization must be completed
+     * @return bool
+     */
+    public function isSyncBlocked(string $entityType = '', array $dependencies = []): bool
+    {
+        foreach (['', ...$dependencies] as $dependency) {
+            $dependencyStatus = $this->getEntityStatus($dependency);
+
+            if ($dependencyStatus !== JobStatus::COMPLETED && $dependencyStatus !== JobStatus::COMPLETED->value) {
+                return true;
+            }
+        }
+
+        if ($entityType === '') {
+            return false;
+        }
+
+        $status = $this->getEntityStatus($entityType);
+        $jobStatus = $status instanceof JobStatus ? $status : JobStatus::tryFrom($status ?? '');
+
+        return $jobStatus?->blocksSync() ?? !empty($status);
+    }
+
+    /**
      * Memoize (or something like this) route-binding resolution per request to avoid duplicate queries
      * when Livewire's persistent middleware re-runs SubstituteBindings.
      */

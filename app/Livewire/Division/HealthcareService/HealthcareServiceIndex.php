@@ -101,17 +101,14 @@ class HealthcareServiceIndex extends Component
      */
     protected function isSyncProcessing(): bool
     {
-        // Get the sync status for whole Legal Entity
-        $legalEntitySyncStatus = legalEntity()?->getEntityStatus();
-
         // Get the sync status only for Healthcare Service
         $this->syncStatus = $this->getSyncStatus();
 
         // Get the sync status only for Division
         $divisionSyncStatus = legalEntity()?->getEntityStatus(LegalEntity::ENTITY_DIVISION);
 
-        // Determine if either the Legal Entity's sync is in progress
-        $legalEntitySync = $this->isEntitySyncIsInProgress($legalEntitySyncStatus, true);
+        // Require the overall synchronization to be completed
+        $legalEntitySync = legalEntity()?->isSyncBlocked() ?? false;
 
         // Determine if either the Division's sync is in progress
         $divisionSync = $divisionSyncStatus !== JobStatus::COMPLETED->value;

@@ -20,8 +20,13 @@ class Connection extends Model
         'redirect_uri',
         'secret',
         'status',
+        'is_synced',
         'ehealth_inserted_at',
         'ehealth_updated_at',
+    ];
+
+    protected $casts = [
+        'is_synced' => 'boolean',
     ];
 
     /**
