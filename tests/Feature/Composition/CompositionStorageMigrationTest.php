@@ -59,7 +59,7 @@ class CompositionStorageMigrationTest extends TestCase
             'async_job_id' => 'legacy-job', 'async_job_status' => 'PENDING', 'async_job_operation' => 'SIGN',
         ]);
 
-        $migration = require database_path('migrations/2026_10_01_150000_normalize_composition_storage.php');
+        $migration = require database_path('migrations/update/0_1/2026_10_01_150000_normalize_composition_storage.php');
         $migration->up();
         $migration->up();
         $composition->refresh();
@@ -92,7 +92,7 @@ class CompositionStorageMigrationTest extends TestCase
             'async_job_id' => 'failed-job', 'async_job_status' => 'FAILED',
             'async_job_operation' => 'ERLN_RETRY', 'async_job_error' => 'Integration rejected',
         ]);
-        (require database_path('migrations/2026_10_01_150000_normalize_composition_storage.php'))->up();
+        (require database_path('migrations/update/0_1/2026_10_01_150000_normalize_composition_storage.php'))->up();
         $composition->refresh();
         $this->assertTrue($composition->isAccident);
         $this->assertSame('FEMALE', $composition->newbornSex);
@@ -113,7 +113,7 @@ class CompositionStorageMigrationTest extends TestCase
         });
         DB::table('compositions')->where('id', $composition->id)->update(['data' => '{invalid']);
         try {
-            (require database_path('migrations/2026_10_01_150000_normalize_composition_storage.php'))->up();
+            (require database_path('migrations/update/0_1/2026_10_01_150000_normalize_composition_storage.php'))->up();
             $this->fail('Damaged JSON must stop the upgrade before data is dropped.');
         } catch (\JsonException) {
             $this->assertTrue(Schema::hasColumn('compositions', 'extension'));
@@ -139,7 +139,7 @@ class CompositionStorageMigrationTest extends TestCase
             }
         });
 
-        $migration = require database_path('migrations/2026_10_01_150000_normalize_composition_storage.php');
+        $migration = require database_path('migrations/update/0_1/2026_10_01_150000_normalize_composition_storage.php');
         try {
             $migration->up();
             $this->fail('The test must interrupt legacy column cleanup.');

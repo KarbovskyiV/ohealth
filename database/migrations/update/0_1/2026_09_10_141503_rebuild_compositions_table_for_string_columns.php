@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        (require __DIR__ . '/install/2026_08_07_210751_create_compositions_table.php')->up();
+        (require __DIR__ . '/../../install/2026_08_07_210751_create_compositions_table.php')->up();
     }
 
     public function down(): void
