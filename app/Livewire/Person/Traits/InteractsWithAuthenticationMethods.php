@@ -91,18 +91,15 @@ trait InteractsWithAuthenticationMethods
     }
 
     /**
-     * Whether the patient can be given a method that authenticates them in person: a patient who has a confidant,
-     * or who already authenticates through one, keeps being authenticated through that confidant.
+     * Whether the patient can be given a method that authenticates them in person: a patient with an active
+     * confidant is authenticated only through a confidant, while an ended relationship no longer stands in the way.
      *
      * @return bool
      */
     public function canAddSelfAuthenticationMethod(): bool
     {
         return $this->canAddAuthenticationMethod()
-            && empty($this->form->person['confidantPersons'])
-            && collect($this->authenticationMethods)
-                ->where('type', AuthenticationMethod::THIRD_PERSON->value)
-                ->isEmpty();
+            && collect($this->form->person['confidantPersons'] ?? [])->where('isActive', true)->isEmpty();
     }
 
     /**

@@ -156,17 +156,12 @@ class ConfidantPersonRepository
         // Find the subject person (the person who needs a confidant)
         $subjectPerson = Person::whereUuid($subjectPersonUuid)->firstOrFail();
 
-        // Create or update the confidant person relationship
-        $confidantPersonRelation = ConfidantPerson::updateOrCreate(
-            [
-                'person_id' => $confidantPerson->id,
-                'subject_person_id' => $subjectPerson->id,
-            ],
-            [
-                'sync_status' => JobStatus::COMPLETED,
-                'uuid' => $responseData['id']
-            ]
-        );
+        // A signed request always starts a new relationship, so an earlier one with the same confidant stays as it was
+        $confidantPersonRelation = ConfidantPerson::create([
+            'person_id' => $confidantPerson->id,
+            'subject_person_id' => $subjectPerson->id,
+            'sync_status' => JobStatus::COMPLETED
+        ]);
 
         // Save documents relationship
         $confidantPersonRelation->documentsRelationship()->createMany(
@@ -227,8 +222,16 @@ class ConfidantPersonRepository
         // Find the subject person (the person who needs confidants)
         $subjectPerson = Person::whereUuid($subjectPersonUuid)->firstOrFail();
 
-        // Relationships recorded before eHealth assigned them an identifier are superseded by the synced ones
-        ConfidantPerson::where('subject_person_id', $subjectPerson->id)->whereNull('uuid')->delete();
+        // The response holds every relationship of the subject, so the ones it lacks no longer exist, and the ones
+        // recorded before they got an identifier are superseded by the synced ones
+        ConfidantPerson::whereSubjectPersonId($subjectPerson->id)
+            ->where(static fn (Builder $query): Builder => $query->whereNull('uuid')
+                ->orWhereNotIn('uuid', array_column($responseData, 'uuid')))
+            ->get()
+            ->each(static function (ConfidantPerson $relationship): void {
+                $relationship->documentsRelationship()->delete();
+                $relationship->delete();
+            });
 
         $syncedConfidantPersons = collect();
 
@@ -248,8 +251,6 @@ class ConfidantPersonRepository
                 Repository::document()->sync($confidantPerson, $confidantPersonData['documents_person']);
             }
 
-            // A relationship is matched by its own identifier, so a sync of only the active or only the expired ones
-            // leaves the rest in place
             foreach ($relationships as $relationshipData) {
                 $confidantPersonRelation = ConfidantPerson::updateOrCreate(
                     ['uuid' => $relationshipData['uuid']],
@@ -311,11 +312,14 @@ class ConfidantPersonRepository
 
         // If no valid auth method found, check if we can proceed without authorization
         if (!$authMethod) {
-            // Check if the person has only this one confidant relationship
-            $totalConfidantPersons = $mainPerson->confidantPersons()->count();
+            // The authorization is needed only while another confidant still stands for the person
+            $hasAnotherActiveConfidant = $mainPerson->confidantPersons()
+                ->where('person_id', '!=', $confidantBeingDeactivated->person_id)
+                ->where(static fn (Builder $query): Builder => $query->whereNull('active_to')
+                    ->orWhere('active_to', '>', now()))
+                ->exists();
 
-            if ($totalConfidantPersons === 1) {
-                // Only one confidant person, proceed without authorization
+            if (!$hasAnotherActiveConfidant) {
                 return ['auth_method_uuid' => null, 'error' => null];
             }
 
