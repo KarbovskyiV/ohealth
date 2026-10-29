@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Classes\eHealth\Api;
 
-use App\Classes\eHealth\Api\Responses\Collections\DivisionCreate;
-use App\Exceptions\EHealth\EHealthResponseException;
-use App\Exceptions\EHealth\EHealthValidationException;
 use Exception;
+use Brick\Math\BigDecimal;
 use App\Models\LegalEntity;
 use App\Traits\WorkTimeUtilities;
 use Illuminate\Support\Collection;
@@ -16,8 +14,12 @@ use GuzzleHttp\Promise\PromiseInterface;
 use App\Classes\eHealth\EHealthResponse;
 use App\Models\Division as DivisionModel;
 use Illuminate\Support\Facades\Validator;
-use App\Exceptions\EHealth\EHealthConnectionException;
+use App\Dto\Division\Location as LocationData;
 use App\Classes\eHealth\EHealthRequest as Request;
+use App\Exceptions\EHealth\EHealthResponseException;
+use App\Exceptions\EHealth\EHealthConnectionException;
+use App\Exceptions\EHealth\EHealthValidationException;
+use App\Classes\eHealth\Api\Responses\Collections\DivisionCreate;
 
 class Division extends Request
 {
@@ -106,7 +108,7 @@ class Division extends Request
 
         $this->setValidator($this->validateOne(...));
 
-        return parent::patch(self::URL . '/' . $uuid, $data);
+        return $this->withBody($this->encodeRequestData($data), 'application/json')->patch(self::URL . '/' . $uuid);
     }
 
     /**
@@ -119,7 +121,39 @@ class Division extends Request
     {
         $this->setValidator($this->validateOne(...));
 
-        return parent::post(self::URL, $data);
+        return $this->withBody($this->encodeRequestData($data), 'application/json')->post(self::URL);
+    }
+
+    /**
+     * Encode coordinates as JSON numbers without a float conversion losing their digits.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function encodeRequestData(array $data): string
+    {
+        $fields = [];
+
+        foreach ($data as $key => $value) {
+            if ($key === 'location' && \is_array($value)) {
+                $coordinates = [];
+
+                foreach ($value as $axis => $coordinate) {
+                    $number = \in_array($axis, ['latitude', 'longitude'], true) && $coordinate !== null
+                        ? (string) BigDecimal::of(LocationData::normalizeCoordinate($coordinate))
+                        : json_encode($coordinate, JSON_THROW_ON_ERROR);
+
+                    $coordinates[] = json_encode($axis, JSON_THROW_ON_ERROR) . ':' . $number;
+                }
+
+                $encoded = '{' . implode(',', $coordinates) . '}';
+            } else {
+                $encoded = json_encode($value, JSON_THROW_ON_ERROR);
+            }
+
+            $fields[] = json_encode($key, JSON_THROW_ON_ERROR) . ':' . $encoded;
+        }
+
+        return '{' . implode(',', $fields) . '}';
     }
 
     /**
