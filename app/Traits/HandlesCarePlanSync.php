@@ -59,6 +59,10 @@ trait HandlesCarePlanSync
                 return null;
             }
             $userId = $user->id;
+            $connection = (string) config('queue.default');
+            if (config('queue.connections.'.$connection.'.driver') === 'sync') {
+                $connection = 'database';
+            }
             $batch = Bus::batch($jobs)
                 ->name($name)
                 ->withOption('legal_entity_id', $legalEntity->id)
@@ -84,7 +88,7 @@ trait HandlesCarePlanSync
                     }
                     $user?->notify(new SyncNotification('care_plan', 'failed'));
                 })
-                ->onConnection('database')
+                ->onConnection($connection)
                 ->onQueue('sync')
                 ->dispatch();
 

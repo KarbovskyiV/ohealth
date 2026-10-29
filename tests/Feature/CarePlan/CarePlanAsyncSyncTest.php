@@ -113,6 +113,18 @@ class CarePlanAsyncSyncTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_a_configured_asynchronous_connection_is_preserved(): void
+    {
+        ['person' => $person, 'legalEntity' => $legalEntity] = $this->compositionFixture(scopes: ['care_plan:read']);
+        config()->set('queue.default', 'redis');
+        $this->firstPage($person, [$this->summary()], false);
+
+        $component = Livewire::test(PatientCarePlans::class, ['legalEntity' => $legalEntity, 'personId' => $person->id])->call('sync');
+
+        $this->assertSame('redis', Bus::findBatch($component->get('syncBatchId'))->options['connection']);
+        Queue::assertPushed(CarePlanFullSync::class, 1);
+    }
+
     public function test_dispatch_failure_does_not_report_completion_or_leave_the_button_disabled(): void
     {
         ['person' => $person, 'legalEntity' => $legalEntity] = $this->compositionFixture(scopes: ['care_plan:read']);
