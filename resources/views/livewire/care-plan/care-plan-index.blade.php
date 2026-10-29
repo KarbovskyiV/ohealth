@@ -2,6 +2,9 @@
 
 <div>
     <livewire:components.x-message :consume-messages="true" :key="(string) str()->uuid()" />
+    @if ($syncBatchIds !== [])
+        <div wire:poll.3s="checkSyncStatus" class="mb-4 text-sm text-gray-600 dark:text-gray-300">{{ __('care-plan.sync_running') }}</div>
+    @endif
     <x-header-navigation class="items-start" x-data="{ showFilter: false }">
         <x-slot name="title">{{ __('care-plan.care_plans') }}</x-slot>
 
@@ -15,6 +18,8 @@
                 type="button"
                 class="button-sync flex items-center gap-2 px-5 py-2 text-sm whitespace-nowrap shadow-sm"
                 wire:loading.attr="disabled"
+                wire:target="sync"
+                @disabled($syncBatchIds !== [])
             >
                 <span wire:loading.remove wire:target="sync">
                     @icon('refresh', 'w-4 h-4')

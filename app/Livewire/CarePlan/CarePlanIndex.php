@@ -10,11 +10,17 @@ use App\Classes\eHealth\EHealth;
 use App\Repositories\CarePlanRepository;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
-use App\Repositories\DeclarationRepository;
 
 class CarePlanIndex extends Component
 {
     use SynchronizesCarePlans;
+    use \App\Traits\HandlesCarePlanSync;
+
+    #[\Livewire\Attributes\Locked]
+    public array $syncBatchIds = [];
+
+    #[\Livewire\Attributes\Locked]
+    public bool $syncInitiationFailed = false;
 
     public string $searchRequisition = '';
 
@@ -63,57 +69,61 @@ class CarePlanIndex extends Component
         }
     }
 
+    public function mount(): void
+    {
+        $this->syncBatchIds = $this->findRunningBatchesByLegalEntity(legalEntity()->id)
+            ->filter(static fn ($batch): bool => str_starts_with($batch->name, \App\Jobs\CarePlanFullSync::BATCH_NAME.'_'))
+            ->pluck('id')->all();
+    }
+
     public function sync(): void
     {
+        if (auth()->user()->cannot('care_plan:read') || auth()->user()->activeEmployee() === null) {
+            session()->flash('error', __('care-plan.sync_access_denied'));
+
+            return;
+        }
+        $token = session()->get(config('ehealth.api.oauth.bearer_token'));
+        if (!is_string($token) || $token === '') {
+            session()->flash('error', __('care-plan.sync_session_expired'));
+
+            return;
+        }
+        if ($this->syncBatchIds !== [] && $this->carePlanSyncOutcome($this->syncBatchIds) === null) {
+            session()->flash('info', __('care-plan.sync_running'));
+
+            return;
+        }
+        $this->syncBatchIds = [];
+        $this->syncInitiationFailed = false;
         try {
-            $legalEntity = legalEntity();
-            if (!$legalEntity) {
-                return;
-            }
-
-            $employee = auth()->user()->activeEmployee();
-            if (!$employee) {
-                return;
-            }
-
-            $persons = app(CarePlanRepository::class)->patientsForSync($legalEntity->id, auth()->user());
-
-            $failedPatients = [];
-            foreach ($persons as $person) {
-                try {
-                    // Sync patient's declarations first to support auto-activation logic (like in PersonCarePlans)
-                    try {
-                        $decResponse = EHealth::declaration()->getMany(
-                            ['person_id' => $person->uuid],
-                            groupByEntities: true
-                        );
-                        $decValidated = $decResponse->validate();
-                        app(DeclarationRepository::class)->storeMany($decValidated, $legalEntity);
-                    } catch (\Throwable $exception) {
-                        Log::warning('CarePlanIndex: failed to sync declarations for patient during care plan sync', [
-                            'patientUuid' => $person->uuid,
-                            'error' => $exception->getMessage()
-                        ]);
-                    }
-
-                    $this->synchronizePatient($person->uuid, $person->id, $legalEntity->id);
-                } catch (\Throwable $ex) {
-                    $failedPatients[] = $person->uuid;
-                    Log::warning("Failed to sync care plans for patient {$person->uuid}: " . $ex->getMessage());
+            $persons = app(CarePlanRepository::class)->patientsForSync(legalEntity()->id, auth()->user());
+            foreach ($persons->values() as $index => $person) {
+                $batchId = $this->startCarePlanPatientSync($person, firstPageSynchronously: $index === 0);
+                if ($batchId !== null) {
+                    $this->syncBatchIds[] = $batchId;
                 }
             }
-
-            if ($failedPatients !== []) {
-                session()->flash('error', __('care-plan.sync_error').': '.implode(', ', $failedPatients));
-
-                return;
-            }
-
-            session()->flash('success', __('care-plan.sync_success'));
-        } catch (\Throwable $e) {
-            Log::error('CarePlan index sync error: ' . $e->getMessage());
-            session()->flash('error', __('care-plan.sync_error') . ': ' . $e->getMessage());
+            session()->flash($this->syncBatchIds === [] ? 'success' : 'info', __($this->syncBatchIds === [] ? 'care-plan.sync_success' : 'care-plan.sync_first_page'));
+        } catch (\Throwable $exception) {
+            $this->syncInitiationFailed = true;
+            Log::error('Could not start CarePlan index synchronization', ['exceptionType' => $exception::class]);
+            session()->flash('error', __('care-plan.sync_failed'));
         }
+    }
+
+    public function checkSyncStatus(): void
+    {
+        if ($this->syncBatchIds === []) {
+            return;
+        }
+        $outcome = $this->carePlanSyncOutcome($this->syncBatchIds);
+        if ($outcome === null) {
+            return;
+        }
+        $outcome['success'] = $outcome['success'] && !$this->syncInitiationFailed;
+        $this->syncBatchIds = [];
+        $this->flashCarePlanSyncOutcome($outcome);
     }
 
     public function render()

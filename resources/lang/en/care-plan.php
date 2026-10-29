@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'sync_first_page' => 'The first page of care plans has been received. Details and remaining data are loading in the background. You can continue working.',
     'approval_verified' => 'Access approval confirmed.',
     'prescribing_patient_access_required' => 'Creating and changing activities requires a verified write approval for this care plan.',
     'approval_verified_refresh_pending' => 'eHealth confirmed the approval. Its display could not be refreshed; reload the page. You do not need to enter the SMS code again.',

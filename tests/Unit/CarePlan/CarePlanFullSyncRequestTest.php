@@ -23,6 +23,13 @@ class CarePlanFullSyncRequestTest extends TestCase
         ];
     }
 
+    public function test_jobs_deserialized_without_running_the_constructor_have_a_safe_declaration_sync_default(): void
+    {
+        $job = (new \ReflectionClass(CarePlanFullSync::class))->newInstanceWithoutConstructor();
+
+        $this->assertFalse($job->synchronizeDeclarations);
+    }
+
     #[DataProvider('searchContexts')]
     public function test_search_uses_the_endpoint_for_its_context(?string $patientUuid, bool $registry, string $method, array $query): void
     {

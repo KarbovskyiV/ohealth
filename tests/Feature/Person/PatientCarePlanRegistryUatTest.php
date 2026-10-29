@@ -127,13 +127,14 @@ class PatientCarePlanRegistryUatTest extends TestCase
             ->assertSee(route('care-plans.show', [$legalEntity, $imported->id]), false);
     }
 
-    public function test_sync_queues_the_first_page_without_remote_http_and_prevents_duplicates(): void
+    public function test_sync_reads_first_page_queues_details_and_prevents_duplicates(): void
     {
         ['person' => $person, 'legalEntity' => $legalEntity] = $this->compositionFixture(scopes: ['care_plan:read']);
         \Illuminate\Support\Facades\Queue::fake();
+        $this->mockSyncFirstPage($person);
         session()->put(config('ehealth.api.oauth.bearer_token'), 'synthetic-token');
         $component = Livewire::test(PatientCarePlans::class, ['legalEntity' => $legalEntity, 'personId' => $person->id])
-            ->call('sync')->assertSee(__('care-plan.sync_started'))
+            ->call('sync')->assertSee(__('care-plan.sync_first_page'))
             ->assertDontSee(__('care-plan.sync_success'))->assertNotDispatched('flashMessage');
         $batchId = $component->get('syncBatchId');
         $this->assertNotNull($batchId);
@@ -156,6 +157,7 @@ class PatientCarePlanRegistryUatTest extends TestCase
     {
         ['person' => $person, 'legalEntity' => $legalEntity] = $this->compositionFixture(scopes: ['care_plan:read']);
         \Illuminate\Support\Facades\Queue::fake();
+        $this->mockSyncFirstPage($person);
         session()->put(config('ehealth.api.oauth.bearer_token'), 'synthetic-token');
         $component = Livewire::test(PatientCarePlans::class, ['legalEntity' => $legalEntity, 'personId' => $person->id])->call('sync');
         DB::table('job_batches')->where('id', $component->get('syncBatchId'))->update(['failed_jobs' => 1, 'cancelled_at' => time()]);
@@ -163,6 +165,17 @@ class PatientCarePlanRegistryUatTest extends TestCase
             ->assertSee(__('care-plan.sync_failed'))->assertDontSee(__('care-plan.sync_success'));
         $this->assertSame('COMPLETED', $legalEntity->fresh()->syncStatus);
         Http::assertNothingSent();
+    }
+
+    private function mockSyncFirstPage(\App\Models\Person\Person $person): void
+    {
+        $response = \Mockery::mock(\App\Classes\eHealth\EHealthResponse::class);
+        $response->shouldReceive('validate')->once()->andReturn([['id' => (string) Str::uuid(), 'status' => 'active', 'title' => 'Queued plan']]);
+        $response->shouldReceive('isNotLast')->once()->andReturn(false);
+        $api = \Mockery::mock(\App\Classes\eHealth\Api\CarePlan::class);
+        $api->shouldReceive('withToken')->once()->andReturnSelf();
+        $api->shouldReceive('getBySearchParams')->once()->with($person->uuid, ['page' => 1])->andReturn($response);
+        $this->instance(\App\Classes\eHealth\Api\CarePlan::class, $api);
     }
 
     public static function clinicContexts(): array

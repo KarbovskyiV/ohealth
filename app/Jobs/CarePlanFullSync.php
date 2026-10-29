@@ -35,6 +35,8 @@ class CarePlanFullSync extends PatientEHealthJob
 
     public ?string $resourceUuid = null;
 
+    public bool $synchronizeDeclarations = false;
+
     public int $maxExceptions = 3;
 
     public function retryUntil(): DateTimeInterface
@@ -49,9 +51,21 @@ class CarePlanFullSync extends PatientEHealthJob
         int $page = 1,
         bool $standalone = false,
         ?string $resourceUuid = null,
+        bool $synchronizeDeclarations = false,
     ) {
         parent::__construct($legalEntity, $nextEntity, $isFirstLogin, $page, $standalone);
         $this->resourceUuid = $resourceUuid;
+        $this->synchronizeDeclarations = $synchronizeDeclarations;
+    }
+
+    public static function detailJobs(array $summaries, LegalEntity $legalEntity, bool $synchronizeDeclarations = false): array
+    {
+        $jobs = [];
+        foreach ($summaries as $summary) {
+            $jobs[] = new self($legalEntity, standalone: true, resourceUuid: Arr::toCamelCase($summary)['id'], synchronizeDeclarations: $synchronizeDeclarations && $jobs === []);
+        }
+
+        return $jobs;
     }
 
     public function handle(): void
@@ -104,15 +118,13 @@ class CarePlanFullSync extends PatientEHealthJob
             return;
         }
         if ($this->isPatientRegistrySync() && $this->resourceUuid === null) {
-            if ($this->page === 1) {
+            if ($this->page === 1 || $this->synchronizeDeclarations) {
                 $this->synchronizePatientDeclarations();
             }
             // Queue one full aggregate per job; a long patient history never runs in one HTTP request.
-            $jobs = [];
-            foreach ($response?->validate() ?? [] as $summary) {
-                $id = Arr::toCamelCase($summary)['id'];
-                $jobs[] = new self($this->legalEntity, standalone: true, resourceUuid: $id);
-            }
+            $summaries = $response->validate();
+            Repository::carePlan()->storeSummaries($summaries, $this->personId, $this->legalEntity->id);
+            $jobs = self::detailJobs($summaries, $this->legalEntity);
             if ($jobs !== []) {
                 $this->batch()->add($jobs);
             }
@@ -124,6 +136,9 @@ class CarePlanFullSync extends PatientEHealthJob
             return;
         }
         if ($this->isPatientRegistrySync() && $this->resourceUuid !== null) {
+            if ($this->synchronizeDeclarations) {
+                $this->synchronizePatientDeclarations();
+            }
             if (($validatedData['id'] ?? null) !== $this->resourceUuid) {
                 throw ValidationException::withMessages(['id' => 'Care Plan details do not match the requested resource.']);
             }
