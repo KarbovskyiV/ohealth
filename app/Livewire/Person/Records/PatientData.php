@@ -481,9 +481,7 @@ class PatientData extends BasePatientComponent
         }
 
         try {
-            $confidantResponse = EHealth::person()->getConfidantPersonRelationships($this->uuid);
-
-            $confidantValidated = $confidantResponse->validate();
+            $confidantValidated = EHealth::person()->getConfidantPersonRelationships($this->uuid)->validate();
         } catch (EHealthException|EHealthConnectionException $exception) {
             $exception->handle(__('Error occurred while trying to get person data: ' . $this->uuid));
 
@@ -495,10 +493,7 @@ class PatientData extends BasePatientComponent
         try {
             DB::transaction(function () use ($personalData, $confidantValidated) {
                 Repository::person()->sync($personalData, $this->uuid);
-
-                if (!empty($confidantValidated)) {
-                    Repository::confidantPerson()->sync($confidantValidated, $this->uuid);
-                }
+                Repository::confidantPerson()->sync($confidantValidated, $this->uuid);
             });
         } catch (Exception $exception) {
             $this->handleDatabaseErrors($exception, __('Error occurred while trying to sync person data'));
