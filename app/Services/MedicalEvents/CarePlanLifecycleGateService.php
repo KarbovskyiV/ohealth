@@ -36,18 +36,6 @@ class CarePlanLifecycleGateService
     ];
 
     /**
-     * Activity statuses that block care plan cancel (TV 3.10.4.5.1).
-     *
-     * @var list<string>
-     */
-    public const PLAN_CANCEL_BLOCKING_ACTIVITY_STATUSES = [
-        'scheduled',
-        'in_progress',
-        'in-progress',
-        'completed',
-    ];
-
-    /**
      * Final activity statuses for Complete Care Plan [API-007-005-0006].
      * Job-level `processed` is not final — refresh from eHealth first.
      *
@@ -112,7 +100,7 @@ class CarePlanLifecycleGateService
     }
 
     /**
-     * Activities that block plan cancel (scheduled / in_progress / completed).
+     * Cancel Care Plan [API-007-005-0005] requires every activity to be final.
      *
      * @return Collection<int, CarePlanActivity>
      */
@@ -124,7 +112,7 @@ class CarePlanLifecycleGateService
             ->filter(function (CarePlanActivity $activity): bool {
                 $status = strtolower((string) $activity->status);
 
-                return in_array($status, self::PLAN_CANCEL_BLOCKING_ACTIVITY_STATUSES, true);
+                return !$this->isFinalActivityStatus($status);
             })
             ->values();
     }

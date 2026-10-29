@@ -321,7 +321,7 @@ class CarePlanShowActionsTest extends TestCase
         $this->assertSame($otherPerson->id, $device->fresh()->personId);
     }
 
-    public function test_new_plan_with_active_approval_for_current_doctor_shows_cancel_and_complete(): void
+    public function test_empty_new_plan_with_approval_offers_cancel_but_not_complete(): void
     {
         $this->actingAs($this->user);
 
@@ -335,7 +335,7 @@ class CarePlanShowActionsTest extends TestCase
         $component
             ->assertDontSee(__('care-plan.activate_plan_patient_approval'))
             ->assertSee(__('care-plan.cancel_care_plan'))
-            ->assertSee(__('care-plan.complete_care_plan'));
+            ->assertDontSee(__('care-plan.complete_care_plan'));
     }
 
     public function test_cancelled_plan_hides_lifecycle_buttons_and_blocks_cancel(): void
@@ -666,6 +666,135 @@ class CarePlanShowActionsTest extends TestCase
 
         Livewire::test(\App\Livewire\CarePlan\Activity\Show\CarePlanActivityShow::class, ['carePlan' => $plan, 'activity' => $activity])
             ->assertOk()->assertSet('activityProductLabel', 'SYNTHETIC Українська назва послуги');
+    }
+
+    public function test_legacy_new_plan_opens_for_sync_without_enabling_mutations(): void
+    {
+        $this->actingAs($this->user);
+        $plan = CarePlan::forceCreate([
+            'personId' => $this->person->id, 'legalEntityId' => $this->legalEntity->id,
+            'uuid' => (string) Str::uuid(), 'title' => 'Historical new plan', 'status' => 'new',
+        ]);
+        Livewire::test(CarePlanShow::class, ['carePlan' => $plan])
+            ->assertOk()->assertSee('Historical new plan')
+            ->assertSee(__('forms.synchronise_with_eHealth'))
+            ->assertSee(__('care-plan.full_sync_required'))
+            ->assertDontSeeHtml('wire:click="initActivityForm')
+            ->assertDontSee(__('care-plan.cancel_care_plan'))
+            ->assertDontSee(__('care-plan.complete_care_plan'));
+    }
+
+    public function test_service_catalog_filters_categories_and_resets_for_another_selection(): void
+    {
+        $this->actingAs($this->user);
+        $groupId = (string) Str::uuid();
+        $laboratoryId = (string) Str::uuid();
+        $this->cacheServicePickerCatalog($groupId, $laboratoryId);
+
+        Livewire::test(\App\Livewire\Dictionary\ServiceCatalog::class, [
+            'legalEntity' => $this->legalEntity, 'selectionMode' => true,
+            'allowGroupSelection' => true, 'selectionEvent' => 'care-plan-service-selected',
+        ])->set('filterCategory', 'laboratory_procedure')->call('search')
+            ->assertSee('Аналіз; вітамін B12')->assertDontSee('Реабілітаційна послуга')
+            ->call('resetFilters')->assertSee('Аналіз; вітамін B12')->assertSee('Реабілітаційна послуга')
+            ->call('selectService', $groupId)->assertDispatched('care-plan-service-selected', function ($event, $parameters) use ($groupId): bool {
+                return $parameters['service']['id'] === $groupId && $parameters['service']['type'] === 'service_group';
+            });
+    }
+
+    public function test_service_selection_saves_minutes_and_keeps_group_reference_type(): void
+    {
+        $this->actingAs($this->user);
+        $groupId = (string) Str::uuid();
+        $laboratoryId = (string) Str::uuid();
+        $this->cacheServicePickerCatalog($groupId, $laboratoryId);
+        $plan = $this->makeSignedNewPlan();
+        $this->grantCarePlanWriteApproval($plan, $this->employee);
+
+        $component = Livewire::test(CarePlanShow::class, ['carePlan' => $plan])
+            ->call('initActivityForm', 'service_request')
+            ->set('showServiceSearchDrawer', true)
+            ->assertSeeLivewire(\App\Livewire\Dictionary\ServiceCatalog::class)
+            ->dispatch('care-plan-service-selected', service: ['id' => $laboratoryId, 'name' => 'Untrusted label'])
+            ->assertSet('selectedProduct.name', 'Аналіз; вітамін B12')
+            ->set('activityForm.quantity', '45')->set('activityForm.quantity_code', 'MINUTE')
+            ->call('saveActivity')->assertHasNoErrors();
+
+        $activity = app(\App\Repositories\CarePlanActivityRepository::class)->findOwned(
+            $plan->id, \App\Models\CarePlanActivity::whereCarePlanId($plan->id)->value('id')
+        );
+        $resource = app(\App\Repositories\CarePlanActivityRepository::class)->getResource($activity);
+        $this->assertEquals(45, $resource['detail']['quantity']['value']);
+        $this->assertSame('SERVICE_UNIT', $resource['detail']['quantity']['system']);
+        $this->assertSame('MINUTE', $resource['detail']['quantity']['code']);
+
+        $component->call('editActivity', $activity->id)
+            ->assertSet('selectedProduct.name', 'Аналіз; вітамін B12')
+            ->assertSet('activityForm.quantity_code', 'MINUTE')
+            ->assertSet('activityForm.quantity_system', 'SERVICE_UNIT');
+
+        $component->call('initActivityForm', 'service_request')
+            ->call('selectCarePlanServiceFromCatalog', ['id' => $groupId])
+            ->assertSet('activityForm.product_reference_type', 'service_group')
+            ->assertSet('activityForm.quantity_code', 'PIECE')
+            ->set('activityForm.quantity_code', 'INVALID')->call('saveActivity')
+            ->assertHasErrors('activityForm.quantity_code')
+            ->set('activityForm.quantity_code', 'PIECE')->call('saveActivity')->assertHasNoErrors();
+        $groupActivity = \App\Models\CarePlanActivity::whereCarePlanId($plan->id)->orderByDesc('id')->firstOrFail();
+        $groupResource = app(\App\Repositories\CarePlanActivityRepository::class)->getResource($groupActivity);
+        $this->assertSame('service_group', data_get($groupResource, 'detail.productReference.identifier.type.coding.0.code'));
+    }
+
+    public function test_active_plan_without_write_approval_cannot_open_status_actions(): void
+    {
+        $this->actingAs($this->user);
+        $plan = $this->makeSignedNewPlan();
+        $plan->update(['status' => 'active']);
+        Livewire::test(CarePlanShow::class, ['carePlan' => $plan])
+            ->call('openSignatureModal', 'cancel')->assertSet('showSignatureModal', false)
+            ->assertSee(__('care-plan.lifecycle_access_required'));
+    }
+
+    public function test_final_activities_enable_finalization_but_cancel_requires_the_author(): void
+    {
+        $this->actingAs($this->user);
+        $plan = $this->makeSignedNewPlan();
+        $plan->update(['status' => 'active']);
+        $this->grantCarePlanWriteApproval($plan, $this->employee);
+        $this->createFhirCarePlanActivity([
+            'care_plan_id' => $plan->id, 'author_id' => $this->employee->id,
+            'kind' => 'service_request', 'status' => 'completed',
+        ]);
+        $api = Mockery::mock(\App\Classes\eHealth\Api\CarePlan::class);
+        $response = Mockery::mock(EHealthResponse::class);
+        $response->shouldReceive('getData', 'validate')->andReturn([]);
+        $api->shouldReceive('getDetails')->andReturn($response);
+        $this->instance(\App\Classes\eHealth\Api\CarePlan::class, $api);
+
+        $component = Livewire::test(CarePlanShow::class, ['carePlan' => $plan]);
+        $this->assertTrue($component->instance()->canCancelPlan);
+        $this->assertTrue($component->instance()->canCompletePlan);
+        $plan->authorReference->update(['value' => (string) Str::uuid()]);
+        $component->call('openSignatureModal', 'cancel')->assertSet('showSignatureModal', false)
+            ->assertSee(__('care-plan.lifecycle_access_required'));
+    }
+
+    private function cacheServicePickerCatalog(string $groupId, string $laboratoryId): void
+    {
+        $this->mockBasicDictionaries(['SERVICE_CATEGORY' => [
+            'laboratory_procedure' => 'Лабораторні процедури', 'procedure' => 'Процедури',
+        ]]);
+        \Illuminate\Support\Facades\Cache::put('dictionaries.service', [[
+            'id' => $groupId, 'code' => 'GROUP', 'name' => 'Група послуг',
+            'is_active' => true, 'request_allowed' => true,
+            'services' => [
+                ['id' => $laboratoryId, 'code' => 'B34015', 'name' => 'Аналіз; вітамін B12',
+                    'category' => 'laboratory_procedure', 'is_active' => true, 'request_allowed' => true],
+                ['id' => (string) Str::uuid(), 'code' => 'REHAB', 'name' => 'Реабілітаційна послуга',
+                    'category' => 'procedure', 'is_active' => true, 'request_allowed' => true],
+            ],
+        ]], now()->addDay());
+        \Illuminate\Support\Facades\Cache::put('dictionaries.service:fresh', true, now()->addDay());
     }
 
     private function grantApproval(CarePlan $carePlan, Employee $employee, string $status): void

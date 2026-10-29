@@ -165,6 +165,19 @@ class EncounterStandalonePhase6Test extends TestCase
 
         $this->assertSame($serviceId, $harness->encounterReferralForm['service_id']);
         $this->assertSame('diagnostic_procedure', $harness->encounterReferralForm['category']);
+
+        $laboratoryId = (string) Str::uuid();
+        $harness->encounterReferralServiceResults = [[
+            'id' => $laboratoryId, 'code' => 'B34015', 'name' => 'Аналіз; вітамін B12',
+            'category' => 'laboratory_procedure',
+        ]];
+        $harness->selectEncounterReferralService($laboratoryId);
+        $this->assertSame('laboratory_procedure', $harness->encounterReferralForm['category']);
+
+        $harness->selectEncounterReferralServiceFromCatalog([
+            'id' => $serviceId, 'category' => 'procedure', 'name' => 'Реабілітація',
+        ]);
+        $this->assertSame('procedure', $harness->encounterReferralForm['category']);
     }
 
     public function test_transfer_discharge_defaults_category_and_performer(): void

@@ -58,7 +58,10 @@ class ServiceCollection extends Collection
                 'code' => $item['code'],
                 'name' => $item['name'],
                 'id' => $item['id'],
-                'category' => $item['category'] ?? null
+                'category' => $item['category'] ?? null,
+                'type' => array_key_exists('category', $item) ? 'service' : 'service_group',
+                'request_allowed' => $item['request_allowed'] ?? false,
+                'is_active' => $item['is_active'] ?? true,
             ]
         ]);
 

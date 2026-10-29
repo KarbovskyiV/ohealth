@@ -92,6 +92,9 @@ trait CarePlanManager
     public function sign(CarePlanRepository $repository, CarePlanActivityRepository $activityRepository): void
     {
         $this->authorizeCarePlanWrite();
+        if (in_array($this->actionType, ['cancel', 'complete'], true) && $this->guardPlanLifecycleAccess($this->actionType)) {
+            return;
+        }
         try {
             $validated = $this->validate($this->rulesForSigning());
         } catch (ValidationException $exception) {
@@ -344,6 +347,9 @@ trait CarePlanManager
     public function completePlan(CarePlanRepository $repository): void
     {
         $this->authorizeCarePlanWrite();
+        if ($this->guardPlanLifecycleAccess('complete')) {
+            return;
+        }
         $this->validate([
             'statusReason' => 'required|string'
         ]);

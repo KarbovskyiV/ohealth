@@ -251,7 +251,6 @@
                                 </div>
                             </div>
 
-                            @if (!$plan->requiresFhirImport())
                                 <div class="record-inner-action-col">
                                     <div
                                         x-data="{
@@ -295,7 +294,7 @@
                                             class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
                                         >
                                             @if (isset($plan->id))
-                                                @if ($plan->status === 'draft')
+                                                @if (!$plan->requiresFhirImport() && $plan->status === 'draft')
                                                     <a
                                                         href="{{ route('care-plans.edit', [legalEntity(), $plan->id]) }}"
                                                         class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-600"
@@ -316,7 +315,6 @@
                                         </div>
                                     </div>
                                 </div>
-                            @endif
                         </div>
 
                         <div class="record-inner-body">

@@ -82,7 +82,7 @@ trait ManagesCarePlanActivities
             'quantity_system' => str_contains(strtolower($kind), 'medication')
                 ? 'MEDICATION_UNIT'
                 : (str_contains(strtolower($kind), 'device') ? 'device_unit' : 'SERVICE_UNIT'),
-            'quantity_code' => str_contains(strtolower($kind), 'medication') ? 'PIECE' : '',
+            'quantity_code' => str_contains(strtolower($kind), 'device') ? '' : 'PIECE',
             'daily_amount' => str_contains(strtolower($kind), 'medication') ? '1' : '',
             'daily_amount_system' => str_contains(strtolower($kind), 'medication') ? 'MEDICATION_UNIT' : '',
             'daily_amount_code' => str_contains(strtolower($kind), 'medication') ? 'PIECE' : '',
@@ -110,7 +110,7 @@ trait ManagesCarePlanActivities
             'kind' => $activity->resolvedKind(),
             'program' => $activity->program ?? '',
             'quantity' => is_array($activity->quantity) ? ($activity->quantity['value'] ?? '') : $activity->quantity,
-            'quantity_system' => is_array($activity->quantity) ? ($activity->quantity['unit'] ?? '') : $activity->quantitySystem,
+            'quantity_system' => $activity->quantitySystem ?? '',
             'quantity_code' => $activity->quantityCode ?? '',
             'daily_amount' => $activity->dailyAmount ?? '',
             'daily_amount_system' => $activity->dailyAmountSystem ?? '',
@@ -132,11 +132,8 @@ trait ManagesCarePlanActivities
             try {
                 $kindLower = strtolower($this->activityForm['kind']);
                 if (str_contains($kindLower, 'service')) {
-                    $response = EHealth::service()->getMany(['code' => $activity->productReference]);
-                    $data = $response->getData();
-                    if (!empty($data)) {
-                        $this->selectedProduct = $data[0];
-                    }
+                    $this->selectedProduct = dictionary()->services()->flattened()
+                        ->firstWhere('id', $activity->productReference);
                 } elseif (str_contains($kindLower, 'medication')) {
                     $programId = $this->activityForm['program'] ?? $activity->program;
                     $filters = ['innm_dosage_id' => $activity->productReference];
@@ -395,6 +392,12 @@ trait ManagesCarePlanActivities
         if (str_contains($kindLower, 'medication')) {
             $rules['activityForm.daily_amount'] = 'required|numeric|min:0.01';
             $rules['activityForm.quantity_code'] = 'required|string';
+        }
+
+        if (str_contains($kindLower, 'service')) {
+            $this->activityForm['quantity_system'] = 'SERVICE_UNIT';
+            $rules['activityForm.quantity'] = !empty($programId) ? 'required|numeric|gt:0' : 'nullable|numeric|gt:0';
+            $rules['activityForm.quantity_code'] = 'required_with:activityForm.quantity|in:PIECE,MINUTE';
         }
 
         $activityValidation = app(CarePlanActivityValidationService::class);
@@ -1096,6 +1099,21 @@ trait ManagesCarePlanActivities
         $this->selectProduct($this->compactDeviceForState($product), 'device_request');
     }
 
+    #[\Livewire\Attributes\On('care-plan-service-selected')]
+    public function selectCarePlanServiceFromCatalog(array $service): void
+    {
+        $this->authorizeCarePlanActivityWrite();
+        $product = dictionary()->services()->flattened()
+            ->firstWhere('id', $service['id'] ?? null);
+        if ($product === null || (($product['type'] ?? '') === 'service_group' && empty($product['request_allowed']))) {
+            Session::flash('error', __('care-plan.service_selection_unavailable'));
+
+            return;
+        }
+        $this->resetValidation('activityForm.product_reference');
+        $this->selectProduct($product, 'service_request');
+    }
+
     public function selectProduct(array $product, string $kind): void
     {
         $this->selectedProduct = $kind === 'device_request'
@@ -1110,7 +1128,7 @@ trait ManagesCarePlanActivities
             $this->activityForm['product_codeable_concept'] = '';
             $this->activityForm['product_reference_type'] = ($product['type'] ?? '') === 'service_group' || ($product['is_group'] ?? false) ? 'service_group' : 'service';
             $this->activityForm['quantity_system'] = 'SERVICE_UNIT';
-            $this->activityForm['quantity_code'] = 'PIECE';
+            $this->activityForm['quantity_code'] = $this->activityForm['quantity_code'] ?: 'PIECE';
             $this->showServiceSearchDrawer = false;
             $this->showServiceDrawer = true;
         } elseif ($kind === 'medication_request') {

@@ -473,17 +473,49 @@ abstract class CarePlanComponent extends Component
     }
 
     /**
-     * Cancel / complete: plan is active in eHealth, or the current doctor already has a granted approval
-     * while the plan is still `new` (no activities signed yet).
+     * Status actions require a complete registered plan and a current write approval.
      */
     public function getCanChangePlanLifecycleProperty(): bool
     {
-        if (!filled($this->carePlan->uuid) || $this->isTerminalCarePlan) {
+        if (!filled($this->carePlan->uuid) || $this->isTerminalCarePlan || $this->carePlan->requiresFhirImport()
+            || !Auth::user()?->can('manage', $this->carePlan)
+            || app(\App\Repositories\CarePlanRepository::class)->hasPendingSubmission($this->carePlan)) {
             return false;
         }
 
-        return $this->carePlanStatusCode() === CarePlanStatus::ACTIVE->value
-            || $this->hasGrantedApprovalForCurrentDoctor;
+        return in_array($this->carePlanStatusCode(), [CarePlanStatus::PENDING->value, CarePlanStatus::ACTIVE->value], true)
+            && $this->hasGrantedApprovalForCurrentDoctor;
+    }
+
+    public function getCanCancelPlanProperty(): bool
+    {
+        return $this->canChangePlanLifecycle
+            && $this->isCurrentDoctorPlanAuthor()
+            && app(CarePlanLifecycleGateService::class)->planCancelBlockReason($this->carePlan) === null;
+    }
+
+    public function getCanCompletePlanProperty(): bool
+    {
+        return $this->canChangePlanLifecycle
+            && app(CarePlanLifecycleGateService::class)->planCompleteBlockReason($this->carePlan) === null;
+    }
+
+    protected function isCurrentDoctorPlanAuthor(): bool
+    {
+        $authorUuid = $this->carePlan->authorReference?->value ?? $this->carePlan->author?->uuid;
+
+        return filled($authorUuid) && $authorUuid === $this->currentCarePlanEmployee()?->uuid;
+    }
+
+    protected function guardPlanLifecycleAccess(string $action): bool
+    {
+        if ($this->canChangePlanLifecycle && ($action !== 'cancel' || $this->isCurrentDoctorPlanAuthor())) {
+            return false;
+        }
+        Session::flash('error', __('care-plan.lifecycle_access_required'));
+        $this->showSignatureModal = false;
+
+        return true;
     }
 
     public function getIsInpatientPlanOfCurrentOrganizationProperty(): bool
@@ -601,6 +633,10 @@ abstract class CarePlanComponent extends Component
             $this->authorizeCarePlanActivityWrite();
         }
         if ($this->guardTerminalCarePlanMutation()) {
+            return;
+        }
+
+        if (in_array($actionType, ['cancel', 'complete'], true) && $this->guardPlanLifecycleAccess($actionType)) {
             return;
         }
 
@@ -730,7 +766,7 @@ abstract class CarePlanComponent extends Component
     protected function refreshCarePlan(): void
     {
         $this->carePlan = app(\App\Repositories\CarePlanRepository::class)->findById($this->carePlan->id);
-        unset($this->canManageActivities, $this->hasGrantedApprovalForCurrentDoctor, $this->canRequestPatientApproval, $this->canRequestInpatientAccess, $this->canChangePlanLifecycle);
+        unset($this->canManageActivities, $this->hasGrantedApprovalForCurrentDoctor, $this->canRequestPatientApproval, $this->canRequestInpatientAccess, $this->canChangePlanLifecycle, $this->canCancelPlan, $this->canCompletePlan);
         $repository = app(\App\Repositories\CarePlanActivityRepository::class);
         if (property_exists($this, 'activity') && $this->activity instanceof CarePlanActivity) {
             $this->activity = $repository->findOwned($this->carePlan->id, $this->activity->id);

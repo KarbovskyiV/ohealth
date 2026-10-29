@@ -564,7 +564,8 @@
                             <button type="button" class="button-primary" wire:click="openMethodSelectionModal">
                                 {{ __('care-plan.activate_plan_patient_approval') }}
                             </button>
-                        @elseif ($this->canChangePlanLifecycle)
+                        @endif
+                        @if ($this->canCancelPlan)
                             <button
                                 type="button"
                                 class="button-primary-outline-red"
@@ -572,6 +573,8 @@
                             >
                                 {{ __('care-plan.cancel_care_plan') }}
                             </button>
+                        @endif
+                        @if ($this->canCompletePlan)
                             <button type="button" class="button-primary" @click="$wire.openSignatureModal('complete')">
                                 {{ __('care-plan.complete_care_plan') }}
                             </button>
