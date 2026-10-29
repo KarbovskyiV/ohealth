@@ -12,8 +12,8 @@
     <x-slot name="headerActions">
         @can('viewAny', [\App\Models\MedicalEvents\Sql\DeviceRequestRequest::class, legalEntity()])
             <a
-                href="{{ route('device-requests.index', ['legalEntity' => legalEntity(), 'person' => $personId]) }}"
-                class="button-primary-outline"
+                href="{{ route('persons.device-requests', ['legalEntity' => legalEntity(), 'person' => $personId]) }}"
+                class="button-primary-outline px-5 py-2 text-sm whitespace-nowrap"
             >{{ __('device-requests.labels.registry') }}</a>
         @endcan
     </x-slot>
@@ -28,33 +28,50 @@
             <form wire:submit="applyFilters">
                 <div class="form-row-3 mb-6">
                     @foreach ([
-
-                    ['from' => 'filterStartedAtFrom', 'to' => 'filterStartedAtTo', 'label' => __('forms.filter_period_start_range')],
-                    ['from' => 'filterEndedAtFrom', 'to' => 'filterEndedAtTo', 'label' => __('forms.filter_period_end_range')],
-                                    ] as $dateRange)
-                        <fieldset class="min-w-0">
-                            <legend class="mb-2 text-sm text-gray-900 dark:text-gray-100">
-                                {{ $dateRange['label'] }}
-                            </legend>
-                            <div class="grid grid-cols-2 gap-2">
-                                @foreach (['from' => __('referrals.registry.from'), 'to' => __('referrals.registry.to')] as $boundary => $boundaryLabel)
-                                    <div class="form-group group">
-                                        <input
-                                            id="{{ $dateRange[$boundary] }}"
-                                            type="date"
-                                            class="input peer w-full"
-                                            wire:model="{{ $dateRange[$boundary] }}"
-                                            placeholder=" "
-                                        />
-                                        <label class="wrapped-label" for="{{ $dateRange[$boundary] }}">
-                                            {{ $boundaryLabel }}
-                                        </label>
-                                    </div>
-
-                                @endforeach
+                        ['id' => 'filterStartedAtRange', 'from' => 'filterStartedAtFrom', 'to' => 'filterStartedAtTo', 'label' => __('forms.filter_period_start_range')],
+                        ['id' => 'filterEndedAtRange', 'from' => 'filterEndedAtFrom', 'to' => 'filterEndedAtTo', 'label' => __('forms.filter_period_end_range')],
+                    ] as $dateRange)
+                        <div class="form-group group">
+                            <div
+                                class="datepicker-wrapper"
+                                x-data="{
+                                    from: $wire.entangle('{{ $dateRange['from'] }}'),
+                                    to: $wire.entangle('{{ $dateRange['to'] }}'),
+                                }"
+                                x-effect="if (! from && ! to) $refs.input?._flatpickr?.clear(false);"
+                            >
+                                <input
+                                    x-ref="input"
+                                    id="{{ $dateRange['id'] }}"
+                                    type="text"
+                                    data-referral-date-range
+                                    class="daterangepicker-uk with-leading-icon input peer w-full @error($dateRange['from']) input-error @enderror @error($dateRange['to']) input-error @enderror"
+                                    placeholder=" "
+                                    autocomplete="off"
+                                    :value="[from, to]
+                                        .filter(Boolean)
+                                        .map((date) =>
+                                            /^\d{4}-\d{2}-\d{2}$/.test(date)
+                                                ? date.split('-').reverse().join('.')
+                                                : date,
+                                        )
+                                        .join(' — ')"
+                                    @date-range-change="
+                                        from = $event.detail.from;
+                                        to = $event.detail.to;
+                                    "
+                                />
+                                <label class="wrapped-label" for="{{ $dateRange['id'] }}">
+                                    {{ $dateRange['label'] }}
+                                </label>
                             </div>
-                        </fieldset>
-
+                            @error($dateRange['from'])
+                                <p class="text-error text-xs">{{ $message }}</p>
+                            @enderror
+                            @error($dateRange['to'])
+                                <p class="text-error text-xs">{{ $message }}</p>
+                            @enderror
+                        </div>
                     @endforeach
 
                     <div class="form-group group">
@@ -72,18 +89,23 @@
                     </div>
                 </div>
 
-                <div class="mb-9 flex flex-wrap gap-2">
-                    <button type="submit" class="button-primary flex items-center gap-2 px-5 py-2.5 text-sm shadow-sm">
-                        @icon('search', 'w-4 h-4')
-                        <span>{{ __('forms.search') }}</span>
-                    </button>
-                    <button
-                        wire:click.prevent="resetFilters"
-                        type="button"
-                        class="button-primary-outline-red px-5 py-2.5 text-sm"
-                    >
-                        {{ __('forms.reset_all_filters') }}
-                    </button>
+                <div class="mb-9 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-wrap gap-2">
+                        <button
+                            type="submit"
+                            class="button-primary flex items-center gap-2 px-5 py-2.5 text-sm shadow-sm"
+                        >
+                            @icon('search', 'w-4 h-4')
+                            <span>{{ __('forms.search') }}</span>
+                        </button>
+                        <button
+                            wire:click.prevent="resetFilters"
+                            type="button"
+                            class="button-primary-outline-red px-5 py-2.5 text-sm"
+                        >
+                            {{ __('forms.reset_all_filters') }}
+                        </button>
+                    </div>
                 </div>
             </form>
 
@@ -94,16 +116,22 @@
                         wire:key="sr-{{ $referral['kind'] }}-{{ $referral['id'] ?? $referral['uuid'] }}"
                     >
                         <div class="record-inner-header">
-                            <div class="record-inner-column min-w-0 flex-1">
-                                <div class="record-inner-label">{{ __('referrals.requisition') }}</div>
-                                <div class="record-inner-value text-[16px] break-words">
-                                    {{ filled($referral['requestNumber'] ?? null) ? $referral['requestNumber'] : '—' }}
-                                </div>
-                                <div class="record-inner-label mt-1">{{ $referral['categoryLabel'] ?? '' }}</div>
+                            <div class="record-inner-checkbox-col">
+                                <label
+                                    for="referralRecord-{{ $referral['kind'] }}-{{ $referral['uuid'] }}"
+                                    class="sr-only"
+                                >{{ __('forms.select') }}</label>
+                                <input
+                                    type="checkbox"
+                                    id="referralRecord-{{ $referral['kind'] }}-{{ $referral['uuid'] }}"
+                                    class="default-checkbox h-5 w-5"
+                                />
                             </div>
-                            <div class="record-inner-column-bordered w-full shrink-0 md:w-64">
+                            <div class="record-inner-column min-w-0 flex-1">
                                 <div class="record-inner-label">{{ __('referrals.period') }}</div>
-                                <div class="record-inner-value">{{ $referral['periodLabel'] ?? '—' }}</div>
+                                <div class="record-inner-value text-[16px] break-words">
+                                    {{ $referral['periodLabel'] ?? '-' }}
+                                </div>
                             </div>
                             <div class="record-inner-column-bordered w-full shrink-0 md:w-36">
                                 <div class="record-inner-label">{{ __('forms.status.label') }}</div>
@@ -151,41 +179,22 @@
                                         x-transition.origin.top.right
                                         @click.outside="close($refs.button)"
                                         :id="$id('referral-actions')"
-                                        class="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-700"
+                                        class="dropdown-menu right-0 w-56"
                                     >
                                         <div class="py-1">
                                             <button
                                                 type="button"
-                                                class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                class="dropdown-item"
                                                 @click="close($refs.button)"
                                                 wire:click="toggleDetails('{{ $referral['uuid'] }}')"
                                             >
                                                 @icon('eye', 'w-5 h-5 text-gray-500')
                                                 {{ $expandedUuid === $referral['uuid'] ? __('referrals.registry.hide') : __('forms.view_details') }}
                                             </button>
-
-                                            @if (!empty($referral['encounterId']) && $personId)
-                                                <a
-                                                    href="{{ route('encounter.view', [legalEntity(), 'person' => $personId, 'encounter' => $referral['encounterId']]) }}"
-                                                    class="text-link text-xs"
-                                                >
-                                                    {{ __('Редагувати') }}
-                                                </a>
-
-                                            @elseif (!empty($referral['carePlanId']))
-                                                <a
-                                                    href="{{ route('care-plans.show', [legalEntity(), $referral['carePlanId']]) }}"
-                                                    class="text-link text-xs"
-                                                >
-                                                    {{ __('Редагувати') }}
-                                                </a>
-
-                                            @endif
-
                                             @if (!empty($referral['canSign']))
                                                 <button
                                                     type="button"
-                                                    class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                    class="dropdown-item"
                                                     @click="close($refs.button)"
                                                     wire:click="openSign('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
                                                 >
@@ -196,7 +205,7 @@
                                                 @if (!empty($referral['encounterId']) && $personId)
                                                     <a
                                                         href="{{ route('encounter.edit', [legalEntity(), 'person' => $personId, 'encounter' => $referral['encounterId']]) }}"
-                                                        class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                        class="dropdown-item"
                                                     >
                                                         @icon('edit', 'w-5 h-5 text-gray-500')
                                                         {{ __('forms.edit') }}
@@ -205,7 +214,7 @@
                                                 @elseif (!empty($referral['carePlanId']))
                                                     <a
                                                         href="{{ route('care-plans.show', [legalEntity(), $referral['carePlanId']]) }}"
-                                                        class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                        class="dropdown-item"
                                                     >
                                                         @icon('edit', 'w-5 h-5 text-gray-500')
                                                         {{ __('forms.edit') }}
@@ -219,7 +228,7 @@
                                                 @if (!empty($referral['canRecall']))
                                                     <button
                                                         type="button"
-                                                        class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                        class="dropdown-item"
                                                         @click="close($refs.button)"
                                                         wire:click="recallReferral('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
                                                     >
@@ -232,7 +241,7 @@
                                                 @if (!empty($referral['canCancel']))
                                                     <button
                                                         type="button"
-                                                        class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                        class="dropdown-item"
                                                         @click="close($refs.button)"
                                                         wire:click="cancelReferral('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
                                                     >
@@ -244,7 +253,7 @@
 
                                                 <button
                                                     type="button"
-                                                    class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                    class="dropdown-item"
                                                     @click="
  close($refs.button);
                                                     $wire.loadReferralPrintoutForm('{{ $referral['uuid'] }}').then((html) => {
@@ -260,7 +269,7 @@
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    class="dropdown-button !flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm"
+                                                    class="dropdown-item"
                                                     @click="close($refs.button)"
                                                     wire:click="resendSms('{{ $referral['uuid'] }}', '{{ $referral['kind'] }}')"
                                                 >
@@ -276,14 +285,17 @@
                         </div>
 
                         <div class="record-inner-body">
-                            <div class="record-inner-grid-container md:!pl-4">
-                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <div class="record-inner-grid-container">
+                                <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
                                     <div class="min-w-0">
                                         <div class="record-inner-label">
                                             {{ __('referrals.registry.service_or_device') }}
                                         </div>
                                         <div class="record-inner-value break-words">
                                             {{ $referral['itemName'] ?? '—' }}
+                                        </div>
+                                        <div class="record-inner-label mt-1">
+                                            {{ $referral['categoryLabel'] ?? '' }}
                                         </div>
                                     </div>
                                     <div class="min-w-0">
@@ -321,6 +333,12 @@
                                                 {{ $referral['basisLabel'] ?? '—' }}
 
                                             @endif
+                                        </div>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="record-inner-label">{{ __('referrals.requisition') }}</div>
+                                        <div class="record-inner-value break-words">
+                                            {{ filled($referral['requestNumber'] ?? null) ? $referral['requestNumber'] : '-' }}
                                         </div>
                                     </div>
                                 </div>

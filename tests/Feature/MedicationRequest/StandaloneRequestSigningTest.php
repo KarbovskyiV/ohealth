@@ -59,6 +59,8 @@ class StandaloneRequestSigningTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        DB::statement("SET LOCAL TIME ZONE 'UTC'");
+        $this->travelTo(CarbonImmutable::parse('2026-10-29 23:30:00', (string) config('app.timezone')));
         $this->mockBasicDictionaries(['device_unit' => ['piece' => 'Штука', 'pair' => 'Пара']]);
         Cache::put(MedicalProgramDictionary::KEY, [], now()->addDay());
         Cache::put(MedicalProgramDictionary::KEY.':fresh', true, now()->addDay());
@@ -271,8 +273,8 @@ class StandaloneRequestSigningTest extends TestCase
             'type_id' => \App\Models\MedicalEvents\Sql\CodeableConcept::create()->id, 'ehealth_inserted_at' => now(),
         ]);
         app(PeriodRepository::class)->sync($encounter, [
-            'start' => now()->subHour()->toIso8601String(),
-            'end' => now()->toIso8601String(),
+            'start' => now()->subHour()->utc()->toIso8601String(),
+            'end' => now()->utc()->toIso8601String(),
         ]);
 
         return $encounter;

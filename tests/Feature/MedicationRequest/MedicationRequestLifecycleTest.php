@@ -13,7 +13,9 @@ use App\Models\Employee\Employee;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Repositories\MedicalEvents\Repository;
 use App\Services\MedicalEvents\Mappers\MedicationRequestMapper;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Mockery;
 use Tests\Concerns\CreatesFhirRequestIdentifiers;
@@ -39,6 +41,8 @@ class MedicationRequestLifecycleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        DB::statement("SET LOCAL TIME ZONE 'UTC'");
+        $this->travelTo(CarbonImmutable::parse('2026-10-29 23:30:00', (string) config('app.timezone')));
         $this->mockBasicDictionaries();
         $signatureService = Mockery::mock(\App\Services\SignatureService::class);
         $signatureService->shouldReceive('getCertificateAuthorities')->andReturn([]);
@@ -124,8 +128,8 @@ class MedicationRequestLifecycleTest extends TestCase
         $performer = \App\Models\MedicalEvents\Sql\Identifier::create(['value' => $this->employee->uuid]);
         $this->encounter->update(['performer_id' => $performer->id]);
         $this->encounter->period()->create([
-            'start' => now()->startOfDay(),
-            'end' => now(),
+            'start' => now()->startOfDay()->utc(),
+            'end' => now()->utc(),
         ]);
 
         if (config('permission.teams')) {

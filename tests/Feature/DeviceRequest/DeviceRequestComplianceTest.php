@@ -22,6 +22,7 @@ use App\Services\MedicalEvents\DeviceRequestLifecycleService;
 use Carbon\CarbonImmutable;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Mockery;
@@ -39,6 +40,8 @@ class DeviceRequestComplianceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        DB::statement("SET LOCAL TIME ZONE 'UTC'");
+        $this->travelTo(CarbonImmutable::parse('2026-10-29 23:30:00', (string) config('app.timezone')));
         $this->person = Person::create(['uuid' => (string) Str::uuid(), 'gender' => 'MALE']);
         $this->legalEntity = new LegalEntity(['uuid' => (string) Str::uuid()]);
         $this->requestId = (string) Str::uuid();
@@ -336,7 +339,7 @@ class DeviceRequestComplianceTest extends TestCase
     {
         $this->travelTo(CarbonImmutable::parse($localTime, config('app.timezone')));
         $employee = new Employee(['uuid' => (string) Str::uuid()]);
-        $encounter = $this->encounter($employee->uuid, now()->toIso8601String());
+        $encounter = $this->encounter($employee->uuid, now()->utc()->toIso8601String());
         $this->assertSame($encounter->id, app(DeviceRequestLifecycleService::class)->encounter($this->person, $employee, $encounter->uuid)->id);
         $this->expectException(ValidationException::class);
         app(DeviceRequestLifecycleService::class)->encounter($this->person, new Employee(['uuid' => (string) Str::uuid()]), $encounter->uuid);
@@ -347,7 +350,7 @@ class DeviceRequestComplianceTest extends TestCase
     {
         $this->travelTo(CarbonImmutable::parse($localTime, config('app.timezone')));
         $employee = new Employee(['uuid' => (string) Str::uuid()]);
-        $encounter = $this->encounter($employee->uuid, now()->subDay()->toIso8601String());
+        $encounter = $this->encounter($employee->uuid, now()->subDay()->utc()->toIso8601String());
         $this->expectException(ValidationException::class);
         app(DeviceRequestLifecycleService::class)->encounter($this->person, $employee, $encounter->uuid);
     }

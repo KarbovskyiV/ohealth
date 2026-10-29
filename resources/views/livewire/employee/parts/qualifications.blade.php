@@ -11,7 +11,7 @@
                   openModal: false,
                   modalQualification: new Qualification(),
                   newQualification: false,
-                  item: 0,
+                  item: null,
                   qualTypeDict: @js($this->dictionaries['QUALIFICATION_TYPE']),
                   qualSpecDict: @js($this->dictionaries['SPECIALITY_TYPE']),
                   isModalValid() {
@@ -98,6 +98,7 @@
                                     style="left: -120%; display: none"
                                 >
                                     <button
+                                        type="button"
                                         @click.prevent="
                                             openModal = true;
                                             if (newQualification !== false || item !== index) {
@@ -113,6 +114,7 @@
                                     </button>
 
                                     <button
+                                        type="button"
                                         @click.prevent="
                                             qualifications.splice(index, 1);
                                             openDropdown = false;
@@ -131,6 +133,7 @@
 
         <div>
             <button
+                type="button"
                 @click="
                     openModal = true;
                     if (newQualification !== true) {
@@ -144,21 +147,54 @@
                 {{ __('forms.addQualification') }}
             </button>
 
-            <template x-teleport="body">
+            <template x-teleport="body" wire:ignore>
                 <div
+                    data-employee-modal
+                    wire:ignore.self
                     x-show="openModal"
                     style="display: none"
-                    @keydown.escape.prevent.stop="openModal = false"
+                    @keydown.escape="
+                        (() => {
+                            if (
+                                ! $event.defaultPrevented &&
+                                ! $event.isComposing &&
+                                $event.keyCode !== 229 &&
+                                ! $event.altKey &&
+                                ! $event.ctrlKey &&
+                                ! $event.metaKey &&
+                                ! $event.shiftKey
+                            ) {
+                                $event.preventDefault();
+                                $event.stopPropagation();
+                                openModal = false;
+                            }
+                        })()
+                    "
                     role="dialog"
                     aria-modal="true"
                     x-id="['modal-title']"
                     :aria-labelledby="$id('modal-title')"
                     class="modal"
                 >
-                    <div x-show="openModal" x-transition.opacity class="fixed inset-0 bg-black/25"></div>
+                    <div
+                        wire:ignore.self
+                        x-show="openModal"
+                        x-transition.opacity
+                        class="fixed inset-0 bg-black/25"
+                    ></div>
 
-                    <div x-show="openModal" x-transition @click="openModal = false" class="modal-wrapper">
+                    <div
+                        x-data="{ pressedOnBackdrop: false }"
+                        @pointerdown="pressedOnBackdrop = $event.target === $el"
+                        @pointercancel="pressedOnBackdrop = false"
+                        @click.self="if (pressedOnBackdrop && ! $event.defaultPrevented) openModal = false;"
+                        wire:ignore.self
+                        x-show="openModal"
+                        x-transition
+                        class="modal-wrapper"
+                    >
                         <div
+                            wire:ignore.self
                             @click.stop
                             x-trap.noscroll.inert="openModal"
                             class="modal-content h-fit w-full max-w-4xl rounded-2xl bg-white shadow-lg"
@@ -167,7 +203,8 @@
                                 <span x-text="newQualification ? '{{ __('forms.addQualification') }}' : '{{ __('forms.edit') . ' ' . __('forms.qualification') }}'"></span>
                             </h3>
 
-                            <form>
+                            <div wire:ignore data-employee-datepicker-container class="relative"></div>
+                            <form @submit.prevent.stop>
                                 <div class="form-row-modal">
                                     <div>
                                         <label for="qualificationType" class="label-modal"
@@ -278,6 +315,7 @@
                                         {{ __('forms.cancel') }}
                                     </button>
                                     <button
+                                        type="button"
                                         @click.prevent="
                                             newQualification
                                                 ? qualifications.push({ ...modalQualification })
@@ -302,7 +340,7 @@
 </div>
 
 <script>
-    class Qualification {
+    window.Qualification ??= class Qualification {
         type = '';
         institutionName = '';
         speciality = '';
@@ -314,5 +352,5 @@
         constructor(obj = null) {
             if (obj) Object.assign(this, obj);
         }
-    }
+    };
 </script>

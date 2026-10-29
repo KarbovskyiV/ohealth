@@ -185,7 +185,6 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
             ]);
 
             $this->flashError(__('errors.unexpected_error'));
-            $this->dispatch('close-signature-modal');
         }
     }
 
@@ -926,6 +925,5 @@ abstract class AbstractEmployeeFormManager extends EmployeeComponent
             $e instanceof EHealthConnectionException => $this->handleConnectionException($e),
             default => $this->handleException($e),
         };
-        $this->dispatch('close-signature-modal');
     }
 }

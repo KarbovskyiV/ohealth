@@ -1,21 +1,49 @@
 <template x-teleport="body">
     <div
+        data-employee-modal
+        wire:ignore.self
         x-show="showRequestPreviewModal"
         style="display: none"
-        @keydown.escape.prevent.stop="showRequestPreviewModal = false"
+        @keydown.escape="
+            (() => {
+                if (
+                    ! $event.defaultPrevented &&
+                    ! $event.isComposing &&
+                    $event.keyCode !== 229 &&
+                    ! $event.altKey &&
+                    ! $event.ctrlKey &&
+                    ! $event.metaKey &&
+                    ! $event.shiftKey
+                ) {
+                    $event.preventDefault();
+                    $event.stopPropagation();
+                    showRequestPreviewModal = false;
+                }
+            })()
+        "
         role="dialog"
         aria-modal="true"
         class="modal"
     >
-        <div x-show="showRequestPreviewModal" x-transition.opacity class="fixed inset-0 bg-black/25"></div>
+        <div
+            wire:ignore.self
+            x-show="showRequestPreviewModal"
+            x-transition.opacity
+            class="fixed inset-0 bg-black/25"
+        ></div>
 
         <div
+            x-data="{ pressedOnBackdrop: false }"
+            @pointerdown="pressedOnBackdrop = $event.target === $el"
+            @pointercancel="pressedOnBackdrop = false"
+            @click.self="if (pressedOnBackdrop && ! $event.defaultPrevented) showRequestPreviewModal = false;"
+            wire:ignore.self
             x-show="showRequestPreviewModal"
             x-transition
-            @click="showRequestPreviewModal = false"
             class="relative flex min-h-screen items-center justify-center p-4"
         >
             <div
+                wire:ignore.self
                 @click.stop
                 x-trap.noscroll.inert="showRequestPreviewModal"
                 class="modal-content h-fit max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-lg"

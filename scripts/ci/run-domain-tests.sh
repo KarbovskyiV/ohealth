@@ -67,6 +67,8 @@ DOMAIN_PATHS=(
   tests/Feature/Models/UserGetCarePlanWriterEmployeeTest.php
   tests/Feature/Person/PatientMedicationRequestsPhase6Test.php
   tests/Feature/Person/PatientReferralsPhase6Test.php
+  tests/Feature/Person/PatientDeviceRequestsTest.php
+  tests/Feature/Person/PatientReferralDateFiltersTest.php
   tests/Feature/Person/PatientReferralRegistryUatTest.php
   tests/Feature/Person/PatientCarePlanRegistryUatTest.php
   tests/Feature/Services/MedicalEvents/MedicationRequestLifecycleServiceTest.php

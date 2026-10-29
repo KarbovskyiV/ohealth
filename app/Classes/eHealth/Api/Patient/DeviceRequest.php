@@ -92,6 +92,12 @@ class DeviceRequest extends PatientApiBase
             '*.based_on' => ['nullable', 'array'],
             '*.based_on.identifier.value' => ['nullable', 'uuid'],
             '*.dispense_valid_to' => ['nullable', 'date'],
+            '*.authored_on' => ['nullable', 'date'],
+            '*.occurrence_period' => ['nullable', 'array'],
+            '*.requester_legal_entity' => ['nullable', 'array'],
+            '*.requester' => ['nullable', 'array'],
+            '*.encounter' => ['nullable', 'array'],
+            '*.context' => ['nullable', 'array'],
         ]);
 
         return $validator->validate();

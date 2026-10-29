@@ -5,6 +5,13 @@
     x-modelable="selected"
     x-model="{{ $modelPath }}"
     @click.away="hideOptions"
+    @keydown.escape="
+        if (optionsVisible && ! $event.isComposing && $event.keyCode !== 229) {
+            $event.preventDefault();
+            $event.stopPropagation();
+            hideOptions();
+        }
+    "
     x-cloak
 >
     <input

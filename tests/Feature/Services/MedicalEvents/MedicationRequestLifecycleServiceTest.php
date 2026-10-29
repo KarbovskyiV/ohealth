@@ -13,7 +13,9 @@ use App\Models\MedicalEvents\Sql\Medications\MedicationRequestRequest;
 use App\Models\Person\Person;
 use App\Models\User;
 use App\Services\MedicalEvents\MedicationRequestLifecycleService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Mockery;
@@ -46,6 +48,8 @@ class MedicationRequestLifecycleServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        DB::statement("SET LOCAL TIME ZONE 'UTC'");
+        $this->travelTo(CarbonImmutable::parse('2026-10-29 23:30:00', (string) config('app.timezone')));
 
         $this->person = Person::create([
             'uuid' => (string) Str::uuid(),
@@ -366,8 +370,8 @@ class MedicationRequestLifecycleServiceTest extends TestCase
         ]);
         $this->encounter->update(['performer_id' => $performer->id]);
         $this->encounter->period()->create([
-            'start' => now()->startOfDay(),
-            'end' => now(),
+            'start' => now()->startOfDay()->utc(),
+            'end' => now()->utc(),
         ]);
 
         $otherPerformer = \App\Models\MedicalEvents\Sql\Identifier::create([
@@ -384,8 +388,8 @@ class MedicationRequestLifecycleServiceTest extends TestCase
             'ehealth_inserted_at' => now(),
         ]);
         $otherEncounter->period()->create([
-            'start' => now()->startOfDay(),
-            'end' => now(),
+            'start' => now()->startOfDay()->utc(),
+            'end' => now()->utc(),
         ]);
 
         $yesterdayEncounter = Encounter::create([
@@ -399,8 +403,8 @@ class MedicationRequestLifecycleServiceTest extends TestCase
             'ehealth_inserted_at' => now()->subDay(),
         ]);
         $yesterdayEncounter->period()->create([
-            'start' => now()->subDay()->startOfDay(),
-            'end' => now()->subDay(),
+            'start' => now()->subDay()->startOfDay()->utc(),
+            'end' => now()->subDay()->utc(),
         ]);
 
         $service = app(MedicationRequestLifecycleService::class);
@@ -460,8 +464,8 @@ class MedicationRequestLifecycleServiceTest extends TestCase
         ]);
         $this->encounter->update(['performer_id' => $performer->id]);
         $this->encounter->period()->create([
-            'start' => now()->startOfDay(),
-            'end' => now(),
+            'start' => now()->startOfDay()->utc(),
+            'end' => now()->utc(),
         ]);
 
         $service = app(MedicationRequestLifecycleService::class);
@@ -496,8 +500,8 @@ class MedicationRequestLifecycleServiceTest extends TestCase
         ]);
         $this->encounter->update(['performer_id' => $otherPerformer->id]);
         $this->encounter->period()->create([
-            'start' => now()->startOfDay(),
-            'end' => now(),
+            'start' => now()->startOfDay()->utc(),
+            'end' => now()->utc(),
         ]);
 
         $service = app(MedicationRequestLifecycleService::class);
@@ -533,8 +537,8 @@ class MedicationRequestLifecycleServiceTest extends TestCase
         ]);
         $this->encounter->update(['performer_id' => $performer->id]);
         $this->encounter->period()->create([
-            'start' => now()->startOfDay(),
-            'end' => now(),
+            'start' => now()->startOfDay()->utc(),
+            'end' => now()->utc(),
         ]);
 
         $createdUuid = (string) Str::uuid();
@@ -588,8 +592,8 @@ class MedicationRequestLifecycleServiceTest extends TestCase
         ]);
         $this->encounter->update(['performer_id' => $performer->id]);
         $this->encounter->period()->create([
-            'start' => now()->startOfDay(),
-            'end' => now(),
+            'start' => now()->startOfDay()->utc(),
+            'end' => now()->utc(),
         ]);
 
         $service = app(MedicationRequestLifecycleService::class);

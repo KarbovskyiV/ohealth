@@ -4,6 +4,8 @@
         dictionaries: @js($dictionaries),
         roleLabels: @js(__('users.role')),
         selectedProgramId: @entangle('filterMedicalProgramId'),
+        participantDetails: false,
+        selectedParticipant: null,
         get selectedProgram() {
             return this.allPrograms.find(program => program.id === this.selectedProgramId) || null;
         },
@@ -25,180 +27,92 @@
         }
     }"
 >
-    <x-header-navigation class="breadcrumb-form">
-        <x-slot name="title">{{ __('dictionaries.medical_device.page_title') }}</x-slot>
-
-        <x-slot name="navigation">
-            <div class="flex flex-col gap-4" x-data="{ showFilter: false }">
-                <div class="flex max-w-sm flex-col gap-4">
-                    {{-- Program --}}
-                    <div class="form-group group">
-                        <label for="programSelect" class="default-label mb-2">
-                            {{ __('dictionaries.program_label') }}*
-                        </label>
-
-                        <select id="programSelect" class="input-select" wire:model="filterMedicalProgramId">
-                            <option value="" selected>{{ __('forms.select') }}</option>
-                            <template x-for="program in allPrograms" :key="program.id">
-                                <option :value="program.id" x-text="program.name"></option>
-                            </template>
-                        </select>
-
-                        @error('filterMedicalProgramId')
-                            <p class="text-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    {{-- Search medical devices --}}
-                    <div class="form-group group">
-                        <label for="deviceSearch" class="default-label mb-2">
-                            {{ __('dictionaries.medical_device.search') }}
-                        </label>
-
-                        <div class="relative">
-                            <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
-                                @icon('search-outline', 'w-4 h-4 text-gray-500 dark:text-gray-400')
-                            </div>
-                            <input
-                                type="text"
-                                id="deviceSearch"
-                                class="input w-full ps-9"
-                                placeholder=" "
-                                autocomplete="off"
-                                wire:model="filterName"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Actions --}}
-                <div class="flex flex-wrap gap-2">
-                    <button type="button" class="button-primary flex items-center gap-2" wire:click="search">
-                        @icon('search', 'w-4 h-4')
-                        <span>{{ __('forms.search') }}</span>
-                    </button>
-
-                    <button type="button" class="button-primary-outline-red" wire:click="resetFilters">
-                        {{ __('forms.reset_all_filters') }}
-                    </button>
-
-                    <button
-                        type="button"
-                        class="button-minor flex items-center gap-2"
-                        @click="showFilter = ! showFilter"
-                    >
-                        @icon('adjustments', 'w-4 h-4')
-                        <span>{{ __('forms.additional_search_parameters') }}</span>
-                    </button>
-                </div>
-
-                {{-- Additional filters --}}
-                <div x-cloak x-show="showFilter" x-transition class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div class="form-group group">
-                        <select id="deviceType" class="input-select" wire:model="filterClassificationTypeCode">
-                            <option value="">{{ __('forms.select') }}</option>
-                            @foreach ($classificationTypes as $classificationType)
-                                <option value="{{ $classificationType['code'] }}">
-                                    {{ $classificationType['name'] }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <label for="deviceType" class="label">
-                            {{ __('dictionaries.medical_device.device_type') }}
-                        </label>
-                    </div>
-
-                    <div class="form-group group">
-                        <input
-                            type="text"
-                            id="deviceModelNumber"
-                            class="input peer"
-                            placeholder=" "
-                            autocomplete="off"
-                            wire:model="filterModelNumber"
-                        />
-                        <label for="deviceModelNumber" class="label">
-                            {{ __('dictionaries.medical_device.device_model_number') }}
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </x-slot>
-    </x-header-navigation>
+    @if ($embedded)
+        @include('livewire.dictionary.partials.device-definition-filters')
+    @else
+        <x-header-navigation class="breadcrumb-form">
+            <x-slot name="title">{{ __('dictionaries.medical_device.page_title') }}</x-slot>
+            <x-slot name="navigation">
+                @include('livewire.dictionary.partials.device-definition-filters')
+            </x-slot>
+        </x-header-navigation>
+    @endif
 
     <template x-if="selectedProgram">
-        <section class="shift-content mt-6 max-w-[1280px] pl-3.5">
+        <section class="{{ $embedded ? 'mt-6' : 'shift-content mt-6 max-w-[1280px] pl-3.5' }}">
             <div>
                 {{-- Program info --}}
-                <fieldset class="fieldset p-6 sm:p-8">
-                    <legend class="legend">
-                        {{ __('dictionaries.medical_device.prescription_medication_details') }}
-                    </legend>
+                @if (!$embedded)
+                    <fieldset class="fieldset p-6 sm:p-8">
+                        <legend class="legend">
+                            {{ __('dictionaries.medical_device.prescription_medication_details') }}
+                        </legend>
 
-                    <div class="space-y-2 text-gray-900 dark:text-gray-100">
-                        <p>
-                            <span class="font-semibold">{{ __('dictionaries.medical_device.funding_source') }}:</span>
-                            <span x-text="dictionaries.FUNDING_SOURCE[selectedProgram.funding_source]"></span>
-                        </p>
-                        <p>
-                            <span class="font-semibold">{{ __('dictionaries.medical_device.employee_types_to_create_request') }}:</span>
-                            <span
-                                x-text="
-                                    translateRoles(
-                                        selectedProgram.medical_program_settings?.employee_types_to_create_request,
-                                    )
-                                "
-                            ></span>
-                        </p>
-                        <p>
-                            <span class="font-semibold">
-                                {{ __('dictionaries.medical_device.speciality_types_request_allowed') }}:
-                            </span>
-                            <span
-                                x-text="
-                                    translateSpecialities(
-                                        selectedProgram.medical_program_settings.speciality_types_request_allowed,
-                                    )
-                                "
-                            ></span>
-                        </p>
-                        <p>
-                            <span class="font-semibold">
-                                {{ __('dictionaries.medical_device.speciality_types_care_plan_activity_allowed') }}:
-                            </span>
-                            <span
-                                x-text="
-                                    translateSpecialities(
-                                        selectedProgram.medical_program_settings
-                                            .speciality_types_care_plan_activity_allowed,
-                                    )
-                                "
-                            ></span>
-                        </p>
-                        <p>
-                            <span class="font-semibold">
-                                {{ __('dictionaries.medical_device.skip_treatment_period') }}:
-                            </span>
-                            <span x-text="selectedProgram.medical_program_settings?.skip_treatment_period ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
-                        </p>
-                        <p>
-                            <span class="font-semibold">{{ __('dictionaries.medical_device.request_max_period_day') }}:</span>
-                            <span x-text="selectedProgram.medical_program_settings?.request_max_period_day || '-'"></span>
-                        </p>
-                        <p>
-                            <span class="font-semibold">
-                                {{ __('dictionaries.medical_device.skip_request_employee_declaration_verify') }}:
-                            </span>
-                            <span x-text="selectedProgram.medical_program_settings.skip_request_employee_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
-                        </p>
-                        <p>
-                            <span class="font-semibold">
-                                {{ __('dictionaries.medical_device.skip_request_legal_entity_declaration_verify') }}:
-                            </span>
-                            <span x-text="selectedProgram.medical_program_settings.skip_request_legal_entity_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
-                        </p>
-                    </div>
-                </fieldset>
+                        <div class="space-y-2 text-gray-900 dark:text-gray-100">
+                            <p>
+                                <span class="font-semibold">{{ __('dictionaries.medical_device.funding_source') }}:</span>
+                                <span x-text="dictionaries.FUNDING_SOURCE[selectedProgram.funding_source]"></span>
+                            </p>
+                            <p>
+                                <span class="font-semibold">{{ __('dictionaries.medical_device.employee_types_to_create_request') }}:</span>
+                                <span
+                                    x-text="
+                                        translateRoles(
+                                            selectedProgram.medical_program_settings?.employee_types_to_create_request,
+                                        )
+                                    "
+                                ></span>
+                            </p>
+                            <p>
+                                <span class="font-semibold">
+                                    {{ __('dictionaries.medical_device.speciality_types_request_allowed') }}:
+                                </span>
+                                <span
+                                    x-text="
+                                        translateSpecialities(
+                                            selectedProgram.medical_program_settings.speciality_types_request_allowed,
+                                        )
+                                    "
+                                ></span>
+                            </p>
+                            <p>
+                                <span class="font-semibold">
+                                    {{ __('dictionaries.medical_device.speciality_types_care_plan_activity_allowed') }}:
+                                </span>
+                                <span
+                                    x-text="
+                                        translateSpecialities(
+                                            selectedProgram.medical_program_settings
+                                                .speciality_types_care_plan_activity_allowed,
+                                        )
+                                    "
+                                ></span>
+                            </p>
+                            <p>
+                                <span class="font-semibold">
+                                    {{ __('dictionaries.medical_device.skip_treatment_period') }}:
+                                </span>
+                                <span x-text="selectedProgram.medical_program_settings?.skip_treatment_period ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
+                            </p>
+                            <p>
+                                <span class="font-semibold">{{ __('dictionaries.medical_device.request_max_period_day') }}:</span>
+                                <span x-text="selectedProgram.medical_program_settings?.request_max_period_day || '-'"></span>
+                            </p>
+                            <p>
+                                <span class="font-semibold">
+                                    {{ __('dictionaries.medical_device.skip_request_employee_declaration_verify') }}:
+                                </span>
+                                <span x-text="selectedProgram.medical_program_settings.skip_request_employee_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
+                            </p>
+                            <p>
+                                <span class="font-semibold">
+                                    {{ __('dictionaries.medical_device.skip_request_legal_entity_declaration_verify') }}:
+                                </span>
+                                <span x-text="selectedProgram.medical_program_settings.skip_request_legal_entity_declaration_verify ? '{{ __('forms.yes') }}' : '{{ __('forms.no') }}'"></span>
+                            </p>
+                        </div>
+                    </fieldset>
+                @endif
 
                 {{-- Device Definition info --}}
                 @if ($this->deviceDefinitions->count() > 0)
@@ -258,7 +172,38 @@
                                                     {{ $this->dictionaries['device_definition_packaging_type'][$deviceDefinition['packaging']['packaging_type']] }} {{ $deviceDefinition['packaging']['packaging_count'] }} {{ $this->dictionaries['device_unit'][$deviceDefinition['packaging']['packaging_unit']] }}
                                                 </td>
                                                 <td class="index-table-td">
-                                                    {{ count($deviceDefinition['program_devices']) }}
+                                                    @if ($embedded)
+                                                        <div class="space-y-2">
+                                                            @foreach ($deviceDefinition['program_devices'] ?? [] as $programDevice)
+                                                                @php
+                                                                    $participantProgramId = $programDevice['medical_program_id'] ?? $programDevice['program_id'] ?? null;
+                                                                    $participantName = $programDevice['name'] ?? data_get($programDevice, 'medical_program.name')
+                                                                        ?? (collect($programs)->firstWhere('id', $participantProgramId)['name'] ?? data_get($deviceDefinition, 'device_names.0.name', '-'));
+                                                                    $participant = [
+                                                                        'name' => $participantName,
+                                                                        'period' => (filled($programDevice['start_date'] ?? null) ? convertToAppDateFormat($programDevice['start_date']) : '-')
+                                                                            .' — '.(filled($programDevice['end_date'] ?? null) ? convertToAppDateFormat($programDevice['end_date']) : __('dictionaries.medical_device.participant_details.end_date_not_set')),
+                                                                        'maxDailyCount' => $programDevice['max_daily_count'] ?? '-',
+                                                                        'unit' => $dictionaries['device_unit'][data_get($deviceDefinition, 'packaging.packaging_unit', '')] ?? '',
+                                                                    ];
+                                                                @endphp
+                                                                <div class="flex items-center gap-2">
+                                                                    <span>{{ $participantName }}</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="record-inner-action-btn shrink-0 cursor-pointer p-1"
+                                                                        aria-haspopup="dialog"
+                                                                        aria-label="{{ __('device-requests.patient.participant_details') }}: {{ $participantName }}"
+                                                                        @click.stop="selectedParticipant = @js($participant); participantDetails = true"
+                                                                    >
+                                                                        @icon('question-mark-circle', 'w-4 h-4')
+                                                                    </button>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        {{ count($deviceDefinition['program_devices']) }}
+                                                    @endif
                                                 </td>
                                                 <td class="index-table-td-actions">
                                                     <button
@@ -326,6 +271,33 @@
             </div>
         </section>
     </template>
+
+    @if ($embedded)
+        <x-dialog-drawer
+            x-model="participantDetails"
+            maxWidth="3/5"
+            topClass="top-[57px]"
+            zIndex="46"
+            :title="__('device-requests.patient.participant_details')"
+        >
+            <template x-if="selectedParticipant">
+                <fieldset class="fieldset rounded-2xl shadow-none">
+                    <legend class="legend" x-text="selectedParticipant.name"></legend>
+                    <div class="space-y-5">
+                        <x-device-request-field :label="__('dictionaries.medical_device.participant_details.period')">
+                            <span x-text="selectedParticipant.period"></span>
+                        </x-device-request-field>
+                        <x-device-request-field :label="__('dictionaries.medical_device.participant_details.max_daily_dose')">
+                            <span x-text="`${selectedParticipant.maxDailyCount} ${selectedParticipant.unit}`"></span>
+                        </x-device-request-field>
+                    </div>
+                </fieldset>
+            </template>
+            <button type="button" class="button-minor" @click="participantDetails = false">
+                {{ __('forms.back') }}
+            </button>
+        </x-dialog-drawer>
+    @endif
 
     <x-forms.loading />
     <livewire:components.x-message :key="time()" />

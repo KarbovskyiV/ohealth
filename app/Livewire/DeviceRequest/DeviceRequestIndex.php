@@ -179,7 +179,7 @@ class DeviceRequestIndex extends Component
         $this->search(false);
     }
 
-    public function showDetails(string $id): void
+    public function showDetails(string $id, bool $loadCatalog = true): void
     {
         $service = app(DeviceRequestLifecycleService::class);
         $this->authorize('perform', [DeviceRequestRequest::class, $this->legalEntity, 'device_request:read']);
@@ -196,14 +196,14 @@ class DeviceRequestIndex extends Component
             $this->phone = data_get($response->getUrgent(), 'authentication_method_current.phone_number', '');
             $modelId = data_get($this->selected, 'code_reference.identifier.value');
 
-            if ($modelId) {
+            if ($modelId && $loadCatalog) {
                 $this->catalog = [EHealth::deviceDefinition()->getById($modelId)->getData()];
             } else {
                 foreach ($this->selected['code']['coding'] ?? [] as $coding) {
                     $labels = $service->dictionary($coding['system']);
-                    $models = $service->collectPages(fn (int $page) => EHealth::deviceDefinition()->getMany([
+                    $models = $loadCatalog ? $service->collectPages(fn (int $page) => EHealth::deviceDefinition()->getMany([
                         'classification_type_system' => $coding['system'], 'classification_type_code' => $coding['code'], 'is_active' => true, 'page' => $page,
-                    ]));
+                    ])) : [];
 
                     foreach ($models as $model) {
                         $this->catalog[] = $model;
