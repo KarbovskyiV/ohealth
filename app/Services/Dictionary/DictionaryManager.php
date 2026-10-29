@@ -172,11 +172,12 @@ class DictionaryManager
             $freshKey
         ) {
             try {
-                if (Cache::has($freshKey)) {
-                    return collect(Cache::get($cacheKey, []));
+                $staleData = Cache::get($cacheKey);
+
+                if ($staleData !== null && Cache::has($freshKey)) {
+                    return collect($staleData);
                 }
 
-                $staleData = Cache::get($cacheKey);
                 if ($staleData !== null) {
                     $this->triggerBackgroundRefresh($dictionary);
 
