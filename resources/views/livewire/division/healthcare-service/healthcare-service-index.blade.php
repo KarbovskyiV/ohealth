@@ -109,60 +109,49 @@
     </x-header-navigation>
 
     {{-- Filters --}}
-    <div class="shift-content mt-6 flex flex-wrap items-end justify-between pl-2.5">
-        <div class="ml-3.5 flex flex-col gap-4">
-            <div class="form-group group">
-                <select
-                    wire:model="typeFilter"
-                    type="text"
-                    name="specialityType"
-                    id="specialityType"
-                    class="input-select"
-                >
-                    <option value="" selected>{{ __('forms.select') }}</option>
-                    @foreach ($dictionaries['SPECIALITY_TYPE'] as $key => $specialityType)
-                        <option value="{{ $key }}">{{ $specialityType }}</option>
-                    @endforeach
-                </select>
+    <div class="shift-content mt-10 flex flex-wrap items-end justify-between pl-2.5">
+        <div class="ml-3.5 flex max-w-7xl grow flex-col gap-4">
+            <div class="form-row-3">
+                <x-forms.combobox
+                    :options="$specialityTypes"
+                    bind="typeFilter"
+                    bindValue="code"
+                    bindParam="name"
+                    :label="__('healthcare-services.specialisation')"
+                />
 
-                <label for="specialityType" class="label">{{ __('healthcare-services.specialisation') }}</label>
+                <x-forms.combobox
+                    :options="$divisions"
+                    bind="divisionFilter"
+                    bindValue="id"
+                    bindParam="name"
+                    :label="__('forms.division_name')"
+                />
+
+                <x-forms.multiselect
+                    bind="status"
+                    :options="[
+                        'ACTIVE' => __('forms.status.active'),
+                        'INACTIVE' => __('forms.status.non_active'),
+                    ]"
+                    label="{{ __('forms.status.label') }}"
+                    placeholder="{{ __('forms.select') }}"
+                    :live="true"
+                />
             </div>
 
-            <div class="form-group group">
-                <select
-                    wire:model="divisionFilter"
-                    type="text"
-                    name="divisionName"
-                    id="divisionName"
-                    class="input-select"
-                >
-                    <option value="" selected>{{ __('forms.select') }}</option>
-                    @foreach ($divisions as $division)
-                        <option value="{{ $division['id'] }}">{{ $division['name'] }}</option>
-                    @endforeach
-                </select>
-
-                <label for="divisionName" class="label">{{ __('forms.division_name') }}</label>
-            </div>
-
-            <x-forms.multiselect
-                bind="status"
-                :options="[
-                    'ACTIVE' => __('forms.status.active'),
-                    'INACTIVE' => __('forms.status.non_active'),
-                ]"
-                label="{{ __('forms.status.label') }}"
-                placeholder="{{ __('forms.select') }}"
-                :live="true"
-            />
-
-            <div class="mt-4 mb-9 flex gap-2">
+            <div class="mb-9 flex gap-2">
                 @can('viewAny', HealthcareService::class)
                     <button wire:click.prevent="search" class="button-primary flex items-center gap-2">
                         @icon('search', 'w-4 h-4')
                         <span>{{ __('forms.search') }}</span>
                     </button>
-                    <button type="button" wire:click="resetFilters" class="button-primary-outline-red">
+                    <button
+                        type="button"
+                        wire:click="resetFilters"
+                        @click="$dispatch('reset-comboboxes')"
+                        class="button-primary-outline-red"
+                    >
                         {{ __('forms.reset_all_filters') }}
                     </button>
                 @endcan

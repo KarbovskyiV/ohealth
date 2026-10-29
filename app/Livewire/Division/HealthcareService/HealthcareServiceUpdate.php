@@ -75,7 +75,7 @@ class HealthcareServiceUpdate extends Component
         try {
             $this->form->doUpdateValidation();
         } catch (ValidationException $exception) {
-            Session::flash('error', $exception->validator->errors()->first());
+            Session::flash('error', $this->form->notificationMessage($exception->validator->errors()));
             $this->setErrorBag($exception->validator->getMessageBag());
 
             return;

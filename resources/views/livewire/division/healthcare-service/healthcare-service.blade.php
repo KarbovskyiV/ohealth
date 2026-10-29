@@ -93,28 +93,17 @@
             </div>
 
             <div class="form-row-2">
-                <div class="form-group group" x-show="isRequired('speciality')" x-cloak>
-                    <select
-                        wire:model="form.specialityType"
-                        type="text"
-                        name="specialityType"
-                        id="specialityType"
-                        class="input-select @error('form.specialityType') input-error @enderror"
-                        x-bind:required="isRequired('speciality')"
-                        x-bind:disabled="isDisabled"
-                    >
-                        <option value="" selected>{{ __('forms.select') }}</option>
-                        @foreach ($this->dictionaries['SPECIALITY_TYPE'] as $key => $type)
-                            <option value="{{ $key }}">{{ $type }}</option>
-                        @endforeach
-                    </select>
-
-                    <label for="specialityType" class="label">{{ __('healthcare-services.speciality_type') }}</label>
-
-                    @error('form.specialityType')
-                        <p class="text-error">{{ $message }}</p>
-                    @enderror
-                </div>
+                <x-forms.combobox
+                    :options="$this->specialityTypes"
+                    bind="form.specialityType"
+                    bindValue="code"
+                    bindParam="name"
+                    is-required="isRequired('speciality')"
+                    :label="__('healthcare-services.speciality_type')"
+                    x-show="isRequired('speciality')"
+                    x-cloak
+                    x-bind:inert="isDisabled"
+                />
 
                 <div class="form-group group" x-show="isRequired('providingCondition')" x-cloak>
                     <select

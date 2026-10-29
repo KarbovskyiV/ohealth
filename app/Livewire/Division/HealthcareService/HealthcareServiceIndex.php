@@ -386,7 +386,11 @@ class HealthcareServiceIndex extends Component
     public function render(): View
     {
         return view('livewire.division.healthcare-service.healthcare-service-index', [
-            'healthcareServices' => $this->healthcareServices
+            'healthcareServices' => $this->healthcareServices,
+            'specialityTypes' => collect($this->dictionaries['SPECIALITY_TYPE'])
+                ->map(static fn (string $name, string $code): array => ['code' => $code, 'name' => $name])
+                ->values()
+                ->all()
         ]);
     }
 }
