@@ -21,7 +21,7 @@ class CompositionFhirMigrationTest extends TestCase
     public static function migrationEntrypoints(): array
     {
         return [
-            'artisan migrate' => ['database/migrations/2026_10_24_160000_preserve_composition_fhir_details.php'],
+            'project install' => ['database/migrations/install/2026_10_24_160000_preserve_composition_fhir_details.php'],
             'project update' => ['database/migrations/update/0_1/2026_10_24_160000_preserve_composition_fhir_details.php'],
         ];
     }
