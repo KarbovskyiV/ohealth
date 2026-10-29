@@ -65,6 +65,12 @@ class CarePlanFullSync extends PatientEHealthJob
 
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse|null
     {
+        if ($this->patientUuid === null || $this->patientUuid === '') {
+            throw ValidationException::withMessages([
+                'patient_uuid' => 'Care Plan synchronization requires patient context. Discard the incomplete batch and start synchronization from the patient record.',
+            ]);
+        }
+
         $api = EHealth::carePlan()->withToken($token);
         if ($this->isPatientRegistrySync() && $this->resourceUuid !== null) {
             try {
@@ -84,9 +90,6 @@ class CarePlanFullSync extends PatientEHealthJob
         $query = ['page' => $this->page];
         if (!$this->isPatientRegistrySync()) {
             $query['managing_organization_id'] = $this->legalEntity->uuid;
-            if ($this->patientUuid === null) {
-                return $api->getMany($query);
-            }
         }
 
         return $api->getBySearchParams($this->patientUuid, $query);

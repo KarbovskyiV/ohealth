@@ -8,6 +8,7 @@ use App\Classes\eHealth\Api\CarePlan as CarePlanApi;
 use App\Classes\eHealth\EHealthResponse;
 use App\Jobs\CarePlanFullSync;
 use App\Models\LegalEntity;
+use Illuminate\Validation\ValidationException;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -17,7 +18,6 @@ class CarePlanFullSyncRequestTest extends TestCase
     public static function searchContexts(): array
     {
         return [
-            'clinic synchronization' => [null, false, 'getMany', ['page' => 2, 'managing_organization_id' => 'clinic-uuid']],
             'patient with clinic filter' => ['patient-uuid', false, 'getBySearchParams', ['page' => 2, 'managing_organization_id' => 'clinic-uuid']],
             'patient registry' => ['patient-uuid', true, 'getBySearchParams', ['page' => 2]],
         ];
@@ -54,6 +54,23 @@ class CarePlanFullSyncRequestTest extends TestCase
         $batch->options['patient_care_plan_registry'] = true;
 
         $this->assertSame($response, $job->requestForPatient('patient-uuid'));
+    }
+
+    public function test_missing_patient_context_is_rejected_before_any_api_request(): void
+    {
+        $api = Mockery::mock(CarePlanApi::class);
+        $api->shouldNotReceive('withToken');
+        $api->shouldNotReceive('getMany');
+        $this->instance(CarePlanApi::class, $api);
+        $job = new CarePlanFullSyncRequestHarness(new LegalEntity(), standalone: true);
+        [$job] = $job->withFakeBatch();
+
+        try {
+            $job->requestForPatient(null);
+            $this->fail('A batch without patient context must not call eHealth.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('patient_uuid', $exception->errors());
+        }
     }
 }
 

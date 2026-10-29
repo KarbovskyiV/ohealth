@@ -189,10 +189,13 @@ trait BatchLegalEntityQueries
             ->withOption('user', $user)
             ->onQueue('sync');
 
-        $syncEntity = app(BatchRepository::class)->find($batch->id)?->options['sync_entity'] ?? null;
+        $previousOptions = app(BatchRepository::class)->find($batch->id)?->options ?? [];
 
-        if ($syncEntity !== null) {
-            $batchOptions->withOption('sync_entity', $syncEntity);
+        // These options identify the patient and the registry mode; credentials above belong to the new login.
+        foreach (['sync_entity', 'patient_uuid', 'person_id', 'preperson_id', 'patient_care_plan_registry', 'care_plan_approvals'] as $option) {
+            if (array_key_exists($option, $previousOptions)) {
+                $batchOptions->withOption($option, $previousOptions[$option]);
+            }
         }
 
         $newBatch = $batchOptions->dispatch();
