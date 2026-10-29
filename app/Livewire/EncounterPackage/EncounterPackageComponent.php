@@ -31,7 +31,6 @@ use App\Livewire\EncounterPackage\Forms\SpecimenForm;
 use App\Livewire\EncounterPackage\Forms\EncounterForm as Form;
 use App\Models\Employee\Employee;
 use App\Models\Equipment;
-use App\Models\Icd10;
 use App\Models\MedicalEvents\Sql\Device;
 use App\Models\MedicalEvents\Sql\Encounter;
 use App\Models\MedicalEvents\Sql\Immunization;
@@ -248,13 +247,6 @@ class EncounterPackageComponent extends Component
      */
     #[Locked]
     public ?string $employeeType = null;
-
-    /**
-     * Found the ICD-10 code and description.
-     *
-     * @var array
-     */
-    public array $results = [];
 
     /**
      * List of LOINC observation codes per category.
@@ -640,20 +632,6 @@ class EncounterPackageComponent extends Component
         }
 
         $this->previousDetectedIssues = MedicalEventsRepository::detectedIssue()->getByDevice($this->patient(), $deviceUuid);
-    }
-
-    /**
-     * Batch-fetch ICD-10 descriptions for given codes into $results.
-     * Used by Alpine init() to populate icd10Descriptions without blocking the UI.
-     *
-     * @param  array  $codes
-     * @return void
-     */
-    public function fetchIcd10Descriptions(array $codes): void
-    {
-        $this->results = Icd10::whereIn('code', $codes)
-            ->get(['code', 'description'])
-            ->toArray();
     }
 
     /**

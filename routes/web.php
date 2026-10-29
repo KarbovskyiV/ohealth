@@ -250,8 +250,8 @@ Route::middleware(['auth:ehealth', 'verified'])->group(function () {
             Route::get('/icd10/search', [Icd10Controller::class, 'search'])
                 ->can('create', Encounter::class)
                 ->name('icd10.search');
-
             Route::get('/icd10/lookup', [Icd10Controller::class, 'lookup'])->name('icd10.lookup');
+            Route::get('/icd10/descriptions', [Icd10Controller::class, 'descriptions'])->name('icd10.descriptions');
 
             // --- Referrals ---
             Route::prefix('referrals')->name('referrals.')->group(function () {

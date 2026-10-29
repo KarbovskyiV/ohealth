@@ -3,6 +3,7 @@
 <div
     class="p-4 sm:p-8"
     id="conditions-section"
+    data-icd10-descriptions-url="{{ route('icd10.descriptions', [legalEntity()]) }}"
     @condition-evidence-selected.window="addEvidence($event.detail.record)"
     @registered-condition-selected.window="selectRegisteredCondition($event.detail.record)"
     x-data="{
@@ -260,11 +261,12 @@
 
             if (icd10Codes.length === 0) return;
 
-            $wire.fetchIcd10Descriptions(icd10Codes).then(() => {
-                $wire.results.forEach((result) => {
-                    this.icd10Descriptions[result.code] = result.description;
-                });
-            });
+            const descriptionsUrl = new URL(this.$root.dataset.icd10DescriptionsUrl);
+            icd10Codes.forEach((code) => descriptionsUrl.searchParams.append('codes[]', code));
+
+            fetch(descriptionsUrl, { headers: { Accept: 'application/json' } })
+                .then((response) => (response.ok ? response.json() : {}))
+                .then((descriptions) => Object.assign(this.icd10Descriptions, descriptions));
         },
     }"
     {{-- Outside primary health care only ICD10_AM codes are allowed, so a code picked from ICPC-2 before the class
