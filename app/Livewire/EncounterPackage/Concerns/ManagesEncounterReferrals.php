@@ -62,6 +62,9 @@ trait ManagesEncounterReferrals
     /** @var array<string, mixed>|null */
     public ?array $encounterReferralSelectedService = null;
 
+    #[Locked]
+    public string $encounterReferralServiceType = 'service';
+
     /** @var list<array{id: string, name: string}> */
     public array $encounterReferralPrograms = [];
 
@@ -147,6 +150,7 @@ trait ManagesEncounterReferrals
         $this->encounterReferralHasSearched = false;
         $this->encounterReferralServiceResults = [];
         $this->encounterReferralSelectedService = null;
+        $this->encounterReferralServiceType = 'service';
         $this->encounterReferralWarningMessage = $divisionWarning;
         $this->resetEncounterReferralValidation();
         $this->showEncounterReferralDrawer = true;
@@ -206,6 +210,11 @@ trait ManagesEncounterReferrals
             return;
         }
 
+        $selected = $this->resolveEncounterReferralServiceChoice($selected);
+        if ($selected === null) {
+            return;
+        }
+
         $this->encounterReferralForm['service_id'] = $serviceId;
         $this->encounterReferralSelectedService = $selected;
         $this->resetValidation('encounterReferralForm.service_id');
@@ -221,6 +230,10 @@ trait ManagesEncounterReferrals
     #[On('encounter-referral-service-selected')]
     public function selectEncounterReferralServiceFromCatalog(array $service): void
     {
+        $service = $this->resolveEncounterReferralServiceChoice($service);
+        if ($service === null) {
+            return;
+        }
         $this->encounterReferralForm['service_id'] = $service['id'];
         $this->encounterReferralSelectedService = $service;
         $this->resetValidation('encounterReferralForm.service_id');
@@ -232,6 +245,22 @@ trait ManagesEncounterReferrals
         $this->encounterReferralWarningMessage = '';
 
         $this->dispatch('encounter-referral-service-catalog-close');
+    }
+
+    /** Resolve group identity and referral eligibility from the server catalog. */
+    protected function resolveEncounterReferralServiceChoice(array $service): ?array
+    {
+        if (($service['type'] ?? '') !== 'service_group') {
+            return $service;
+        }
+        $group = dictionary()->services()->flattened()->firstWhere('id', $service['id'] ?? null);
+        if (($group['type'] ?? '') !== 'service_group' || empty($group['request_allowed'])) {
+            Session::flash('error', __('care-plan.service_group_referral_not_allowed'));
+
+            return null;
+        }
+
+        return $group;
     }
 
     public function validateEncounterReferral(): void
@@ -269,6 +298,13 @@ trait ManagesEncounterReferrals
 
         $period = $this->encounterReferralPeriod();
 
+        if ($this->encounterReferralServiceType === 'service_group'
+            && $this->resolveEncounterReferralServiceChoice([
+                'id' => $this->encounterReferralForm['service_id'], 'type' => 'service_group',
+            ]) === null) {
+            return;
+        }
+
         try {
             $employeeContext = app(ReferralRequestLifecycleService::class)->resolveEncounterEmployeeContext(
                 $encounter,
@@ -278,6 +314,7 @@ trait ManagesEncounterReferrals
             $formData = array_replace($this->encounterReferralForm, $period);
             $formData['program_id'] = $formData['program_id'] !== '' ? $formData['program_id'] : null;
             $formData['kind'] = 'service_request';
+            $formData['service_type'] = $this->encounterReferralServiceType;
 
             $this->encounterReferralRequestIdToSign = app(ReferralRequestLifecycleService::class)->createEncounterDraft(
                 $encounter,
@@ -522,10 +559,18 @@ trait ManagesEncounterReferrals
      */
     protected function applyEncounterReferralServiceCategory(array $service): void
     {
+        $this->encounterReferralServiceType = ($service['type'] ?? '') === 'service_group' ? 'service_group' : 'service';
         $encounter = $this->resolveEncounterModelForStandalone();
         if ($encounter !== null && $this->resolveEncounterReferralTransfer($encounter) !== null) {
             $this->encounterReferralForm['category'] = 'transfer_of_care';
             $this->encounterReferralIsTransfer = true;
+            $this->resetValidation('encounterReferralForm.category');
+
+            return;
+        }
+
+        if ($this->encounterReferralServiceType === 'service_group') {
+            $this->encounterReferralForm['category'] = '';
             $this->resetValidation('encounterReferralForm.category');
 
             return;

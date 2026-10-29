@@ -286,7 +286,8 @@ class ServiceCatalog extends Component
             ->firstWhere('id', $serviceId);
 
         if ($service === null || !$this->isCategoryAllowed($service['category'] ?? null)
-            || (($service['type'] ?? '') === 'service_group' && (!$this->allowGroupSelection || empty($service['request_allowed'])))) {
+            || (($service['type'] ?? '') === 'service_group' && !$this->allowGroupSelection)
+            || ($this->requestAllowedOnly && empty($service['request_allowed']))) {
             return;
         }
 

@@ -193,7 +193,7 @@ final class ServiceSearch
             $requestAllowed = (bool) ($node['request_allowed'] ?? false);
 
             if (!$isInactive && $hasCode && ($requestAllowed || !$isContainer)) {
-                $services[$node['id']] = $node;
+                $services[$node['id']] = $node + ['type' => array_key_exists('category', $node) ? 'service' : 'service_group'];
             }
 
             if (!empty($node['services']) && is_array($node['services'])) {
@@ -204,7 +204,7 @@ final class ServiceSearch
                     if (isset($service['is_active']) && $service['is_active'] === false) {
                         continue;
                     }
-                    $services[$service['id']] = $service;
+                    $services[$service['id']] = $service + ['type' => 'service'];
                 }
             }
 

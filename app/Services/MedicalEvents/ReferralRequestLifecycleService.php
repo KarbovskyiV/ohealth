@@ -222,6 +222,7 @@ class ReferralRequestLifecycleService extends EHealthRequestLifecycleService
         if ($kind === 'service_request') {
             Repository::serviceRequest()->assertFhirStorageReady(beforeSubmission: true);
             $dbData['service_id'] = $formData['service_id'] ?? null;
+            $dbData['service_type'] = $formData['service_type'] ?? 'service';
             $mapper = Fhir::serviceRequest();
 
             if ($personUuid && (!empty($dbData['program_id']) || $dbData['category'] === 'transfer_of_care')) {

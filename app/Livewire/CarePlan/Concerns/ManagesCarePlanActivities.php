@@ -1105,7 +1105,7 @@ trait ManagesCarePlanActivities
         $this->authorizeCarePlanActivityWrite();
         $product = dictionary()->services()->flattened()
             ->firstWhere('id', $service['id'] ?? null);
-        if ($product === null || (($product['type'] ?? '') === 'service_group' && empty($product['request_allowed']))) {
+        if ($product === null) {
             Session::flash('error', __('care-plan.service_selection_unavailable'));
 
             return;

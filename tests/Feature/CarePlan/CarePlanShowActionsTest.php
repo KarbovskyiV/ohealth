@@ -783,6 +783,8 @@ class CarePlanShowActionsTest extends TestCase
     {
         $this->mockBasicDictionaries(['SERVICE_CATEGORY' => [
             'laboratory_procedure' => 'Лабораторні процедури', 'procedure' => 'Процедури',
+        ], 'eHealth/SNOMED/service_request_categories' => [
+            'laboratory_procedure' => 'Лабораторні дослідження', 'procedure' => 'Процедури',
         ]]);
         \Illuminate\Support\Facades\Cache::put('dictionaries.service', [[
             'id' => $groupId, 'code' => 'GROUP', 'name' => 'Група послуг',
@@ -795,6 +797,31 @@ class CarePlanShowActionsTest extends TestCase
             ],
         ]], now()->addDay());
         \Illuminate\Support\Facades\Cache::put('dictionaries.service:fresh', true, now()->addDay());
+    }
+
+    public function test_group_referral_requires_a_category_and_keeps_the_activity_group(): void
+    {
+        $this->actingAs($this->user);
+        $groupId = (string) Str::uuid();
+        $this->cacheServicePickerCatalog($groupId, (string) Str::uuid());
+        $plan = $this->makeSignedNewPlan();
+        $this->grantCarePlanWriteApproval($plan, $this->employee);
+        $activity = $this->createFhirCarePlanActivity([
+            'care_plan_id' => $plan->id, 'author_id' => $this->employee->id,
+            'kind' => 'service_request', 'status' => 'scheduled',
+            'product_reference' => $groupId, 'product_reference_type' => 'service_group',
+            'quantity' => 3, 'quantity_system' => 'SERVICE_UNIT', 'quantity_code' => 'PIECE',
+        ]);
+        $this->mock(\App\Services\MedicalEvents\CarePlanActivityEHealthGuard::class)
+            ->shouldReceive('assertRegisteredInEHealth')->once()->andReturnNull();
+
+        Livewire::test(CarePlanShow::class, ['carePlan' => $plan])
+            ->call('initReferralForm', $activity->id)
+            ->assertSet('showReferralDrawer', true)->assertSet('referralServiceType', 'service_group')
+            ->assertSet('referralForm.code', $groupId)->assertSet('referralForm.category', '')
+            ->assertSeeHtml('wire:model="referralForm.category"')
+            ->set('referralForm.category', 'invented')->call('validateReferral')
+            ->assertHasErrors('referralForm.category');
     }
 
     private function grantApproval(CarePlan $carePlan, Employee $employee, string $status): void

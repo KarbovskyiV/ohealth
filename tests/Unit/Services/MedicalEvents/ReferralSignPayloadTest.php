@@ -184,6 +184,29 @@ class ReferralSignPayloadTest extends TestCase
         $this->assertSame($activity->uuid, $payload['based_on_uuid']);
     }
 
+    public function test_encounter_group_referral_keeps_group_identity_in_storage_and_sign_content(): void
+    {
+        $groupId = (string) Str::uuid();
+        $employee = [
+            'employee_id' => $this->employee->id, 'employee_uuid' => $this->employee->uuid,
+            'legal_entity_uuid' => $this->legalEntity->uuid,
+        ];
+        $lifecycle = app(ReferralRequestLifecycleService::class);
+        $uuid = $lifecycle->createEncounterDraft($this->encounter, [
+            'kind' => 'service_request', 'service_id' => $groupId, 'service_type' => 'service_group',
+            'category' => 'laboratory_procedure', 'started_at' => '2026-11-01T10:00:00Z',
+            'ended_at' => '2026-11-02T10:00:00Z',
+        ], 2, $employee);
+        $record = Repository::serviceRequest()->findByUuid($uuid);
+        $resource = Repository::serviceRequest()->getResource($record);
+        $this->assertSame($groupId, data_get($resource, 'code.identifier.value'));
+        $this->assertSame('service_group', data_get($resource, 'code.identifier.type.coding.0.code'));
+        $form = $lifecycle->buildSignDbData($record, null, null, $employee);
+        $content = \App\Livewire\Referral\Forms\ServiceRequestForm::buildCreateContent(Fhir::serviceRequest()->toFhir($form, $employee));
+        $this->assertSame($groupId, data_get($content, 'code.identifier.value'));
+        $this->assertSame('service_group', data_get($content, 'code.identifier.type.coding.0.code'));
+    }
+
     public function test_encounter_draft_keeps_subsecond_occurrence_before_persistence(): void
     {
         $period = ['start' => '2026-11-01T10:20:30.123456Z', 'end' => '2026-11-02T10:20:30.654321Z'];

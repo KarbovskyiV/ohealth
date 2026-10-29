@@ -153,6 +153,8 @@ return [
     'activate_plan_patient_approval' => 'Request patient approval',
     'minutes' => 'min',
     'service_selection_unavailable' => 'The service or group is unavailable. Refresh the search.',
+    'service_group_referral_not_allowed' => 'The service group is inactive or not allowed for a referral. Refresh the catalog or choose another activity.',
+    'referral_categories_unavailable' => 'Referral categories could not be loaded. Reopen the form.',
     'lifecycle_access_required' => 'A current patient write approval is required to change the plan status. Only the author can cancel the plan.',
     'cancel_care_plan' => 'Cancel Care Plan',
     'complete_care_plan' => 'Complete Care Plan',

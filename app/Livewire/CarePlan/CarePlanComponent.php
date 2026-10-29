@@ -161,6 +161,12 @@ abstract class CarePlanComponent extends Component
     #[Locked]
     public string $referralServiceCategory = '';
 
+    #[Locked]
+    public string $referralServiceType = 'service';
+
+    #[Locked]
+    public array $referralCategoryOptions = [];
+
     /** Package step for device eRx (packaging_count); 0 when unknown / service referral. */
     #[Locked]
     public int $referralDevicePackageQty = 0;
