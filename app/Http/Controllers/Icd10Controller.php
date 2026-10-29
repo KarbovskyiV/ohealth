@@ -61,4 +61,21 @@ class Icd10Controller extends Controller
 
         return response()->json($codes);
     }
+
+    /**
+     * Get the descriptions of the given ICD-10 codes keyed by code. Inactive codes are included, as the stored
+     * records may still use them.
+     *
+     * @param  Request  $request
+     * @return JsonResponse
+     */
+    public function descriptions(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'codes' => ['required', 'array'],
+            'codes.*' => ['required', 'string', 'max:255']
+        ]);
+
+        return response()->json(Icd10::whereIn('code', $validated['codes'])->pluck('description', 'code'));
+    }
 }
