@@ -119,6 +119,8 @@ class CarePlanIndex extends Component
         }
         $outcome = $this->carePlanSyncOutcome($this->syncBatchIds);
         if ($outcome === null) {
+            $this->skipRender();
+
             return;
         }
         $outcome['success'] = $outcome['success'] && !$this->syncInitiationFailed;

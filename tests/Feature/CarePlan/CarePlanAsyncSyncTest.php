@@ -61,6 +61,12 @@ class CarePlanAsyncSyncTest extends TestCase
         Queue::assertPushed(CarePlanFullSync::class, fn ($job): bool => $job->resourceUuid === $summary['id'] && $job->synchronizeDeclarations);
         Queue::assertPushed(CarePlanFullSync::class, fn ($job): bool => $job->resourceUuid === null && (new ReflectionProperty($job, 'page'))->getValue($job) === 2);
 
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $component->call('checkSyncStatus')->assertSet('syncBatchId', $batch->id);
+        $this->assertSame([], array_values(array_filter(DB::getQueryLog(), static fn ($query): bool => str_contains($query['query'], 'from "care_plans"'))));
+        DB::disableQueryLog();
+
         $component->call('sync')->assertSee(__('care-plan.sync_running'));
         Queue::assertPushed(CarePlanFullSync::class, 2);
         DB::table('job_batches')->where('id', $batch->id)->update(['pending_jobs' => 0, 'finished_at' => time()]);

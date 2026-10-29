@@ -107,11 +107,13 @@ class PatientCarePlans extends BasePatientComponent
             return;
         }
         $outcome = $this->carePlanSyncOutcome([$this->syncBatchId]);
-        $this->loadCarePlans();
         if ($outcome === null) {
+            $this->skipRender();
+
             return;
         }
         $this->syncBatchId = null;
+        $this->loadCarePlans();
         $this->flashCarePlanSyncOutcome($outcome);
     }
 
