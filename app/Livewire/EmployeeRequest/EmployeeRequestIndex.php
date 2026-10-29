@@ -103,11 +103,7 @@ class EmployeeRequestIndex extends EmployeeComponent
         // Set the sync status only for EmployeeRequest
         $this->syncStatus = $this->getSyncStatus();
 
-        // Determine if either the EmployeeRequest's sync is in progress
-        $employeeRequestSync = $this->isEntitySyncIsInProgress($this->syncStatus);
-
-        // Return true if either sync is in progress
-        return $employeeRequestSync;
+        return legalEntity()?->isSyncBlocked(LegalEntity::ENTITY_EMPLOYEE_REQUEST) ?? false;
     }
 
     public function boot(): void

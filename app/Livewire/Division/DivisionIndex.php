@@ -27,7 +27,7 @@ use App\Notifications\SyncNotification;
 use App\Traits\BatchLegalEntityQueries;
 use App\Livewire\Division\Trait\HasAction;
 use Illuminate\Pagination\LengthAwarePaginator;
-use \App\Enums\Division\Status as DivisionStatus;
+use App\Enums\Division\Status as DivisionStatus;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 
@@ -99,14 +99,11 @@ class DivisionIndex extends DivisionComponent
      */
     protected function isSyncProcessing(): bool
     {
-        // Get the sync status for whole Legal Entity
-        $legalEntitySyncStatus = legalEntity()?->getEntityStatus();
-
         // Get the sync status only for Division
         $this->syncStatus = $this->getSyncStatus();
 
-        // Determine if either the Legal Entity's sync is in progress
-        $legalEntitySync = $this->isEntitySyncIsInProgress($legalEntitySyncStatus, true);
+        // Require the overall synchronization to be completed
+        $legalEntitySync = legalEntity()?->isSyncBlocked() ?? false;
 
         // Determine if either the Division's sync is in progress
         $divisionSync = $this->isEntitySyncIsInProgress($this->syncStatus);
@@ -129,7 +126,7 @@ class DivisionIndex extends DivisionComponent
         $this->typeFilter = Division::getValidDivisionTypes();
     }
 
-     public function search(): void
+    public function search(): void
     {
         $this->resetPage();
         $this->isFiltersApplied = true;

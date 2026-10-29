@@ -117,20 +117,13 @@ class EmployeeIndex extends EmployeeComponent
      */
     protected function isSyncProcessing(): bool
     {
-        // Get the sync status for whole Legal Entity
-        $legalEntitySyncStatus = legalEntity()?->getEntityStatus();
-
         // Set the sync status only for Employee
         $this->syncStatus = $this->getSyncStatus();
 
-        // Determine if either the Legal Entity's sync is in progress
-        $legalEntitySync = $this->isEntitySyncIsInProgress($legalEntitySyncStatus, true);
-
-        // Determine if either the Division's sync is in progress
-        $employeeSync = $this->isEntitySyncIsInProgress($this->syncStatus);
-
-        // Return true if either sync is in progress
-        return $legalEntitySync || $employeeSync;
+        return legalEntity()?->isSyncBlocked(
+            LegalEntity::ENTITY_EMPLOYEE,
+            [LegalEntity::ENTITY_DIVISION]
+        ) ?? false;
     }
 
     public function boot(): void

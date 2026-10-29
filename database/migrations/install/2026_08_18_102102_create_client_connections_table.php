@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('secret')->nullable()->comment('Legal Entity connection token');
             $table->string('redirect_uri')->nullable();
             $table->string('status')->default(ConnectionStatus::ACTIVE)->comment('Connection status at the MIS side');
+            $table->boolean('is_synced')->default(false);
 
             $table->timestamp('ehealth_inserted_at')->nullable();
             $table->timestamp('ehealth_updated_at')->nullable();

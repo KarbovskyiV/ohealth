@@ -48,15 +48,11 @@ trait BatchLegalEntityQueries
      * If returns true the sync entity button's got the "disabled" state.
      *
      * @param  string|null  $entityStatus  The synchronization status of the entity to check
-     * @param  bool  $isLegalEntity
      * @return bool Returns true if the entity sync status is valid/successful for sync, false otherwise
      */
-    protected function isEntitySyncIsInProgress(?string $entityStatus = null, bool $isLegalEntity = false): bool
+    protected function isEntitySyncIsInProgress(?string $entityStatus = null): bool
     {
-        return $entityStatus !== JobStatus::COMPLETED->value &&
-               $entityStatus !== JobStatus::PAUSED->value &&
-               $entityStatus !== JobStatus::FAILED->value &&
-               !empty($entityStatus);
+        return JobStatus::tryFrom($entityStatus ?? '')?->blocksSync() ?? !empty($entityStatus);
     }
 
     /**
@@ -592,7 +588,8 @@ trait BatchLegalEntityQueries
             $job = new ConnectionClientSync(
                 misConnection: $model,
                 legalEntity: $legalEntity,
-                nextEntity: $previousJob
+                nextEntity: $previousJob,
+                isFirstLogin: $this instanceof EHealthJob && $this->isFirstLogin
             );
 
             $previousJob = $job;

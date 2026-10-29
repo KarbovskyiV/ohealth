@@ -262,6 +262,28 @@ class LegalEntityRepository
     }
 
     /**
+     * Reset this LegalEntity's sync flags, or remove unseen connections when the sync is complete.
+     */
+    public function setConnectionSyncStatus(LegalEntityModel $legalEntity, bool $isSynced=true): bool
+    {
+        try {
+            DB::transaction(function () use ($legalEntity, $isSynced) {
+                if ($isSynced) {
+                    $legalEntity->connections()->where('is_synced', false)->delete();
+                } else {
+                    $legalEntity->connections()->update(['is_synced' => $isSynced]);
+                }
+            });
+        } catch (Exception $exception) {
+            $this->handleDatabaseErrors($exception, __('Error occurred while trying to save connections'), __('Error occurred while trying to save connections'));
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Synchronize connections from eHealth with the local database.
      *
      * @param  array  $connections  Array of connection data from eHealth API.
@@ -297,6 +319,7 @@ class LegalEntityRepository
                 'consumer_uuid' => $connection['consumer_uuid'],
                 'redirect_uri' => $connection['redirect_uri'],
                 'secret' => $connection['secret'] ?? null,
+                'is_synced' => true,
                 "ehealth_inserted_at" => $connection['ehealth_inserted_at'] ?? null,
                 "ehealth_updated_at" => $connection['ehealth_updated_at'] ?? null,
                 'created_at' => now(),
@@ -311,7 +334,7 @@ class LegalEntityRepository
         }
 
         if (!empty($connectionsData)) {
-            $columnsToUpdate = ['client_uuid', 'consumer_uuid', 'redirect_uri', 'ehealth_inserted_at', 'ehealth_updated_at'];
+            $columnsToUpdate = ['client_uuid', 'consumer_uuid', 'redirect_uri', 'is_synced', 'ehealth_inserted_at', 'ehealth_updated_at'];
 
             if ($status !== null) {
                 $columnsToUpdate[] = 'status';

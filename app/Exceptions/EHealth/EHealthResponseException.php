@@ -205,6 +205,7 @@ class EHealthResponseException extends EHealthException
         return match ($message) {
             'Active parent declaration was not found' => 'errors.ehealth.messages.active_parent_declaration_not_found',
             'Identity, password combination is wrong.' => 'auth.login.error.validation.credentials',
+            'You reached login attempts limit. Try again later' => 'auth.login.error.throttle',
             'The redirection URI provided does not match a pre-registered value.' => 'errors.ehealth.messages.redirect_uri_mismatch',
             default => null,
         };
