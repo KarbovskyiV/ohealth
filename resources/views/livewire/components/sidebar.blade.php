@@ -4,6 +4,7 @@
     use App\Models\Person\{Person,PersonRequest};
     use App\Models\Connection;
     use App\Models\Preperson;
+    use App\Models\MedicalEvents\Sql\Specimen;
     use App\Models\Relations\PersonVerificationDetail;
     use App\Enums\Status;
     use Illuminate\Support\Facades\Auth;
@@ -438,15 +439,17 @@
                     </li>
                 @endif
 
-                <li>
-                    <a
-                        href="{{ route('specimens.index', [legalEntity()]) }}"
-                        class="menu-item-simple {{ request()->routeIs('specimens.*') ? 'menu-item-active' : '' }}"
-                    >
-                        @icon('sample-outline')
-                        <span>{{ __('specimens.sidebar_title') }}</span>
-                    </a>
-                </li>
+                @can('view', Specimen::class)
+                    <li>
+                        <a
+                            href="{{ route('specimens.index', [legalEntity()]) }}"
+                            class="menu-item-simple {{ request()->routeIs('specimens.*') ? 'menu-item-active' : '' }}"
+                        >
+                            @icon('sample-outline')
+                            <span>{{ __('specimens.sidebar_title') }}</span>
+                        </a>
+                    </li>
+                @endcan
 
                 @can('viewAny', Equipment::class)
                     <li>

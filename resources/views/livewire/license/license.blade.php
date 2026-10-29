@@ -1,5 +1,6 @@
-<div class="form shift-content"
-     x-data="{
+<div
+    class="form shift-content"
+    x-data="{
           licenseType: $wire.entangle('form.type'),
           licenseTypes: @js($licenseTypes)
       }"
@@ -8,15 +9,15 @@
         <div class="form-group">
             <input
                 type="text"
-                name="licenseType"
-                id="licenseType"
+                name="isPrimary"
+                id="isPrimary"
                 class="peer input dark:text-gray-400"
                 value="{{ __('licenses.not_primary') }}"
                 placeholder=" "
                 disabled
             />
 
-            <label for="licenseType" class="label">{{ __('licenses.kind') }}</label>
+            <label for="isPrimary" class="label">{{ __('licenses.kind') }}</label>
         </div>
 
         <div class="form-group">
@@ -33,7 +34,7 @@
             <label for="orderNumber" class="label">{{ __('licenses.order_no') }}</label>
 
             @error('form.orderNo')
-            <p class="text-error">{{ $message }}</p>
+                <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
     </div>
@@ -64,23 +65,21 @@
                     this.selected = label;
                     licenseType = key;
                     this.open = false;
-                }
+                },
             }"
             @click.away="open = false"
         >
             <div class="relative w-full">
                 <div
-                    class="input-select peer cursor-pointer whitespace-normal wrap-break-word min-h-12 px-3 py-2 pr-10"
-                    @click="open = !open"
+                    class="input-select peer min-h-12 cursor-pointer px-3 py-2 pr-10 wrap-break-word whitespace-normal"
+                    @click="open = ! open"
                     :class="{ 'ring-1 ring-blue-500 border-blue-500': open }"
                 >
                     <span x-text="selected || @js(__('licenses.type.placeholder'))"></span>
-                    <span
-                        class="absolute right-3 top-1/2 w-2 h-2 border-r-2 border-b-2 border-gray-500 dark:border-gray-400 transform -translate-y-1/2 rotate-45 pointer-events-none"
-                    ></span>
+                    <span class="pointer-events-none absolute top-1/2 right-3 h-2 w-2 -translate-y-1/2 rotate-45 transform border-r-2 border-b-2 border-gray-500 dark:border-gray-400"></span>
                 </div>
 
-                <ul x-show="open" x-transition x-cloak class="dropdown-panel w-full max-h-60 overflow-auto z-10">
+                <ul x-show="open" x-transition x-cloak class="dropdown-panel z-10 max-h-60 w-full overflow-auto">
                     @foreach ($licenseTypes as $key => $label)
                         <li>
                             <button
@@ -92,17 +91,16 @@
                                     'rounded-t-md' => $loop->first,
                                     'rounded-b-md' => $loop->last
                                 ])
-                            >
-                            </button>
+                            ></button>
                         </li>
                     @endforeach
                 </ul>
 
                 <label class="label" for="licenseType">{{ __('licenses.type.label') }}</label>
-                <input type="hidden" name="licenseType" :value="selected">
+                <input type="hidden" name="licenseType" :value="selected" />
 
                 @error('form.type')
-                <p class="text-error">{{ $message }}</p>
+                    <p class="text-error">{{ $message }}</p>
                 @enderror
             </div>
         </div>
@@ -122,7 +120,7 @@
             <label for="issuedBy" class="label">{{ __('licenses.issued_by') }}</label>
 
             @error('form.issuedBy')
-            <p class="text-error">{{ $message }}</p>
+                <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
 
@@ -139,7 +137,7 @@
             <label for="whatLicensed" class="label">{{ __('licenses.what_licensed') }}</label>
 
             @error('form.whatLicensed')
-            <p class="text-error">{{ $message }}</p>
+                <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
     </div>
@@ -157,7 +155,7 @@
             <label for="licenseNumber" class="label">{{ __('licenses.number') }}</label>
 
             @error('form.licenseNumber')
-            <p class="text-error">{{ $message }}</p>
+                <p class="text-error">{{ $message }}</p>
             @enderror
         </div>
 
@@ -175,7 +173,9 @@
                 <label for="dateOfLicenseIssuance" class="wrapped-label">{{ __('licenses.issued_date') }}</label>
             </div>
 
-            @error('form.issuedDate') <p class="text-error">{{ $message }}</p> @enderror
+            @error('form.issuedDate')
+                <p class="text-error">{{ $message }}</p>
+            @enderror
         </div>
     </div>
 
@@ -194,7 +194,9 @@
                 <label for="activeFromDate" class="wrapped-label">{{ __('licenses.active_from_date') }}</label>
             </div>
 
-            @error('form.activeFromDate') <p class="text-error">{{ $message }}</p> @enderror
+            @error('form.activeFromDate')
+                <p class="text-error">{{ $message }}</p>
+            @enderror
         </div>
 
         <div class="form-group">
@@ -211,7 +213,9 @@
                 <label for="expiryDate" class="wrapped-label">{{ __('licenses.expiry_date') }}</label>
             </div>
 
-            @error('form.expiryDate') <p class="text-error">{{ $message }}</p> @enderror
+            @error('form.expiryDate')
+                <p class="text-error">{{ $message }}</p>
+            @enderror
         </div>
     </div>
 
