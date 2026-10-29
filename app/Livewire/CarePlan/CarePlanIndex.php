@@ -6,7 +6,6 @@ namespace App\Livewire\CarePlan;
 
 use App\Traits\SynchronizesCarePlans;
 
-use App\Classes\eHealth\EHealth;
 use App\Repositories\CarePlanRepository;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;

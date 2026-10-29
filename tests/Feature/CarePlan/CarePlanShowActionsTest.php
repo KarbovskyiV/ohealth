@@ -109,6 +109,29 @@ class CarePlanShowActionsTest extends TestCase
         $this->grantMedicalEventAbilities($this->user);
     }
 
+    public function test_plan_detail_sync_keeps_patient_and_approval_context_in_its_job_payload(): void
+    {
+        $this->actingAs($this->user);
+        $plan = $this->makeSignedNewPlan();
+        session()->put(config('ehealth.api.oauth.bearer_token'), 'synthetic-token');
+        \Illuminate\Support\Facades\Bus::fake();
+
+        Livewire::test(CarePlanShow::class, ['carePlan' => $plan])->call('sync')->assertHasNoErrors();
+
+        \Illuminate\Support\Facades\Bus::assertBatched(function (\Illuminate\Bus\PendingBatch $batch) use ($plan): bool {
+            $job = $batch->jobs->first();
+            $this->assertSame($plan->uuid, $job->resourceUuid);
+            $this->assertSame([
+                'patient_uuid' => $this->person->uuid,
+                'person_id' => $this->person->id,
+                'patient_care_plan_registry' => true,
+                'care_plan_approvals' => true,
+            ], $job->patientContext);
+
+            return true;
+        });
+    }
+
     public function test_approved_plan_loads_report_identifier_codes_and_preserves_patient_isolation(): void
     {
         $this->actingAs($this->user);

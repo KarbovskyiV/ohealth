@@ -45,14 +45,19 @@ trait HandlesCarePlanSync
             if ($running !== null) {
                 return $running->id;
             }
-            $jobs = [new CarePlanFullSync($legalEntity, standalone: true)];
+            $patientContext = [
+                'patient_uuid' => $person->uuid,
+                'person_id' => $person->id,
+                'patient_care_plan_registry' => true,
+            ];
+            $jobs = [new CarePlanFullSync($legalEntity, standalone: true, patientContext: $patientContext)];
             if ($firstPageSynchronously) {
                 $response = EHealth::carePlan()->withToken($token)->getBySearchParams($person->uuid, ['page' => 1]);
                 $summaries = $response->validate();
                 Repository::carePlan()->storeSummaries($summaries, $person->id, $legalEntity->id);
-                $jobs = CarePlanFullSync::detailJobs($summaries, $legalEntity, synchronizeDeclarations: true);
+                $jobs = CarePlanFullSync::detailJobs($summaries, $legalEntity, $patientContext);
                 if ($response->isNotLast()) {
-                    $jobs[] = new CarePlanFullSync($legalEntity, page: 2, standalone: true, synchronizeDeclarations: $jobs === []);
+                    $jobs[] = new CarePlanFullSync($legalEntity, page: 2, standalone: true, patientContext: $patientContext);
                 }
             }
             if ($jobs === []) {

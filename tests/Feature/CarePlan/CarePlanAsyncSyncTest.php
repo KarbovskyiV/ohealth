@@ -58,7 +58,7 @@ class CarePlanAsyncSyncTest extends TestCase
         $this->assertTrue($batch->options['patient_care_plan_registry']);
         $this->assertSame('database', $batch->options['connection']);
         Queue::assertPushed(CarePlanFullSync::class, 2);
-        Queue::assertPushed(CarePlanFullSync::class, fn ($job): bool => $job->resourceUuid === $summary['id'] && $job->synchronizeDeclarations);
+        Queue::assertPushed(CarePlanFullSync::class, fn ($job): bool => $job->resourceUuid === $summary['id'] && $job->patientContext['patient_uuid'] === $person->uuid);
         Queue::assertPushed(CarePlanFullSync::class, fn ($job): bool => $job->resourceUuid === null && (new ReflectionProperty($job, 'page'))->getValue($job) === 2);
 
         DB::enableQueryLog();
