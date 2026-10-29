@@ -333,7 +333,7 @@ class CarePlanShowActionsTest extends TestCase
         $this->assertFalse($component->instance()->canRequestPatientApproval);
         $this->assertTrue($component->instance()->canChangePlanLifecycle);
         $component
-            ->assertDontSee(__('care-plan.activate_plan_patient_approval'))
+            ->assertDontSeeHtml('wire:click="openMethodSelectionModal"')
             ->assertSee(__('care-plan.cancel_care_plan'))
             ->assertDontSee(__('care-plan.complete_care_plan'));
     }
@@ -354,7 +354,7 @@ class CarePlanShowActionsTest extends TestCase
         $component
             ->assertDontSee(__('care-plan.cancel_care_plan'))
             ->assertDontSee(__('care-plan.complete_care_plan'))
-            ->assertDontSee(__('care-plan.activate_plan_patient_approval'))
+            ->assertDontSeeHtml('wire:click="openMethodSelectionModal"')
             ->assertSee(__('care-plan.status.cancelled'))
             ->assertSee(__('forms.synchronise_with_eHealth'))
             ->call('openSignatureModal', 'cancel')
