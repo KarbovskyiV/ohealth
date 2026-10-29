@@ -77,6 +77,8 @@ class ApprovalView extends Component
                 'grantedTo',
                 'createdBy',
                 'reason',
+                'grantedResources.grantedTo.type.coding',
+                'grantedResourceTypes.codeableConcept.coding',
                 'approvable' => static fn (MorphTo $morphTo) => $morphTo->morphWith([
                     Person::class => ['names'],
                     CarePlan::class => ['person.names'],

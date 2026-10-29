@@ -22,6 +22,7 @@ use App\Services\MedicalEvents\Mappers\ServiceRequestMapper;
 use App\Services\MedicalEvents\Mappers\DetectedIssueMapper;
 use App\Services\MedicalEvents\Mappers\DeviceDispenseMapper;
 use App\Services\MedicalEvents\Mappers\SpecimenMapper;
+use App\Services\MedicalEvents\Mappers\ApprovalMapper;
 
 final class Fhir
 {
@@ -123,5 +124,10 @@ final class Fhir
     public static function encounterPackageLoader(): EncounterPackageLoader
     {
         return app(EncounterPackageLoader::class);
+    }
+
+    public static function approval(): ApprovalMapper
+    {
+        return app(ApprovalMapper::class);
     }
 }

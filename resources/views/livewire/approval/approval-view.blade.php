@@ -42,10 +42,20 @@
                 <div class="form-group group">
                     <span class="label">{{ __('approval.data_type') }}</span>
                     <div class="input h-auto min-h-10.5 py-2.5 wrap-break-word whitespace-normal text-sm">
-                        {{ match ($approval->approvableType) {
-                            Person::class => __('patients.data_access_types.all'),
-                            CarePlan::class => __('care-plan.care_plan'),
-                        } }}
+                        @php
+                            $type = data_get($approval, 'grantedResources.0.grantedTo.identifier.type.coding.0.code')
+                                ?? data_get($approval, 'grantedResourceTypes.0.codeableConcept.coding.0.code');
+
+                            $typeLabel = $type
+                                ? __('approval.resource_types.'.$type)
+                                : match ($approval->approvableType) {
+                                    Person::class => __('patients.data_access_types.all'),
+                                    CarePlan::class => __('care-plan.care_plan'),
+                                    default => '-',
+                                };
+                        @endphp
+
+                        {{ $typeLabel }}
                     </div>
                 </div>
             </div>
@@ -69,7 +79,7 @@
                 <div class="form-group group">
                     <span class="label">{{ __('approval.granted_to') }}</span>
                     <div class="input h-auto min-h-10.5 py-2.5 wrap-break-word whitespace-normal text-sm">
-                        {{ __('forms.employee').' '.Auth::user()->activeDoctorEmployee()->fullName }}
+                        {{ $approval->grantedTo?->displayValue ?? '-' }}
                     </div>
                 </div>
                 <div class="form-group group">
