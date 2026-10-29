@@ -60,7 +60,7 @@ class DivisionEdit extends DivisionComponent
      *
      * This method is automatically called by Livewire when the
      * divisionForm.division.location.latitude property is updated.
-     * Numeric input is stored as a float; invalid input is kept for validation.
+     * Numeric input is kept as decimal text; invalid input is kept for validation.
      *
      * @param  mixed  $value  The value for latitude from input field
      * @return void
@@ -75,7 +75,7 @@ class DivisionEdit extends DivisionComponent
      *
      * This method is automatically called by Livewire when the
      * divisionForm.division.location.longitude property is updated.
-     * Numeric input is stored as a float; invalid input is kept for validation.
+     * Numeric input is kept as decimal text; invalid input is kept for validation.
      *
      * @param  mixed  $value  The value for latitude from input field
      * @return void

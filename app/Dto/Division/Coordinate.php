@@ -23,10 +23,6 @@ class Coordinate
 
     public static function normalizeInput(mixed $value): mixed
     {
-        $normalized = Location::normalizeCoordinate($value);
-
-        return \is_float($normalized)
-            ? (float) number_format($normalized, 6, '.', '')
-            : $value;
+        return Location::normalizeCoordinate($value);
     }
 }

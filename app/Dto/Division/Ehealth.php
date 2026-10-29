@@ -39,7 +39,7 @@ class Ehealth
     #[Map(source: 'division[phones]', transform: [self::class, 'transformPhones'])]
     public array $phones = [];
 
-    /** @var array{latitude: float|null, longitude: float|null}|null */
+    /** @var array{latitude: float|int|string|null, longitude: float|int|string|null}|null */
     #[Map(source: 'division[location]')]
     public ?array $location = null;
 
