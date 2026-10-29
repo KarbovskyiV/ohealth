@@ -7,7 +7,6 @@ namespace App\Jobs;
 use Throwable;
 use App\Core\Arr;
 use Carbon\Carbon;
-use App\Models\User;
 use App\Models\Division;
 use App\Core\EHealthJob;
 use App\Enums\JobStatus;
@@ -108,7 +107,7 @@ class EmployeeDetailsUpsert extends EHealthJob
             )
             ->latest('applied_at')->first();
 
-        $userID = User::where('email', $employeeEmployeeRequest?->email)->first()?->id ?? null;
+        $userId = Repository::user()->findIdByEmail($employeeEmployeeRequest?->email);
 
         $employeeEmployeeRequest?->update(['employee_id' => $this->employee->id]);
 
@@ -116,7 +115,7 @@ class EmployeeDetailsUpsert extends EHealthJob
             'division_uuid' => $divisionUuid,
             'inserted_at' => Carbon::parse($employeeEmployeeRequest?->appliedAt)->format('Y-m-d H:i:s'),
             'division_id' => $divisionId,
-            'user_id' => $this->employee->userId ?? $userID
+            'user_id' => $this->employee->userId ?? $userId
         ]);
 
         Repository::party()->syncUserEmployeesAndRoles($this->employee->party, $this->legalEntity);

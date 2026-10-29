@@ -84,6 +84,9 @@ class CarePlanFullSync extends PatientEHealthJob
         $query = ['page' => $this->page];
         if (!$this->isPatientRegistrySync()) {
             $query['managing_organization_id'] = $this->legalEntity->uuid;
+            if ($this->patientUuid === null) {
+                return $api->getMany($query);
+            }
         }
 
         return $api->getBySearchParams($this->patientUuid, $query);

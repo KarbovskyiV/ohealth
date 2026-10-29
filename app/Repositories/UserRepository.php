@@ -11,6 +11,12 @@ use Illuminate\Database\Eloquent\Collection;
 
 class UserRepository
 {
+    public function findIdByEmail(?string $email): ?int
+    {
+        // A scalar lookup must not hydrate User and eager load person without its foreign key.
+        return $email === null ? null : User::whereEmail($email)->toBase()->value('id');
+    }
+
     /**
      * Get list of users that:
      * 1) have permission 'division:write'
