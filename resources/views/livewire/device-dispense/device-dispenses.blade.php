@@ -15,6 +15,8 @@
 
         <button
             @if (!$isSyncing) wire:click="sync" @endif
+            wire:loading.attr="disabled"
+            wire:target="sync"
             type="button"
             @if ($isSyncing) disabled @endif
             class="flex items-center gap-2 whitespace-nowrap px-5 py-2 text-sm shadow-sm transition-colors

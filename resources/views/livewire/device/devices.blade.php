@@ -12,11 +12,10 @@
 >
     <x-slot name="headerActions">
         <div class="flex flex-wrap items-center gap-2">
-            <button type="button" class="button-primary-outline m-0! px-4 py-2 text-sm shadow-sm">
-                {{ __('patients.data_access') }}
-            </button>
             <button
                 wire:click.prevent="sync"
+                wire:loading.attr="disabled"
+                wire:target="sync"
                 type="button"
                 class="button-sync m-0! flex items-center gap-2 px-4 py-2 text-sm shadow-sm"
             >
