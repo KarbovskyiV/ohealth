@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Repositories;
+namespace Tests\Unit\Employee;
 
 use App\Models\User;
 use App\Repositories\UserRepository;
@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class UserIdLookupTest extends TestCase
+class EmployeeSyncUserIdLookupTest extends TestCase
 {
     protected function setUp(): void
     {
