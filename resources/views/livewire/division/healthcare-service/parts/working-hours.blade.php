@@ -1,12 +1,27 @@
+@php
+    $availableTimeIndexes = array_flip(
+        array_map(static fn (array $availableTime): string => $availableTime['daysOfWeek'][0], $this->form->availableTime ?? [])
+    );
+@endphp
+
+{{-- Not available periods are drawn by Alpine, so they read their errors from the data attribute, read again each
+     time the component has been redrawn --}}
 <fieldset
     class="fieldset"
+    data-not-available-errors="{{ json_encode($errors->get('form.notAvailable.*')) }}"
     x-data="{
               working: $wire.entangle('working'),
               localAvailableTime: [],
               isDisabled: $wire.entangle('isDisabled'),
               weekdaysKeys: {{ json_encode(array_keys($weekdays)) }},
               notAvailable: [],
+              notAvailableErrors: {},
+              unhookMorphed: null,
+
               init() {
+                  this.notAvailableErrors = JSON.parse(this.$root.dataset.notAvailableErrors);
+                  this.unhookMorphed = this.$wire.$hook('morphed', () => this.notAvailableErrors = JSON.parse(this.$root.dataset.notAvailableErrors));
+
                   this.notAvailable = $wire.form.notAvailable || [];
 
                   this.notAvailable = this.notAvailable.map(item => ({
@@ -66,6 +81,15 @@
                       $wire.form.notAvailable = value;
                   }, { deep: true });
               },
+
+              destroy() {
+                  this.unhookMorphed();
+              },
+
+              notAvailableError(index, field) {
+                  return (this.notAvailableErrors[`form.notAvailable.${index}.${field}`] ?? [])[0] ?? '';
+              },
+
               addNotAvailable() {
                   this.notAvailable.push({
                       frontendId: Date.now() + Math.random(),
@@ -198,6 +222,11 @@
                                         x-bind:disabled="isDisabled"
                                     />
                                 </div>
+                                @isset($availableTimeIndexes[$key])
+                                    @error("form.availableTime.$availableTimeIndexes[$key].availableStartTime")
+                                        <p class="text-error">{{ $message }}</p>
+                                    @enderror
+                                @endisset
                             </div>
 
                             {{-- End --}}
@@ -238,6 +267,11 @@
                                         x-bind:disabled="isDisabled"
                                     />
                                 </div>
+                                @isset($availableTimeIndexes[$key])
+                                    @error("form.availableTime.$availableTimeIndexes[$key].availableEndTime")
+                                        <p class="text-error">{{ $message }}</p>
+                                    @enderror
+                                @endisset
                             </div>
                         </div>
                     </div>
@@ -271,6 +305,7 @@
                                 name="start"
                                 :id="'startDate-' + idx"
                                 class="peer input datepicker-input appearance-none pl-10 dark:text-white"
+                                :class="{ 'input-error': notAvailableError(idx, 'during.startDate') }"
                                 placeholder=" "
                                 required
                                 datepicker-autohide
@@ -280,6 +315,11 @@
                             <label :for="'startDate-' + idx" class="wrapped-label">
                                 {{ __('healthcare-services.start_non_working_time') }}
                             </label>
+                            <p
+                                class="text-error"
+                                x-show="notAvailableError(idx, 'during.startDate')"
+                                x-text="notAvailableError(idx, 'during.startDate')"
+                            ></p>
                         </div>
 
                         <div class="form-group w-full">
@@ -311,10 +351,16 @@
                                     class="input timepicker-uk border-t-0 border-r-0 border-b border-l-0 border-gray-300 px-0 ps-8 text-gray-900 focus:ring-0 dark:border-gray-700 dark:text-white"
                                     placeholder="00:00"
                                     :id="'startTime-' + idx"
+                                    :class="{ 'input-error': notAvailableError(idx, 'during.startTime') }"
                                     x-model="period.during.startTime"
                                     x-bind:disabled="isDisabled"
                                 />
                             </div>
+                            <p
+                                class="text-error"
+                                x-show="notAvailableError(idx, 'during.startTime')"
+                                x-text="notAvailableError(idx, 'during.startTime')"
+                            ></p>
                         </div>
                     </div>
 
@@ -326,6 +372,7 @@
                                 name="end"
                                 :id="'endDate-' + idx"
                                 class="peer input datepicker-input appearance-none pl-10 dark:text-white"
+                                :class="{ 'input-error': notAvailableError(idx, 'during.endDate') }"
                                 placeholder=" "
                                 required
                                 datepicker-autohide
@@ -335,6 +382,11 @@
                             <label :for="'endDate-' + idx" class="wrapped-label">
                                 {{ __('healthcare-services.end_non_working_time') }}
                             </label>
+                            <p
+                                class="text-error"
+                                x-show="notAvailableError(idx, 'during.endDate')"
+                                x-text="notAvailableError(idx, 'during.endDate')"
+                            ></p>
                         </div>
 
                         <div class="form-group w-full">
@@ -366,10 +418,16 @@
                                     class="input timepicker-uk border-t-0 border-r-0 border-b border-l-0 border-gray-300 px-0 ps-8 text-gray-900 focus:ring-0 dark:border-gray-700 dark:text-white"
                                     placeholder="00:00"
                                     :id="'endTime-' + idx"
+                                    :class="{ 'input-error': notAvailableError(idx, 'during.endTime') }"
                                     x-model="period.during.endTime"
                                     x-bind:disabled="isDisabled"
                                 />
                             </div>
+                            <p
+                                class="text-error"
+                                x-show="notAvailableError(idx, 'during.endTime')"
+                                x-text="notAvailableError(idx, 'during.endTime')"
+                            ></p>
                         </div>
                     </div>
 
@@ -380,6 +438,7 @@
                             name="description"
                             :id="'description-' + idx"
                             class="peer input dark:text-white"
+                            :class="{ 'input-error': notAvailableError(idx, 'description') }"
                             placeholder=" "
                             x-bind:disabled="isDisabled"
                             required
@@ -387,6 +446,11 @@
                         <label :for="'description-' + idx" class="label">
                             {{ __('healthcare-services.comment_non_working_hours') }}
                         </label>
+                        <p
+                            class="text-error"
+                            x-show="notAvailableError(idx, 'description')"
+                            x-text="notAvailableError(idx, 'description')"
+                        ></p>
                     </div>
                 </div>
             </template>

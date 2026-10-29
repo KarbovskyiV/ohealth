@@ -16,6 +16,8 @@ use App\Classes\eHealth\Api\Responses\HealthcareServiceResponse;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Validator;
 use App\Classes\eHealth\EHealthRequest as Request;
+use App\Classes\eHealth\Errors\HealthcareServiceErrorTranslator;
+use App\Contracts\ApiErrorTranslator;
 
 class HealthcareService extends Request
 {
@@ -109,6 +111,16 @@ class HealthcareService extends Request
         $this->setValidator($this->validateResponse(...));
 
         return $this->patch(self::URL . '/' . $uuid . self::ACTIONS_DEACTIVATE);
+    }
+
+    /**
+     * Get the translator of the errors the healthcare service resource returns.
+     *
+     * @return ApiErrorTranslator
+     */
+    protected function errorTranslator(): ApiErrorTranslator
+    {
+        return new HealthcareServiceErrorTranslator();
     }
 
     /**

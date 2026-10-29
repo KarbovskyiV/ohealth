@@ -126,7 +126,7 @@ class HealthcareService extends Model
                 'created_at'
             ])
             ->with('division:id,name,status')
-            ->orderByDesc('ehealth_inserted_at')
+            ->orderByRaw('COALESCE(ehealth_inserted_at, created_at) DESC')
             ->orderByDesc('created_at');
     }
 

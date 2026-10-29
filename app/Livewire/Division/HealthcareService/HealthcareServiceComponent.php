@@ -106,6 +106,20 @@ class HealthcareServiceComponent extends Component
     }
 
     /**
+     * Speciality types as the list of options the searchable select expects.
+     *
+     * @return array
+     */
+    #[Computed]
+    public function specialityTypes(): array
+    {
+        return collect($this->dictionaries['SPECIALITY_TYPE'])
+            ->map(static fn (string $name, string $code): array => ['code' => $code, 'name' => $name])
+            ->values()
+            ->all();
+    }
+
+    /**
      * Validate form; on failure flash the first error and fill the error bag.
      *
      * @return bool
@@ -117,7 +131,7 @@ class HealthcareServiceComponent extends Component
 
             return true;
         } catch (ValidationException $exception) {
-            Session::flash('error', $exception->validator->errors()->first());
+            Session::flash('error', $this->form->notificationMessage($exception->validator->errors()));
             $this->setErrorBag($exception->validator->getMessageBag());
 
             return false;

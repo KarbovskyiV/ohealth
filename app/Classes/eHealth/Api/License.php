@@ -6,6 +6,8 @@ namespace App\Classes\eHealth\Api;
 
 use App\Classes\eHealth\EHealthRequest as Request;
 use App\Classes\eHealth\EHealthResponse;
+use App\Classes\eHealth\Errors\LicenseErrorTranslator;
+use App\Contracts\ApiErrorTranslator;
 use App\Exceptions\EHealth\EHealthResponseException;
 use App\Exceptions\EHealth\EHealthValidationException;
 use App\Rules\InDictionary;
@@ -87,6 +89,16 @@ class License extends Request
         }
 
         return $this->patch(self::URL . '/' . $uuid, $data);
+    }
+
+    /**
+     * Get the translator of the errors the license resource returns.
+     *
+     * @return ApiErrorTranslator
+     */
+    protected function errorTranslator(): ApiErrorTranslator
+    {
+        return new LicenseErrorTranslator();
     }
 
     /**

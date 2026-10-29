@@ -12,6 +12,8 @@ use Carbon\CarbonImmutable;
 use App\Enums\License\Type;
 use App\Enums\Division\Status;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\MessageBag;
+use Illuminate\Validation\Validator;
 use App\Models\HealthcareService;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\ValidationException;
@@ -199,8 +201,8 @@ class HealthcareServiceForm extends Form
     {
         return [
             'divisionId' => __('forms.division_name'),
-            'availableTime.*.availableStartTime' => mb_strtolower(__('forms.start_time')),
-            'availableTime.*.availableEndTime' => mb_strtolower(__('forms.end')),
+            'availableTime.*.availableStartTime' => __('healthcare-services.available_time_attributes.start_time'),
+            'availableTime.*.availableEndTime' => __('healthcare-services.available_time_attributes.end_time'),
             'notAvailable.*.during.startDate' => __('healthcare-services.not_available_attributes.start_date'),
             'notAvailable.*.during.startTime' => __('healthcare-services.not_available_attributes.start_time'),
             'notAvailable.*.during.endDate' => __('healthcare-services.not_available_attributes.end_date'),
@@ -225,8 +227,36 @@ class HealthcareServiceForm extends Form
             'type.coding.*.code.prohibited' => __('healthcare-services.validation.type_coding.prohibited_unless'),
             'licenseId.required' => __('healthcare-services.validation.license_id.required_if'),
             'licenseId.prohibited' => __('healthcare-services.validation.license_id.prohibited_if'),
+            'availableTime.*.availableEndTime.after' => __('healthcare-services.validation.available_time.end_after_start'),
             'notAvailable.*.during.endDate.after_or_equal' => __('healthcare-services.validation.not_available.end_date_after_start_date')
         ];
+    }
+
+    /**
+     * The first error for the notification, which names the day of the weekly schedule or the number of the not
+     * available period it concerns. The error under the field itself has neither, since the field already sits
+     * under the day's or the period's heading. The error key looks like form.availableTime.0.availableEndTime.
+     *
+     * @param  MessageBag  $errors
+     * @return string
+     */
+    public function notificationMessage(MessageBag $errors): string
+    {
+        $message = $errors->first();
+
+        [, $field, $index] = array_pad(explode('.', (string) array_key_first($errors->messages())), 3, null);
+
+        return match ($field) {
+            'availableTime' => __('healthcare-services.available_time_error', [
+                'day' => __('healthcare-services.available_time_days')[$this->availableTime[$index]['daysOfWeek'][0] ?? ''] ?? '',
+                'message' => mb_lcfirst($message)
+            ]),
+            'notAvailable' => __('healthcare-services.not_available_error', [
+                'position' => (int) $index + 1,
+                'message' => mb_lcfirst($message)
+            ]),
+            default => $message
+        };
     }
 
     /**
@@ -237,9 +267,9 @@ class HealthcareServiceForm extends Form
      */
     public function doValidation(): void
     {
-        $this->validate();
-
-        $this->validateNotAvailablePeriods();
+        $this->withValidator(
+            fn (Validator $validator): Validator => $validator->after($this->validateNotAvailablePeriods(...))
+        )->validate();
 
         $this->validateConstraint();
     }
@@ -252,35 +282,37 @@ class HealthcareServiceForm extends Form
      */
     public function doUpdateValidation(): void
     {
-        $this->validate($this->rulesForUpdating());
-
-        $this->validateNotAvailablePeriods();
+        $this->withValidator(
+            fn (Validator $validator): Validator => $validator->after($this->validateNotAvailablePeriods(...))
+        )->validate($this->rulesForUpdating());
     }
 
     /**
-     * Ensure each not available period ends strictly after it starts.
+     * Ensure each not available period ends strictly after it starts. Runs together with the rules, so its error
+     * comes along with the others; a period with an error of its own already is left out.
      *
+     * @param  Validator  $validator
      * @return void
-     * @throws ValidationException
      */
-    protected function validateNotAvailablePeriods(): void
+    protected function validateNotAvailablePeriods(Validator $validator): void
     {
         $format = config('app.date_format') . ' H:i';
 
         foreach ($this->notAvailable ?? [] as $index => $period) {
-            $during = $period['during'] ?? [];
-
-            if (!isset($during['startDate'], $during['startTime'], $during['endDate'], $during['endTime'])) {
+            if ($validator->errors()->has("notAvailable.$index.*")) {
                 continue;
             }
+
+            $during = $period['during'];
 
             $start = CarbonImmutable::createFromFormat('!' . $format, "{$during['startDate']} {$during['startTime']}");
             $end = CarbonImmutable::createFromFormat('!' . $format, "{$during['endDate']} {$during['endTime']}");
 
             if ($end->lessThanOrEqualTo($start)) {
-                throw ValidationException::withMessages([
-                    "notAvailable.$index.during.endTime" => __('healthcare-services.validation.not_available.end_after_start')
-                ]);
+                $validator->errors()->add(
+                    "notAvailable.$index.during.endTime",
+                    __('healthcare-services.validation.not_available.end_after_start')
+                );
             }
         }
     }
@@ -295,6 +327,7 @@ class HealthcareServiceForm extends Form
         $divisionId = Division::whereUuid($this->divisionId)->value('id');
         $categoryCode = data_get($this->category, 'coding.0.code');
         $typeCode = data_get($this->type, 'coding.0.code');
+        $component = $this->getComponent();
 
         if (!empty($this->specialityType) && !empty($this->providingCondition)) {
             $firstCheck = HealthcareService::whereDivisionId($divisionId)
@@ -305,7 +338,11 @@ class HealthcareServiceForm extends Form
 
             if ($firstCheck) {
                 throw ValidationException::withMessages([
-                    'unique_combination' => __('validation.attributes.healthcareService.constraint.typeAndCondition')
+                    'unique_combination' => __('validation.attributes.healthcareService.constraint.typeAndCondition', [
+                        'division' => $component->divisionName,
+                        'speciality' => $component->dictionaries['SPECIALITY_TYPE'][$this->specialityType],
+                        'condition' => $component->dictionaries['PROVIDING_CONDITION'][$this->providingCondition]
+                    ])
                 ]);
             }
         }
@@ -319,7 +356,11 @@ class HealthcareServiceForm extends Form
 
             if ($secondCheck) {
                 throw ValidationException::withMessages([
-                    'unique_combination' => __('validation.attributes.healthcareService.constraint.categoryAndType')
+                    'unique_combination' => __('validation.attributes.healthcareService.constraint.categoryAndType', [
+                        'division' => $component->divisionName,
+                        'category' => $component->dictionaries['HEALTHCARE_SERVICE_CATEGORIES'][$categoryCode],
+                        'type' => $component->dictionaries["HEALTHCARE_SERVICE_{$categoryCode}_TYPES"][$typeCode]
+                    ])
                 ]);
             }
         }
@@ -332,7 +373,10 @@ class HealthcareServiceForm extends Form
 
             if ($thirdCheck) {
                 throw ValidationException::withMessages([
-                    'unique_combination' => __('validation.attributes.healthcareService.constraint.categoryPharmacy')
+                    'unique_combination' => __('validation.attributes.healthcareService.constraint.categoryPharmacy', [
+                        'division' => $component->divisionName,
+                        'category' => $component->dictionaries['HEALTHCARE_SERVICE_CATEGORIES'][$categoryCode]
+                    ])
                 ]);
             }
         }
