@@ -75,7 +75,7 @@ class ServiceCatalog extends Component
             : $allServices;
 
         // Apply pagination
-        $perPage = config('pagination.per_page');
+        $perPage = max(1, (int) (config('pagination.per_page') ?: 10));
         $currentPage = Paginator::resolveCurrentPage();
         $currentPageItems = $filteredServices->forPage($currentPage, $perPage);
 

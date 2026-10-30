@@ -88,6 +88,7 @@ class EncounterStandalonePhase6Test extends TestCase
         $medicationId = (string) Str::uuid();
         $harness->encounterEPrescriptionSearchResults = [[
             'id' => $medicationId, 'packages' => [['package_min_qty' => 10]],
+            'ingredients' => [['dosage' => ['denumerator_unit' => 'TAB']]],
         ]];
         $harness->addError('encounterEPrescriptionForm.medication_id', 'Required');
         $harness->addError('encounterEPrescriptionForm.medication_qty', 'Invalid');

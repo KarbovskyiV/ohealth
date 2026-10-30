@@ -686,6 +686,7 @@ class CarePlanShowActionsTest extends TestCase
 
     public function test_service_catalog_filters_categories_and_resets_for_another_selection(): void
     {
+        config(['pagination.per_page' => '']);
         $this->actingAs($this->user);
         $groupId = (string) Str::uuid();
         $laboratoryId = (string) Str::uuid();
