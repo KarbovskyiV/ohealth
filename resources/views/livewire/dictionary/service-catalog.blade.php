@@ -34,6 +34,7 @@
                     </thead>
 
                     <tbody
+                        wire:key="service-catalog-tree-{{ $this->getId() }}-{{ md5(json_encode([$filterCodeOrName, $filterCategory, $filterServiceIsActive, $filterGroupIsActive, $filterRequestAllowed, $services->currentPage()])) }}"
                         x-data="{
                             openIds: {},
 

@@ -117,9 +117,11 @@ class EmployeeCriticalHighGapsTest extends TestCase
         $this->assertNotFalse($blade);
         $this->assertStringContainsString('keyContainerFileName', $blade);
         $this->assertStringContainsString('syncFileNameFromWire', $blade);
-        $this->assertStringContainsString(
-            "x-effect=\"if (!showSignatureModal) { if (\$refs.keyContainerUpload) \$refs.keyContainerUpload.value = ''; } else { syncFileNameFromWire(); }\"",
-            $blade
+        $this->assertSame(1, preg_match('/\bx-effect="([^"]*)"/s', $blade, $effectMatches));
+        // Pint may reformat the handler; both close and reopen branches must remain intact.
+        $this->assertSame(
+            "if(!showSignatureModal){if(\$refs.keyContainerUpload)\$refs.keyContainerUpload.value='';}else{syncFileNameFromWire();}",
+            preg_replace('/\s+/', '', $effectMatches[1])
         );
         $this->assertTrue(
             (new \ReflectionClass(\App\Livewire\Employee\Forms\EmployeeForm::class))

@@ -23,6 +23,9 @@ class ServiceRequestRequestRepository extends BaseRepository
 {
     use ResolvesRequestFhirRefs;
 
+    /** @var array<string, string>|null */
+    private ?array $serviceNames = null;
+
     public function __construct(ServiceRequestRequest $model)
     {
         parent::__construct($model);
@@ -44,6 +47,7 @@ class ServiceRequestRequestRepository extends BaseRepository
         if (empty($resource['id'])) {
             throw new \InvalidArgumentException('A mapped Service Request requires its identity.');
         }
+
         return $this->storageTransaction(function () use ($resource, $personId, $employeeId, $divisionId): int {
             $existing = $this->model->newQuery()->whereUuid($resource['id'])->lockForUpdate()->first();
             if ($existing !== null && $this->hasPendingSubmission($existing)) {
@@ -520,7 +524,12 @@ class ServiceRequestRequestRepository extends BaseRepository
             : '';
 
         $category = strtolower((string) ($request->category?->coding?->first()?->code ?? $request->category?->text ?? ''));
-        $categoryKey = 'care-plan.referral_category.'.$category;
+        $categoryKey = 'care-plan.referral_category.'.match ($category) {
+            'counselling' => 'counseling',
+            'laboratory' => 'laboratory_procedure',
+            'transfer_of_care' => 'transfer',
+            default => $category,
+        };
         $categoryLabel = $category !== '' && Lang::has($categoryKey)
             ? __($categoryKey)
             : ($category !== '' ? $category : '—');
@@ -534,7 +543,7 @@ class ServiceRequestRequestRepository extends BaseRepository
         $serviceId = (string) ($request->serviceId ?? '');
         $itemName = $serviceId !== '' && preg_match('/^[0-9a-f-]{36}$/i', $serviceId) !== 1
             ? $serviceId
-            : $categoryLabel;
+            : ($this->displayServiceName($serviceId) ?: $categoryLabel);
 
         $activityUuid = $request->basedOn?->value;
         $encounterUuid = $request->context?->value;
@@ -612,6 +621,21 @@ class ServiceRequestRequestRepository extends BaseRepository
     public function findByUuid(string $uuid): ?ServiceRequestRequest
     {
         return $this->model->newQuery()->where('uuid', $uuid)->first();
+    }
+
+    private function displayServiceName(string $serviceId): ?string
+    {
+        if ($serviceId === '') {
+            return null;
+        }
+
+        try {
+            $this->serviceNames ??= dictionary()->services()->flattened()->pluck('name', 'id')->all();
+
+            return $this->serviceNames[$serviceId] ?? null;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**

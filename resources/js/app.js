@@ -3,15 +3,19 @@ import 'flowbite';
 import './bootstrap';
 import './common';
 import './index';
+import { bindReferralDateRange } from './referral-date-range';
 
 import Datepicker from 'flowbite-datepicker/Datepicker';
 import uk from '../../node_modules/flowbite-datepicker/js/i18n/locales/uk.js';
 
 // Date input mask DD.MM.YYYY
+const dateMaskInputs = new WeakSet();
+
 function attachDateMask(el) {
-    if (el._date_mask_initialized) return;
-    el._date_mask_initialized = true;
     el.setAttribute('data-date-mask', 'true');
+    if (dateMaskInputs.has(el)) return;
+    dateMaskInputs.add(el);
+    el._date_mask_initialized = true;
 
     let lastInputType = '';
 
@@ -175,11 +179,24 @@ function attachDateMask(el) {
     });
 }
 
-// Selecting all elements with the 'datepicker-input' class
-document.addEventListener('DOMContentLoaded', () => {
-    function initDatepickers() {
-        document.querySelectorAll('.datepicker-input').forEach((datepickerEl) => {
-            if (datepickerEl._datepicker_initialized) {
+let dateInputsInitialized = false;
+
+function initializeDateInputs() {
+    if (dateInputsInitialized) return;
+    dateInputsInitialized = true;
+
+    function initDatepickers(root = document) {
+        const inputs = root.matches?.('.datepicker-input') ? [root] : root.querySelectorAll('.datepicker-input');
+        inputs.forEach((datepickerEl) => {
+            // A mask must be bound even if the picker has already been initialized.
+            attachDateMask(datepickerEl);
+
+            if (datepickerEl._datepicker_initialized && datepickerEl.datepicker?.picker) {
+                // Livewire can remove the popup while preserving its input and instance.
+                const datepicker = datepickerEl.datepicker;
+                if (!datepicker.picker.element.isConnected) {
+                    datepicker.config.container.appendChild(datepicker.picker.element);
+                }
                 if (!datepickerEl.hasAttribute('data-initialized')) {
                     datepickerEl.setAttribute('data-initialized', 'true');
                 }
@@ -207,7 +224,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mark only after a successful construct — a bad min/max date used to throw,
             // leave the flag set, and skip both the picker and the dd.mm.yyyy mask forever.
             try {
+                const modalContainer = datepickerEl.closest('[data-employee-modal]')?.querySelector('[data-employee-datepicker-container]');
+                if (modalContainer && !modalContainer.id) {
+                    modalContainer.id = `employee-datepicker-${crypto.randomUUID()}`;
+                }
+
                 new Datepicker(datepickerEl, {
+                    container: modalContainer ? `#${CSS.escape(modalContainer.id)}` : undefined,
                     defaultViewDate: datepickerEl.value || todayDate,
                     minDate: minDate || undefined,
                     maxDate: maxDate || undefined,
@@ -267,12 +290,39 @@ document.addEventListener('DOMContentLoaded', () => {
         initDatepickers();
         initDefaultDatepickerMasks();
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+
+    document.addEventListener('focus', (event) => {
+        const input = event.target;
+        if (input.matches?.('.datepicker-input')) {
+            initDatepickers(input);
+            if (input.datepicker?.picker) {
+                document.querySelectorAll('.datepicker-input').forEach((otherInput) => {
+                    if (otherInput !== input && otherInput.datepicker?.picker?.active) {
+                        otherInput.datepicker.hide();
+                    }
+                });
+
+                if (input.closest('[data-employee-modal]')) {
+                    const inputBounds = input.getBoundingClientRect();
+                    input.datepicker.setOptions({
+                        orientation: inputBounds.top > window.innerHeight - inputBounds.bottom ? 'auto top' : 'auto bottom'
+                    });
+                }
+
+                if (!input.datepicker.picker.active) {
+                    input.datepicker.show();
+                }
+            }
+        } else if (input.matches?.('.default-datepicker')) {
+            attachDateMask(input);
+        }
+    }, true);
 
     // Livewire often morphs inputs in place and leaves a stale init flag without a picker.
     const rebindAfterMorph = () => {
         document.querySelectorAll('.datepicker-input').forEach((el) => {
-            if (el._datepicker_initialized && !el.datepicker) {
+            if (el._datepicker_initialized && !el.datepicker?.picker) {
                 delete el._datepicker_initialized;
                 el.removeAttribute('data-initialized');
                 el.removeAttribute('data-date-mask');
@@ -282,18 +332,26 @@ document.addEventListener('DOMContentLoaded', () => {
         initDefaultDatepickerMasks();
     };
 
-    document.addEventListener('livewire:init', () => {
-        Livewire.hook('morph.updated', () => {
-            requestAnimationFrame(rebindAfterMorph);
-        });
-    });
+    document.addEventListener('livewire:navigated', rebindAfterMorph);
 
-    if (window.Livewire) {
+    let morphHookRegistered = false;
+    const registerMorphHook = () => {
+        if (morphHookRegistered || !window.Livewire) return;
+        morphHookRegistered = true;
         Livewire.hook('morph.updated', () => {
             requestAnimationFrame(rebindAfterMorph);
         });
-    }
-});
+    };
+
+    document.addEventListener('livewire:init', registerMorphHook, { once: true });
+    registerMorphHook();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDateInputs, { once: true });
+} else {
+    initializeDateInputs();
+}
 
 
 
@@ -675,6 +733,10 @@ function initUkDateRangePickers(root = document) {
             return;
         }
 
+        const referralRangeHandlers = el.hasAttribute('data-referral-date-range')
+            ? bindReferralDateRange(el)
+            : null;
+
         flatpickr(el, {
             mode: "range",
             showMonths: 2,
@@ -685,10 +747,17 @@ function initUkDateRangePickers(root = document) {
             },
             allowInput: true,
             onChange: (selectedDates, dateStr, instance) => {
+                if (referralRangeHandlers) {
+                    referralRangeHandlers.onChange(selectedDates, dateStr, instance);
+                    return;
+                }
                 el.value = dateStr;
                 el.dispatchEvent(new Event("input", { bubbles: true }));
                 el.dispatchEvent(new Event("change", { bubbles: true }));
-            }
+            },
+            onClose: (selectedDates, dateStr, instance) => {
+                referralRangeHandlers?.onClose(selectedDates, dateStr, instance);
+            },
         });
         el.setAttribute('data-drp-initialized', 'true');
     });

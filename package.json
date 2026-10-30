@@ -4,7 +4,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "test:print": "node --test tests/JavaScript/print-sandboxed.test.cjs",
+        "test:print": "node --test tests/JavaScript/print-sandboxed.test.cjs tests/JavaScript/referral-date-range.test.cjs",
         "test:drawers": "node --test tests/JavaScript/dialog-drawer.test.cjs",
         "build": "vite build"
     },

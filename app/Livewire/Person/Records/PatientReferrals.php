@@ -77,6 +77,18 @@ class PatientReferrals extends BasePatientComponent
             return;
         }
 
+        $this->validate([
+            'filterStartedAtFrom' => ['nullable', 'date_format:Y-m-d'],
+            'filterStartedAtTo' => ['nullable', 'date_format:Y-m-d'],
+            'filterEndedAtFrom' => ['nullable', 'date_format:Y-m-d'],
+            'filterEndedAtTo' => ['nullable', 'date_format:Y-m-d'],
+        ], attributes: [
+            'filterStartedAtFrom' => __('forms.filter_period_start_range'),
+            'filterStartedAtTo' => __('forms.filter_period_start_range'),
+            'filterEndedAtFrom' => __('forms.filter_period_end_range'),
+            'filterEndedAtTo' => __('forms.filter_period_end_range'),
+        ]);
+
         $filters = [
             'status' => $this->filterStatus !== '' ? $this->filterStatus : null,
             'started_at_from' => $this->filterStartedAtFrom !== '' ? $this->filterStartedAtFrom : null,
@@ -117,6 +129,7 @@ class PatientReferrals extends BasePatientComponent
             'filterEndedAtFrom',
             'filterEndedAtTo',
         ]);
+        $this->resetValidation();
         $this->loadReferrals();
     }
 

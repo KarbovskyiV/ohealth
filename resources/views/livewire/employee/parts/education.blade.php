@@ -11,7 +11,7 @@
                   openModal: false,
                   modalEducation: new Education(),
                   newEducation: false,
-                  item: 0,
+                  item: null,
                   specDict: @js($this->dictionaries['SPECIALITY_TYPE']),
                   degreeDict: @js($this->dictionaries['EDUCATION_DEGREE']),
                   countryDict: @js($this->dictionaries['COUNTRY']),
@@ -95,6 +95,7 @@
                                     style="left: -120%; display: none"
                                 >
                                     <button
+                                        type="button"
                                         @click.prevent="
                                             openModal = true;
                                             if (newEducation !== false || item !== index) {
@@ -110,6 +111,7 @@
                                     </button>
 
                                     <button
+                                        type="button"
                                         @click.prevent="
                                             educations.splice(index, 1);
                                             openDropdown = false;
@@ -128,6 +130,7 @@
 
         <div>
             <button
+                type="button"
                 @click="
                     openModal = true;
                     if (newEducation !== true) {
@@ -141,35 +144,68 @@
                 {{ __('forms.addEducation') }}
             </button>
 
-            <template x-teleport="body">
+            <template x-teleport="body" wire:ignore>
                 <div
+                    data-employee-modal
+                    wire:ignore.self
                     x-show="openModal"
                     style="display: none"
-                    @keydown.escape.prevent.stop="openModal = false"
+                    @keydown.escape="
+                        (() => {
+                            if (
+                                ! $event.defaultPrevented &&
+                                ! $event.isComposing &&
+                                $event.keyCode !== 229 &&
+                                ! $event.altKey &&
+                                ! $event.ctrlKey &&
+                                ! $event.metaKey &&
+                                ! $event.shiftKey
+                            ) {
+                                $event.preventDefault();
+                                $event.stopPropagation();
+                                openModal = false;
+                            }
+                        })()
+                    "
                     role="dialog"
                     aria-modal="true"
                     x-id="['modal-title']"
                     :aria-labelledby="$id('modal-title')"
                     class="modal"
                 >
-                    <div x-show="openModal" x-transition.opacity class="fixed inset-0 bg-black/25"></div>
+                    <div
+                        wire:ignore.self
+                        x-show="openModal"
+                        x-transition.opacity
+                        class="fixed inset-0 bg-black/25"
+                    ></div>
 
-                    <div x-show="openModal" x-transition @click="openModal = false" class="modal-wrapper">
-                        <div @click.stop
-                        x-trap.noscroll.inert="openModal"
-                        class="modal-content h-fit w-full max-w-6xl rounded-2xl bg-white shadow-lg"
+                    <div
+                        x-data="{ pressedOnBackdrop: false }"
+                        @pointerdown="pressedOnBackdrop = $event.target === $el"
+                        @pointercancel="pressedOnBackdrop = false"
+                        @click.self="if (pressedOnBackdrop && ! $event.defaultPrevented) openModal = false;"
+                        wire:ignore.self
+                        x-show="openModal"
+                        x-transition
+                        class="modal-wrapper"
                     >
-                        <h3 class="modal-header" :id="$id('modal-title')">
-                            <span
-                                x-text="newEducation ? '{{ __('forms.addEducation') }}' : '{{ __('forms.edit') . ' ' . __('forms.education') }}'"
-                            ></span>
-                        </h3>
+                        <div
+                            wire:ignore.self
+                            @click.stop
+                            x-trap.noscroll.inert="openModal"
+                            class="modal-content h-fit w-full max-w-6xl rounded-2xl bg-white shadow-lg"
+                        >
+                            <h3 class="modal-header" :id="$id('modal-title')">
+                                <span x-text="newEducation ? '{{ __('forms.addEducation') }}' : '{{ __('forms.edit') . ' ' . __('forms.education') }}'"></span>
+                            </h3>
 
-                        <form>
-                            <div class="form-row-modal">
-                                <div>
-                                    <label for="educationCountry" class="label-modal"
-                                        >{{ __('forms.country') }}<span class="text-red-600"> *</span></label>
+                            <div wire:ignore data-employee-datepicker-container class="relative"></div>
+                            <form @submit.prevent.stop>
+                                <div class="form-row-modal">
+                                    <div>
+                                        <label for="educationCountry" class="label-modal"
+                                            >{{ __('forms.country') }}<span class="text-red-600"> *</span></label>
                                         <select
                                             x-model="modalEducation.country"
                                             id="educationCountry"
@@ -266,6 +302,7 @@
                                         {{ __('forms.cancel') }}
                                     </button>
                                     <button
+                                        type="button"
                                         @click.prevent="
                                             newEducation
                                                 ? educations.push({ ...modalEducation })
@@ -290,7 +327,7 @@
 </div>
 
 <script>
-    class Education {
+    window.Education ??= class Education {
         country = '';
         city = '';
         institutionName = '';
@@ -304,5 +341,5 @@
                 Object.assign(this, obj);
             }
         }
-    }
+    };
 </script>

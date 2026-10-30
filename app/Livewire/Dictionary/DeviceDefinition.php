@@ -66,6 +66,9 @@ class DeviceDefinition extends Component
      */
     public string $filterClassificationTypeCode = '';
 
+    #[\Livewire\Attributes\Locked]
+    public bool $embedded = false;
+
     public array $dictionaryNames = [
         'FUNDING_SOURCE',
         'SPECIALITY_TYPE',
@@ -75,7 +78,7 @@ class DeviceDefinition extends Component
         'device_unit'
     ];
 
-    public function mount(LegalEntity $legalEntity): void
+    public function mount(LegalEntity $legalEntity, ?string $medicalProgramId = null, ?string $classificationTypeCode = null, bool $embedded = false): void
     {
         $this->getDictionary();
 
@@ -86,7 +89,7 @@ class DeviceDefinition extends Component
 
         $this->programs = dictionary()->medicalPrograms()
             ->where('is_active', true)
-            ->where('type', '=', Type::DEVICE)
+            ->where('type', '=', Type::DEVICE->value)
             ->values()
             ->toArray();
 
@@ -103,13 +106,17 @@ class DeviceDefinition extends Component
         }
 
         // Add from device_definition_classification_type dictionary
-        foreach ($this->dictionaries['device_definition_classification_type'] as $code => $name) {
+        foreach ($this->dictionaries['device_definition_classification_type'] ?? [] as $code => $name) {
             $this->classificationTypes[] = [
                 'code' => $code,
                 'name' => $name,
                 'system' => 'device_definition_classification_type'
             ];
         }
+
+        $this->filterMedicalProgramId = $medicalProgramId ?? '';
+        $this->filterClassificationTypeCode = $classificationTypeCode ?? '';
+        $this->embedded = $embedded;
     }
 
     /**

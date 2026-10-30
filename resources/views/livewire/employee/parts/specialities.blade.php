@@ -12,7 +12,7 @@
                   openModal: false,
                   modalSpeciality: new Speciality(),
                   newSpeciality: false,
-                  item: 0,
+                  item: null,
                   primaryConflict: false,
                   specDict: @js($this->dictionaries['SPECIALITY_TYPE']),
                   levelDict: @js($this->dictionaries['SPECIALITY_LEVEL']),
@@ -154,6 +154,7 @@
                                     style="left: -120%; display: none"
                                 >
                                     <button
+                                        type="button"
                                         @click.prevent="
                                             openModal = true;
                                             if (newSpeciality !== false || item !== index) {
@@ -170,6 +171,7 @@
                                     </button>
 
                                     <button
+                                        type="button"
                                         @click.prevent="
                                             specialities.splice(index, 1);
                                             openDropdown = false;
@@ -187,42 +189,76 @@
         </table>
 
         <div>
-            <button @click.prevent="openAddSpecialityModal()" class="item-add my-5">
+            <button type="button" @click.prevent="openAddSpecialityModal()" class="item-add my-5">
                 {{ __('forms.addSpeciality') }}
             </button>
 
-            <template x-teleport="body">
+            <template x-teleport="body" wire:ignore>
                 <div
+                    data-employee-modal
+                    wire:ignore.self
                     x-show="openModal"
                     style="display: none"
-                    @keydown.escape.prevent.stop="openModal = false"
+                    @keydown.escape="
+                        (() => {
+                            if (
+                                ! $event.defaultPrevented &&
+                                ! $event.isComposing &&
+                                $event.keyCode !== 229 &&
+                                ! $event.altKey &&
+                                ! $event.ctrlKey &&
+                                ! $event.metaKey &&
+                                ! $event.shiftKey
+                            ) {
+                                $event.preventDefault();
+                                $event.stopPropagation();
+                                openModal = false;
+                            }
+                        })()
+                    "
                     role="dialog"
                     aria-modal="true"
                     x-id="['modal-title']"
                     :aria-labelledby="$id('modal-title')"
                     class="modal"
                 >
-                    <div x-show="openModal" x-transition.opacity class="fixed inset-0 bg-black/25"></div>
+                    <div
+                        wire:ignore.self
+                        x-show="openModal"
+                        x-transition.opacity
+                        class="fixed inset-0 bg-black/25"
+                    ></div>
 
-                    <div x-show="openModal" x-transition @click="openModal = false" class="modal-wrapper">
-                        <div @click.stop
-                        x-trap.noscroll.inert="openModal"
-                        class="modal-content h-fit w-full max-w-4xl rounded-2xl bg-white shadow-lg"
+                    <div
+                        x-data="{ pressedOnBackdrop: false }"
+                        @pointerdown="pressedOnBackdrop = $event.target === $el"
+                        @pointercancel="pressedOnBackdrop = false"
+                        @click.self="if (pressedOnBackdrop && ! $event.defaultPrevented) openModal = false;"
+                        wire:ignore.self
+                        x-show="openModal"
+                        x-transition
+                        class="modal-wrapper"
                     >
-                        <h3 class="modal-header" :id="$id('modal-title')">
-                            <span
-                                x-text="newSpeciality ? '{{ __('forms.addSpeciality') }}' : '{{ __('forms.edit') . ' ' . __('forms.speciality') }}'"
-                            ></span>
-                        </h3>
-                        <form>
-                            <div class="form-row-modal">
-                                <div>
-                                    <label for="specialitySpeciality" class="label-modal"
-                                        >{{ __('forms.speciality') }} <span class="text-red-600"> *</span></label>
+                        <div
+                            wire:ignore.self
+                            @click.stop
+                            x-trap.noscroll.inert="openModal"
+                            class="modal-content h-fit w-full max-w-4xl rounded-2xl bg-white shadow-lg"
+                        >
+                            <h3 class="modal-header" :id="$id('modal-title')" tabindex="-1" autofocus>
+                                <span x-text="newSpeciality ? '{{ __('forms.addSpeciality') }}' : '{{ __('forms.edit') . ' ' . __('forms.speciality') }}'"></span>
+                            </h3>
+                            <div wire:ignore data-employee-datepicker-container class="relative"></div>
+                            <form @submit.prevent.stop>
+                                <div class="form-row-modal">
+                                    <div>
+                                        <label for="specialitySpeciality" class="label-modal"
+                                            >{{ __('forms.speciality') }} <span class="text-red-600"> *</span></label>
                                         <x-select2
                                             modelPath="modalSpeciality.speciality"
                                             dictionaryName="SPECIALITY_TYPE"
                                             id="specialitySpeciality"
+                                            x-effect="if (! openModal) hideOptions();"
                                         />
                                     </div>
 
@@ -378,6 +414,7 @@
                                     </button>
 
                                     <button
+                                        type="button"
                                         @click.prevent="saveSpeciality()"
                                         class="button-primary"
                                         :class="{ 'opacity-50 cursor-not-allowed': ! isModalValid() }"
@@ -396,7 +433,7 @@
 </div>
 
 <script>
-    class Speciality {
+    window.Speciality ??= class Speciality {
         speciality = '';
         specialityOfficio = false;
         level = '';
@@ -409,5 +446,5 @@
         constructor(obj = null) {
             if (obj) Object.assign(this, obj);
         }
-    }
+    };
 </script>
