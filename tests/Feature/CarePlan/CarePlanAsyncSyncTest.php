@@ -167,7 +167,10 @@ class CarePlanAsyncSyncTest extends TestCase
             $user->employees()->detach();
         }
 
-        Livewire::test(CarePlanIndex::class)->call('sync')->assertForbidden();
+        Livewire::test(CarePlanIndex::class)->call('sync')
+            ->assertOk()
+            ->assertSet('syncBatchIds', [])
+            ->assertSee(__('care-plan.sync_access_denied'));
 
         Http::assertNothingSent();
         Queue::assertNothingPushed();

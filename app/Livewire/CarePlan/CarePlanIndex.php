@@ -8,6 +8,7 @@ use App\Traits\SynchronizesCarePlans;
 
 use App\Models\CarePlan;
 use App\Repositories\Repository;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 
@@ -78,7 +79,11 @@ class CarePlanIndex extends Component
 
     public function sync(): void
     {
-        $this->authorize('sync', CarePlan::class);
+        if (Auth::user()->cannot('sync', CarePlan::class)) {
+            session()->flash('error', __('care-plan.sync_access_denied'));
+
+            return;
+        }
         if ($this->syncBatchIds !== [] && $this->carePlanSyncOutcome($this->syncBatchIds) === null) {
             session()->flash('info', __('care-plan.sync_running'));
 
