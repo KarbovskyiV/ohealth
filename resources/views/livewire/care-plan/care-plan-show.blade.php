@@ -259,7 +259,7 @@
 
                             <div class="form-group group flex items-center">
                                 <div class="mt-2.5">
-                                    <span class="{{ $statusEnum->color() }}">
+                                    <span class="{{ $statusEnum === CarePlanStatus::DRAFT ? 'badge-red' : $statusEnum->color() }}">
                                         {{ CarePlanStatus::labelFor($status) }}
                                     </span>
                                 </div>
@@ -520,7 +520,7 @@
                 @endif
 
                 {{-- Bottom Actions --}}
-                <div class="mt-8 flex items-center justify-between gap-4 border-t border-gray-100 pt-6 pb-12 dark:border-gray-700">
+                <div class="mt-8 flex flex-wrap items-center justify-start gap-4 border-t border-gray-100 pt-6 pb-12 dark:border-gray-700">
                     <a
                         href="{{ route('persons.care-plans', [legalEntity(), $carePlan->person_id]) }}"
                         class="button-minor flex items-center gap-2"
@@ -530,8 +530,19 @@
                         <span>{{ __('forms.back') }}</span>
                     </a>
 
-                    <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex flex-wrap items-center gap-4">
                         @if ($this->canSignPlan)
+                            @can('update', $carePlan)
+                                <button
+                                    type="button"
+                                    class="button-primary-outline flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled
+                                >
+                                    @icon('archive', 'w-4 h-4')
+                                    <span>{{ __('forms.save') }}</span>
+                                </button>
+                            @endcan
+
                             <button
                                 type="button"
                                 class="button-primary-outline"
@@ -624,8 +635,10 @@
                                                 $statusKey = 'care-plan.status.' . strtolower($activityStatus);
                                                 $activityStatusDisplay = $activityStatusEnum?->label()
                                                     ?? (\Illuminate\Support\Facades\Lang::has($statusKey) ? __($statusKey) : (is_array($activity->status) ? ($activity->status['text'] ?? ($activity->status['coding'][0]['display'] ?? $activityStatus)) : $activityStatus));
-                                                $activityBadgeColor = $activityStatusEnum?->color()
-                                                    ?? (in_array(strtoupper($activityStatus), ['NEW', 'DRAFT']) ? 'badge-yellow' : 'badge-green');
+                                                $activityBadgeColor = $activityStatusEnum === CarePlanStatus::DRAFT
+                                                    ? 'badge-red'
+                                                    : ($activityStatusEnum?->color()
+                                                        ?? (in_array(strtoupper($activityStatus), ['NEW', 'DRAFT']) ? 'badge-yellow' : 'badge-green'));
                                             @endphp
                                             <span class="{{ $activityBadgeColor }}">
                                                 {{ $activityStatusDisplay }}
@@ -786,7 +799,7 @@
                     </div>
                 </fieldset>
 
-                <div class="mt-8 flex items-center justify-between pt-4 pb-12">
+                <div class="mt-8 flex flex-wrap items-center justify-start gap-4 pt-4 pb-12">
                     <a
                         href="{{ route('persons.care-plans', [legalEntity(), $carePlan->person_id]) }}"
                         class="button-minor flex items-center gap-2"

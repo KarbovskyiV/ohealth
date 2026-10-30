@@ -1,40 +1,19 @@
-{{-- Medication Form Drawer Overlay (below header z-60) --}}
-<div
-    x-show="showMedicationFormDrawer"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-200"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    x-cloak
-    @click="showMedicationFormDrawer = false"
-    class="fixed top-0 right-0 h-screen bg-gray-900/50 pt-20"
-    style="z-index: 46; width: calc(80% - 30px)"
-></div>
-
-{{-- Medication Form Drawer (60px gap on the LEFT — third drawer) --}}
-<div
+<x-dialog-drawer
     id="medication-form-drawer-right"
-    x-show="showMedicationFormDrawer"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="translate-x-full"
-    x-transition:enter-end="translate-x-0"
-    x-transition:leave="transition ease-in duration-200"
-    x-transition:leave-start="translate-x-0"
-    x-transition:leave-end="translate-x-full"
-    x-cloak
-    class="fixed top-0 right-0 h-screen overflow-y-auto bg-white p-4 pt-20 shadow-2xl dark:bg-gray-800"
-    style="z-index: 47; width: calc(80% - 60px)"
-    tabindex="-1"
+    x-model="showMedicationFormDrawer"
+    maxWidth="4/5"
+    zIndex="46"
+    customWidth="w-full sm:w-[calc(80%-60px)]"
+    overlayWidth="calc(80% - 30px)"
+    onCloseClick="showMedicationFormDrawer = false"
 >
-    <h3 class="modal-header">
+    <x-slot name="title">
         @if (isset($activityForm['id']) && $activityForm['id'])
             {{ __('care-plan.edit_medication_prescription') }}
         @else
             {{ __('care-plan.new_medication_prescription') }}
         @endif
-    </h3>
+    </x-slot>
 
     {{-- Content --}}
     <form wire:submit.prevent="saveActivity">
@@ -143,13 +122,10 @@
                 </div>
                 <div class="form-group group">
                     <label class="label"> {{ __('care-plan.start_date') }}: <span class="text-red-500">*</span> </label>
-                    <div class="relative">
-                        <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
-                            @icon('calendar-month', 'w-4 h-4 text-gray-500')
-                        </div>
+                    <div class="datepicker-wrapper">
                         <input
                             type="text"
-                            class="input peer datepicker-input ps-10"
+                            class="datepicker-input with-leading-icon input peer"
                             placeholder="02.04.2025"
                             datepicker-autohide
                             datepicker-button="false"
@@ -191,13 +167,10 @@
                 </div>
                 <div class="form-group group">
                     <label class="label"> {{ __('care-plan.end_date') }}: <span class="text-red-500">*</span> </label>
-                    <div class="relative">
-                        <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
-                            @icon('calendar-month', 'w-4 h-4 text-gray-500')
-                        </div>
+                    <div class="datepicker-wrapper">
                         <input
                             type="text"
-                            class="input peer datepicker-input ps-10"
+                            class="datepicker-input with-leading-icon input peer"
                             placeholder="02.08.2025"
                             datepicker-autohide
                             datepicker-button="false"
@@ -392,4 +365,4 @@
             </button>
         </div>
     </form>
-</div>
+</x-dialog-drawer>

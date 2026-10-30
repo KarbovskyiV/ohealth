@@ -3,27 +3,31 @@
     x-cloak
     class="fixed left-0 right-0 bottom-0 {{ $topClass }} overflow-hidden {{ $backdropClickThrough ? 'pointer-events-none' : '' }}"
     style="z-index: {{ $zVal }};"
+    @if ($stopClickPropagation)
+        {{-- Shield sibling dialogs, including the area outside the backdrop. --}}
+        @click.stop="if ($event.target === $el) $dialog.close();"
+        @mousedown.stop
+        @mouseup.stop
+        @pointerdown.stop
+        @keydown.escape.stop
+    @endif
     {{ $attributes }}
 >
     <!-- Overlay backdrop -->
-    @if(!$noBackdrop)
-        <div x-dialog:overlay 
-             x-transition.opacity 
-             class="fixed {{ $topClass }} bottom-0 right-0 bg-gray-900/40 {{ $backdropClickThrough ? 'pointer-events-none' : '' }}"
-             style="width: {{ $overlayWidth ?? '80%' }};"
-             @if($onCloseClick) @click="{{ $onCloseClick }}" @endif
+    @if (!$noBackdrop)
+        <div
+            x-dialog:overlay
+            x-transition.opacity
+            class="fixed {{ $topClass }} bottom-0 right-0 bg-gray-900/40 {{ $backdropClickThrough ? 'pointer-events-none' : '' }}"
+            style="width: {{ $overlayWidth ?? '80%' }};"
+            @if ($onCloseClick) @click="{{ $onCloseClick }}" @endif
         ></div>
     @endif
 
     <!-- Panel Container -->
-    <div class="fixed {{ $topClass }} bottom-0 right-0 flex {{ $resolvedWidth }} pointer-events-auto"
-         style="z-index: {{ $pZVal }};"
-         @if($stopClickPropagation)
-             @click.stop
-             @mousedown.stop
-             @mouseup.stop
-             @pointerdown.stop
-         @endif
+    <div
+        class="fixed {{ $topClass }} bottom-0 right-0 flex {{ $resolvedWidth }} pointer-events-auto"
+        style="z-index: {{ $pZVal }};"
     >
         <div
             x-dialog:panel
@@ -38,15 +42,11 @@
             <div class="h-full flex flex-col bg-white dark:bg-gray-800 shadow-xl overflow-y-auto {{ $topClass !== 'top-0' ? 'p-8' : 'pt-20 p-8' }} relative">
                 <!-- Header -->
                 @isset($title)
-                    <h3 class="modal-header !border-b-0 pb-0 mb-6" x-dialog:title>
-                        {{ $title }}
-                    </h3>
+                    <h3 class="modal-header mb-6 !border-b-0 pb-0" x-dialog:title>{{ $title }}</h3>
                 @endisset
 
                 <!-- Slot Content -->
-                <div class="flex-1">
-                    {{ $slot }}
-                </div>
+                <div class="flex-1">{{ $slot }}</div>
             </div>
         </div>
     </div>

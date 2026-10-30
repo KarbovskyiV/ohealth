@@ -48,7 +48,8 @@
             @php($action = $additionalActionLinks[$section['id']])
             <section
                 id="block-{{ $section['id'] }}"
-                class="scroll-mt-16 rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
+                class="scroll-mt-16 rounded-xl bg-white dark:border-gray-700 dark:bg-gray-800"
+                :class="activeSections.includes('{{ $section['id'] }}') ? 'summary-section-active' : 'summary-section-inactive'"
                 wire:key="encounter-additional-{{ $section['id'] }}"
             >
                 <button
@@ -58,18 +59,28 @@
                     aria-controls="additional-content-{{ $section['id'] }}"
                     class="flex w-full cursor-pointer items-center justify-between gap-3 p-5 text-left focus-visible:outline-2 focus-visible:outline-blue-600"
                 >
-                    <span class="flex min-w-0 items-center gap-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-                        <span class="flex h-4 w-4 shrink-0 items-center justify-center [&>svg]:h-full [&>svg]:w-full" aria-hidden="true">
-                            @icon($section['icon'])
+                    <span class="flex min-w-0 items-center gap-4 text-left text-[17px] font-semibold text-gray-900 dark:text-gray-100">
+                        <span
+                            class="flex h-6 w-6 shrink-0 items-center justify-center text-gray-900 dark:text-gray-100"
+                            aria-hidden="true"
+                        >
+                            @icon($section['icon'], 'w-6 h-6')
                         </span>
-                        <span>{{ $section['label'] }}</span>
+                        <span class="min-w-0 break-words">{{ $section['label'] }}</span>
                     </span>
-                    <span class="shrink-0 text-gray-500 transition-transform" :class="activeSections.includes('{{ $section['id'] }}') ? '' : '-rotate-90'">
-                        @icon('chevron-down', 'w-4 h-4')
+                    <span
+                        class="shrink-0 text-gray-400 transition-transform duration-300 dark:text-gray-500"
+                        :class="activeSections.includes('{{ $section['id'] }}') ? '' : '-rotate-90'"
+                    >
+                        @icon('chevron-down', 'w-5 h-5')
                     </span>
                 </button>
 
-                <div id="additional-content-{{ $section['id'] }}" x-show="activeSections.includes('{{ $section['id'] }}')" class="px-5 pb-5">
+                <div
+                    id="additional-content-{{ $section['id'] }}"
+                    x-show="activeSections.includes('{{ $section['id'] }}')"
+                    class="px-5 pb-5"
+                >
                     @foreach ($additionalActionRecords[$section['id']] ?? [] as $record)
                         <x-encounter.record-card :record="$record" :section-id="$section['id']" />
                     @endforeach
@@ -78,9 +89,9 @@
                         @if (!empty($action['href']))
                             <a
                                 href="{{ $action['href'] }}"
-                                class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                             >
-                                @icon($action['icon'] ?? 'plus', 'w-3.5 h-3.5')
+                                @icon($action['icon'] ?? 'plus', 'w-4 h-4')
                                 <span>{{ $action['label'] }}</span>
                             </a>
                         @elseif (array_key_exists('href', $action))
@@ -88,18 +99,18 @@
                                 type="button"
                                 disabled
                                 title="{{ $action['unavailable'] ?? __('encounters.medical_report_creation_unavailable') }}"
-                                class="inline-flex cursor-not-allowed items-center gap-1.5 text-xs font-medium text-gray-400 dark:text-gray-500"
+                                class="inline-flex cursor-not-allowed items-center gap-1 text-sm font-medium text-gray-400 dark:text-gray-500"
                             >
-                                @icon('plus', 'w-3.5 h-3.5')
+                                @icon('plus', 'w-4 h-4')
                                 <span>{{ $action['label'] }}</span>
                             </button>
                         @else
                             <button
                                 type="button"
                                 @isset($action['method']) wire:click="{{ $action['method'] }}" @endisset
-                                class="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                class="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                             >
-                                @icon('plus', 'w-3.5 h-3.5')
+                                @icon('plus', 'w-4 h-4')
                                 <span>{{ $action['label'] }}</span>
                             </button>
                         @endif
