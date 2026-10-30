@@ -173,7 +173,7 @@ class CarePlanLifecycleGateServiceTest extends TestCase
         $this->assertNull($this->service->activityStatusChangeBlockReason($activity, 'cancel_activity'));
     }
 
-    public function test_blocks_plan_cancel_for_scheduled_in_progress_or_completed_activities(): void
+    public function test_plan_cancel_blocks_unfinished_activities_and_accepts_completed_ones(): void
     {
         $person = Person::create([
             'uuid' => (string) Str::uuid(),
@@ -226,9 +226,7 @@ class CarePlanLifecycleGateServiceTest extends TestCase
             'author_id' => $this->employee->id,
         ]);
 
-        $completedBlock = $this->service->planCancelBlockReason($carePlan->fresh('activities'));
-        $this->assertNotNull($completedBlock);
-        $this->assertStringContainsString('Завершено', $completedBlock);
+        $this->assertNull($this->service->planCancelBlockReason($carePlan->fresh('activities')));
     }
 
     public function test_blocks_plan_complete_when_activity_is_not_final(): void

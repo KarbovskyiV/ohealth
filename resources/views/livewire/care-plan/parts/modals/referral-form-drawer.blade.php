@@ -159,12 +159,22 @@
                     <div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div class="form-group group">
                             <label class="label">Категорія направлення*</label>
+                            @if ($referralServiceType === 'service_group')
+                                <select class="input-select peer" wire:model="referralForm.category">
+                                    <option value="">{{ __('forms.select') }}</option>
+                                    @foreach ($referralCategoryOptions as $categoryCode => $categoryLabel)
+                                        <option value="{{ $categoryCode }}">{{ $categoryLabel }}</option>
+                                    @endforeach
+                                </select>
+                                @error('referralForm.category') <p class="text-error">{{ $message }}</p> @enderror
+                            @else
                             <input
                                 type="text"
                                 class="input cursor-not-allowed bg-gray-50 dark:bg-gray-700"
                                 value="{{ $referralForm['category_label'] ?? $referralForm['category'] }}"
                                 disabled
                             />
+                            @endif
                         </div>
 
                         <div class="form-group group">

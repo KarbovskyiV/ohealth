@@ -154,14 +154,43 @@ trait ManagesCarePlanReferrals
 
         $code = $activity->productCodeableConcept ?? $activity->productReference ?? 'од.';
 
-        $category = $resolvedKind === 'service_request'
+        $activityResource = $activityRepository->getResource($activity);
+        $this->referralServiceType = data_get($activityResource, 'detail.productReference.identifier.type.coding.0.code', 'service');
+        $this->referralCategoryOptions = [];
+        if ($this->referralServiceType === 'service_group') {
+            try {
+                $group = dictionary()->services()->flattened()->firstWhere('id', $activity->productReference);
+                if (($group['type'] ?? '') !== 'service_group' || empty($group['request_allowed'])) {
+                    Session::flash('error', __('care-plan.service_group_referral_not_allowed'));
+
+                    return;
+                }
+                $this->referralCategoryOptions = dictionary()->basics()
+                    ->byName('eHealth/SNOMED/service_request_categories')->asCodeDescription()
+                    ->except('transfer_of_care')->all(); // Transfers use the encounter discharge flow.
+                if ($this->referralCategoryOptions === []) {
+                    Session::flash('error', __('care-plan.referral_categories_unavailable'));
+
+                    return;
+                }
+            } catch (Throwable $exception) {
+                report($exception);
+                Session::flash('error', __('care-plan.referral_categories_unavailable'));
+
+                return;
+            }
+        }
+        $category = $resolvedKind === 'service_request' && $this->referralServiceType !== 'service_group'
             ? $this->resolveServiceCategory((string) $activity->productReference)
             : null;
 
-        $this->referralServiceCategory = $category ?? 'procedure';
+        $this->referralServiceCategory = $category ?? ($this->referralServiceType === 'service_group' ? '' : 'procedure');
 
-        $schedule = $activityRepository->getResource($activity)['detail']['scheduledPeriod'] ?? [];
+        $schedule = $activityResource['detail']['scheduledPeriod'] ?? [];
         $draftData = $existingDraft ? Repository::serviceRequest()->formData($existingDraft) : [];
+        if ($this->referralServiceType === 'service_group') {
+            $this->referralServiceCategory = $draftData['category'] ?? '';
+        }
         $occurrenceDates = $this->resolveReferralOccurrenceDates(
             isset($schedule['start']) ? Carbon::parse($schedule['start'], 'UTC')->setTimezone(config('app.timezone')) : null,
             isset($schedule['end']) ? Carbon::parse($schedule['end'], 'UTC')->setTimezone(config('app.timezone')) : null
@@ -250,7 +279,7 @@ trait ManagesCarePlanReferrals
         $this->referralWarningMessage = '';
         $this->referralShowRemainingQtyWarning = false;
 
-        if ($this->referralForm['kind'] === 'service_request') {
+        if ($this->referralForm['kind'] === 'service_request' && $this->referralServiceType !== 'service_group') {
             $this->referralForm['category'] = $this->referralServiceCategory ?: ($this->referralForm['category'] ?? 'procedure');
         }
 
@@ -264,7 +293,9 @@ trait ManagesCarePlanReferrals
         ];
 
         if ($this->referralForm['kind'] === 'service_request') {
-            $rules['referralForm.category'] = 'required|string';
+            $rules['referralForm.category'] = $this->referralServiceType === 'service_group'
+                ? ['required', 'string', \Illuminate\Validation\Rule::in(array_keys($this->referralCategoryOptions))]
+                : 'required|string';
         }
 
         $this->validate($rules);

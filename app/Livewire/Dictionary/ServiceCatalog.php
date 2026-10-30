@@ -25,6 +25,8 @@ class ServiceCatalog extends Component
     public string $filterGroupIsActive = '';
     public string $filterRequestAllowed = '';
     public bool $selectionMode = false;
+    #[\Livewire\Attributes\Locked]
+    public bool $allowGroupSelection = false;
     public string $selectionEvent = 'service-selected';
     public array $allowedCategories = [];
     public bool $requestAllowedOnly = false;
@@ -36,9 +38,11 @@ class ServiceCatalog extends Component
         bool $selectionMode = false,
         string $selectionEvent = 'service-selected',
         array $allowedCategories = [],
-        bool $requestAllowedOnly = false
+        bool $requestAllowedOnly = false,
+        bool $allowGroupSelection = false
     ): void {
         $this->selectionMode = $selectionMode;
+        $this->allowGroupSelection = $allowGroupSelection;
         $this->selectionEvent = $selectionEvent;
         $this->allowedCategories = $allowedCategories;
         $this->requestAllowedOnly = $requestAllowedOnly;
@@ -71,7 +75,7 @@ class ServiceCatalog extends Component
             : $allServices;
 
         // Apply pagination
-        $perPage = config('pagination.per_page');
+        $perPage = max(1, (int) (config('pagination.per_page') ?: 10));
         $currentPage = Paginator::resolveCurrentPage();
         $currentPageItems = $filteredServices->forPage($currentPage, $perPage);
 
@@ -281,7 +285,9 @@ class ServiceCatalog extends Component
             ->flattened()
             ->firstWhere('id', $serviceId);
 
-        if ($service === null || !$this->isCategoryAllowed($service['category'] ?? null)) {
+        if ($service === null || !$this->isCategoryAllowed($service['category'] ?? null)
+            || (($service['type'] ?? '') === 'service_group' && !$this->allowGroupSelection)
+            || ($this->requestAllowedOnly && empty($service['request_allowed']))) {
             return;
         }
 

@@ -88,6 +88,7 @@ class EncounterStandalonePhase6Test extends TestCase
         $medicationId = (string) Str::uuid();
         $harness->encounterEPrescriptionSearchResults = [[
             'id' => $medicationId, 'packages' => [['package_min_qty' => 10]],
+            'ingredients' => [['dosage' => ['denumerator_unit' => 'TAB']]],
         ]];
         $harness->addError('encounterEPrescriptionForm.medication_id', 'Required');
         $harness->addError('encounterEPrescriptionForm.medication_qty', 'Invalid');
@@ -165,6 +166,49 @@ class EncounterStandalonePhase6Test extends TestCase
 
         $this->assertSame($serviceId, $harness->encounterReferralForm['service_id']);
         $this->assertSame('diagnostic_procedure', $harness->encounterReferralForm['category']);
+
+        $laboratoryId = (string) Str::uuid();
+        $harness->encounterReferralServiceResults = [[
+            'id' => $laboratoryId, 'code' => 'B34015', 'name' => 'Аналіз; вітамін B12',
+            'category' => 'laboratory_procedure',
+        ]];
+        $harness->selectEncounterReferralService($laboratoryId);
+        $this->assertSame('laboratory_procedure', $harness->encounterReferralForm['category']);
+
+        $harness->selectEncounterReferralServiceFromCatalog([
+            'id' => $serviceId, 'category' => 'procedure', 'name' => 'Реабілітація',
+        ]);
+        $this->assertSame('procedure', $harness->encounterReferralForm['category']);
+    }
+
+    public function test_selecting_an_eligible_group_uses_server_identity_and_resets_for_a_single_service(): void
+    {
+        $groupId = (string) Str::uuid();
+        $blockedId = (string) Str::uuid();
+        \Illuminate\Support\Facades\Cache::put('dictionaries.service', [
+            ['id' => $groupId, 'code' => 'GROUP', 'name' => 'Повна група послуг', 'is_active' => true, 'request_allowed' => true],
+            ['id' => $blockedId, 'code' => 'BLOCKED', 'name' => 'Без дозволу на направлення', 'is_active' => true, 'request_allowed' => false],
+        ], now()->addDay());
+        \Illuminate\Support\Facades\Cache::put('dictionaries.service:fresh', true, now()->addDay());
+        $harness = $this->makeHarness($this->createEncounter(EncounterStatus::FINISHED->value)->id);
+        $harness->selectEncounterReferralServiceFromCatalog([
+            'id' => $groupId, 'type' => 'service_group', 'name' => 'Untrusted name',
+        ]);
+        $this->assertSame($groupId, $harness->encounterReferralForm['service_id']);
+        $this->assertSame('service_group', $harness->encounterReferralServiceType);
+        $this->assertSame('Повна група послуг', $harness->encounterReferralSelectedService['name']);
+        $this->assertSame('', $harness->encounterReferralForm['category']);
+        $harness->selectEncounterReferralServiceFromCatalog(['id' => $blockedId, 'type' => 'service_group']);
+        $this->assertSame($groupId, $harness->encounterReferralForm['service_id']);
+        $this->assertSame(__('care-plan.service_group_referral_not_allowed'), session('error'));
+
+        $serviceId = (string) Str::uuid();
+        $harness->encounterReferralServiceResults = [[
+            'id' => $serviceId, 'category' => 'laboratory_procedure', 'name' => 'Аналіз',
+        ]];
+        $harness->selectEncounterReferralService($serviceId);
+        $this->assertSame('service', $harness->encounterReferralServiceType);
+        $this->assertSame('laboratory_procedure', $harness->encounterReferralForm['category']);
     }
 
     public function test_transfer_discharge_defaults_category_and_performer(): void

@@ -70,7 +70,7 @@ class PatientCarePlanRegistryUatTest extends TestCase
             $component = Livewire::test($componentClass, ['legalEntity' => $legalEntity, 'personId' => $person->id])
                 ->assertOk()->assertSee('Legacy registered plan')->assertSee('Legacy local draft')->assertSee('Canonical plan')
                 ->assertSee(__('care-plan.full_sync_required'))->assertSee(__('care-plan.draft_backfill_required'))
-                ->assertDontSee(route('care-plans.show', [$legalEntity, $legacy->id]))
+                ->assertSee(route('care-plans.show', [$legalEntity, $legacy->id]), false)
                 ->assertDontSee(route('care-plans.edit', [$legalEntity, $draft->id]))
                 ->assertSee(route('care-plans.show', [$legalEntity, $canonical->id]), false);
             if ($componentClass === PatientCarePlans::class) {
@@ -85,7 +85,7 @@ class PatientCarePlanRegistryUatTest extends TestCase
         $repository->getResource($legacy->id);
     }
 
-    public function test_canonical_plan_with_legacy_activity_does_not_break_listing_or_offer_details(): void
+    public function test_canonical_plan_with_legacy_activity_offers_read_only_details(): void
     {
         ['person' => $person, 'legalEntity' => $legalEntity] = $this->compositionFixture(scopes: ['care_plan:read']);
         $repository = app(CarePlanRepository::class);
@@ -96,10 +96,10 @@ class PatientCarePlanRegistryUatTest extends TestCase
 
         Livewire::test(PatientCarePlans::class, ['legalEntity' => $legalEntity, 'personId' => $person->id])
             ->assertOk()->assertSee('Partially imported plan')->assertSee(__('care-plan.full_sync_required'))
-            ->assertDontSee(route('care-plans.show', [$legalEntity, $plan->id]))
+            ->assertSee(route('care-plans.show', [$legalEntity, $plan->id]), false)
             ->set('showAdditionalParams', true)
             ->assertSee(__('care-plan.full_sync_required'))
-            ->assertDontSee(route('care-plans.show', [$legalEntity, $plan->id]));
+            ->assertSee(route('care-plans.show', [$legalEntity, $plan->id]), false);
 
         $this->assertTrue($repository->findById($plan->id)->requiresFhirImport());
         $activity = CarePlanActivity::whereCarePlanId($plan->id)->firstOrFail();

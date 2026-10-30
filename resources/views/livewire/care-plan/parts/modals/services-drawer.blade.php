@@ -51,149 +51,48 @@
         {{-- Main Data Section --}}
         <fieldset class="fieldset">
             <legend class="legend">{{ __('care-plan.main_data') }}</legend>
-
-            {{-- Service and Program --}}
+            <div class="form-row-2">
+                <div class="form-group group">
+                    <label class="label">{{ __('care-plan.service') }}*</label>
+                    <button type="button" class="input-select peer w-full text-left"
+                            wire:click="$set('showServiceSearchDrawer', true)">
+                        {{ !empty($selectedProduct) ? trim(($selectedProduct['code'] ?? '') . ' - ' . ($selectedProduct['name'] ?? '')) : __('care-plan.select_service') }}
+                    </button>
+                    @error('activityForm.product_reference') <p class="text-error">{{ $message }}</p> @enderror
+                </div>
+                <div class="form-group group">
+                    <label for="serviceProgram" class="label">{{ __('care-plan.program') }}</label>
+                    <select id="serviceProgram" class="input-select peer" wire:model.live="selectedProgram">
+                        <option value="">{{ __('forms.select') }}</option>
+                        @foreach ($dictionaries['medical_programs_service'] ?? [] as $programId => $programName)
+                            <option value="{{ $programId }}">{{ $programName }}</option>
+                        @endforeach
+                    </select>
+                    @error('activityForm.program') <p class="text-error">{{ $message }}</p> @enderror
+                </div>
+            </div>
             <div class="form-row-3">
                 <div class="form-group group">
-                    <label for="service" class="label"> {{ __('care-plan.service') }}* </label>
-                    <div class="relative">
-                        <button
-                            type="button"
-                            class="input-select peer pr-12 w-full text-left {{ !empty($selectedProduct) ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-500' }}"
-                            aria-controls="service-search-drawer-right"
-                            @click="showServiceSearchDrawer = true"
-                        >
-                            {{ !empty($selectedProduct) ? (($selectedProduct['code'] ?? '') . ' - ' . ($selectedProduct['name'] ?? '')) : __('care-plan.select_service') }}
-                        </button>
-                        <button
-                            type="button"
-                            class="absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                            <svg class="h-4 w-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linejoin="round" stroke-width="2" d="M9 8v3a1 1 0 0 1-1 1H5m11 4h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-7a1 1 0 0 0-1 1v1m4 3v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7.13a1 1 0 0 1 .24-.65L7.7 8.35A1 1 0 0 1 8.46 8H13a1 1 0 0 1 1 1Z" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="form-group group">
-                    <label for="program" class="label"> {{ __('care-plan.program') }} </label>
-                    <select id="program" name="program" class="input-select peer">
-                        <option selected value="">{{ __('care-plan.state_financial_guarantees') }}</option>
-                    </select>
-                </div>
-            </div>
-
-            {{-- Quantity, Start Date, Start Time --}}
-            <div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-3">
-                <div class="form-group group">
-                    <label for="quantity" class="label"> {{ __('care-plan.quantity') }} </label>
+                    <label for="serviceQuantity" class="label">{{ __('care-plan.quantity') }}</label>
                     <div class="flex gap-2">
-                        <input
-                            type="number"
-                            id="quantity"
-                            class="input peer w-full"
-                            wire:model="activityForm.quantity"
-                        />
-                        <select class="input-select peer w-20" wire:model="activityForm.quantity_system">
-                            <option value="SERVICE_UNIT">{{ __('care-plan.units') }}</option>
+                        <input type="number" id="serviceQuantity" min="0" step="any" class="input peer w-full" wire:model="activityForm.quantity" />
+                        <select aria-label="{{ __('care-plan.quantity') }}" class="input-select peer w-24" wire:model="activityForm.quantity_code">
+                            <option value="PIECE">{{ __('care-plan.units') }}</option>
+                            <option value="MINUTE">{{ __('care-plan.minutes') }}</option>
                         </select>
                     </div>
+                    @error('activityForm.quantity') <p class="text-error">{{ $message }}</p> @enderror
+                    @error('activityForm.quantity_code') <p class="text-error">{{ $message }}</p> @enderror
                 </div>
                 <div class="form-group group">
-                    <label class="label"> {{ __('care-plan.start_date') }}: <span class="text-red-500">*</span> </label>
-                    <div class="datepicker-wrapper">
-                        <input
-                            type="text"
-                            class="datepicker-input with-leading-icon input peer"
-                            placeholder="02.04.2025"
-                            datepicker-autohide
-                            datepicker-button="false"
-                            wire:model.live="activityForm.scheduled_period_start"
-                        />
-                    </div>
+                    <label class="label">{{ __('care-plan.start_date') }}</label>
+                    <input type="text" class="input peer datepicker-input" datepicker-autohide datepicker-button="false" wire:model.live="activityForm.scheduled_period_start" />
+                    @error('activityForm.scheduled_period_start') <p class="text-error">{{ $message }}</p> @enderror
                 </div>
                 <div class="form-group group">
-                    <label class="label">&nbsp;</label>
-                    <div class="relative">
-                        <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
-                            <svg class="h-4 w-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                        </div>
-                        <input type="text" class="input timepicker-uk ps-10" placeholder="02:30 PM" />
-                    </div>
-                </div>
-            </div>
-
-            {{-- Quantity per time, End Date, End Time --}}
-            <div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-3">
-                <div class="form-group group">
-                    <label for="quantity_per_time" class="label"> {{ __('care-plan.quantity_per_time') }} </label>
-                    <div class="flex gap-2">
-                        <input
-                            type="number"
-                            id="quantity_per_time"
-                            name="quantity_per_time"
-                            class="input peer w-full"
-                            value="1"
-                        />
-                        <select class="input-select peer w-20">
-                            <option selected value="units">{{ __('care-plan.units') }}</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group group">
-                    <label class="label"> {{ __('care-plan.end_date') }}: <span class="text-red-500">*</span> </label>
-                    <div class="datepicker-wrapper">
-                        <input
-                            type="text"
-                            class="datepicker-input with-leading-icon input peer"
-                            placeholder="02.08.2025"
-                            datepicker-autohide
-                            datepicker-button="false"
-                            wire:model.live="activityForm.scheduled_period_end"
-                        />
-                    </div>
-                </div>
-                <div class="form-group group">
-                    <label class="label">&nbsp;</label>
-                    <div class="relative">
-                        <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
-                            <svg class="h-4 w-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                        </div>
-                        <input type="text" class="input timepicker-uk ps-10" placeholder="02:30 PM" />
-                    </div>
-                </div>
-            </div>
-
-            {{-- Number of times, Duration --}}
-            <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-                <div class="form-group group">
-                    <label for="number_of_times" class="label"> {{ __('care-plan.number_of_times') }} </label>
-                    <div class="flex gap-2">
-                        <input
-                            type="number"
-                            id="number_of_times"
-                            name="number_of_times"
-                            class="input peer w-full"
-                            value="1"
-                        />
-                        <select class="input-select peer w-28">
-                            <option selected value="per_day">{{ __('care-plan.per_day') }}</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group group">
-                    <label for="duration" class="label"> {{ __('care-plan.duration') }} </label>
-                    <input type="number" id="duration" name="duration" class="input peer w-full" value="10" />
-                </div>
-                <div class="form-group group">
-                    <label class="label">&nbsp;</label>
-                    <select class="input-select peer w-full">
-                        <option selected value="days">{{ __('care-plan.days') }}</option>
-                    </select>
+                    <label class="label">{{ __('care-plan.end_date') }}</label>
+                    <input type="text" class="input peer datepicker-input" datepicker-autohide datepicker-button="false" wire:model.live="activityForm.scheduled_period_end" />
+                    @error('activityForm.scheduled_period_end') <p class="text-error">{{ $message }}</p> @enderror
                 </div>
             </div>
         </fieldset>

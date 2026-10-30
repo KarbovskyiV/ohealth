@@ -122,6 +122,9 @@
                         wire:model="encounterReferralForm.category"
                         @disabled($encounterReferralIsTransfer)
                     >
+                        @if ($encounterReferralServiceType === 'service_group')
+                            <option value="">{{ __('forms.select') }}</option>
+                        @endif
                         @foreach (__('encounters.referral_category') as $code => $label)
                             <option value="{{ match ($code) { 'transfer' => 'transfer_of_care', 'counseling' => 'counselling', default => $code } }}">
                                 {{ $label }}
@@ -361,6 +364,7 @@
             :legal-entity="legalEntity()"
             :selection-mode="true"
             :request-allowed-only="true"
+            :allow-group-selection="true"
             selection-event="encounter-referral-service-selected"
             :key="'encounter-referral-service-catalog'"
         />

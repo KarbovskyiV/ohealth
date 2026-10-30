@@ -97,6 +97,9 @@
                                         <span class="badge-red"> {{ __('forms.status.non_active') }} </span>
                                     @endif
                                 </td>
+                                @if ($selectionMode)
+                                    @include('livewire.dictionary.parts.service-group-selection', ['groupItem' => $item])
+                                @endif
                             </tr>
 
                             {{-- Services directly under this item --}}
@@ -219,7 +222,7 @@
                                             @endif
                                         </td>
                                         @if ($selectionMode)
-                                            <td class="index-table-td"></td>
+                                            @include('livewire.dictionary.parts.service-group-selection', ['groupItem' => $group])
                                         @endif
                                     </tr>
 
@@ -287,6 +290,9 @@
                                                         </span>
                                                     @endif
                                                 </td>
+                                                @if ($selectionMode)
+                                                    @include('livewire.dictionary.parts.service-group-selection', ['groupItem' => $subgroup])
+                                                @endif
                                             </tr>
 
                                             {{-- Services under subgroup --}}
