@@ -6,19 +6,25 @@ namespace Tests\Feature\CarePlan;
 
 use App\Classes\eHealth\Api\CarePlan as CarePlanApi;
 use App\Classes\eHealth\EHealthResponse;
+use App\Exceptions\EHealth\EHealthResponseException;
 use App\Jobs\CarePlanFullSync;
 use App\Livewire\CarePlan\CarePlanIndex;
 use App\Livewire\Person\Records\PatientCarePlans;
 use App\Models\CarePlan;
 use App\Models\Person\Person;
+use App\Repositories\CarePlanRepository;
+use GuzzleHttp\Psr7\Response as PsrResponse;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionProperty;
 use Tests\Feature\Composition\CompositionTestFixtures;
 use Tests\Feature\Composition\UsesCompositionDictionaries;
@@ -101,6 +107,70 @@ class CarePlanAsyncSyncTest extends TestCase
 
         DB::table('job_batches')->whereIn('id', $ids)->update(['pending_jobs' => 0, 'finished_at' => time()]);
         $component->call('checkSyncStatus')->assertSet('syncBatchIds', [])->assertSee(__('care-plan.sync_success'));
+    }
+
+    public static function patientFailures(): array
+    {
+        return ['first patient API denial' => [true], 'middle patient lock conflict' => [false]];
+    }
+
+    #[DataProvider('patientFailures')]
+    public function test_index_continues_after_a_patient_failure_and_never_reports_full_success(bool $firstPatientFails): void
+    {
+        ['person' => $person, 'legalEntity' => $legalEntity, 'user' => $user] = $this->compositionFixture(scopes: ['care_plan:read']);
+        $patients = new \Illuminate\Database\Eloquent\Collection([$person]);
+        for ($index = 0; $index < 2; $index++) {
+            $patients->push(Person::create(['uuid' => (string) Str::uuid(), 'birth_date' => '2000-01-01', 'gender' => 'MALE']));
+        }
+        $repository = Mockery::mock(CarePlanRepository::class)->makePartial();
+        $repository->shouldReceive('patientsForSync')->once()->with($legalEntity->id, $user)->andReturn($patients);
+        $this->instance(CarePlanRepository::class, $repository);
+        $lock = null;
+        if ($firstPatientFails) {
+            $api = Mockery::mock(CarePlanApi::class);
+            $api->shouldReceive('withToken')->once()->with('synthetic-token')->andReturnSelf();
+            $api->shouldReceive('getBySearchParams')->once()->with($person->uuid, ['page' => 1])
+                ->andThrow(new EHealthResponseException(new Response(new PsrResponse(403, [], '{"error":{"message":"Forbidden"}}'))));
+            $this->instance(CarePlanApi::class, $api);
+        } else {
+            $this->firstPage($person, [$this->summary()], false);
+            $lock = Cache::lock('care-plan-sync:'.$legalEntity->id.':'.$patients[1]->uuid, 120);
+            $this->assertTrue($lock->get());
+        }
+
+        try {
+            $component = Livewire::test(CarePlanIndex::class)->call('sync')
+                ->assertSet('syncInitiationFailed', true)->assertSee(__('care-plan.sync_failed'))
+                ->assertDontSee(__('care-plan.sync_success'));
+            $ids = $component->get('syncBatchIds');
+            $this->assertCount(2, $ids);
+            Queue::assertPushed(CarePlanFullSync::class, 2);
+            Queue::assertPushed(CarePlanFullSync::class, fn ($job): bool => $job->patientContext['patient_uuid'] === $patients[2]->uuid);
+            DB::table('job_batches')->whereIn('id', $ids)->update(['pending_jobs' => 0, 'finished_at' => time()]);
+            $component->call('checkSyncStatus')->assertSet('syncBatchIds', [])
+                ->assertSee(__('care-plan.sync_failed'))->assertDontSee(__('care-plan.sync_success'));
+        } finally {
+            $lock?->release();
+        }
+    }
+
+    public static function unauthorizedUsers(): array
+    {
+        return ['missing scope' => [false], 'missing active employee' => [true]];
+    }
+
+    #[DataProvider('unauthorizedUsers')]
+    public function test_index_sync_is_forbidden_without_scope_or_active_employee(bool $hasScope): void
+    {
+        ['user' => $user] = $this->compositionFixture(scopes: $hasScope ? ['care_plan:read'] : []);
+        if ($hasScope) {
+            $user->employees()->detach();
+        }
+
+        Livewire::test(CarePlanIndex::class)->call('sync')->assertForbidden();
+
+        Http::assertNothingSent();
+        Queue::assertNothingPushed();
     }
 
     public function test_empty_first_page_finishes_without_queuing_a_page_or_details(): void

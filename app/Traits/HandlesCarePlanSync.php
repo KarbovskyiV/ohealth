@@ -30,9 +30,6 @@ trait HandlesCarePlanSync
     {
         $legalEntity = legalEntity();
         $token = Session::get(config('ehealth.api.oauth.bearer_token'));
-        if (!is_string($token) || $token === '') {
-            throw new RuntimeException(__('care-plan.sync_session_expired'));
-        }
         $user = Auth::user();
         $name = CarePlanFullSync::BATCH_NAME.'_'.$person->uuid;
         $lock = Cache::lock('care-plan-sync:'.$legalEntity->id.':'.$person->uuid, 120);

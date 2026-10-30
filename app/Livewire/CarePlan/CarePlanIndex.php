@@ -6,7 +6,8 @@ namespace App\Livewire\CarePlan;
 
 use App\Traits\SynchronizesCarePlans;
 
-use App\Repositories\CarePlanRepository;
+use App\Models\CarePlan;
+use App\Repositories\Repository;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 
@@ -77,17 +78,7 @@ class CarePlanIndex extends Component
 
     public function sync(): void
     {
-        if (auth()->user()->cannot('care_plan:read') || auth()->user()->activeEmployee() === null) {
-            session()->flash('error', __('care-plan.sync_access_denied'));
-
-            return;
-        }
-        $token = session()->get(config('ehealth.api.oauth.bearer_token'));
-        if (!is_string($token) || $token === '') {
-            session()->flash('error', __('care-plan.sync_session_expired'));
-
-            return;
-        }
+        $this->authorize('sync', CarePlan::class);
         if ($this->syncBatchIds !== [] && $this->carePlanSyncOutcome($this->syncBatchIds) === null) {
             session()->flash('info', __('care-plan.sync_running'));
 
@@ -96,19 +87,28 @@ class CarePlanIndex extends Component
         $this->syncBatchIds = [];
         $this->syncInitiationFailed = false;
         try {
-            $persons = app(CarePlanRepository::class)->patientsForSync(legalEntity()->id, auth()->user());
+            $persons = Repository::carePlan()->patientsForSync(legalEntity()->id, auth()->user());
             foreach ($persons->values() as $index => $person) {
-                $batchId = $this->startCarePlanPatientSync($person, firstPageSynchronously: $index === 0);
-                if ($batchId !== null) {
-                    $this->syncBatchIds[] = $batchId;
+                try {
+                    $batchId = $this->startCarePlanPatientSync($person, firstPageSynchronously: $index === 0);
+                    if ($batchId !== null) {
+                        $this->syncBatchIds[] = $batchId;
+                    }
+                } catch (\Throwable $exception) {
+                    $this->syncInitiationFailed = true;
+                    Log::error('Could not start patient CarePlan synchronization', ['exceptionType' => $exception::class]);
                 }
             }
-            session()->flash($this->syncBatchIds === [] ? 'success' : 'info', __($this->syncBatchIds === [] ? 'care-plan.sync_success' : 'care-plan.sync_first_page'));
         } catch (\Throwable $exception) {
             $this->syncInitiationFailed = true;
             Log::error('Could not start CarePlan index synchronization', ['exceptionType' => $exception::class]);
-            session()->flash('error', __('care-plan.sync_failed'));
         }
+        if ($this->syncInitiationFailed) {
+            session()->flash('error', __('care-plan.sync_failed'));
+
+            return;
+        }
+        session()->flash($this->syncBatchIds === [] ? 'success' : 'info', __($this->syncBatchIds === [] ? 'care-plan.sync_success' : 'care-plan.sync_first_page'));
     }
 
     public function checkSyncStatus(): void
@@ -129,7 +129,7 @@ class CarePlanIndex extends Component
 
     public function render()
     {
-        $carePlans = app(CarePlanRepository::class)->listing(legalEntity()->id, ['status' => $this->filterStatus, 'name' => $this->filterName, 'startDate' => $this->filterStartDateRange, 'endDate' => $this->filterEndDateRange, 'encounterId' => $this->filterEncounterId, 'requisition' => $this->searchRequisition]);
+        $carePlans = Repository::carePlan()->listing(legalEntity()->id, ['status' => $this->filterStatus, 'name' => $this->filterName, 'startDate' => $this->filterStartDateRange, 'endDate' => $this->filterEndDateRange, 'encounterId' => $this->filterEncounterId, 'requisition' => $this->searchRequisition]);
 
         return view('livewire.care-plan.care-plan-index', ['carePlans' => $carePlans]);
     }
