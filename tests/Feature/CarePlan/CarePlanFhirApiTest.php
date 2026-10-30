@@ -258,6 +258,9 @@ class CarePlanFhirApiTest extends TestCase
         $ids = [$this->fixture('plan')['id'], '7a78997f-3b7b-4b7b-b1b1-40dd57ad982a'];
         $response = Mockery::mock(EHealthResponse::class);
         $response->shouldReceive('validate')->once()->andReturn(array_map(static fn ($id): array => ['id' => $id], $ids));
+        $repository = Mockery::mock(\App\Repositories\CarePlanRepository::class);
+        $repository->shouldReceive('storeSummaries')->once()->with(array_map(static fn ($id): array => ['id' => $id], $ids), 1, 2);
+        $this->instance(\App\Repositories\CarePlanRepository::class, $repository);
         $api = Mockery::mock(CarePlanApi::class);
         $api->shouldNotReceive('getDetails');
         $this->instance(CarePlanApi::class, $api);
@@ -267,6 +270,7 @@ class CarePlanFhirApiTest extends TestCase
         {
             public function runResponse(EHealthResponse $response): void
             {
+                $this->personId = 1;
                 $this->processResponse($response);
             }
 

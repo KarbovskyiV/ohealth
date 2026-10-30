@@ -11,6 +11,13 @@ use Illuminate\Auth\Access\Response;
 
 class CarePlanPolicy
 {
+    public function sync(User $user): Response
+    {
+        return $user->can('care_plan:read') && $user->activeEmployee() !== null
+            ? Response::allow()
+            : Response::deny(__('care-plan.sync_access_denied'));
+    }
+
     /**
      * Determine whether the user can view the care plan.
      */

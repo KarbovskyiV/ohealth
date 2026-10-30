@@ -11,6 +11,15 @@ Conventions for contributors. Link to a specific rule from code review when need
 
 ## Livewire
 
+### Authorization
+
+Keep access rules in policies. In Livewire actions, check them with
+`Auth::user()->cannot('ability', $modelOrClass)`, flash the translated denial
+message, and return before side effects. Do not use `$this->authorize(...)`:
+an authorization exception replaces the component's normal error feedback.
+Do not remove authorization or duplicate policy rules in the component to avoid
+the exception. Follow this convention when adding or changing authorization.
+
 Public properties of a Livewire component must be **primitive types only** (`string`,`int`, `bool`, `float`, `array`) 
 — and enums are allowed. Do **not** type a public property as an Eloquent model.
 

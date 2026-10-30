@@ -5,16 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Person\Records;
 
 use App\Jobs\CarePlanFullSync;
-use App\Traits\BatchLegalEntityQueries;
-use App\Models\User;
-use App\Notifications\SyncNotification;
-use App\Notifications\RemoteEHealthLinksNotification;
-use App\Exceptions\EHealth\EHealthResponseException;
-use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Locked;
 
@@ -25,7 +16,7 @@ use Throwable;
 
 class PatientCarePlans extends BasePatientComponent
 {
-    use BatchLegalEntityQueries;
+    use \App\Traits\HandlesCarePlanSync;
 
     #[Locked]
     public ?string $syncBatchId = null;
@@ -84,27 +75,8 @@ class PatientCarePlans extends BasePatientComponent
 
     public function sync(): void
     {
-        try {
-            $dispatched = Cache::lock('care-plan-sync:'.legalEntity()->id.':'.$this->uuid, 10)
-                ->get(function (): bool {
-                    $this->dispatchSync();
-
-                    return true;
-                });
-            if (!$dispatched) {
-                Session::flash('info', __('care-plan.sync_running'));
-            }
-        } catch (Throwable $exception) {
-            Log::error('Could not queue patient CarePlan synchronization', ['exceptionType' => $exception::class]);
-            Session::flash('error', __('care-plan.sync_failed'));
-        }
-    }
-
-    private function dispatchSync(): void
-    {
-        $this->syncBatchId = $this->runningSyncBatchId();
-        if ($this->syncBatchId !== null) {
-            Session::flash('info', __('care-plan.sync_running'));
+        if (Auth::user()->cannot('care_plan:read')) {
+            Session::flash('error', __('care-plan.sync_access_denied'));
 
             return;
         }
@@ -114,38 +86,17 @@ class PatientCarePlans extends BasePatientComponent
 
             return;
         }
-        $user = Auth::user();
-        $userId = $user->id;
-        try {
-            $batch = Bus::batch([new CarePlanFullSync(legalEntity(), standalone: true)])
-                ->name(CarePlanFullSync::BATCH_NAME.'_'.$this->uuid)
-                ->withOption('legal_entity_id', legalEntity()->id)
-                ->withOption('patient_uuid', $this->uuid)
-                ->withOption('patient_care_plan_registry', true)
-                ->withOption('person_id', $this->personId)
-                ->withOption('token', Crypt::encryptString($token))
-                ->withOption('user', $user)
-                ->then(static function (Batch $batch) use ($userId): void {
-                    $denied = (int) Cache::get('care-plan-sync-denied:'.$batch->id, 0);
-                    User::find($userId)?->notify($denied > 0
-                        ? new RemoteEHealthLinksNotification(__('care-plan.sync_partial_access', ['count' => $denied]), 'warning')
-                        : new SyncNotification('care_plan', 'completed'));
-                })
-                ->catch(static function (Batch $batch, Throwable $exception) use ($userId): void {
-                    $user = User::find($userId);
-                    if ($exception instanceof EHealthResponseException && in_array($exception->getCode(), [401, 403], true)) {
-                        $message = $exception->getCode() === 403 ? 'care-plan.sync_access_denied' : 'care-plan.sync_session_expired';
-                        $user?->notify(new RemoteEHealthLinksNotification(__($message), 'error'));
+        if ($this->syncBatchId !== null && $this->carePlanSyncOutcome([$this->syncBatchId]) === null) {
+            Session::flash('info', __('care-plan.sync_running'));
 
-                        return;
-                    }
-                    $user?->notify(new SyncNotification('care_plan', 'failed'));
-                })
-                ->onQueue('sync')->dispatch();
-            $this->syncBatchId = $batch->id;
-            Session::flash('info', __('care-plan.sync_started'));
+            return;
+        }
+        try {
+            $this->syncBatchId = $this->startCarePlanPatientSync($this->patient(), firstPageSynchronously: true);
+            $this->loadCarePlans();
+            Session::flash($this->syncBatchId === null ? 'success' : 'info', __($this->syncBatchId === null ? 'care-plan.sync_success' : 'care-plan.sync_first_page'));
         } catch (Throwable $exception) {
-            Log::error('Could not queue patient CarePlan synchronization', ['exceptionType' => $exception::class]);
+            Log::error('Could not start patient CarePlan synchronization', ['exceptionType' => $exception::class]);
             Session::flash('error', __('care-plan.sync_failed'));
         }
     }
@@ -155,20 +106,15 @@ class PatientCarePlans extends BasePatientComponent
         if ($this->syncBatchId === null) {
             return;
         }
-        $batch = Bus::findBatch($this->syncBatchId);
-        if ($batch !== null && !$batch->finished() && !$batch->cancelled()) {
+        $outcome = $this->carePlanSyncOutcome([$this->syncBatchId]);
+        if ($outcome === null) {
+            $this->skipRender();
+
             return;
         }
         $this->syncBatchId = null;
         $this->loadCarePlans();
-        $success = $batch !== null && $batch->finished() && !$batch->hasFailures() && !$batch->cancelled();
-        $denied = $batch !== null ? (int) Cache::get('care-plan-sync-denied:'.$batch->id, 0) : 0;
-        if ($success && $denied > 0) {
-            Session::flash('warning', __('care-plan.sync_partial_access', ['count' => $denied]));
-
-            return;
-        }
-        Session::flash($success ? 'success' : 'error', __($success ? 'care-plan.sync_success' : 'care-plan.sync_failed'));
+        $this->flashCarePlanSyncOutcome($outcome);
     }
 
     public function search(): void

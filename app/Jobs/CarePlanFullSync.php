@@ -13,6 +13,7 @@ use App\Classes\eHealth\EHealthResponse;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use App\Exceptions\EHealth\EHealthResponseException;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
@@ -35,6 +36,9 @@ class CarePlanFullSync extends PatientEHealthJob
 
     public ?string $resourceUuid = null;
 
+    // Keep patient identity in the job payload when a failed batch is recreated after login.
+    public array $patientContext = [];
+
     public int $maxExceptions = 3;
 
     public function retryUntil(): DateTimeInterface
@@ -49,22 +53,63 @@ class CarePlanFullSync extends PatientEHealthJob
         int $page = 1,
         bool $standalone = false,
         ?string $resourceUuid = null,
+        array $patientContext = [],
     ) {
         parent::__construct($legalEntity, $nextEntity, $isFirstLogin, $page, $standalone);
         $this->resourceUuid = $resourceUuid;
+        $this->patientContext = $patientContext;
+    }
+
+    public static function detailJobs(array $summaries, LegalEntity $legalEntity, array $patientContext = []): array
+    {
+        $jobs = [];
+        foreach ($summaries as $summary) {
+            $jobs[] = new self($legalEntity, standalone: true, resourceUuid: Arr::toCamelCase($summary)['id'], patientContext: $patientContext);
+        }
+
+        return $jobs;
     }
 
     public function handle(): void
     {
-        if ($this->isPatientRegistrySync() && $this->batch()?->cancelled()) {
+        if (!$this->isPatientRegistrySync()) {
+            parent::handle();
+
+            return;
+        }
+        if ($this->batch()?->cancelled()) {
             return;
         }
 
-        parent::handle();
+        $options = ($this->batch()?->options ?? []) + $this->patientContext;
+        $this->patientContext = array_intersect_key($options, array_flip([
+            'patient_uuid', 'person_id', 'patient_care_plan_registry', 'care_plan_approvals',
+        ]));
+        $this->patientContext['patient_care_plan_registry'] = true;
+        $this->patientUuid = $options['patient_uuid'] ?? null;
+        $this->personId = $options['person_id'] ?? null;
+        $this->token = Crypt::decryptString($options['token'] ?? '');
+        $response = $this->sendRequest($this->token);
+        $this->processResponse($response);
+
+        if ($this->resourceUuid === null && $response?->isNotLast()) {
+            $this->batch()->add(new self(
+                $this->legalEntity,
+                page: $this->page + 1,
+                standalone: true,
+                patientContext: $this->patientContext,
+            )->delay(now()->addSeconds(self::RATE_LIMIT_DELAY)));
+        }
     }
 
     protected function sendRequest(string $token): PromiseInterface|EHealthResponse|null
     {
+        if ($this->patientUuid === null || $this->patientUuid === '') {
+            throw ValidationException::withMessages([
+                'patient_uuid' => 'Care Plan synchronization requires patient context. Discard the incomplete batch and start synchronization from the patient record.',
+            ]);
+        }
+
         $api = EHealth::carePlan()->withToken($token);
         if ($this->isPatientRegistrySync() && $this->resourceUuid !== null) {
             try {
@@ -98,15 +143,10 @@ class CarePlanFullSync extends PatientEHealthJob
             return;
         }
         if ($this->isPatientRegistrySync() && $this->resourceUuid === null) {
-            if ($this->page === 1) {
-                $this->synchronizePatientDeclarations();
-            }
             // Queue one full aggregate per job; a long patient history never runs in one HTTP request.
-            $jobs = [];
-            foreach ($response?->validate() ?? [] as $summary) {
-                $id = Arr::toCamelCase($summary)['id'];
-                $jobs[] = new self($this->legalEntity, standalone: true, resourceUuid: $id);
-            }
+            $summaries = $response->validate();
+            Repository::carePlan()->storeSummaries($summaries, $this->personId, $this->legalEntity->id);
+            $jobs = self::detailJobs($summaries, $this->legalEntity, $this->patientContext);
             if ($jobs !== []) {
                 $this->batch()->add($jobs);
             }
@@ -125,7 +165,7 @@ class CarePlanFullSync extends PatientEHealthJob
             try {
                 $activities = $this->fetchAllActivityResources($patient['uuid'], $this->resourceUuid, token: $this->token);
                 Repository::carePlan()->storeAggregate($validatedData, $activities, $patient['id'], $this->legalEntity->id);
-                if (data_get($this->batch()?->options, 'care_plan_approvals', false)) {
+                if ((($this->batch()?->options ?? []) + $this->patientContext)['care_plan_approvals'] ?? false) {
                     \App\Repositories\MedicalEvents\Repository::approval()->syncApprovals(
                         Repository::carePlan()->findByUuid($this->resourceUuid),
                         'care_plan',
@@ -152,7 +192,7 @@ class CarePlanFullSync extends PatientEHealthJob
     private function isPatientRegistrySync(): bool
     {
         $batch = $this->batch();
-        $options = $batch?->options ?? [];
+        $options = ($batch?->options ?? []) + $this->patientContext;
         if (array_key_exists('patient_care_plan_registry', $options)) {
             return $options['patient_care_plan_registry'] === true;
         }
@@ -160,19 +200,6 @@ class CarePlanFullSync extends PatientEHealthJob
         // Registry batches queued before the explicit option retain their original behavior.
         return $this->standalone && isset($options['patient_uuid'], $options['person_id'])
             && $batch?->name === self::BATCH_NAME.'_'.$options['patient_uuid'];
-    }
-
-    private function synchronizePatientDeclarations(): void
-    {
-        try {
-            $response = EHealth::declaration()->withToken($this->token)
-                ->getMany(['person_id' => $this->patientUuid], groupByEntities: true);
-            Repository::declaration()->storeMany($response->validate(), $this->legalEntity);
-        } catch (Throwable $exception) {
-            Log::warning('Could not synchronize patient declarations before CarePlan import', [
-                'exceptionType' => $exception::class,
-            ]);
-        }
     }
 
     protected function setEntityStatus(\App\Enums\JobStatus $status): void

@@ -774,7 +774,15 @@ trait CarePlanManager
 
             return;
         }
-        $batch = \Illuminate\Support\Facades\Bus::batch([new \App\Jobs\CarePlanFullSync(legalEntity(), standalone: true, resourceUuid: $this->carePlan->uuid)])
+        $batch = \Illuminate\Support\Facades\Bus::batch([new \App\Jobs\CarePlanFullSync(
+            legalEntity(), standalone: true, resourceUuid: $this->carePlan->uuid,
+            patientContext: [
+                'patient_uuid' => $this->carePlan->person->uuid,
+                'person_id' => $this->carePlan->personId,
+                'patient_care_plan_registry' => true,
+                'care_plan_approvals' => true,
+            ],
+        )])
             ->withOption('legal_entity_id', legalEntity()->id)
             ->withOption('patient_uuid', $this->carePlan->person->uuid)
             ->withOption('person_id', $this->carePlan->personId)

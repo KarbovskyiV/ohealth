@@ -160,6 +160,23 @@ class CarePlanRepository extends \App\Repositories\MedicalEvents\BaseRepository
         return ['id' => $person->id, 'uuid' => $person->uuid];
     }
 
+    /** Save list entries without treating a summary as a complete clinical resource. */
+    public function storeSummaries(array $summaries, int $personId, int $legalEntityId): void
+    {
+        foreach ($summaries as $summary) {
+            $summary = Arr::toCamelCase($summary);
+            CarePlan::firstOrCreate([
+                'person_id' => $personId,
+                'legal_entity_id' => $legalEntityId,
+                'uuid' => $summary['id'],
+            ], [
+                'title' => $summary['title'] ?? $summary['id'],
+                'status' => $summary['status'],
+                'requisition' => $summary['requisition'] ?? null,
+            ]);
+        }
+    }
+
     public function storeAggregate(array $resource, array $activities, int $personId, int $legalEntityId): CarePlan
     {
         return $this->storageTransaction(function () use ($resource, $activities, $personId, $legalEntityId): CarePlan {

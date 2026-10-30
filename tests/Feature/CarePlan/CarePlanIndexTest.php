@@ -145,11 +145,15 @@ class CarePlanIndexTest extends TestCase
         $this->actingAs($user);
 
         // 2. Mock EHealth APIs
+        $this->grantMedicalEventAbilities($user);
+        session()->put(config('ehealth.api.oauth.bearer_token'), 'synthetic-token');
+        \Illuminate\Support\Facades\Queue::fake();
         $mockCarePlanApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlan::class)->makePartial();
         $mockDeclarationApi = Mockery::mock(\App\Classes\eHealth\Api\Declaration::class);
         $mockActivityApi = Mockery::mock(\App\Classes\eHealth\Api\CarePlanActivity::class)->makePartial();
 
         $this->instance(\App\Classes\eHealth\Api\CarePlan::class, $mockCarePlanApi);
+        $mockCarePlanApi->shouldReceive('withToken')->andReturnSelf();
         $this->instance(\App\Classes\eHealth\Api\Declaration::class, $mockDeclarationApi);
         $this->instance(\App\Classes\eHealth\Api\CarePlanActivity::class, $mockActivityApi);
 
@@ -169,6 +173,7 @@ class CarePlanIndexTest extends TestCase
         $cpSyncResponse = Mockery::mock(EHealthResponse::class);
         $cpSyncResponse->shouldReceive('validate')->andReturn($carePlanData);
         $cpSyncResponse->shouldReceive('getPaging')->andReturn(['total_pages' => 1]);
+        $cpSyncResponse->shouldReceive('isNotLast')->andReturn(false);
         $detailsResponse = Mockery::mock(EHealthResponse::class);
         $detailsResponse->shouldReceive('validate')->andReturn($resource);
         $mockCarePlanApi->shouldReceive('getDetails')->with($person->uuid, $carePlanUuid)->andReturn($detailsResponse);
